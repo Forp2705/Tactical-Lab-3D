@@ -1,17 +1,17 @@
 import dotenv from "dotenv"
 import OpenAI from "openai"
 
-import { CoachMatchAdviceSchema } from "./CoachSchemas"
-import { COACH_AGENT_SYSTEM_PROMPT } from "./CoachAgentPrompt"
-import { TEAM_CONTEXT } from "./TeamContext"
-import { COACH_RULES } from "./CoachRules"
-import { FOOTBALL_IDENTITY } from "./FootballIdentity"
-import { MATCH_MEMORY } from "./MatchMemory"
-import { MATCH_OBSERVATIONS } from "./MatchObservations"
-import { retrieveRelevantContext } from "./retrieveRelevantContext"
-import { retrieveRelevantKnowledge } from "./retrieveRelevantKnowledge"
-import { TEAM_IDENTITY } from "./teamIdentity"
-import { retrieveRelevantGeneratedMemory } from "./retrieveRelevantGeneratedMemory"
+import { CoachMatchAdviceSchema } from "./CoachSchemas.js"
+import { COACH_AGENT_SYSTEM_PROMPT } from "./CoachAgentPrompt.js"
+import { TEAM_CONTEXT } from "./TeamContext.js"
+import { COACH_RULES } from "./CoachRules.js"
+import { FOOTBALL_IDENTITY } from "./FootballIdentity.js"
+import { MATCH_MEMORY } from "./MatchMemory.js"
+import { MATCH_OBSERVATIONS } from "./MatchObservations.js"
+import { retrieveRelevantContext } from "./retrieveRelevantContext.js"
+import { retrieveRelevantKnowledge } from "./retrieveRelevantKnowledge.js"
+import { TEAM_IDENTITY } from "./teamIdentity.js"
+import { retrieveRelevantGeneratedMemory } from "./retrieveRelevantGeneratedMemory.js"
 
 dotenv.config({
   path: ".env.local",
@@ -22,15 +22,16 @@ const modelName =
   process.env.OPENROUTER_MODEL ??
   "deepseek/deepseek-chat-v3-0324:free"
 
-if (!apiKey) {
-  throw new Error("Missing OPENROUTER_API_KEY")
+function getClient() {
+  if (!apiKey) {
+    throw new Error("Missing OPENROUTER_API_KEY")
+  }
+
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+  })
 }
-
-const client = new OpenAI({
-  apiKey,
-  baseURL: "https://openrouter.ai/api/v1",
-})
-
 
 
 export async function generateCoachResponse(userInput: string) {
@@ -96,6 +97,7 @@ ${userInput}
 `
 
   let completion
+  const client = getClient()
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {

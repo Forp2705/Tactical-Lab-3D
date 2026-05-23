@@ -5,7 +5,7 @@ import {
   readJsonBody,
   safeErrorStatus,
   sendJson,
-} from "../../src/server/api";
+} from "../../src/server/api.js";
 
 export default async function handler(
   req: IncomingMessage,
@@ -19,7 +19,7 @@ export default async function handler(
   try {
     const body = await readJsonBody(req);
     const { savePostMatchReport } = await import(
-      "../../src/ai/post-match/storage"
+      "../../src/ai/post-match/storage.js"
     );
     const savedReport = await savePostMatchReport(body);
     sendJson(res, 200, savedReport);

@@ -1,17 +1,13 @@
 import fs from "node:fs/promises"
 import path from "node:path"
-import { TacticalKnowledgeSchema } from "./CoachSchemas"
-import buildUpKnowledge from "./knowledge/build-up.json"
-import compactnessKnowledge from "./knowledge/compactness.json"
-import defensiveTransitionKnowledge from "./knowledge/defensive-transition.json"
-import pressingKnowledge from "./knowledge/pressing.json"
+import { TacticalKnowledgeSchema } from "./CoachSchemas.js"
 
 const KNOWLEDGE_DIR = "src/ai/knowledge"
-const BUNDLED_KNOWLEDGE = [
-  ...buildUpKnowledge,
-  ...compactnessKnowledge,
-  ...defensiveTransitionKnowledge,
-  ...pressingKnowledge,
+const BUNDLED_KNOWLEDGE_FILES = [
+  new URL("./knowledge/build-up.json", import.meta.url),
+  new URL("./knowledge/compactness.json", import.meta.url),
+  new URL("./knowledge/defensive-transition.json", import.meta.url),
+  new URL("./knowledge/pressing.json", import.meta.url),
 ]
 
 export async function loadKnowledgeBase() {
@@ -37,6 +33,17 @@ export async function loadKnowledgeBase() {
 
     return allKnowledge
   } catch {
-    return TacticalKnowledgeSchema.parse(BUNDLED_KNOWLEDGE)
+    const allKnowledge = []
+
+    for (const fileUrl of BUNDLED_KNOWLEDGE_FILES) {
+      const rawContent = await fs.readFile(fileUrl, "utf-8")
+      const parsedContent = JSON.parse(rawContent)
+      const validatedKnowledge =
+        TacticalKnowledgeSchema.parse(parsedContent)
+
+      allKnowledge.push(...validatedKnowledge)
+    }
+
+    return allKnowledge
   }
 }

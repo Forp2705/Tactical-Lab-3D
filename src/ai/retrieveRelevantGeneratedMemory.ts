@@ -1,5 +1,5 @@
-import { loadGeneratedMemory } from "./loadGeneratedMemory"
-import { TACTICAL_KEYWORDS } from "./tacticalKeywords"
+import { loadGeneratedMemory } from "./loadGeneratedMemory.js"
+import { TACTICAL_KEYWORDS } from "./tacticalKeywords.js"
 
 const MAX_MEMORY_ITEMS = 3
 

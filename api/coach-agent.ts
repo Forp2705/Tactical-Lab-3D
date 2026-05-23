@@ -2,9 +2,10 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   badRequest,
   methodNotAllowed,
+  publicServerError,
   readJsonBody,
   sendJson,
-} from "../src/server/api";
+} from "../src/server/api.js";
 
 export default async function handler(
   req: IncomingMessage,
@@ -31,13 +32,15 @@ export default async function handler(
   }
 
   try {
-    const { generateCoachResponse } = await import("../src/ai/CoachAgent");
+    const { generateCoachResponse } = await import("../src/ai/CoachAgent.js");
     const advice = await generateCoachResponse(input);
     sendJson(res, 200, advice);
   } catch (error) {
     console.error("[coach-agent] request failed", error);
-    sendJson(res, 500, {
-      error: "Coach agent failed to generate a response.",
-    });
+    const response = publicServerError(
+      error,
+      "Coach agent failed to generate a response.",
+    );
+    sendJson(res, response.status, response.payload);
   }
 }

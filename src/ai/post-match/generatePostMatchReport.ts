@@ -1,19 +1,19 @@
 import dotenv from "dotenv";
 import OpenAI from "openai";
-import { COACH_AGENT_SYSTEM_PROMPT } from "../CoachAgentPrompt";
-import { COACH_RULES } from "../CoachRules";
-import { FOOTBALL_IDENTITY } from "../FootballIdentity";
-import { MATCH_MEMORY } from "../MatchMemory";
-import { TEAM_CONTEXT } from "../TeamContext";
-import { retrieveRelevantContext } from "../retrieveRelevantContext";
-import { retrieveRelevantGeneratedMemory } from "../retrieveRelevantGeneratedMemory";
-import { retrieveRelevantKnowledge } from "../retrieveRelevantKnowledge";
-import { TEAM_IDENTITY } from "../teamIdentity";
+import { COACH_AGENT_SYSTEM_PROMPT } from "../CoachAgentPrompt.js";
+import { COACH_RULES } from "../CoachRules.js";
+import { FOOTBALL_IDENTITY } from "../FootballIdentity.js";
+import { MATCH_MEMORY } from "../MatchMemory.js";
+import { TEAM_CONTEXT } from "../TeamContext.js";
+import { retrieveRelevantContext } from "../retrieveRelevantContext.js";
+import { retrieveRelevantGeneratedMemory } from "../retrieveRelevantGeneratedMemory.js";
+import { retrieveRelevantKnowledge } from "../retrieveRelevantKnowledge.js";
+import { TEAM_IDENTITY } from "../teamIdentity.js";
 import {
   PostMatchInputSchema,
   PostMatchReportSchema,
   type PostMatchInput,
-} from "./schemas";
+} from "./schemas.js";
 
 dotenv.config({
   path: ".env.local",
@@ -23,14 +23,16 @@ const apiKey = process.env.OPENROUTER_API_KEY;
 const modelName =
   process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-chat-v3-0324:free";
 
-if (!apiKey) {
-  throw new Error("Missing OPENROUTER_API_KEY");
-}
+function getClient() {
+  if (!apiKey) {
+    throw new Error("Missing OPENROUTER_API_KEY");
+  }
 
-const client = new OpenAI({
-  apiKey,
-  baseURL: "https://openrouter.ai/api/v1",
-});
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+  });
+}
 
 export async function generatePostMatchReport(rawInput: unknown) {
   const input = PostMatchInputSchema.parse(rawInput);
@@ -39,6 +41,7 @@ export async function generatePostMatchReport(rawInput: unknown) {
   const relevantGeneratedMemory =
     await retrieveRelevantGeneratedMemory(searchableInput);
   const relevantKnowledge = await retrieveRelevantKnowledge(searchableInput);
+  const client = getClient();
 
   const completion = await client.chat.completions.create({
     model: modelName,

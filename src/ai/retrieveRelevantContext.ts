@@ -1,5 +1,5 @@
-import { MATCH_OBSERVATIONS } from "./MatchObservations"
-import { TACTICAL_KEYWORDS } from "./tacticalKeywords"
+import { MATCH_OBSERVATIONS } from "./MatchObservations.js"
+import { TACTICAL_KEYWORDS } from "./tacticalKeywords.js"
 
 export function retrieveRelevantContext(userInput: string) {
   const normalizedInput = userInput.toLowerCase()

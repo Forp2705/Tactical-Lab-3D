@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { TacticalMemorySchema } from "../CoachSchemas";
-import { writableDataPath } from "../serverDataPaths";
+import { TacticalMemorySchema } from "../CoachSchemas.js";
+import { writableDataPath } from "../serverDataPaths.js";
 import {
   CommitMemoryCandidatesRequestSchema,
   SavePostMatchReportRequestSchema,
   SavedPostMatchReportSchema,
   type MemoryCandidate,
   type SavedPostMatchReport,
-} from "./schemas";
+} from "./schemas.js";
 
 const REPORTS_PATH = "src/ai/post-match/reports.json";
 const GENERATED_MEMORY_PATH = "src/ai/generated/tactical-memory.json";

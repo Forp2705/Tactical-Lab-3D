@@ -4,7 +4,7 @@ import {
   methodNotAllowed,
   readJsonBody,
   sendJson,
-} from "../../src/server/api";
+} from "../../src/server/api.js";
 
 export default async function handler(
   req: IncomingMessage,

@@ -1,5 +1,5 @@
-import { loadKnowledgeBase } from "./loadKnowledgeBase"
-import { TACTICAL_KEYWORDS } from "./tacticalKeywords"
+import { loadKnowledgeBase } from "./loadKnowledgeBase.js"
+import { TACTICAL_KEYWORDS } from "./tacticalKeywords.js"
 
 const MAX_KNOWLEDGE_ITEMS = 5
 
