@@ -12,6 +12,7 @@ import { TEAM_IDENTITY } from "../teamIdentity.js";
 import {
   type PostMatchInput,
   PostMatchInputSchema,
+  type PostMatchReport,
   PostMatchReportSchema,
 } from "./schemas.js";
 
@@ -71,59 +72,18 @@ export async function generatePostMatchReport(rawInput: unknown) {
     .replace(/```/g, "")
     .trim();
   const parsed = JSON.parse(cleanText);
-  const reportId = `pmr_${Date.now()}`;
-  const ownTeamProblems = buildOwnTeamProblems(parsed);
-  const conditioningContext = buildConditioningContext(input, parsed);
-  const report = {
-    ...parsed,
-    id: parsed.id ?? reportId,
-    createdAt: parsed.createdAt ?? new Date().toISOString(),
-    matchContext: input.matchContext,
-    ownStrengths: Array.isArray(parsed.ownStrengths) ? parsed.ownStrengths : [],
-    ownProblems: Array.isArray(parsed.ownProblems) ? parsed.ownProblems : [],
-    ownTeamProblems,
-    conditioningContext,
-    rivalVulnerabilities: Array.isArray(parsed.rivalVulnerabilities)
-      ? parsed.rivalVulnerabilities
-      : [],
-    observedRisks: filterConditioningRisks(parsed.observedRisks),
-    tacticalTradeoffs: Array.isArray(parsed.tacticalTradeoffs)
-      ? parsed.tacticalTradeoffs
-      : [],
-    flankAsymmetries: Array.isArray(parsed.flankAsymmetries)
-      ? parsed.flankAsymmetries
-      : [],
-    tacticalInferences: Array.isArray(parsed.tacticalInferences)
-      ? parsed.tacticalInferences
-      : [],
-    memoryInfluence: Array.isArray(parsed.memoryInfluence)
-      ? parsed.memoryInfluence
-      : [],
-    grounding: {
-      resultPerspective:
-        input.matchContext.interpretedResult?.label ??
-        "resultado no interpretable",
-      evidenceUsed: Array.isArray(parsed.grounding?.evidenceUsed)
-        ? parsed.grounding.evidenceUsed
-        : [],
-      unsupportedClaims: Array.isArray(parsed.grounding?.unsupportedClaims)
-        ? parsed.grounding.unsupportedClaims
-        : [],
-      subjectAttributionWarnings: Array.isArray(
-        parsed.grounding?.subjectAttributionWarnings,
-      )
-        ? parsed.grounding.subjectAttributionWarnings
-        : [],
-    },
-    memoryCandidates: Array.isArray(parsed.memoryCandidates)
-      ? parsed.memoryCandidates.map(
-          (candidate: { id?: string; category?: string }, index: number) =>
-            normalizeMemoryCandidate(candidate, index),
-        )
-      : [],
-  };
+  const normalized = normalizePostMatchReport(parsed, input);
+  const result = PostMatchReportSchema.safeParse(normalized);
 
-  return PostMatchReportSchema.parse(report);
+  if (!result.success) {
+    console.error("[post-match] normalized report failed schema validation", {
+      issues: result.error.issues,
+      normalized,
+    });
+    throw result.error;
+  }
+
+  return validatePostMatchGrounding(result.data, input);
 }
 
 function buildSearchableInput(input: PostMatchInput) {
@@ -351,6 +311,119 @@ type EvidenceItem = {
   minute?: number;
 };
 
+export function normalizePostMatchReport(
+  rawReport: unknown,
+  input: PostMatchInput,
+) {
+  const parsed = objectRecord(rawReport);
+  const reportId = `pmr_${Date.now()}`;
+  const ownTeamProblems = buildOwnTeamProblems(parsed);
+  const conditioningContext = buildConditioningContext(input, parsed);
+
+  return {
+    id: stringOrFallback(parsed.id, reportId),
+    createdAt: stringOrFallback(parsed.createdAt, new Date().toISOString()),
+    matchContext: input.matchContext,
+    executiveSummary: stringOrFallback(parsed.executiveSummary, ""),
+    matchStory: stringOrFallback(parsed.matchStory, ""),
+    ownStrengths: objectArray(parsed.ownStrengths).map((item) => ({
+      strength: stringOrFallback(item.strength, ""),
+      evidence: coerceStringArray(item.evidence),
+    })),
+    ownProblems: objectArray(parsed.ownProblems).map((item) => ({
+      problem: stringOrFallback(item.problem, ""),
+      evidence: coerceStringArray(item.evidence),
+      severity: severityOrMedium(item.severity),
+    })),
+    ownTeamProblems,
+    conditioningContext,
+    rivalVulnerabilities: objectArray(parsed.rivalVulnerabilities).map(
+      (item) => ({
+        vulnerability: stringOrFallback(item.vulnerability, ""),
+        evidence: coerceStringArray(item.evidence),
+        howWeExploitedIt: optionalString(item.howWeExploitedIt),
+      }),
+    ),
+    observedRisks: filterConditioningRisks(parsed.observedRisks).map((risk) => {
+      const item = objectRecord(risk);
+      return {
+        risk: stringOrFallback(item.risk, ""),
+        evidence: coerceStringArray(item.evidence),
+        owner: normalizeSubject(item.owner),
+      };
+    }),
+    tacticalTradeoffs: objectArray(parsed.tacticalTradeoffs).map((item) => ({
+      decision: stringOrFallback(item.decision, ""),
+      upside: stringOrFallback(item.upside, ""),
+      downside: stringOrFallback(item.downside, ""),
+      subject: normalizeSubject(item.subject),
+      evidence: coerceStringArray(item.evidence),
+    })),
+    flankAsymmetries: objectArray(parsed.flankAsymmetries).map((item) => ({
+      flank: normalizeFlank(item.flank),
+      description: stringOrFallback(item.description, ""),
+      subject: normalizeSubject(item.subject),
+      evidence: coerceStringArray(item.evidence),
+      implication: optionalString(item.implication),
+    })),
+    tacticalInferences: objectArray(parsed.tacticalInferences).map((item) => ({
+      inference: stringOrFallback(item.inference, ""),
+      basedOn: coerceStringArray(item.basedOn),
+      confidence: confidenceOrMedium(item.confidence),
+    })),
+    memoryInfluence: objectArray(parsed.memoryInfluence).map((item) => ({
+      memoryItem: stringOrFallback(item.memoryItem, ""),
+      usedAs:
+        item.usedAs === "supportedByCurrentEvidence"
+          ? "supportedByCurrentEvidence"
+          : "contextOnly",
+      currentEvidence: coerceStringArray(item.currentEvidence),
+    })),
+    grounding: normalizeGrounding(parsed.grounding, input),
+    keyPatterns: objectArray(parsed.keyPatterns).map((item) => ({
+      pattern: stringOrFallback(item.pattern, ""),
+      evidence: coerceStringArray(item.evidence),
+      tacticalImpact: stringOrFallback(item.tacticalImpact, ""),
+    })),
+    mainProblems: objectArray(parsed.mainProblems).map((item) => ({
+      problem: stringOrFallback(item.problem, ""),
+      probableCause: stringOrFallback(item.probableCause, ""),
+      severity: severityOrMedium(item.severity),
+      examplesToReview: coerceStringArray(item.examplesToReview),
+    })),
+    positives: coerceStringArray(parsed.positives),
+    wednesdayTest: objectArray(parsed.wednesdayTest).map((item) => ({
+      hypothesis: stringOrFallback(item.hypothesis, ""),
+      test: stringOrFallback(item.test, ""),
+      successSignals: coerceStringArray(item.successSignals),
+      fallbackIfFails: optionalString(item.fallbackIfFails),
+    })),
+    saturdayFocus: coerceStringArray(parsed.saturdayFocus),
+    risksOfOvercorrection: coerceStringArray(parsed.risksOfOvercorrection),
+    missingInformation: coerceStringArray(parsed.missingInformation),
+    memoryCandidates: objectArray(parsed.memoryCandidates).map(
+      (candidate, index) => normalizeMemoryCandidate(candidate, index),
+    ),
+    reflection: normalizeReflection(parsed.reflection),
+  };
+}
+
+function validatePostMatchGrounding(
+  report: PostMatchReport,
+  input: PostMatchInput,
+) {
+  return {
+    ...report,
+    matchContext: input.matchContext,
+    grounding: {
+      ...report.grounding,
+      resultPerspective:
+        input.matchContext.interpretedResult?.label ??
+        report.grounding.resultPerspective,
+    },
+  };
+}
+
 function buildEvidenceLedger(input: PostMatchInput): EvidenceItem[] {
   const evidence: EvidenceItem[] = [
     {
@@ -395,27 +468,37 @@ function buildOwnTeamProblems(parsed: {
   ownProblems?: unknown;
   mainProblems?: unknown;
 }) {
-  if (Array.isArray(parsed.ownTeamProblems) && parsed.ownTeamProblems.length) {
-    return parsed.ownTeamProblems;
+  const ownTeamProblems = objectArray(parsed.ownTeamProblems);
+  if (ownTeamProblems.length) {
+    return ownTeamProblems.map((problem) => ({
+      problem: stringOrFallback(problem.problem, "Problema propio sin titulo"),
+      evidence: coerceStringArray(problem.evidence),
+      severity: severityOrMedium(problem.severity),
+      probableCause: optionalString(problem.probableCause),
+    }));
   }
 
-  if (Array.isArray(parsed.ownProblems) && parsed.ownProblems.length) {
-    return parsed.ownProblems;
+  const ownProblems = objectArray(parsed.ownProblems);
+  if (ownProblems.length) {
+    return ownProblems.map((problem) => ({
+      problem: stringOrFallback(problem.problem, "Problema propio sin titulo"),
+      evidence: coerceStringArray(problem.evidence),
+      severity: severityOrMedium(problem.severity),
+      probableCause: optionalString(problem.probableCause),
+    }));
   }
 
-  if (!Array.isArray(parsed.mainProblems)) {
+  const mainProblems = objectArray(parsed.mainProblems);
+  if (!mainProblems.length) {
     return [];
   }
 
-  return parsed.mainProblems.map((problem) => {
-    const item = problem as Record<string, unknown>;
-    return {
-      problem: stringOrFallback(item.problem, "Problema propio sin titulo"),
-      evidence: stringArray(item.examplesToReview),
-      severity: severityOrMedium(item.severity),
-      probableCause: stringOrFallback(item.probableCause, ""),
-    };
-  });
+  return mainProblems.map((problem) => ({
+    problem: stringOrFallback(problem.problem, "Problema propio sin titulo"),
+    evidence: coerceStringArray(problem.examplesToReview),
+    severity: severityOrMedium(problem.severity),
+    probableCause: optionalString(problem.probableCause),
+  }));
 }
 
 function buildConditioningContext(
@@ -424,7 +507,7 @@ function buildConditioningContext(
 ) {
   const context = new Set<string>();
 
-  for (const item of stringArray(parsed.conditioningContext)) {
+  for (const item of coerceStringArray(parsed.conditioningContext)) {
     context.add(item);
   }
   collectConditioningFromText(input.staffNotes, context);
@@ -456,22 +539,26 @@ function filterConditioningRisks(observedRisks: unknown) {
 }
 
 function normalizeMemoryCandidate(
-  candidate: { id?: string; category?: string },
+  candidate: Record<string, unknown>,
   index: number,
 ) {
   const statement =
     "statement" in candidate ? stringOrFallback(candidate.statement, "") : "";
   const evidence =
-    "evidence" in candidate ? stringArray(candidate.evidence) : [];
+    "evidence" in candidate ? coerceStringArray(candidate.evidence) : [];
   const textForCategory = `${statement} ${evidence.join(" ")}`;
   const category = isSideAsymmetryText(textForCategory)
     ? "sideAsymmetry"
-    : validMemoryCategory(candidate.category);
+    : validMemoryCategory(optionalString(candidate.category));
 
   return {
     ...candidate,
-    id: candidate.id ?? `mc_${index + 1}`,
+    id: stringOrFallback(candidate.id, `mc_${index + 1}`),
+    statement,
     category,
+    evidence,
+    confidence: confidenceOrMedium(candidate.confidence),
+    scope: validMemoryScope(candidate.scope),
     selectedByStaff: false,
   };
 }
@@ -525,19 +612,181 @@ function validMemoryCategory(category: string | undefined) {
   return "teamPattern";
 }
 
+function validMemoryScope(value: unknown) {
+  if (value === "oneOff" || value === "repeatWatch" || value === "validated") {
+    return value;
+  }
+
+  return "repeatWatch";
+}
+
+function normalizeGrounding(rawGrounding: unknown, input: PostMatchInput) {
+  const grounding = objectRecord(rawGrounding);
+
+  return {
+    resultPerspective:
+      input.matchContext.interpretedResult?.label ??
+      stringOrFallback(
+        grounding.resultPerspective,
+        "resultado no interpretable",
+      ),
+    evidenceUsed: coerceStringArray(grounding.evidenceUsed),
+    unsupportedClaims: coerceStringArray(grounding.unsupportedClaims),
+    subjectAttributionWarnings: coerceStringArray(
+      grounding.subjectAttributionWarnings,
+    ),
+  };
+}
+
+function normalizeReflection(rawReflection: unknown) {
+  const reflection = objectRecord(rawReflection);
+
+  return {
+    mainUncertainty: stringOrFallback(
+      reflection.mainUncertainty,
+      "No se declaro incertidumbre principal.",
+    ),
+    alternativeInterpretation: stringOrFallback(
+      reflection.alternativeInterpretation,
+      "No se declaro interpretacion alternativa.",
+    ),
+    confidence: normalizeNumber(reflection.confidence, 0.55),
+  };
+}
+
+function normalizeFlank(value: unknown) {
+  const normalized = normalizeToken(value);
+
+  if (
+    ["left", "izquierda", "izquierdo", "lado izquierdo"].includes(normalized)
+  ) {
+    return "left";
+  }
+  if (["right", "derecha", "derecho", "lado derecho"].includes(normalized)) {
+    return "right";
+  }
+  if (["central", "centro", "centre", "center"].includes(normalized)) {
+    return "central";
+  }
+  if (["both", "ambos", "ambas", "dos bandas"].includes(normalized)) {
+    return "both";
+  }
+
+  return "both";
+}
+
+function normalizeSubject(value: unknown) {
+  const normalized = normalizeToken(value);
+
+  if (
+    ["own", "propio", "equipo propio", "nosotros", "rojo fc"].includes(
+      normalized,
+    )
+  ) {
+    return "own";
+  }
+  if (["rival", "opponent", "contrario", "ellos"].includes(normalized)) {
+    return "rival";
+  }
+  if (["both", "ambos", "ambas", "los dos"].includes(normalized)) {
+    return "both";
+  }
+
+  return "unknown";
+}
+
+function confidenceOrMedium(value: unknown) {
+  const normalized = normalizeToken(value);
+
+  if (normalized === "low" || normalized === "baja" || normalized === "bajo") {
+    return "low";
+  }
+  if (normalized === "high" || normalized === "alta" || normalized === "alto") {
+    return "high";
+  }
+
+  return "medium";
+}
+
 function stringOrFallback(value: unknown, fallback: string) {
   return typeof value === "string" ? value : fallback;
 }
 
-function stringArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
+function optionalString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function coerceStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => coerceStringArray(item))
+      .filter((item) => item.trim());
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|;|\|/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return [String(value)];
+  }
+
+  return [];
+}
+
+function objectArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    const record = objectRecord(value);
+    return Object.keys(record).length ? [record] : [];
+  }
+
+  return value.map(objectRecord).filter((item) => Object.keys(item).length > 0);
+}
+
+function objectRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function normalizeNumber(value: unknown, fallback: number) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return clamp01(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value.replace("%", "").trim());
+    if (Number.isFinite(parsed)) {
+      return clamp01(parsed > 1 ? parsed / 100 : parsed);
+    }
+  }
+
+  return fallback;
+}
+
+function clamp01(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function normalizeToken(value: unknown) {
+  return typeof value === "string"
+    ? value.normalize("NFD").replace(/\p{M}/gu, "").trim().toLowerCase()
+    : "";
 }
 
 function severityOrMedium(value: unknown) {
-  if (value === "low" || value === "medium" || value === "high") {
-    return value;
+  const normalized = normalizeToken(value);
+
+  if (normalized === "low" || normalized === "baja" || normalized === "bajo") {
+    return "low";
+  }
+  if (normalized === "high" || normalized === "alta" || normalized === "alto") {
+    return "high";
   }
 
   return "medium";

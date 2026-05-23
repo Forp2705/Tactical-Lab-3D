@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { PostMatchReportSchema } from "../src/ai/post-match/schemas";
+import {
+  normalizePostMatchReport,
+  parseOwnPerspectiveResult,
+} from "../src/ai/post-match/generatePostMatchReport";
+import {
+  PostMatchInputSchema,
+  PostMatchReportSchema,
+} from "../src/ai/post-match/schemas";
 
 describe("PostMatchReportSchema", () => {
   it("accepts grounded post-match sections without writing memory", () => {
@@ -130,5 +137,119 @@ describe("PostMatchReportSchema", () => {
     expect(report.memoryCandidates[0].category).toBe("sideAsymmetry");
     expect(report.memoryCandidates[0].selectedByStaff).toBe(false);
     expect(report.observedRisks[0].owner).toBe("unknown");
+  });
+
+  it("normalizes common LLM shape drift before zod validation", () => {
+    const input = PostMatchInputSchema.parse({
+      matchContext: {
+        opponent: "Cantinas FC",
+        result: "5-0",
+        interpretedResult: parseOwnPerspectiveResult("5-0") ?? undefined,
+        ownSystem: "4-4-2",
+        opponentSystem: "3-4-3",
+      },
+      staffNotes:
+        "El equipo jugo con 10 y genero mas fluidez por izquierda que por derecha.",
+      tags: [],
+    });
+
+    const normalized = normalizePostMatchReport(
+      {
+        executiveSummary: "Victoria propia bien interpretada.",
+        matchStory: "El equipo sostuvo el plan.",
+        ownStrengths: {
+          strength: "Compromiso con la idea",
+          evidence: "EV-NOTES",
+        },
+        ownProblems: {
+          problem: "Bloque partido",
+          evidence: "EV-NOTES",
+          severity: "media",
+        },
+        rivalVulnerabilities: {
+          vulnerability: "Linea alta rival",
+          evidence: "EV-NOTES",
+          howWeExploitedIt: "Diagonales.",
+        },
+        observedRisks: {
+          risk: "jugar con 10",
+          evidence: "EV-NOTES",
+          owner: "propio",
+        },
+        tacticalTradeoffs: {
+          decision: "Pelota larga con sentido",
+          upside: "Atacar espalda",
+          downside: "Puede partir el bloque",
+          subject: "propio",
+          evidence: "EV-NOTES",
+        },
+        flankAsymmetries: {
+          flank: "izquierda",
+          description: "Mas fluidez izquierda que derecha",
+          evidence: "EV-NOTES",
+        },
+        tacticalInferences: {
+          inference: "Conviene coordinar alturas",
+          basedOn: "EV-NOTES",
+          confidence: "alta",
+        },
+        memoryInfluence: {
+          memoryItem: "Dato previo",
+          usedAs: "contextOnly",
+          currentEvidence: "EV-NOTES",
+        },
+        grounding: {
+          evidenceUsed: "EV-NOTES",
+          unsupportedClaims: "",
+          subjectAttributionWarnings: "",
+        },
+        keyPatterns: {
+          pattern: "Atacar espalda de linea alta",
+          evidence: "EV-NOTES",
+          tacticalImpact: "Genero ventaja.",
+        },
+        mainProblems: {
+          problem: "Bloque partido",
+          probableCause: "Defensa no achica",
+          severity: "medium",
+          examplesToReview: "EV-NOTES",
+        },
+        positives: "Compromiso con la idea",
+        wednesdayTest: {
+          hypothesis: "Coordinar altura del bloque",
+          test: "11v11 reducido",
+          successSignals: "Defensa achica cuando saltan puntas",
+        },
+        saturdayFocus: "Coordinar bloque",
+        risksOfOvercorrection: "No bajar el bloque por defecto",
+        missingInformation: "Minutos exactos",
+        memoryCandidates: {
+          id: "mc_1",
+          statement:
+            "El equipo genero con mas fluidez por izquierda que por derecha.",
+          category: "opponentPattern",
+          evidence: "EV-NOTES",
+          confidence: "alta",
+          scope: "repeatWatch",
+        },
+        reflection: {
+          mainUncertainty: "Falta video taggeado",
+          alternativeInterpretation: "El rival pudo estar desordenado",
+          confidence: "0.7",
+        },
+      },
+      input,
+    );
+
+    const report = PostMatchReportSchema.parse(normalized);
+
+    expect(report.ownStrengths[0].evidence).toEqual(["EV-NOTES"]);
+    expect(report.tacticalInferences[0].basedOn).toEqual(["EV-NOTES"]);
+    expect(report.flankAsymmetries[0].flank).toBe("left");
+    expect(report.flankAsymmetries[0].subject).toBe("unknown");
+    expect(report.reflection.confidence).toBe(0.7);
+    expect(report.conditioningContext.length).toBeGreaterThan(0);
+    expect(report.observedRisks).toEqual([]);
+    expect(report.memoryCandidates[0].category).toBe("sideAsymmetry");
   });
 });
