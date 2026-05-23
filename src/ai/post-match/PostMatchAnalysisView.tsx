@@ -98,7 +98,18 @@ export function PostMatchAnalysisView() {
       });
       setReport(saved.report);
       setSavedReportId(saved.id);
-      setStatus("Reporte guardado. La memoria todavia no se actualizo.");
+      try {
+        const { downloadPostMatchPdf } = await import("./PostMatchPdf");
+        await downloadPostMatchPdf(saved.report, staffReviewNotes);
+        setStatus(
+          "Reporte guardado y PDF generado. La memoria todavia no se actualizo.",
+        );
+      } catch (pdfError) {
+        console.error("Post-match PDF generation failed", pdfError);
+        setStatus(
+          "Reporte guardado, pero no se pudo generar el PDF. La memoria todavia no se actualizo.",
+        );
+      }
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -268,8 +279,8 @@ export function PostMatchAnalysisView() {
           <div className="ai-card">
             <b>Sin informe todavia</b>
             <p>
-              Carga contexto, notas o tags para generar un reporte
-              post-partido validado.
+              Carga contexto, notas o tags para generar un reporte post-partido
+              validado.
             </p>
           </div>
         )}
@@ -309,6 +320,7 @@ function ReportReview({
         />
       ) : null}
       <TextCard title="Historia del partido" value={report.matchStory} />
+      <GroundingCard grounding={report.grounding} />
       <EvidenceCards
         title="Fortalezas propias"
         items={report.ownStrengths}
@@ -322,6 +334,8 @@ function ReportReview({
       />
       <RivalVulnerabilityCards items={report.rivalVulnerabilities} />
       <ObservedRiskCards items={report.observedRisks} />
+      <TradeoffCards items={report.tacticalTradeoffs} />
+      <FlankAsymmetryCards items={report.flankAsymmetries} />
       <InferenceCards items={report.tacticalInferences} />
       <MemoryInfluenceCards items={report.memoryInfluence} />
       <PatternCards patterns={report.keyPatterns} />
@@ -498,6 +512,86 @@ function ObservedRiskCards({
   );
 }
 
+function TradeoffCards({
+  items,
+}: {
+  items: PostMatchReport["tacticalTradeoffs"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Tradeoffs tacticos</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.decision}-${index}`}>
+          <strong>
+            {item.decision} - sujeto: {item.subject}
+          </strong>
+          <p>Ventaja: {item.upside}</p>
+          <p>Costo: {item.downside}</p>
+          <SmallList items={item.evidence} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FlankAsymmetryCards({
+  items,
+}: {
+  items: PostMatchReport["flankAsymmetries"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Asimetrias por banda</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.flank}-${index}`}>
+          <strong>
+            {item.flank} - sujeto: {item.subject}
+          </strong>
+          <p>{item.description}</p>
+          {item.implication ? <p>{item.implication}</p> : null}
+          <SmallList items={item.evidence} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GroundingCard({
+  grounding,
+}: {
+  grounding: PostMatchReport["grounding"];
+}) {
+  const hasDetails =
+    grounding.resultPerspective ||
+    grounding.evidenceUsed.length ||
+    grounding.unsupportedClaims.length ||
+    grounding.subjectAttributionWarnings.length;
+
+  if (!hasDetails) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Grounding y atribucion</b>
+      {grounding.resultPerspective ? (
+        <p>Resultado: {grounding.resultPerspective}</p>
+      ) : null}
+      <SmallList items={grounding.evidenceUsed} />
+      <LabeledSmallList
+        label="Claims sin soporte"
+        items={grounding.unsupportedClaims}
+      />
+      <LabeledSmallList
+        label="Alertas de sujeto"
+        items={grounding.subjectAttributionWarnings}
+      />
+    </div>
+  );
+}
+
 function InferenceCards({
   items,
 }: {
@@ -646,8 +740,7 @@ function MemoryCandidatePicker({
           <span>
             <strong>{candidate.statement}</strong>
             <small>
-              {candidate.category} · {candidate.scope} ·{" "}
-              {candidate.confidence}
+              {candidate.category} · {candidate.scope} · {candidate.confidence}
             </small>
             <SmallList items={candidate.evidence} />
           </span>
@@ -665,6 +758,23 @@ function SmallList({ items }: { items: string[] }) {
         <li key={`${index}-${item}`}>{item}</li>
       ))}
     </ul>
+  );
+}
+
+function LabeledSmallList({
+  label,
+  items,
+}: {
+  label: string;
+  items: string[];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <>
+      <p>{label}</p>
+      <SmallList items={items} />
+    </>
   );
 }
 

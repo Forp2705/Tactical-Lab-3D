@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const ConfidenceSchema = z.enum(["low", "medium", "high"]);
+export const SubjectSchema = z.enum(["own", "rival", "both", "unknown"]);
 
 export const PostMatchTagSchema = z.object({
   minute: z.number().min(0).max(130).optional(),
@@ -36,8 +37,7 @@ export const PostMatchInputSchema = z
     tags: z.array(PostMatchTagSchema).default([]),
   })
   .refine(
-    (input) =>
-      Boolean(input.staffNotes?.trim()) || Boolean(input.tags.length),
+    (input) => Boolean(input.staffNotes?.trim()) || Boolean(input.tags.length),
     {
       message: "Staff notes or at least one tag are required",
       path: ["staffNotes"],
@@ -65,47 +65,94 @@ export const PostMatchReportSchema = z.object({
   matchContext: MatchContextSchema,
   executiveSummary: z.string().min(1),
   matchStory: z.string().min(1),
-  ownStrengths: z.array(
-    z.object({
-      strength: z.string().min(1),
-      evidence: z.array(z.string()).default([]),
+  ownStrengths: z
+    .array(
+      z.object({
+        strength: z.string().min(1),
+        evidence: z.array(z.string()).default([]),
+      }),
+    )
+    .default([]),
+  ownProblems: z
+    .array(
+      z.object({
+        problem: z.string().min(1),
+        evidence: z.array(z.string()).default([]),
+        severity: z.enum(["low", "medium", "high"]),
+      }),
+    )
+    .default([]),
+  rivalVulnerabilities: z
+    .array(
+      z.object({
+        vulnerability: z.string().min(1),
+        evidence: z.array(z.string()).default([]),
+        howWeExploitedIt: z.string().optional(),
+      }),
+    )
+    .default([]),
+  observedRisks: z
+    .array(
+      z.object({
+        risk: z.string().min(1),
+        evidence: z.array(z.string()).default([]),
+        owner: SubjectSchema,
+      }),
+    )
+    .default([]),
+  tacticalTradeoffs: z
+    .array(
+      z.object({
+        decision: z.string().min(1),
+        upside: z.string().min(1),
+        downside: z.string().min(1),
+        subject: SubjectSchema,
+        evidence: z.array(z.string()).default([]),
+      }),
+    )
+    .default([]),
+  flankAsymmetries: z
+    .array(
+      z.object({
+        flank: z.enum(["left", "right", "central", "both"]),
+        description: z.string().min(1),
+        subject: SubjectSchema,
+        evidence: z.array(z.string()).default([]),
+        implication: z.string().optional(),
+      }),
+    )
+    .default([]),
+  tacticalInferences: z
+    .array(
+      z.object({
+        inference: z.string().min(1),
+        basedOn: z.array(z.string()).default([]),
+        confidence: ConfidenceSchema,
+      }),
+    )
+    .default([]),
+  memoryInfluence: z
+    .array(
+      z.object({
+        memoryItem: z.string().min(1),
+        usedAs: z.enum(["contextOnly", "supportedByCurrentEvidence"]),
+        currentEvidence: z.array(z.string()).default([]),
+      }),
+    )
+    .default([]),
+  grounding: z
+    .object({
+      resultPerspective: z.string(),
+      evidenceUsed: z.array(z.string()).default([]),
+      unsupportedClaims: z.array(z.string()).default([]),
+      subjectAttributionWarnings: z.array(z.string()).default([]),
+    })
+    .default({
+      resultPerspective: "",
+      evidenceUsed: [],
+      unsupportedClaims: [],
+      subjectAttributionWarnings: [],
     }),
-  ).default([]),
-  ownProblems: z.array(
-    z.object({
-      problem: z.string().min(1),
-      evidence: z.array(z.string()).default([]),
-      severity: z.enum(["low", "medium", "high"]),
-    }),
-  ).default([]),
-  rivalVulnerabilities: z.array(
-    z.object({
-      vulnerability: z.string().min(1),
-      evidence: z.array(z.string()).default([]),
-      howWeExploitedIt: z.string().optional(),
-    }),
-  ).default([]),
-  observedRisks: z.array(
-    z.object({
-      risk: z.string().min(1),
-      evidence: z.array(z.string()).default([]),
-      owner: z.enum(["own", "rival", "both", "unclear"]),
-    }),
-  ).default([]),
-  tacticalInferences: z.array(
-    z.object({
-      inference: z.string().min(1),
-      basedOn: z.array(z.string()).default([]),
-      confidence: ConfidenceSchema,
-    }),
-  ).default([]),
-  memoryInfluence: z.array(
-    z.object({
-      memoryItem: z.string().min(1),
-      usedAs: z.enum(["contextOnly", "supportedByCurrentEvidence"]),
-      currentEvidence: z.array(z.string()).default([]),
-    }),
-  ).default([]),
   keyPatterns: z.array(
     z.object({
       pattern: z.string().min(1),
@@ -170,7 +217,5 @@ export type PostMatchInput = z.infer<typeof PostMatchInputSchema>;
 export type PostMatchTag = z.infer<typeof PostMatchTagSchema>;
 export type PostMatchReport = z.infer<typeof PostMatchReportSchema>;
 export type MemoryCandidate = z.infer<typeof MemoryCandidateSchema>;
-export type SavedPostMatchReport = z.infer<
-  typeof SavedPostMatchReportSchema
->;
+export type SavedPostMatchReport = z.infer<typeof SavedPostMatchReportSchema>;
 export type StaffReview = z.infer<typeof StaffReviewSchema>;

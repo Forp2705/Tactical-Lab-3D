@@ -10,9 +10,9 @@ import { retrieveRelevantGeneratedMemory } from "../retrieveRelevantGeneratedMem
 import { retrieveRelevantKnowledge } from "../retrieveRelevantKnowledge.js";
 import { TEAM_IDENTITY } from "../teamIdentity.js";
 import {
+  type PostMatchInput,
   PostMatchInputSchema,
   PostMatchReportSchema,
-  type PostMatchInput,
 } from "./schemas.js";
 
 dotenv.config({
@@ -36,6 +36,7 @@ function getClient() {
 
 export async function generatePostMatchReport(rawInput: unknown) {
   const input = withInterpretedResult(PostMatchInputSchema.parse(rawInput));
+  const evidenceLedger = buildEvidenceLedger(input);
   const searchableInput = buildSearchableInput(input);
   const relevantContext = retrieveRelevantContext(searchableInput);
   const relevantGeneratedMemory =
@@ -54,6 +55,7 @@ export async function generatePostMatchReport(rawInput: unknown) {
         role: "user",
         content: buildPrompt({
           input,
+          evidenceLedger,
           relevantContext,
           relevantGeneratedMemory,
           relevantKnowledge,
@@ -64,7 +66,10 @@ export async function generatePostMatchReport(rawInput: unknown) {
   });
 
   const rawText = completion.choices[0]?.message?.content ?? "";
-  const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+  const cleanText = rawText
+    .replace(/```json/g, "")
+    .replace(/```/g, "")
+    .trim();
   const parsed = JSON.parse(cleanText);
   const reportId = `pmr_${Date.now()}`;
   const report = {
@@ -72,9 +77,7 @@ export async function generatePostMatchReport(rawInput: unknown) {
     id: parsed.id ?? reportId,
     createdAt: parsed.createdAt ?? new Date().toISOString(),
     matchContext: input.matchContext,
-    ownStrengths: Array.isArray(parsed.ownStrengths)
-      ? parsed.ownStrengths
-      : [],
+    ownStrengths: Array.isArray(parsed.ownStrengths) ? parsed.ownStrengths : [],
     ownProblems: Array.isArray(parsed.ownProblems) ? parsed.ownProblems : [],
     rivalVulnerabilities: Array.isArray(parsed.rivalVulnerabilities)
       ? parsed.rivalVulnerabilities
@@ -82,18 +85,42 @@ export async function generatePostMatchReport(rawInput: unknown) {
     observedRisks: Array.isArray(parsed.observedRisks)
       ? parsed.observedRisks
       : [],
+    tacticalTradeoffs: Array.isArray(parsed.tacticalTradeoffs)
+      ? parsed.tacticalTradeoffs
+      : [],
+    flankAsymmetries: Array.isArray(parsed.flankAsymmetries)
+      ? parsed.flankAsymmetries
+      : [],
     tacticalInferences: Array.isArray(parsed.tacticalInferences)
       ? parsed.tacticalInferences
       : [],
     memoryInfluence: Array.isArray(parsed.memoryInfluence)
       ? parsed.memoryInfluence
       : [],
+    grounding: {
+      resultPerspective:
+        input.matchContext.interpretedResult?.label ??
+        "resultado no interpretable",
+      evidenceUsed: Array.isArray(parsed.grounding?.evidenceUsed)
+        ? parsed.grounding.evidenceUsed
+        : [],
+      unsupportedClaims: Array.isArray(parsed.grounding?.unsupportedClaims)
+        ? parsed.grounding.unsupportedClaims
+        : [],
+      subjectAttributionWarnings: Array.isArray(
+        parsed.grounding?.subjectAttributionWarnings,
+      )
+        ? parsed.grounding.subjectAttributionWarnings
+        : [],
+    },
     memoryCandidates: Array.isArray(parsed.memoryCandidates)
-      ? parsed.memoryCandidates.map((candidate: { id?: string }, index: number) => ({
-          ...candidate,
-          id: candidate.id ?? `mc_${index + 1}`,
-          selectedByStaff: false,
-        }))
+      ? parsed.memoryCandidates.map(
+          (candidate: { id?: string }, index: number) => ({
+            ...candidate,
+            id: candidate.id ?? `mc_${index + 1}`,
+            selectedByStaff: false,
+          }),
+        )
       : [],
   };
 
@@ -116,11 +143,13 @@ function buildSearchableInput(input: PostMatchInput) {
 
 function buildPrompt({
   input,
+  evidenceLedger,
   relevantContext,
   relevantGeneratedMemory,
   relevantKnowledge,
 }: {
   input: PostMatchInput;
+  evidenceLedger: EvidenceItem[];
   relevantContext: unknown;
   relevantGeneratedMemory: unknown;
   relevantKnowledge: unknown;
@@ -140,6 +169,8 @@ Regla de resultado:
 
 Reglas de grounding y atribucion de sujeto:
 - No inventes minutos, clips, eventos ni secuencias. Solo podes mencionar minutos si aparecen en tags.
+- Toda evidencia debe referenciar el ledger de evidencia por ID (ej: EV-NOTES, EV-TAG-1).
+- Si algo no aparece en el ledger de evidencia, tratálo como inferencia o informacion faltante, no como hecho.
 - No conviertas vulnerabilidades del rival en problemas propios.
 - Si las notas dicen que el rival defendio con linea alta o defensores lentos, eso es vulnerabilidad del rival, no problema propio.
 - No atribuyas memoria previa al partido actual salvo que haya evidencia actual explicita.
@@ -183,7 +214,25 @@ Respond ONLY with valid JSON using this exact structure:
     {
       "risk": "string",
       "evidence": ["string"],
-      "owner": "own|rival|both|unclear"
+      "owner": "own|rival|both|unknown"
+    }
+  ],
+  "tacticalTradeoffs": [
+    {
+      "decision": "string",
+      "upside": "string",
+      "downside": "string",
+      "subject": "own|rival|both|unknown",
+      "evidence": ["string"]
+    }
+  ],
+  "flankAsymmetries": [
+    {
+      "flank": "left|right|central|both",
+      "description": "string",
+      "subject": "own|rival|both|unknown",
+      "evidence": ["string"],
+      "implication": "string"
     }
   ],
   "tacticalInferences": [
@@ -200,6 +249,12 @@ Respond ONLY with valid JSON using this exact structure:
       "currentEvidence": ["string"]
     }
   ],
+  "grounding": {
+    "resultPerspective": "string",
+    "evidenceUsed": ["string"],
+    "unsupportedClaims": ["string"],
+    "subjectAttributionWarnings": ["string"]
+  },
   "keyPatterns": [
     {
       "pattern": "string",
@@ -269,9 +324,58 @@ ${JSON.stringify(relevantKnowledge, null, 2)}
 Coach rules:
 ${COACH_RULES}
 
+Evidence ledger:
+${JSON.stringify(evidenceLedger, null, 2)}
+
 Post-match input:
 ${JSON.stringify(input, null, 2)}
 `;
+}
+
+type EvidenceItem = {
+  id: string;
+  source: "result" | "plan" | "staffNotes" | "tag";
+  text: string;
+  minute?: number;
+};
+
+function buildEvidenceLedger(input: PostMatchInput): EvidenceItem[] {
+  const evidence: EvidenceItem[] = [
+    {
+      id: "EV-RESULT",
+      source: "result",
+      text:
+        input.matchContext.interpretedResult?.label ??
+        `resultado cargado: ${input.matchContext.result}`,
+    },
+  ];
+
+  if (input.planBeforeMatch?.trim()) {
+    evidence.push({
+      id: "EV-PLAN",
+      source: "plan",
+      text: input.planBeforeMatch.trim(),
+    });
+  }
+
+  if (input.staffNotes?.trim()) {
+    evidence.push({
+      id: "EV-NOTES",
+      source: "staffNotes",
+      text: input.staffNotes.trim(),
+    });
+  }
+
+  input.tags.forEach((tag, index) => {
+    evidence.push({
+      id: `EV-TAG-${index + 1}`,
+      source: "tag",
+      text: [tag.label, tag.zone, tag.note].filter(Boolean).join(" | "),
+      ...(typeof tag.minute === "number" ? { minute: tag.minute } : {}),
+    });
+  });
+
+  return evidence;
 }
 
 function withInterpretedResult(input: PostMatchInput): PostMatchInput {
