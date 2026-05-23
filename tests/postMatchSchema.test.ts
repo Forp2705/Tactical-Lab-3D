@@ -25,6 +25,16 @@ describe("PostMatchReportSchema", () => {
         },
       ],
       ownProblems: [],
+      ownTeamProblems: [
+        {
+          problem: "Bloque partido / defensa que no achica",
+          evidence: ["EV-NOTES"],
+          severity: "medium",
+          probableCause:
+            "Puntas y volantes saltaron sin que la defensa achique detras.",
+        },
+      ],
+      conditioningContext: ["El equipo jugo con 10 durante parte del partido."],
       rivalVulnerabilities: [
         {
           vulnerability: "Linea alta con defensores lentos",
@@ -98,8 +108,8 @@ describe("PostMatchReportSchema", () => {
         {
           id: "mc_1",
           statement:
-            "El equipo encontro ventaja atacando la espalda de linea alta.",
-          category: "teamPattern",
+            "El equipo genero con mas fluidez por izquierda que por derecha.",
+          category: "sideAsymmetry",
           evidence: ["EV-NOTES"],
           confidence: "medium",
           scope: "repeatWatch",
@@ -115,6 +125,9 @@ describe("PostMatchReportSchema", () => {
     });
 
     expect(report.matchContext.interpretedResult?.outcome).toBe("win");
+    expect(report.ownTeamProblems[0].problem).toContain("Bloque partido");
+    expect(report.conditioningContext[0]).toContain("10");
+    expect(report.memoryCandidates[0].category).toBe("sideAsymmetry");
     expect(report.memoryCandidates[0].selectedByStaff).toBe(false);
     expect(report.observedRisks[0].owner).toBe("unknown");
   });

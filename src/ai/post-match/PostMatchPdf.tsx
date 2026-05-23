@@ -6,6 +6,15 @@ import {
   View,
   pdf,
 } from "@react-pdf/renderer";
+import {
+  getAcceptanceCriteria,
+  getOwnTeamProblems,
+  humanizeEvidenceList,
+  humanizeReportText,
+  memoryCategoryLabel,
+  memoryScopeLabel,
+  subjectLabel,
+} from "./reportPresentation";
 import type { PostMatchReport } from "./schemas";
 
 type PdfProps = {
@@ -37,6 +46,9 @@ export async function downloadPostMatchPdf(
 }
 
 function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
+  const ownTeamProblems = getOwnTeamProblems(report);
+  const acceptanceCriteria = getAcceptanceCriteria(report);
+
   return (
     <Document
       author="Tactical Lab 3D"
@@ -74,19 +86,23 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
           title="Resumen ejecutivo"
           value={report.executiveSummary}
         />
+        <TextSection
+          title="Resultado interpretado"
+          value={
+            report.matchContext.interpretedResult?.label ??
+            report.grounding.resultPerspective
+          }
+        />
+        <ListSection
+          title="Contexto condicionante"
+          items={report.conditioningContext}
+        />
         <TextSection title="Historia del partido" value={report.matchStory} />
 
         <EvidenceSection
           title="Fortalezas propias"
           items={report.ownStrengths.map((item) => ({
             title: item.strength,
-            evidence: item.evidence,
-          }))}
-        />
-        <EvidenceSection
-          title="Problemas propios"
-          items={report.ownProblems.map((item) => ({
-            title: `${item.problem} (${item.severity})`,
             evidence: item.evidence,
           }))}
         />
@@ -99,9 +115,17 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
           }))}
         />
         <EvidenceSection
+          title="Problemas propios principales"
+          items={ownTeamProblems.map((item) => ({
+            title: `${item.problem} (${item.severity})`,
+            body: item.probableCause,
+            evidence: item.evidence,
+          }))}
+        />
+        <EvidenceSection
           title="Tradeoffs tacticos"
           items={report.tacticalTradeoffs.map((item) => ({
-            title: `${item.decision} (${item.subject})`,
+            title: `${item.decision} (${subjectLabel(item.subject)})`,
             body: `Ventaja: ${item.upside}\nCosto: ${item.downside}`,
             evidence: item.evidence,
           }))}
@@ -109,7 +133,7 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
         <EvidenceSection
           title="Asimetrias por banda"
           items={report.flankAsymmetries.map((item) => ({
-            title: `${item.flank} (${item.subject})`,
+            title: `${item.flank} (${subjectLabel(item.subject)})`,
             body: [item.description, item.implication]
               .filter(Boolean)
               .join("\n"),
@@ -117,21 +141,28 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
           }))}
         />
         <EvidenceSection
-          title="Riesgos observados"
-          items={report.observedRisks.map((item) => ({
-            title: `${item.risk} (${item.owner})`,
+          title="Patrones detectados"
+          items={report.keyPatterns.map((item) => ({
+            title: item.pattern,
+            body: item.tacticalImpact,
             evidence: item.evidence,
           }))}
         />
+
         <EvidenceSection
-          title="Inferencias tacticas"
-          items={report.tacticalInferences.map((item) => ({
-            title: `${item.inference} (${item.confidence})`,
-            evidence: item.basedOn,
+          title="Prioridades de entrenamiento"
+          items={report.wednesdayTest.map((item) => ({
+            title: item.hypothesis,
+            body: `${item.test}${
+              item.fallbackIfFails ? `\nFallback: ${item.fallbackIfFails}` : ""
+            }`,
+            evidence: item.successSignals,
           }))}
         />
-
-        <ListSection title="Foco para el sabado" items={report.saturdayFocus} />
+        <ListSection
+          title="Foco para el proximo partido"
+          items={report.saturdayFocus}
+        />
         <ListSection
           title="Riesgos de sobrerreaccion"
           items={report.risksOfOvercorrection}
@@ -142,26 +173,28 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
         />
 
         <EvidenceSection
-          title="Tests del miercoles"
-          items={report.wednesdayTest.map((item) => ({
-            title: item.hypothesis,
-            body: `${item.test}${
-              item.fallbackIfFails ? `\nFallback: ${item.fallbackIfFails}` : ""
-            }`,
-            evidence: item.successSignals,
-          }))}
-        />
-
-        <EvidenceSection
           title="Candidatos de memoria (no aplicados automaticamente)"
           items={report.memoryCandidates.map((candidate) => ({
-            title: `${candidate.statement} (${candidate.category} | ${candidate.confidence})`,
-            body: `Scope: ${candidate.scope}`,
+            title: `${candidate.statement} (${memoryCategoryLabel(
+              candidate.category,
+            )} | ${candidate.confidence})`,
+            body: memoryScopeLabel(candidate.scope),
             evidence: candidate.evidence,
           }))}
         />
 
-        <GroundingSection report={report} />
+        <TextSection
+          title="Reflexion / confianza"
+          value={[
+            report.reflection.mainUncertainty,
+            report.reflection.alternativeInterpretation,
+            `Confianza: ${Math.round(report.reflection.confidence * 100)}%`,
+          ].join("\n")}
+        />
+        <ListSection
+          title="Criterios de aceptacion"
+          items={acceptanceCriteria}
+        />
         {staffReviewNotes?.trim() ? (
           <TextSection title="Revision del staff" value={staffReviewNotes} />
         ) : null}
@@ -187,7 +220,7 @@ function TextSection({ title, value }: { title: string; value?: string }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.paragraph}>{value}</Text>
+      <Text style={styles.paragraph}>{humanizeReportText(value)}</Text>
     </View>
   );
 }
@@ -200,7 +233,7 @@ function ListSection({ title, items }: { title: string; items: string[] }) {
       <Text style={styles.sectionTitle}>{title}</Text>
       {items.map((item, index) => (
         <Text style={styles.bullet} key={`${title}-${index}-${item}`}>
-          - {item}
+          - {humanizeReportText(item)}
         </Text>
       ))}
     </View>
@@ -221,9 +254,13 @@ function EvidenceSection({
       <Text style={styles.sectionTitle}>{title}</Text>
       {items.map((item, index) => (
         <View style={styles.itemCard} key={`${title}-${index}-${item.title}`}>
-          <Text style={styles.itemTitle}>{item.title}</Text>
-          {item.body ? <Text style={styles.paragraph}>{item.body}</Text> : null}
-          {item.evidence.map((entry, evidenceIndex) => (
+          <Text style={styles.itemTitle}>{humanizeReportText(item.title)}</Text>
+          {item.body ? (
+            <Text style={styles.paragraph}>
+              {humanizeReportText(item.body)}
+            </Text>
+          ) : null}
+          {humanizeEvidenceList(item.evidence).map((entry, evidenceIndex) => (
             <Text
               style={styles.evidence}
               key={`${item.title}-${evidenceIndex}-${entry}`}
@@ -235,22 +272,6 @@ function EvidenceSection({
       ))}
     </View>
   );
-}
-
-function GroundingSection({ report }: { report: PostMatchReport }) {
-  const grounding = report.grounding;
-  const items = [
-    grounding.resultPerspective
-      ? `Perspectiva del resultado: ${grounding.resultPerspective}`
-      : "",
-    ...grounding.evidenceUsed.map((item) => `Evidencia usada: ${item}`),
-    ...grounding.unsupportedClaims.map((item) => `Claim sin soporte: ${item}`),
-    ...grounding.subjectAttributionWarnings.map(
-      (item) => `Alerta de atribucion: ${item}`,
-    ),
-  ].filter(Boolean);
-
-  return <ListSection title="Grounding y atribucion" items={items} />;
 }
 
 function sanitizeFilePart(value: string) {

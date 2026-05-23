@@ -6,6 +6,15 @@ import {
   requestPostMatchReport,
   savePostMatchReport,
 } from "./postMatchClient";
+import {
+  getAcceptanceCriteria,
+  getOwnTeamProblems,
+  humanizeEvidenceList,
+  humanizeReportText,
+  memoryCategoryLabel,
+  memoryScopeLabel,
+  subjectLabel,
+} from "./reportPresentation";
 import type {
   MemoryCandidate,
   PostMatchInput,
@@ -310,6 +319,9 @@ function ReportReview({
   onSave: () => void;
   onCommitMemory: () => void;
 }) {
+  const ownTeamProblems = getOwnTeamProblems(report);
+  const acceptanceCriteria = getAcceptanceCriteria(report);
+
   return (
     <>
       <TextCard title="Resumen ejecutivo" value={report.executiveSummary} />
@@ -319,30 +331,29 @@ function ReportReview({
           value={report.matchContext.interpretedResult.label}
         />
       ) : null}
+      <ListCard
+        title="Contexto condicionante"
+        items={report.conditioningContext}
+      />
       <TextCard title="Historia del partido" value={report.matchStory} />
-      <GroundingCard grounding={report.grounding} />
       <EvidenceCards
         title="Fortalezas propias"
         items={report.ownStrengths}
         labelKey="strength"
       />
-      <EvidenceCards
-        title="Problemas propios"
-        items={report.ownProblems}
-        labelKey="problem"
-        metaKey="severity"
-      />
       <RivalVulnerabilityCards items={report.rivalVulnerabilities} />
-      <ObservedRiskCards items={report.observedRisks} />
+      <OwnTeamProblemCards items={ownTeamProblems} />
       <TradeoffCards items={report.tacticalTradeoffs} />
       <FlankAsymmetryCards items={report.flankAsymmetries} />
-      <InferenceCards items={report.tacticalInferences} />
-      <MemoryInfluenceCards items={report.memoryInfluence} />
       <PatternCards patterns={report.keyPatterns} />
-      <ProblemCards problems={report.mainProblems} />
-      <ListCard title="Positivos" items={report.positives} />
-      <WednesdayCards tests={report.wednesdayTest} />
-      <ListCard title="Foco para el sabado" items={report.saturdayFocus} />
+      <WednesdayCards
+        title="Prioridades de entrenamiento"
+        tests={report.wednesdayTest}
+      />
+      <ListCard
+        title="Foco para el proximo partido"
+        items={report.saturdayFocus}
+      />
       <ListCard
         title="Riesgos de sobrerreaccionar"
         items={report.risksOfOvercorrection}
@@ -357,11 +368,12 @@ function ReportReview({
         setSelectedIds={setSelectedCandidateIds}
       />
       <div className="ai-card">
-        <b>Reflexion</b>
-        <p>{report.reflection.mainUncertainty}</p>
-        <p>{report.reflection.alternativeInterpretation}</p>
+        <b>Reflexion / confianza</b>
+        <p>{humanizeReportText(report.reflection.mainUncertainty)}</p>
+        <p>{humanizeReportText(report.reflection.alternativeInterpretation)}</p>
         <p>Confianza: {Math.round(report.reflection.confidence * 100)}%</p>
       </div>
+      <ListCard title="Criterios de aceptacion" items={acceptanceCriteria} />
       <label className="stacked-field">
         Revision del staff
         <textarea
@@ -416,7 +428,7 @@ function TextCard({ title, value }: { title: string; value: string }) {
   return (
     <div className="ai-card">
       <b>{title}</b>
-      <p>{value}</p>
+      <p>{humanizeReportText(value)}</p>
     </div>
   );
 }
@@ -428,7 +440,7 @@ function ListCard({ title, items }: { title: string; items: string[] }) {
       <b>{title}</b>
       <ul>
         {items.map((item, index) => (
-          <li key={`${title}-${index}-${item}`}>{item}</li>
+          <li key={`${title}-${index}-${item}`}>{humanizeReportText(item)}</li>
         ))}
       </ul>
     </div>
@@ -455,7 +467,7 @@ function EvidenceCards<T extends Record<string, unknown>>({
         const label = textValue(item[labelKey]);
         const meta = metaKey ? textValue(item[metaKey]) : "";
         const evidence = Array.isArray(item.evidence)
-          ? item.evidence.map((entry) => String(entry))
+          ? humanizeEvidenceList(item.evidence.map((entry) => String(entry)))
           : [];
 
         return (
@@ -481,31 +493,41 @@ function RivalVulnerabilityCards({
       <b>Vulnerabilidades del rival</b>
       {items.map((item, index) => (
         <div className="report-subcard" key={`${item.vulnerability}-${index}`}>
-          <strong>{item.vulnerability}</strong>
-          {item.howWeExploitedIt ? <p>{item.howWeExploitedIt}</p> : null}
-          <SmallList items={item.evidence} />
+          <strong>{humanizeReportText(item.vulnerability)}</strong>
+          {item.howWeExploitedIt ? (
+            <p>{humanizeReportText(item.howWeExploitedIt)}</p>
+          ) : null}
+          <SmallList items={humanizeEvidenceList(item.evidence)} />
         </div>
       ))}
     </div>
   );
 }
 
-function ObservedRiskCards({
+function OwnTeamProblemCards({
   items,
 }: {
-  items: PostMatchReport["observedRisks"];
+  items: Array<{
+    problem: string;
+    evidence: string[];
+    severity: "low" | "medium" | "high";
+    probableCause?: string;
+  }>;
 }) {
   if (!items.length) return null;
 
   return (
     <div className="ai-card">
-      <b>Riesgos observados</b>
+      <b>Problemas propios principales</b>
       {items.map((item, index) => (
-        <div className="report-subcard" key={`${item.risk}-${index}`}>
+        <div className="report-subcard" key={`${item.problem}-${index}`}>
           <strong>
-            {item.risk} · sujeto: {item.owner}
+            {humanizeReportText(item.problem)} - {item.severity}
           </strong>
-          <SmallList items={item.evidence} />
+          {item.probableCause ? (
+            <p>{humanizeReportText(item.probableCause)}</p>
+          ) : null}
+          <SmallList items={humanizeEvidenceList(item.evidence)} />
         </div>
       ))}
     </div>
@@ -525,11 +547,11 @@ function TradeoffCards({
       {items.map((item, index) => (
         <div className="report-subcard" key={`${item.decision}-${index}`}>
           <strong>
-            {item.decision} - sujeto: {item.subject}
+            {humanizeReportText(item.decision)} - {subjectLabel(item.subject)}
           </strong>
-          <p>Ventaja: {item.upside}</p>
-          <p>Costo: {item.downside}</p>
-          <SmallList items={item.evidence} />
+          <p>Ventaja: {humanizeReportText(item.upside)}</p>
+          <p>Costo: {humanizeReportText(item.downside)}</p>
+          <SmallList items={humanizeEvidenceList(item.evidence)} />
         </div>
       ))}
     </div>
@@ -549,87 +571,13 @@ function FlankAsymmetryCards({
       {items.map((item, index) => (
         <div className="report-subcard" key={`${item.flank}-${index}`}>
           <strong>
-            {item.flank} - sujeto: {item.subject}
+            {item.flank} - {subjectLabel(item.subject)}
           </strong>
-          <p>{item.description}</p>
-          {item.implication ? <p>{item.implication}</p> : null}
-          <SmallList items={item.evidence} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function GroundingCard({
-  grounding,
-}: {
-  grounding: PostMatchReport["grounding"];
-}) {
-  const hasDetails =
-    grounding.resultPerspective ||
-    grounding.evidenceUsed.length ||
-    grounding.unsupportedClaims.length ||
-    grounding.subjectAttributionWarnings.length;
-
-  if (!hasDetails) return null;
-
-  return (
-    <div className="ai-card">
-      <b>Grounding y atribucion</b>
-      {grounding.resultPerspective ? (
-        <p>Resultado: {grounding.resultPerspective}</p>
-      ) : null}
-      <SmallList items={grounding.evidenceUsed} />
-      <LabeledSmallList
-        label="Claims sin soporte"
-        items={grounding.unsupportedClaims}
-      />
-      <LabeledSmallList
-        label="Alertas de sujeto"
-        items={grounding.subjectAttributionWarnings}
-      />
-    </div>
-  );
-}
-
-function InferenceCards({
-  items,
-}: {
-  items: PostMatchReport["tacticalInferences"];
-}) {
-  if (!items.length) return null;
-
-  return (
-    <div className="ai-card">
-      <b>Inferencias tacticas</b>
-      {items.map((item, index) => (
-        <div className="report-subcard" key={`${item.inference}-${index}`}>
-          <strong>
-            {item.inference} · {item.confidence}
-          </strong>
-          <SmallList items={item.basedOn} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MemoryInfluenceCards({
-  items,
-}: {
-  items: PostMatchReport["memoryInfluence"];
-}) {
-  if (!items.length) return null;
-
-  return (
-    <div className="ai-card">
-      <b>Memoria previa usada</b>
-      {items.map((item, index) => (
-        <div className="report-subcard" key={`${item.memoryItem}-${index}`}>
-          <strong>
-            {item.memoryItem} · {item.usedAs}
-          </strong>
-          <SmallList items={item.currentEvidence} />
+          <p>{humanizeReportText(item.description)}</p>
+          {item.implication ? (
+            <p>{humanizeReportText(item.implication)}</p>
+          ) : null}
+          <SmallList items={humanizeEvidenceList(item.evidence)} />
         </div>
       ))}
     </div>
@@ -646,9 +594,9 @@ function PatternCards({
       <b>Patrones detectados</b>
       {patterns.map((item, index) => (
         <div className="report-subcard" key={`${item.pattern}-${index}`}>
-          <strong>{item.pattern}</strong>
-          <p>{item.tacticalImpact}</p>
-          <SmallList items={item.evidence} />
+          <strong>{humanizeReportText(item.pattern)}</strong>
+          <p>{humanizeReportText(item.tacticalImpact)}</p>
+          <SmallList items={humanizeEvidenceList(item.evidence)} />
         </div>
       ))}
     </div>
@@ -663,41 +611,26 @@ function textValue(value: unknown) {
   return "";
 }
 
-function ProblemCards({
-  problems,
-}: {
-  problems: PostMatchReport["mainProblems"];
-}) {
-  return (
-    <div className="ai-card">
-      <b>Problemas principales</b>
-      {problems.map((item, index) => (
-        <div className="report-subcard" key={`${item.problem}-${index}`}>
-          <strong>
-            {item.problem} · {item.severity}
-          </strong>
-          <p>{item.probableCause}</p>
-          <SmallList items={item.examplesToReview} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function WednesdayCards({
+  title = "Prioridades de entrenamiento",
   tests,
 }: {
+  title?: string;
   tests: PostMatchReport["wednesdayTest"];
 }) {
+  if (!tests.length) return null;
+
   return (
     <div className="ai-card">
-      <b>Test del miercoles</b>
+      <b>{title}</b>
       {tests.map((item, index) => (
         <div className="report-subcard" key={`${item.hypothesis}-${index}`}>
-          <strong>{item.hypothesis}</strong>
-          <p>{item.test}</p>
-          <SmallList items={item.successSignals} />
-          {item.fallbackIfFails ? <p>{item.fallbackIfFails}</p> : null}
+          <strong>{humanizeReportText(item.hypothesis)}</strong>
+          <p>{humanizeReportText(item.test)}</p>
+          <SmallList items={item.successSignals.map(humanizeReportText)} />
+          {item.fallbackIfFails ? (
+            <p>{humanizeReportText(item.fallbackIfFails)}</p>
+          ) : null}
         </div>
       ))}
     </div>
@@ -738,11 +671,12 @@ function MemoryCandidatePicker({
             onChange={() => toggle(candidate.id)}
           />
           <span>
-            <strong>{candidate.statement}</strong>
+            <strong>{humanizeReportText(candidate.statement)}</strong>
             <small>
-              {candidate.category} · {candidate.scope} · {candidate.confidence}
+              {memoryCategoryLabel(candidate.category)} -{" "}
+              {memoryScopeLabel(candidate.scope)} - {candidate.confidence}
             </small>
-            <SmallList items={candidate.evidence} />
+            <SmallList items={humanizeEvidenceList(candidate.evidence)} />
           </span>
         </label>
       ))}
@@ -755,7 +689,7 @@ function SmallList({ items }: { items: string[] }) {
   return (
     <ul>
       {items.map((item, index) => (
-        <li key={`${index}-${item}`}>{item}</li>
+        <li key={`${index}-${item}`}>{humanizeReportText(item)}</li>
       ))}
     </ul>
   );

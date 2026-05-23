@@ -72,6 +72,8 @@ export async function generatePostMatchReport(rawInput: unknown) {
     .trim();
   const parsed = JSON.parse(cleanText);
   const reportId = `pmr_${Date.now()}`;
+  const ownTeamProblems = buildOwnTeamProblems(parsed);
+  const conditioningContext = buildConditioningContext(input, parsed);
   const report = {
     ...parsed,
     id: parsed.id ?? reportId,
@@ -79,12 +81,12 @@ export async function generatePostMatchReport(rawInput: unknown) {
     matchContext: input.matchContext,
     ownStrengths: Array.isArray(parsed.ownStrengths) ? parsed.ownStrengths : [],
     ownProblems: Array.isArray(parsed.ownProblems) ? parsed.ownProblems : [],
+    ownTeamProblems,
+    conditioningContext,
     rivalVulnerabilities: Array.isArray(parsed.rivalVulnerabilities)
       ? parsed.rivalVulnerabilities
       : [],
-    observedRisks: Array.isArray(parsed.observedRisks)
-      ? parsed.observedRisks
-      : [],
+    observedRisks: filterConditioningRisks(parsed.observedRisks),
     tacticalTradeoffs: Array.isArray(parsed.tacticalTradeoffs)
       ? parsed.tacticalTradeoffs
       : [],
@@ -115,11 +117,8 @@ export async function generatePostMatchReport(rawInput: unknown) {
     },
     memoryCandidates: Array.isArray(parsed.memoryCandidates)
       ? parsed.memoryCandidates.map(
-          (candidate: { id?: string }, index: number) => ({
-            ...candidate,
-            id: candidate.id ?? `mc_${index + 1}`,
-            selectedByStaff: false,
-          }),
+          (candidate: { id?: string; category?: string }, index: number) =>
+            normalizeMemoryCandidate(candidate, index),
         )
       : [],
   };
@@ -177,6 +176,10 @@ Reglas de grounding y atribucion de sujeto:
 - Diferencia evidencia actual, inferencia tactica y memoria previa.
 - Si usas memoria previa, ponela en memoryInfluence y aclara si es contextOnly o supportedByCurrentEvidence.
 - No digas que el bloque propio se hundio, que los delanteros propios retrocedieron o que hubo un problema recurrente si eso no esta en notas/tags del partido actual.
+- Si aparece jugar con 10, expulsion, lesiones, clima/cancha, partido liquidado o superioridad/inferioridad numerica, ponelo en conditioningContext, no como riesgo observado.
+- No recomiendes genericamente "bajar el bloque". Si el problema es bloque partido o defensa que no achica, formula la recomendacion como coordinacion de alturas: si puntas y volantes saltan, la defensa achica; si la defensa no puede achicar, los volantes no deben saltar tan alto.
+- Para problemas del equipo propio, prioriza ownTeamProblems. mainProblems queda solo por compatibilidad y no debe duplicar ownTeamProblems.
+- Si detectas asimetria izquierda/derecha del equipo propio, el memoryCandidate debe usar category "sideAsymmetry" y scope "repeatWatch", no "opponentPattern".
 
 Regla critica:
 - NO actualices memoria.
@@ -203,6 +206,15 @@ Respond ONLY with valid JSON using this exact structure:
       "severity": "low|medium|high"
     }
   ],
+  "ownTeamProblems": [
+    {
+      "problem": "string",
+      "evidence": ["string"],
+      "severity": "low|medium|high",
+      "probableCause": "string"
+    }
+  ],
+  "conditioningContext": ["string"],
   "rivalVulnerabilities": [
     {
       "vulnerability": "string",
@@ -286,7 +298,7 @@ Respond ONLY with valid JSON using this exact structure:
     {
       "id": "mc_1",
       "statement": "string",
-      "category": "teamPattern|playerPattern|opponentPattern|staffPrinciple",
+      "category": "teamPattern|playerPattern|opponentPattern|staffPrinciple|sideAsymmetry",
       "evidence": ["string"],
       "confidence": "low|medium|high",
       "scope": "oneOff|repeatWatch|validated",
@@ -376,6 +388,159 @@ function buildEvidenceLedger(input: PostMatchInput): EvidenceItem[] {
   });
 
   return evidence;
+}
+
+function buildOwnTeamProblems(parsed: {
+  ownTeamProblems?: unknown;
+  ownProblems?: unknown;
+  mainProblems?: unknown;
+}) {
+  if (Array.isArray(parsed.ownTeamProblems) && parsed.ownTeamProblems.length) {
+    return parsed.ownTeamProblems;
+  }
+
+  if (Array.isArray(parsed.ownProblems) && parsed.ownProblems.length) {
+    return parsed.ownProblems;
+  }
+
+  if (!Array.isArray(parsed.mainProblems)) {
+    return [];
+  }
+
+  return parsed.mainProblems.map((problem) => {
+    const item = problem as Record<string, unknown>;
+    return {
+      problem: stringOrFallback(item.problem, "Problema propio sin titulo"),
+      evidence: stringArray(item.examplesToReview),
+      severity: severityOrMedium(item.severity),
+      probableCause: stringOrFallback(item.probableCause, ""),
+    };
+  });
+}
+
+function buildConditioningContext(
+  input: PostMatchInput,
+  parsed: { conditioningContext?: unknown; observedRisks?: unknown },
+) {
+  const context = new Set<string>();
+
+  for (const item of stringArray(parsed.conditioningContext)) {
+    context.add(item);
+  }
+  collectConditioningFromText(input.staffNotes, context);
+  collectConditioningFromText(input.planBeforeMatch, context);
+  for (const tag of input.tags) {
+    collectConditioningFromText(tag.label, context);
+    collectConditioningFromText(tag.note, context);
+  }
+
+  if (Array.isArray(parsed.observedRisks)) {
+    for (const risk of parsed.observedRisks) {
+      const item = risk as Record<string, unknown>;
+      const text = stringOrFallback(item.risk, "");
+      if (isConditioningText(text)) {
+        context.add(text);
+      }
+    }
+  }
+
+  return Array.from(context);
+}
+
+function filterConditioningRisks(observedRisks: unknown) {
+  if (!Array.isArray(observedRisks)) return [];
+  return observedRisks.filter((risk) => {
+    const item = risk as Record<string, unknown>;
+    return !isConditioningText(stringOrFallback(item.risk, ""));
+  });
+}
+
+function normalizeMemoryCandidate(
+  candidate: { id?: string; category?: string },
+  index: number,
+) {
+  const statement =
+    "statement" in candidate ? stringOrFallback(candidate.statement, "") : "";
+  const evidence =
+    "evidence" in candidate ? stringArray(candidate.evidence) : [];
+  const textForCategory = `${statement} ${evidence.join(" ")}`;
+  const category = isSideAsymmetryText(textForCategory)
+    ? "sideAsymmetry"
+    : validMemoryCategory(candidate.category);
+
+  return {
+    ...candidate,
+    id: candidate.id ?? `mc_${index + 1}`,
+    category,
+    selectedByStaff: false,
+  };
+}
+
+function collectConditioningFromText(
+  text: string | undefined,
+  context: Set<string>,
+) {
+  if (!text || !isConditioningText(text)) return;
+
+  if (/\b10\b|diez|expul/i.test(text)) {
+    context.add("El partido tuvo condicionante de inferioridad o expulsion.");
+  }
+  if (/lesion|molestia|tocado/i.test(text)) {
+    context.add("Hubo condicionante de lesion o disponibilidad fisica.");
+  }
+  if (/clima|lluvia|viento|cancha|campo|cesped|barro/i.test(text)) {
+    context.add("El clima o la cancha condicionaron el partido.");
+  }
+  if (/liquidado|resuelto|partido roto/i.test(text)) {
+    context.add("El resultado o el contexto dejo el partido liquidado/roto.");
+  }
+  if (/superioridad|inferioridad/i.test(text)) {
+    context.add("Hubo superioridad o inferioridad numerica relevante.");
+  }
+}
+
+function isConditioningText(text: string) {
+  return /\b10\b|diez|expul|lesion|molestia|tocado|clima|lluvia|viento|cancha|campo|cesped|barro|liquidado|resuelto|partido roto|superioridad|inferioridad/i.test(
+    text,
+  );
+}
+
+function isSideAsymmetryText(text: string) {
+  return /asimetr|izquierda|derecha|banda|carril|lado fuerte|lado debil/i.test(
+    text,
+  );
+}
+
+function validMemoryCategory(category: string | undefined) {
+  if (
+    category === "teamPattern" ||
+    category === "playerPattern" ||
+    category === "opponentPattern" ||
+    category === "staffPrinciple" ||
+    category === "sideAsymmetry"
+  ) {
+    return category;
+  }
+
+  return "teamPattern";
+}
+
+function stringOrFallback(value: unknown, fallback: string) {
+  return typeof value === "string" ? value : fallback;
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function severityOrMedium(value: unknown) {
+  if (value === "low" || value === "medium" || value === "high") {
+    return value;
+  }
+
+  return "medium";
 }
 
 function withInterpretedResult(input: PostMatchInput): PostMatchInput {

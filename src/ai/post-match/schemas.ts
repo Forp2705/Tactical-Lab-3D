@@ -52,6 +52,7 @@ export const MemoryCandidateSchema = z.object({
     "playerPattern",
     "opponentPattern",
     "staffPrinciple",
+    "sideAsymmetry",
   ]),
   evidence: z.array(z.string()).default([]),
   confidence: ConfidenceSchema,
@@ -82,6 +83,17 @@ export const PostMatchReportSchema = z.object({
       }),
     )
     .default([]),
+  ownTeamProblems: z
+    .array(
+      z.object({
+        problem: z.string().min(1),
+        evidence: z.array(z.string()).default([]),
+        severity: z.enum(["low", "medium", "high"]),
+        probableCause: z.string().optional(),
+      }),
+    )
+    .default([]),
+  conditioningContext: z.array(z.string()).default([]),
   rivalVulnerabilities: z
     .array(
       z.object({
