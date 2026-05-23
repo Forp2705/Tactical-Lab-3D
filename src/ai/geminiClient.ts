@@ -1,6 +1,6 @@
 import { type AiContext, buildPrompt } from "./PromptBuilder";
 import { fallbackPlan } from "./guardrails";
-import { type AiPlan, AiPlanSchema } from "./outputSchemas";
+import { type AiPlan, AiPlanSchema } from "./CoachSchemas";
 
 type GeminiProxyResponse = {
   ok?: boolean;

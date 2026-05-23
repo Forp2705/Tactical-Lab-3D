@@ -104,7 +104,10 @@ export function SessionsView() {
       <section className="session-layout">
         <div className="team-card">
           <div className="section-title">
-            <h3>Planificador de sesión</h3>
+            <div>
+              <span className="panel-eyebrow">Training day builder</span>
+              <h3>Planificador de sesión</h3>
+            </div>
             <button
               type="button"
               onClick={() => exportSessionPdf(session.blocks, computed)}
@@ -151,6 +154,7 @@ export function SessionsView() {
         </div>
 
         <div className="team-card">
+          <span className="panel-eyebrow">Drag from catalog</span>
           <h3>Catálogo para arrastrar</h3>
           <p className="muted-panel">
             Soltá un ejercicio acá abajo para agregarlo a la sesión.
@@ -163,6 +167,7 @@ export function SessionsView() {
         </div>
 
         <div className="team-card">
+          <span className="panel-eyebrow">Semana competitiva</span>
           <h3>Microciclo</h3>
           <div className="microcycle-grid" style={{ marginTop: 12 }}>
             {Object.entries(microcycle.days).map(([day, value]) => (

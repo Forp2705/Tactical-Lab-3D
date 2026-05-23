@@ -1,7 +1,7 @@
 import {
-  ExerciseSchema,
   type Actor,
   type Exercise,
+  ExerciseSchema,
   type Layer,
   type Phase,
   type Vec2,
@@ -2346,7 +2346,330 @@ const rawExercises: unknown[] = [
   },
 ];
 
-rawExercises.push(...extraExercises);
+const compactCuratedSpecs = [
+  {
+    id: "salida-3-1-pivote-sombra",
+    title: "Salida 3+1 encontrando pivote a la espalda",
+    phase: "attackOrg",
+    principle: "salida limpia + tercer hombre",
+    focus: "Fijar primera presion y soltar al pivote cuando aparece la sombra.",
+  },
+  {
+    id: "presion-salto-lateral",
+    title: "Presion coordinada con salto del lateral",
+    phase: "defenseOrg",
+    principle: "presion orientada a banda",
+    focus: "Cerrar dentro y saltar cuando el pase viaja al lateral.",
+  },
+  {
+    id: "transicion-primer-pase-seguro",
+    title: "Transicion ofensiva con primer pase seguro",
+    phase: "transOff",
+    principle: "asegurar tras robo",
+    focus: "Robar, pausar medio segundo y conectar al apoyo de cara.",
+  },
+  {
+    id: "transicion-perdida-cinco-segundos",
+    title: "Perdida y presion de cinco segundos",
+    phase: "transDef",
+    principle: "presion tras perdida",
+    focus: "Achicar hacia pelota y negar el primer pase vertical.",
+  },
+  {
+    id: "abp-falta-bloqueo-frontal",
+    title: "ABP falta lateral con bloqueo frontal",
+    phase: "abpOff",
+    principle: "ABP segundo movimiento",
+    focus: "Bloquear sin chocar y atacar zona frontal liberada.",
+  },
+  {
+    id: "abp-defensa-zona-rechace",
+    title: "ABP defensiva protegiendo rechace",
+    phase: "abpDef",
+    principle: "defensa de area + rechace",
+    focus: "Ganar primer contacto y dejar un jugador perfilado para rechace.",
+  },
+  {
+    id: "rondo-5v2-pared-interior",
+    title: "Rondo 5v2 con pared interior",
+    phase: "attackOrg",
+    principle: "pared + apoyo interior",
+    focus: "Usar pared corta para eliminar al defensor que salta.",
+  },
+  {
+    id: "bloque-medio-trampa-pivote",
+    title: "Bloque medio cerrando pase al pivote",
+    phase: "defenseOrg",
+    principle: "bloque medio compacto",
+    focus: "Tapar pivote, orientar central hacia fuera y saltar en banda.",
+  },
+  {
+    id: "ataque-cambio-orientacion-extremo",
+    title: "Cambio de orientacion para extremo aislado",
+    phase: "attackOrg",
+    principle: "cambio de orientacion",
+    focus: "Atraer por dentro y cambiar al extremo con ventaja corporal.",
+  },
+  {
+    id: "finalizacion-centro-raso",
+    title: "Finalizacion con centro raso atras",
+    phase: "attackOrg",
+    principle: "llegada a zona de remate",
+    focus: "Atacar primer palo para liberar pase atras al interior.",
+  },
+  {
+    id: "defensa-centro-lateral",
+    title: "Defensa de centro lateral y segunda jugada",
+    phase: "defenseOrg",
+    principle: "defensa del area",
+    focus:
+      "Central ataca centro, lateral cierra segundo palo y pivote rechace.",
+  },
+  {
+    id: "tercer-hombre-banda-derecha",
+    title: "Tercer hombre en banda derecha",
+    phase: "attackOrg",
+    principle: "tercer hombre exterior",
+    focus: "Fijar lateral, descargar de cara y lanzar ruptura exterior.",
+  },
+  {
+    id: "presion-arquero-pase-atras",
+    title: "Presion cuando el rival juega atras al arquero",
+    phase: "defenseOrg",
+    principle: "trigger arquero",
+    focus: "Delantero curva carrera y extremos tapan centrales.",
+  },
+  {
+    id: "salida-vs-doble-punta",
+    title: "Salida contra doble punta",
+    phase: "attackOrg",
+    principle: "superioridad en primera linea",
+    focus: "Separar centrales y usar mediocentro como hombre libre.",
+  },
+  {
+    id: "contraataque-carril-central",
+    title: "Contraataque por carril central con apoyos",
+    phase: "transOff",
+    principle: "progresion rapida",
+    focus: "Primer pase vertical, apoyo de cara y ruptura al espacio.",
+  },
+  {
+    id: "repliegue-temporizar-banda",
+    title: "Repliegue temporizando en banda",
+    phase: "transDef",
+    principle: "temporizar y cerrar dentro",
+    focus: "No robar de frente; orientar fuera hasta que llegue ayuda.",
+  },
+  {
+    id: "abp-corner-corto-tercer-hombre",
+    title: "Corner corto y tercer hombre frontal",
+    phase: "abpOff",
+    principle: "ABP corner corto",
+    focus: "Atraer dos marcas y jugar de cara al remate frontal.",
+  },
+  {
+    id: "abp-defensa-bloqueo-segundo-palo",
+    title: "ABP defensiva contra bloqueo al segundo palo",
+    phase: "abpDef",
+    principle: "marcas y zona mixta",
+    focus: "Comunicar bloqueo y proteger segundo palo con ventaja.",
+  },
+  {
+    id: "posesion-6v3-hombre-libre",
+    title: "Posesion 6v3 detectando hombre libre",
+    phase: "attackOrg",
+    principle: "hombre libre interior",
+    focus: "Mover al bloque rival hasta que el interior reciba de cara.",
+  },
+  {
+    id: "defensa-linea-pase-bloqueada",
+    title: "Bloquear linea de pase al 9",
+    phase: "defenseOrg",
+    principle: "linea bloqueada",
+    focus: "Central no persigue; perfila cuerpo y niega recepcion del 9.",
+  },
+] as const;
+
+function compactCuratedExercises(): unknown[] {
+  return compactCuratedSpecs.map((spec, index) => {
+    const duration = 11 + (index % 4);
+    const attacking = spec.phase === "attackOrg" || spec.phase === "transOff";
+    const abp = spec.phase === "abpOff" || spec.phase === "abpDef";
+    const xShift = (index % 5) * 2;
+    const yShift = (index % 4) * 3;
+    const ownStart = attacking ? 30 : 58;
+    const targetX = attacking ? 72 : 40;
+    const pitchMode = abp ? "third" : index % 3 === 0 ? "half" : "full";
+
+    return {
+      id: spec.id,
+      title: spec.title,
+      phase: spec.phase,
+      principle: spec.principle,
+      level: index % 2 === 0 ? "U16+" : "Amateur+",
+      intensity:
+        spec.phase === "transDef" || spec.phase === "defenseOrg"
+          ? "high"
+          : "med",
+      rpe: spec.phase === "transDef" ? 8 : spec.phase === "abpDef" ? 5 : 6,
+      density: spec.phase.startsWith("abp") ? 0.42 : 0.62,
+      players: { min: abp ? 8 : 7, max: abp ? 10 : 9 },
+      duration: abp ? 10 : 14,
+      space: abp ? "tercio final y area" : "medio campo adaptado",
+      material: [
+        { name: "pelotas", qty: abp ? 10 : 6, unit: "u" },
+        { name: "conos", qty: 8, unit: "u" },
+        { name: "pecheras", qty: 2, unit: "colores" },
+      ],
+      objective: {
+        primary: spec.focus,
+        secondary: "Que la escena se entienda en una sola reproduccion.",
+      },
+      organization: abp
+        ? "Rutina en tercio final con ejecutor, atacantes, defensores y jugador de rechace."
+        : "Unidad reducida con superioridad contextual, oposicion activa y zona objetivo.",
+      rules: [
+        "La accion principal aparece despues del primer pase",
+        "Si se pierde la pelota, reaccion inmediata de 3 segundos",
+        "La jugada se reinicia si la distancia entre lineas se rompe",
+      ],
+      coaching: [
+        spec.focus,
+        attacking
+          ? "El receptor debe perfilarse antes de que viaje la pelota"
+          : "El defensor salta cuando la pelota viaja, no antes",
+        "Priorizar timing y distancia, no velocidad sin sentido",
+      ],
+      errors: [
+        "Correr antes de fijar al rival",
+        "Recibir plano y sin escaneo previo",
+        "Acumular jugadores sobre la pelota",
+      ],
+      success: attacking
+        ? "Llegar a zona objetivo con pelota controlada en 6 de 10 acciones."
+        : "Forzar pase atras, robo o despeje orientado en 6 de 10 acciones.",
+      progressions: [
+        "Limitar toques en el apoyo central",
+        "Agregar defensor que pueda interceptar el pase clave",
+      ],
+      regressions: [
+        "Defensor pasivo en el primer intento",
+        "Aumentar dos metros el espacio de recepcion",
+      ],
+      scene: {
+        duration,
+        pitchMode,
+        actors: [
+          actor("o1", "own", 2, "AP", { x: ownStart, y: 24 + yShift }, [
+            { t: duration * 0.58, pos: { x: ownStart + 8, y: 24 + yShift } },
+          ]),
+          actor("o2", "own", 6, "PIV", { x: ownStart + 8, y: 47 }, [
+            { t: duration * 0.5, pos: { x: ownStart + 16, y: 48 } },
+          ]),
+          actor("o3", "own", 8, "INT", { x: ownStart + 18, y: 62 - yShift }, [
+            { t: duration * 0.72, pos: { x: targetX - 8, y: 58 - yShift } },
+          ]),
+          actor("o4", "own", 10, "LIB", { x: ownStart + 24, y: 40 }, [
+            { t: duration * 0.64, pos: { x: targetX, y: 40 + yShift } },
+          ]),
+          actor("o5", "own", 9, "FIN", { x: targetX - 4, y: 54 }, [
+            { t: duration * 0.82, pos: { x: targetX + 8, y: 52 } },
+          ]),
+          actor("r1", "rival", 4, "DEF", { x: ownStart + 22 + xShift, y: 46 }, [
+            { t: duration * 0.55, pos: { x: ownStart + 30, y: 48 } },
+          ]),
+          actor("r2", "rival", 5, "DEF", { x: targetX - 12, y: 58 }, [
+            { t: duration * 0.76, pos: { x: targetX - 5, y: 54 } },
+          ]),
+        ],
+        ball: {
+          start: { x: ownStart, y: 24 + yShift, z: 0 },
+          path: [
+            { t: duration * 0.25, pos: { x: ownStart + 8, y: 47, z: 0.35 } },
+            { t: duration * 0.5, pos: { x: ownStart + 24, y: 40, z: 0.45 } },
+            { t: duration * 0.75, pos: { x: targetX, y: 40 + yShift, z: 0.5 } },
+          ],
+        },
+        overlays: [
+          {
+            id: `${spec.id}-p1`,
+            type: "pass",
+            from: "o1",
+            to: "o2",
+            start: duration * 0.12,
+            end: duration * 0.28,
+            layer: "withBall",
+          },
+          {
+            id: `${spec.id}-p2`,
+            type: "pass",
+            from: "o2",
+            to: "o4",
+            start: duration * 0.34,
+            end: duration * 0.52,
+            label: "clave",
+            layer: "withBall",
+          },
+          {
+            id: `${spec.id}-r1`,
+            type: attacking ? "run" : "press",
+            from: attacking ? "o5" : "r1",
+            to: attacking ? { x: targetX + 8, y: 52 } : "o2",
+            start: duration * 0.42,
+            end: duration * 0.78,
+            layer: attacking ? "withoutBall" : "press",
+          },
+          {
+            id: `${spec.id}-c1`,
+            type: spec.phase.startsWith("abp") ? "cover" : "lineBlocked",
+            from: spec.phase.startsWith("abp") ? "o3" : "r2",
+            to: spec.phase.startsWith("abp") ? { x: targetX - 4, y: 50 } : "o5",
+            start: duration * 0.55,
+            end: duration * 0.9,
+            layer: spec.phase.startsWith("abp") ? "cover" : "rival",
+          },
+        ],
+        zones: [
+          {
+            id: `${spec.id}-zone`,
+            label: attacking ? "ventaja" : "trampa",
+            rect: { x: targetX - 9, y: 34, w: 18, h: 24 },
+            color: attacking ? "#5eead4" : "#f87171",
+            layer: attacking ? "withoutBall" : "press",
+            visibleInPhases: ["execution", "outcome"],
+          },
+        ],
+        triggers: [
+          {
+            id: `${spec.id}-trigger`,
+            description: attacking
+              ? "El rival salta y aparece hombre libre"
+              : "Pase orientado activa salto coordinado",
+            whenT: duration * 0.45,
+            cause: {
+              actorId: attacking ? "o2" : "r1",
+              action: attacking ? "receiveBack" : "closedLateral",
+            },
+            visualMarker: {
+              pos: attacking
+                ? { x: ownStart + 16, y: 48 }
+                : { x: ownStart + 28, y: 48 },
+              icon: "!",
+            },
+            activatesOverlays: [`${spec.id}-p2`, `${spec.id}-r1`],
+          },
+        ],
+        phases: phases(duration, [
+          "withBall",
+          attacking ? "withoutBall" : "press",
+          spec.phase.startsWith("abp") ? "abp" : "rival",
+        ]),
+      },
+    };
+  });
+}
+
+rawExercises.push(...extraExercises, ...compactCuratedExercises());
 
 function validateCatalog(raw: unknown[]): Exercise[] {
   return raw.map((item, i) => {

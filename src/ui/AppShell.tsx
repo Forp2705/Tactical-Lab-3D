@@ -1,4 +1,4 @@
-import { useAppStore } from "@/state/useAppStore";
+import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import type { ChangeEvent, ReactNode } from "react";
 
 type NavView =
@@ -15,7 +15,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const session = useAppStore((state) => state.session);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const presentationMode = useAppStore((state) => state.presentationMode);
-  const exerciseLabel = selectedExerciseId || "-";
+  const selectedExercise = getExerciseById(selectedExerciseId);
+  const exerciseLabel = selectedExercise?.title ?? selectedExerciseId ?? "-";
 
   return (
     <div
@@ -26,25 +27,37 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="brand">
             <div className="brand-mark">TL</div>
             <div>
+              <span className="brand-kicker">COACH ROOM / PRO 3D</span>
               <h1>Tactical Lab Pro 3D</h1>
-              <p>Entrenamiento, tactica y analisis</p>
+              <p>Matchday cockpit para entrenadores</p>
             </div>
           </div>
           <nav className="nav">
-            <NavButton view="library" label="Biblioteca" />
-            <NavButton view="viewer" label="Visor tactico" />
-            <NavButton view="team" label="Equipo" />
-            <NavButton view="sessions" label="Sesion" />
-            <NavButton view="video" label="Video" />
-            <NavButton view="ai" label="Asistente" />
-            <NavButton view="player" label="Modo jugador" />
+            <NavButton view="library" label="Biblioteca" code="LIB" />
+            <NavButton view="viewer" label="Visor tactico" code="3D" />
+            <NavButton view="team" label="Equipo" code="XI" />
+            <NavButton view="sessions" label="Sesion" code="MD" />
+            <NavButton view="video" label="Video" code="VID" />
+            <NavButton view="ai" label="Asistente" code="AI" />
+            <NavButton view="player" label="Modo jugador" code="PL" />
           </nav>
           <div className="quick-status">
-            <div>Vista: {view}</div>
-            <div>Ejercicio: {exerciseLabel}</div>
-            <div>Sesion: {session.blocks.length} bloques</div>
+            <span className="panel-eyebrow">Estado de campo</span>
+            <div className="status-row">
+              <span>Vista</span>
+              <b>{view.toUpperCase()}</b>
+            </div>
+            <div className="status-row">
+              <span>Ejercicio</span>
+              <b>{exerciseLabel}</b>
+            </div>
+            <div className="status-row">
+              <span>Sesion</span>
+              <b>{session.blocks.length} bloques</b>
+            </div>
           </div>
           <div className="project-actions">
+            <span className="panel-eyebrow">Proyecto local</span>
             <button type="button" onClick={() => void saveProject()}>
               Guardar local
             </button>
@@ -69,9 +82,24 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="main">
         {presentationMode ? null : (
           <header className="topbar">
-            <div>
+            <div className="topbar-copy">
+              <span className="topbar-kicker">TACTICAL LAB / FIELD READY</span>
               <h2>{titleFor(view)}</h2>
               <p>{subtitleFor(view)}</p>
+            </div>
+            <div className="top-stat-strip" aria-label="Resumen operativo">
+              <div>
+                <span>Bloques</span>
+                <b>{session.blocks.length}</b>
+              </div>
+              <div>
+                <span>Actual</span>
+                <b>{selectedExercise?.players.min ?? "-"}v</b>
+              </div>
+              <div>
+                <span>Modo</span>
+                <b>{presentationMode ? "LIVE" : "PLAN"}</b>
+              </div>
             </div>
             <div className="top-actions">
               <button
@@ -99,7 +127,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-function NavButton({ view, label }: { view: NavView; label: string }) {
+function NavButton({
+  view,
+  label,
+  code,
+}: { view: NavView; label: string; code: string }) {
   const active = useAppStore((state) => state.view === view);
   return (
     <button
@@ -107,7 +139,8 @@ function NavButton({ view, label }: { view: NavView; label: string }) {
       className={active ? "active" : ""}
       onClick={() => useAppStore.getState().setView(view)}
     >
-      {label}
+      <span className="nav-code">{code}</span>
+      <span className="nav-label">{label}</span>
     </button>
   );
 }
@@ -165,7 +198,9 @@ async function importProject(event: ChangeEvent<HTMLInputElement>) {
   const file = event.target.files?.[0];
   if (!file) return;
   const text = await file.text();
-  const snapshot = JSON.parse(text);
+  const { parseSnapshot } = await import("@/state/db");
+  const snapshot = parseSnapshot(JSON.parse(text));
+  if (!snapshot) return;
   const { useAppStore } = await import("@/state/useAppStore");
   useAppStore.getState().loadSnapshot(snapshot);
 }
@@ -194,10 +229,12 @@ function snapshotFromState(state: ReturnType<typeof useAppStore.getState>) {
     phase: state.phase,
     level: state.level,
     principle: state.principle,
+    exerciseVariants: state.exerciseVariants,
     showZones: state.showZones,
     showRuns: state.showRuns,
     showPasses: state.showPasses,
     showPress: state.showPress,
+    personalSpace: state.personalSpace,
     layers: state.layers,
     team: state.team,
     session: state.session,

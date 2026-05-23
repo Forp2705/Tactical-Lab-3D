@@ -1,0 +1,10 @@
+[
+  {
+    "category": "block",
+    "pattern": "Los delanteros retroceden prematuramente, provocando que el bloque se hunda demasiado rápido hacia el área propia.",
+    "impact": "Perdemos la presión alta y cedemos el control del campo al rival.",
+    "frequency": 2,
+    "severityScore": 0.9,
+    "lastSeen": "2026-05-22"
+  }
+]

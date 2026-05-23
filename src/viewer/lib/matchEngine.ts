@@ -1,4 +1,13 @@
-import type { Actor, Exercise, Overlay, Trigger, Vec2, Vec3 } from "@/data";
+import type {
+  Actor,
+  Exercise,
+  Layer,
+  Overlay,
+  Trigger,
+  Vec2,
+  Vec3,
+} from "@/data";
+import { type PitchMode, pitchToWorld } from "./coords";
 import { interpolatePath, interpolateVec2, smoothstep } from "./interpolation";
 
 export type EngineActorPose = {
@@ -42,6 +51,10 @@ export type MatchFrame = {
   triggers: Trigger[];
 };
 
+export type MatchFrameOptions = {
+  personalSpace?: boolean;
+};
+
 type Endpoint = {
   pos: Vec2;
   carrier?: string;
@@ -54,10 +67,17 @@ type Interception = {
   progress: number;
 };
 
-export function getMatchFrame(exercise: Exercise, time: number): MatchFrame {
-  const actors = applyPersonalSpace(
-    exercise.scene.actors.map((actor) => actorPoseAt(actor, time)),
+export function getMatchFrame(
+  exercise: Exercise,
+  time: number,
+  options: MatchFrameOptions = {},
+): MatchFrame {
+  const rawActors = exercise.scene.actors.map((actor) =>
+    actorPoseAt(actor, time),
   );
+  const actors = options.personalSpace
+    ? applyPersonalSpace(rawActors)
+    : rawActors;
   const ball = getEngineBallPose(exercise, actors, time);
 
   return {
@@ -69,6 +89,52 @@ export function getMatchFrame(exercise: Exercise, time: number): MatchFrame {
     ball,
     triggers: getActiveTriggers(exercise, time),
   };
+}
+
+export function getActivePhase(exercise: Exercise, time: number) {
+  return (
+    exercise.scene.phases.find(
+      (phase) => time >= phase.start && time <= phase.end,
+    ) ?? exercise.scene.phases[0]
+  );
+}
+
+export function getVisibleOverlays(
+  exercise: Exercise,
+  time: number,
+  layers: Record<Layer, boolean>,
+) {
+  const executionStart =
+    exercise.scene.phases.find((phase) => phase.id === "execution")?.start ?? 0;
+  if (time < executionStart) return [];
+
+  return exercise.scene.overlays.filter((overlay) => {
+    if (time < overlay.start || time > overlay.end + 0.5) return false;
+    return layers[overlay.layer];
+  });
+}
+
+export function getVisibleZones(
+  exercise: Exercise,
+  time: number,
+  layers?: Record<Layer, boolean>,
+) {
+  const phase = getActivePhase(exercise, time);
+  return exercise.scene.zones.filter((zone) => {
+    if (layers && !layers[zone.layer]) return false;
+    return zone.visibleInPhases.length === 0
+      ? true
+      : zone.visibleInPhases.includes(phase.id);
+  });
+}
+
+export function pitchPointToWorld(point: Vec2, mode: PitchMode) {
+  return pitchToWorld(point, mode);
+}
+
+export function worldFromPitch(point: Vec2, mode: PitchMode) {
+  const world = pitchToWorld(point, mode);
+  return [world.x, 0, world.z] as const;
 }
 
 function getActiveTriggers(exercise: Exercise, time: number) {

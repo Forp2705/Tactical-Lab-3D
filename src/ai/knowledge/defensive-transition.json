@@ -1,0 +1,378 @@
+[
+  {
+    "category": "defensive-transition",
+    "principle": "Tras perder la posesión, los jugadores deben cambiar de mentalidad atacante a defensiva en los primeros segundos, reorganizándose rápidamente para evitar que el rival explote los espacios.",
+    "context": "Momento de transición defensiva inmediatamente después de la pérdida de balón.",
+    "risk": "Si la reorganización es lenta, el rival puede crear ocasiones peligrosas o iniciar un contraataque.",
+    "tags": [
+      "transition",
+      "compactness",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Aplicar counter‑pressing (gegenpressing) presionando agresivamente la pelota y a los rivales cercanos durante los primeros 5‑6 segundos tras la pérdida, con varios jugadores, para recuperar la posesión antes de que el rival se asiente.",
+    "context": "Situación de pérdida de balón en zona ofensiva donde se busca recuperar el balón cerca del arco rival.",
+    "risk": "Un press demasiado adelantado puede dejar espacios detrás y ser vulnerado por un contraataque rápido del rival.",
+    "tags": [
+      "pressing",
+      "counter-pressing",
+      "compactness"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Si no se recupera el balón en los primeros 5 segundos, replegarse inmediatamente en una forma compacta y esperar gatillos de presión (mal toque del rival) o usar una falta táctica para restablecer la estructura.",
+    "context": "Momento en que la regla de los 5 segundos no se cumple y el equipo necesita evitar desorganización.",
+    "risk": "Replegarse demasiado rápido puede ceder la iniciativa al rival y permitirle avanzar con mayor facilidad.",
+    "tags": [
+      "defensive-transition",
+      "compactness",
+      "block"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "reaccionar rápido y cercano",
+    "context": "los jugadores se comprometen agresivamente con el portador lo más rápido posible",
+    "risk": "evitar perder el control del balón",
+    "tags": [
+      "pressing",
+      "compactness"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "estructura compacta",
+    "context": "otros compañeros se amontonan y condensan el espacio",
+    "risk": "perder posesión en transición",
+    "tags": [
+      "defensive-transition",
+      "compactness"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "control del espacio",
+    "context": "marcar al hombre con cercanía y cubrir líneas",
+    "risk": "perder posesión por falta de organización",
+    "tags": [
+      "midfield",
+      "block"
+    ]
+  },
+  {
+    "category": "strikers",
+    "principle": "acción rápida",
+    "context": "los atacantes buscan recuperar la posesión inmediatamente",
+    "risk": "retraso en la recuperación",
+    "tags": [
+      "strikers",
+      "build-up"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "cubrir espacios",
+    "context": "defender en zonas laterales para evitar contra-ataques",
+    "risk": "exposición en áreas amplias",
+    "tags": [
+      "wide-areas",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "defensa sólida",
+    "context": "estructura compacta limita el avance del rival",
+    "risk": "oportunidad de contra-ataque",
+    "tags": [
+      "block"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "prevenir pérdida de balón",
+    "context": "evitar la pérdida de control",
+    "risk": "riesgo de desventaja",
+    "tags": [
+      "pressing",
+      "compactness",
+      "midfield",
+      "strikers",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "mantener forma compacta",
+    "context": "reducir espacio para rivales",
+    "risk": "expansión del rival",
+    "tags": [
+      "compactness"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "cohesión en mediocampo",
+    "context": "soportar presión",
+    "risk": "desbalance táctico",
+    "tags": [
+      "midfield"
+    ]
+  },
+  {
+    "category": "strikers",
+    "principle": "fijar al portador",
+    "context": "control de balón",
+    "risk": "pérdida de oportunidad",
+    "tags": [
+      "strikers",
+      "pressing",
+      "compactness",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "actuar rápidamente",
+    "context": "transiciones defensivas",
+    "risk": "retraso en respuesta",
+    "tags": [
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "replegar cuando se pierde en campo propio o zona de salida, el equipo está descompensado, el rival tiene jugadores rápidos en transición, hay inferioridad numérica detrás de la pelota, el resultado es favorable o hay fatiga acumulada",
+    "context": "situaciones que indican la necesidad de cambiar a defensa para evitar contraataques",
+    "risk": "exposición a contraataques si la presión falla o se mantiene sin recuperación rápida",
+    "tags": [
+      "pressing",
+      "transition",
+      "risk"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "el counter-pressing solo es efectivo si la defensa tras la presión está adecuada; si no se gana la pelota en segundos, debe pasar a recuperación organizada",
+    "context": "riesgo de perder la pelota y sufrir contraataques cuando la presión se prolonga",
+    "risk": "vulnerabilidad a corridas de tercer hombre y desgaste físico",
+    "tags": [
+      "counter-press",
+      "risk",
+      "compactness"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "requiere jugadores con resistencia, velocidad y agresividad simultáneas",
+    "context": "para ejecutar un counter-press eficaz",
+    "risk": "desgaste físico acumulado",
+    "tags": [
+      "player-profile",
+      "physical",
+      "risk"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "llegar al lado del arco y asegurar superioridad numérica detrás de la pelota lo más rápido posible",
+    "context": "para contener al rival tras una pérdida",
+    "risk": "pérdida de compactación si falla",
+    "tags": [
+      "rest-defence",
+      "compactness",
+      "transition"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "medir tiempo a la primera presión, tiempo de recuperación (5-6 seg), número de jugadores que reaccionan y forma del rest defence",
+    "context": "diagnóstico en partido de la calidad de la transición defensiva",
+    "risk": "si la recuperación supera los 5-6 segundos, aumenta riesgo de perder la pelota",
+    "tags": [
+      "timing",
+      "recovery",
+      "assessment"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "integrar el counter-press con posesión usando laterales interiores y falsos 9 para crear cuerpos extra en zona central",
+    "context": "estilo de guardiola que combina presión y posesión",
+    "risk": "vulnerabilidad si la presión no se mantiene y se pierde la pelota",
+    "tags": [
+      "possession",
+      "pressing",
+      "tactical-blend"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "counter-press de marca individual extrema, cada jugador persigue a su par directo",
+    "context": "enfoque de bielsa, demanda física máxima",
+    "risk": "alta fatiga y posible pérdida de compactación",
+    "tags": [
+      "bielsa",
+      "individual",
+      "pressing"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "reducir la distancia rápido al portador (sprint corto)",
+    "context": "checklist técnico inmediato tras pérdida",
+    "risk": "permitir que el portador gane espacio y tiempo",
+    "tags": [
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "orientar al portador hacia donde hay cobertura (línea lateral, compañero)",
+    "context": "checklist técnico inmediato tras pérdida",
+    "risk": "dejar al portador con opción de pase segura hacia el centro",
+    "tags": [
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "no barrerse salvo certeza absoluta",
+    "context": "checklist técnico inmediato tras pérdida",
+    "risk": "entrada fallida deja al rival con pelota y al equipo en inferioridad",
+    "tags": [
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "bloquear el pase vertical prioritariamente sobre el horizontal",
+    "context": "checklist técnico inmediato tras pérdida",
+    "risk": "permitir pases horizontales que mantienen la posesión",
+    "tags": [
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "forzar contacto pelota-pie del portador para incomodarle el control",
+    "context": "checklist técnico inmediato tras pérdida",
+    "risk": "permitir que el portador mantenga el control limpio",
+    "tags": [
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "aplicar falta táctica si llega tarde y la zona lo permite",
+    "context": "checklist técnico inmediato tras pérdida",
+    "risk": "sanción penal o tarjeta si no se ejecuta correctamente",
+    "tags": [
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "counter-press por defecto en tercio ofensivo",
+    "context": "pérdida en tercio ofensivo",
+    "risk": "perder la oportunidad de recuperar la pelota rápidamente",
+    "tags": [
+      "pressing",
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "aprovechar superioridad numérica adelante en tercio ofensivo",
+    "context": "pérdida en tercio ofensivo",
+    "risk": "no coordinar la presión colectiva",
+    "tags": [
+      "pressing",
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "cerrar líneas de pase hacia laterales/centrales del rival en tercio ofensivo",
+    "context": "pérdida en tercio ofensivo",
+    "risk": "permitir pases de desvío seguros",
+    "tags": [
+      "pressing",
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "decisión condicional según rest defence en tercio medio",
+    "context": "pérdida en tercio medio",
+    "risk": "reaccionar sin evaluar la postura defensiva rival",
+    "tags": [
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "counter-press si hay 3-2 sólido detrás en tercio medio",
+    "context": "pérdida en tercio medio con estructura defensiva rival",
+    "risk": "presionar sin apoyo y perder posición",
+    "tags": [
+      "pressing",
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "falta táctica o repliegue si hay descompensación en tercio medio",
+    "context": "pérdida en tercio medio con desequilibrio defensivo",
+    "risk": "permitir contragolpes organizados",
+    "tags": [
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "repliegue prioritario en tercio defensivo",
+    "context": "pérdida en tercio defensivo",
+    "risk": "no recuperar la marca y permitir centros",
+    "tags": [
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "compactar bloque bajo en tercio defensivo",
+    "context": "pérdida en tercio defensivo",
+    "risk": "dejar huecos entre líneas",
+    "tags": [
+      "defensive-transition",
+      "block",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "forzar al rival hacia afuera, lejos del centro del área en tercio defensivo",
+    "context": "pérdida en tercio defensivo",
+    "risk": "permitir tiros de cabeza o centros desde el centro",
+    "tags": [
+      "defensive-transition",
+      "block"
+    ]
+  }
+]

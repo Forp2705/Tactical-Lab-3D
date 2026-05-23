@@ -1,0 +1,113 @@
+Conceptos tácticos de build-up — material para agente IA ayudante de campo
+1. Definición y fases
+Build-up (salida desde el fondo): fase ofensiva inicial donde el equipo progresa la pelota desde el tercio defensivo hacia el medio y, eventualmente, el ataque. Es una fase que demanda control espacial, manipulación de la presión y gestión efectiva del tempo. Total Football Analysis
+Fases de progresión:
+
+Tercio defensivo: salida limpia, primer pase, atracción de presión.
+Tercio medio: progresión, ruptura de líneas. El énfasis táctico cambia hacia romper líneas a través del mid-block rival mediante principios de juego posicional, creando sobrecargas y desdoblamientos por dentro para generar superioridades cualitativas. SoccerEDU
+Tercio ofensivo: penetración, finalización.
+
+2. Las cuatro superioridades
+Marco conceptual central del juego de posición aplicado al build-up:
+
+Superioridad numérica: más jugadores propios que rivales en una zona. El ejemplo más simple es la caída de un mediocampista a la línea de fondo para crear superioridad numérica contra un rival que defiende en 4-4-2, generando 3v2 contra los dos delanteros en la primera fase. Total Football Analysis
+Superioridad posicional: un jugador recibe la pelota en un espacio donde el rival no puede defenderlo inmediatamente. Medium
+Superioridad cualitativa: emparejamiento favorable en duelos individuales (ej: extremo veloz vs lateral lento).
+Superioridad socioafectiva/dinámica: ventaja por movimiento, sincronización y entendimientos automatizados entre compañeros.
+
+3. Principios estructurales del build-up
+a) Hombre libre (free man / hombre extra)
+El equipo construyendo siempre debe tener un hombre libre delante de la primera línea de presión rival, creando superioridad numérica y maximizando el número de opciones de pase verticales. Medium
+b) División de zonas (juego de posición)
+La cancha se divide en zonas mediante líneas verticales y horizontales. Cada jugador es asignado a una zona. Nunca debería haber más de tres compañeros en un mismo plano horizontal, ni más de dos en un mismo plano vertical, para crear opciones de pase para el portador. Coaches' Voice
+c) Ocupación de medios espacios (half-spaces)
+En la fase de build-up, los equipos usan los medios espacios para progresar a través de los tercios. Los centrales o mediocampistas posicionales suelen pasar a estas zonas para sortear la estructura de presión rival. Un jugador en el medio espacio puede combinar con compañeros en zonas centrales y de banda, creando triángulos y rombos que facilitan secuencias rápidas de pases. The Football Analyst
+d) Amplitud y profundidad simultáneas
+Los principios subyacentes permanecen constantes: proveer amplitud para estirar la presión, profundidad para explotar espacios, construir líneas de pase limpias y activar al arquero como un verdadero playmaker desde el fondo. Total Football Analysis
+4. Estructuras de salida más usadas
+Salida Lavolpiana (creada por Ricardo La Volpe)
+El concepto se enfoca en avanzar la pelota desde la fase de build-up con ventaja numérica. El pivote (mediocampista defensivo) baja 10-12 metros — dependiendo de la profundidad de la presión del delantero rival — para crear ventaja numérica 3v2. Al actuar como un tercer central y formar un triángulo, esta estructura ayuda al equipo a sortear a los delanteros rivales vertical y horizontalmente. Los dos centrales son los portadores que rompen la última línea de la defensa rival. Footytimes
+Podría pensarse que bajar al pivote crea inferioridad numérica en el mediocampo. No: los N°8 (LCM y RCM) bajan más profundo mientras los extremos ocupan los espacios entre líneas. Este ajuste crea 4v2 en el mediocampo y 2v1 contra los extremos rivales. Footytimes
+Lateral invertido (inverted fullback)
+Los laterales invertidos suelen operar en los medios espacios cuando su equipo tiene la pelota. En lugar de pegarse a la línea, se mueven a estas zonas para proveer superioridad numérica en el mediocampo. El Manchester City usa a sus laterales para ayudar a crear superioridad numérica en la fase de build-up, lo que desalienta a los rivales a presionar alto. The Football AnalystCoach-Ed Soccer
+Estructura 3-2-5 / 3-2-2-3 en posesión
+Equipos como el Betis de Setién usaban estructura 3-2-5/3-1-6 durante el build-up para manipular la segunda línea defensiva del rival. La back-3 (puede ser back-3 real o construida desde un 4-3-3 con lateral invertido o pivote bajando) provee dominancia en primera línea + dos pivotes + cinco arriba en línea de ataque escalonada. Futbol Idealists
+Back-3 estructural
+En posesión, la línea de 3 normalmente provee una sobrecarga en el build-up, porque es difícil para el rival comprometer 3 jugadores a presionar la primera línea. Si esto ocurre, el arquero puede convertirlo en 4v3. Coaches' Voice
+5. Mecanismos de progresión
+Principio del tercer hombre
+Tres jugadores trabajan juntos para sortear la presión o estructura defensiva. Imaginá que el Jugador A tiene la pelota y quiere pasarla al Jugador C, que está libre y en posición más avanzada. Un rival bloquea la línea de pase directa A→C. Para superarlo, A pasa primero al Jugador B, que está más cerca y tiene línea abierta a C. Crea ventajas numéricas y posicionales: al usar un tercer jugador, el equipo manipula el posicionamiento de los defensores, forzándolos a moverse y creando huecos en su estructura. Es especialmente útil contra equipos de presión alta. The Football AnalystThe Football Analyst
+Baiting the press (atraer la presión para saltarla)
+En lugar de ver la presión como amenaza, se ve como oportunidad a explotar. Al alentar al rival a presionar alto, se crean e identifican espacios para lanzar ataques peligrosos. El arquero asume el rol de tercer central, invitando la primera línea de presión. Centrales y mediocampistas defensivos sostienen deliberadamente posiciones profundas y usan pases cortos y cuadrados para gatillar acciones de presión. Soccertutor
+Mecanismo técnico clave: recibir y pausar la pelota usando la suela del pie — manipula el timing del presor. Soccertutor
+Patrón "pase, fijar, devolver, progresar" (De Zerbi): pase al pivote marcado, devolución al otro central, progresión por el lado liberado.
+Pasar a través de la presión (playing into pressure)
+Cuando el rival cubre al hombre libre, el portador juega contra la presión sabiendo que con un toque de devolución (bounce pass) puede saltar al presor y encontrar al jugador detrás.
+Pase de ruptura entre líneas
+Objetivo último del build-up: encontrar a un jugador más allá de la siguiente línea de defensa. La verticalidad se logra con pase preciso al hombre entre líneas, que recibe perfilado para girar. The Football Analyst
+6. Roles específicos en el build-up
+Arquero como jugador de campo
+Equipos como el Manchester City usan a su arquero como un jugador de campo adicional, asegurando que la presión rival quede neutralizada. Este enfoque requiere jugadores cómodos con la pelota y capaces de tomar decisiones rápidas bajo presión. The Football Analyst
+Centrales
+
+Apertura amplia hacia los medios espacios.
+Conducción (carry) para romper la primera línea si nadie sale a presionar.
+Pase quebrado al jugador entre líneas o cambio de orientación.
+
+Pivote (n°6)
+
+Recibir entre líneas dando línea de pase.
+Si está marcado de espaldas, devolución en un toque al central libre.
+Pivoteo y giro si encuentra espacio.
+
+Laterales
+Dos roles principales:
+
+Tradicional/amplio: pegarse a la línea, dar amplitud, recibir el cambio de orientación.
+Invertido: entrar al medio espacio o pivote para generar superioridad central.
+
+Mediocampistas interiores (8s)
+Movimientos coordinados: si el 6 baja, los 8 bajan también para no perder densidad central; si los laterales se invierten, los 8 se abren al carril intermedio.
+7. Patrones de cómo romper presiones específicas
+Vs presión alta 4-4-2 (dos puntas)
+
+Salida lavolpiana (3v2 con pivote bajando).
+Arquero participa = 4v2.
+Centrales se abren para arrastrar a los delanteros.
+
+Vs presión hombre-a-hombre
+A través de presionar al arquero, el +1 a menudo se reestablece temporalmente, y los equipos suelen adoptar la estrategia de "jugar dentro de la presión" — usando un pase de devolución (bounce pass) para ir alrededor del jugador que presiona al central y al arquero, encontrando al hombre libre. Contra marca individual más rígida, los equipos están más inclinados a ir largo. Substack
+Vs presión 4-3-3
+
+Lateral invertido para crear superioridad central.
+Cambio de orientación rápido al lateral lejano.
+Lanzamiento del 9 a la espalda si la línea defensiva sube mucho.
+
+Estructuras asimétricas
+Estas formas suelen ser asimétricas: muchos equipos bajan solo a un lateral o invierten a un extremo para distorsionar la forma de presión del rival y crear un lado fuerte desde el cual progresar. Total Football Analysis
+8. Mecanismos de manipulación del rival
+
+Provocar el salto del presor: pase lento o conducción para que el delantero salga, generando línea al pivote.
+Movilizar al rival, no a la pelota: secuencias de pases destinadas a desplazar el bloque rival lateralmente y luego romper por dentro.
+Pausa con la suela: detener la pelota para fijar visualmente al presor y abrir opción de cambio de costado.
+Circulación horizontal entre centrales: para forzar al bloque a moverse de costado y crear huecos.
+Movimientos en falso (decoy runs): corridas señuelo, rotaciones, y centrales rompiendo la primera línea. Total Football Analysis
+Rotaciones posicionales: usar rotaciones posicionales para crear opciones de pase verticales y mover la pelota al hombre libre para generar ángulos para jugar a través de la presión. Total Football Analysis
+
+9. Indicadores para evaluar el build-up
+Para que el agente diagnostique en partido:
+
+¿Hay +1 sobre la primera línea de presión rival? Si no hay, ajustar (bajar pivote, sumar arquero).
+¿Quién es el hombre libre? Identificarlo en cada secuencia.
+¿Se usan los medios espacios? Si los pases siempre van por afuera, se está perdiendo verticalidad.
+¿Hay jugador entre líneas? Sin alguien entre el medio y la defensa rival, no hay opción de ruptura.
+¿Hay triángulos/rombos alrededor del portador? Mínimo 3 opciones de pase siempre.
+¿La distancia entre líneas propias es la correcta? Ni tan corta que se anule, ni tan larga que se desconecten.
+¿Se está moviendo al rival o solo a la pelota? Posesión sin progresión = build-up estéril.
+
+10. Riesgos y trade-offs
+
+Build-up corto contra equipos compactos bajos = baja productividad ofensiva.
+Pérdida en zona de salida = ocasión clara en contra.
+Dependencia del perfil técnico del arquero y centrales.
+Limitación del rango de mecanismos: en el proceso de atraer presión, la fuerte dependencia de gestos provocativos presenta una solución simple para el rival — no morder. Simplemente negarse a reaccionar a las provocaciones quita una gran parte de la capacidad de generar espacios y romper bloques

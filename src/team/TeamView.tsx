@@ -13,7 +13,10 @@ export function TeamView() {
       <aside className="team-side-panel">
         <div className="team-card">
           <div className="section-title">
-            <h3>Plantel</h3>
+            <div>
+              <span className="panel-eyebrow">Squad board</span>
+              <h3>Plantel</h3>
+            </div>
             <button
               type="button"
               onClick={() => useAppStore.getState().addPlayer()}
@@ -46,6 +49,7 @@ export function TeamView() {
         </div>
 
         <div className="team-card">
+          <span className="panel-eyebrow">Ficha técnica</span>
           <h3>Editor de jugador</h3>
           <div className="form-grid" style={{ marginTop: 12 }}>
             <EditableField
@@ -88,31 +92,10 @@ export function TeamView() {
               </select>
             </label>
           </div>
-          <div style={{ marginTop: 14 }}>
-            {Object.entries(selectedPlayer.attributes).map(([key, value]) => (
-              <div className="range-row" key={key}>
-                <span>{attributeLabel(key)}</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={value}
-                  onChange={(event) =>
-                    patchPlayer(selectedPlayer.id, {
-                      attributes: {
-                        ...selectedPlayer.attributes,
-                        [key]: Number(event.target.value),
-                      },
-                    })
-                  }
-                />
-                <b>{value}</b>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="team-card">
+          <span className="panel-eyebrow">Shapes guardados</span>
           <h3>Lineups guardados</h3>
           {team.lineups.length ? (
             <div className="lineup-list">
@@ -175,17 +158,4 @@ function statusLabel(status: Player["status"]) {
     suspended: "Suspendido",
   };
   return labels[status];
-}
-
-function attributeLabel(key: string) {
-  const labels: Record<string, string> = {
-    speed: "Velocidad",
-    stamina: "Resistencia",
-    pass: "Pase",
-    control: "Control",
-    press: "Presion",
-    duel: "Duelo",
-    tactical: "Lectura",
-  };
-  return labels[key] ?? key;
 }

@@ -1,0 +1,230 @@
+1. Definición y marco general
+Pressing: aplicar presión coordinada al rival en posesión con el objetivo de recuperar la pelota rápidamente, idealmente en una zona peligrosa. Planete Football
+Diferencia con counter-pressing: el pressing es la presión sostenida durante la defensa organizada; el counter-pressing es la presión inmediata tras la pérdida (transición defensiva).
+Diferencia con forechecking: el pressing se refiere a todas las acciones que toma el equipo sin la pelota para cerrar al rival y recuperar la pelota. No es necesariamente lo mismo que "forechecking", que es una instancia especial de pressing donde el rival es cerrado agresivamente en su propio campo. Miasanrot
+El pressing es una elección, no una cualidad: la intensidad del pressing es primariamente una decisión del entrenador, no un reflejo de los jugadores disponibles. El análisis del PPDA del Barcelona en la temporada 2012/13 mostró un cambio dramático a mitad de temporada cuando cambió el cuerpo técnico — el mismo plantel produjo números de pressing radicalmente distintos bajo diferentes instrucciones tácticas. Explored Football
+Por qué funciona: la efectividad de un pressing alto descansa en una vulnerabilidad específica de todos los equipos: el momento de transición. En los segundos inmediatamente después de un cambio de posesión, los jugadores están en movimiento, su forma está alterada, y su toma de decisión está bajo máximo estrés. Explored Football
+2. Niveles de pressing según altura
+a) High press (presión alta / attacking pressing)
+Bloque alto, presión desde el campo rival. Objetivo: recuperar cerca del arco rival y generar ocasión inmediata.
+Si el equipo que emplea el bloque alto no implementa alta presión, desperdicia posiciones de campo valiosas. Por eso, no se ve el bloque alto durante todo el partido, sino solo en ciertas situaciones y períodos. Total Football Analysis
+b) Mid-block / Pressing medio
+Bloque medio entre las dos áreas. Objetivo: invitar la salida rival hasta cierta zona y activar la presión al cruzar la línea de medio campo.
+Muchos entrenadores pragmáticos de Premier League — incluyendo varios en la mitad inferior de la tabla — emplean un mid-block como forma por defecto. Planete Football
+c) Low block / Bloque bajo
+El bloque bajo lleva a los diez jugadores de campo detrás de la pelota, típicamente dentro del tercio defensivo propio. La prioridad es solidez defensiva pura — negar espacio dentro y alrededor del área y forzar al rival a tiros de baja calidad desde distancia. Planete Football
+Subtipos:
+
+Bloque bajo pasivo: se enfoca puramente en la contención con presión mínima. The Football Analyst
+Bloque bajo activo: cae profundo pero aún aplica presión selectiva o gatillos para ganar la pelota. The Football Analyst
+Bloque híbrido: alterna entre mid-block y low-block dependiendo del estado del partido o zonas del rival. The Football Analyst
+
+3. Tipos de pressing según orientación
+En el pressing, un equipo organiza sus acciones basándose en los jugadores rivales (orientación al hombre), ciertas áreas del campo (orientación zonal o de espacio) o la pelota (orientación a la pelota). Miasanrot
+a) Orientado al hombre (man-oriented)
+Cada jugador toma una marca individual. Subtipos:
+El marcaje al hombre puede tomar dos formas: rígido y flexible. El marcaje al hombre rígido implica seguir de cerca a rivales específicos, mientras que el marcaje al hombre flexible permite a los jugadores adaptarse a los movimientos y cambios de posicionamiento del rival. Whittonutd
+b) Orientado a la zona (zonal)
+El marcaje zonal requiere que los jugadores mantengan posiciones que se correlacionen con la ubicación de la pelota. Este método está diseñado para minimizar huecos explotables en la defensa, ya que los jugadores se mantienen conscientes de sus áreas asignadas y del posicionamiento de compañeros y rivales. Whittonutd
+c) Orientado a la pelota (ball-oriented)
+Todos los jugadores se mueven en función de dónde está la pelota, achicando hacia ese lado y formando superioridad numérica alrededor.
+d) Híbrido (zonal-man / man-oriented zonal marking)
+El marcaje zonal orientado al hombre, en contraste con el marcaje zonal orientado a la posición, no espera al acceso y al pressing: lo busca.
+Un enfoque mezclado que incorpora tanto marcaje al hombre como zonal puede mejorar la forma de pressing de un equipo. RssingWhittonutd
+4. Compactación: principio estructural fundamental
+Hay 2 conceptos básicos y esenciales del pressing: compactación vertical y horizontal. The Tactical Analyst
+a) Compactación vertical
+Con la compactación vertical podés ajustar el espacio entre las líneas y mantener una conexión apropiada entre los jugadores — para que puedan ayudarse mutuamente si es necesario. Un error común es que la línea defensiva esté demasiado profunda en una situación de pressing, entonces por ejemplo el lateral no puede subir a presionar — al lateral rival, si es necesario — porque está demasiado lejos. The Tactical Analyst
+Distancia óptima entre líneas: 10-15 metros aproximadamente. Más de 15 metros = vulnerable al pase entre líneas.
+b) Compactación horizontal
+Reducir los espacios entre jugadores de una misma línea. Se logra con los desplazamientos colectivos del bloque hacia el lado de la pelota (ball-oriented shifts).
+c) Bloque compacto en altura
+La línea de fondo debe achicar, manteniendo la línea defensiva. Los jugadores deben intentar crear ventaja numérica alrededor de la pelota. FIFA Training Centre
+5. Cover shadow (sombra de cobertura) — concepto central
+Definición
+Si el jugador A se posiciona en la línea de pase entre el jugador B (el portador) y el jugador C, pone al jugador C en su sombra de cobertura. Miasanrot
+Es decir: usar el propio cuerpo, en pressing, para bloquear simultáneamente una línea de pase mientras se presiona al portador. Un solo jugador anula a dos rivales.
+Principios de uso
+El delantero posiciona su cuerpo para bloquear al pivote con su sombra de cobertura mientras presiona al central. Esto estrecha las opciones del rival y canaliza el juego hacia un lado, permitiendo al equipo presionante "dirigir" el build-up. The Football Analyst
+Las sombras de cobertura son uno de los aspectos más importantes —aunque sutiles— del defender moderno. Permiten a los equipos presionar con inteligencia, controlar espacios centrales, y dictar dónde juega el rival incluso antes de que llegue el pressing. Bien usada, una sombra de cobertura puede controlar dos rivales a la vez, fortalecer trampas de presión, apoyar el counter-pressing, y proteger las zonas más peligrosas del campo. The Football Analyst
+Aplicación práctica
+
+Delantero presiona central → cubre con el cuerpo al pivote.
+Extremo presiona lateral → bloquea pase al central de su lado.
+N°6 presiona portador → cubre al enganche rival a su espalda.
+
+Lectura del atacante (para evaluación)
+Los buenos enganches sobreviven manteniéndose unos centímetros fuera de la sombra — lo suficiente para ser visibles y jugables. The Football Analyst
+6. Pressing traps (trampas de presión)
+Concepto
+El objetivo último de la "trampa" es forzar al rival a hacer un pase altamente predecible, y por tanto riesgoso, en una zona de alto valor. En el corazón de lo que hace exitosos a los equipos más efectivos en pressing no es meramente perseguir la pelota, sino controlar el espacio donde el rival quiere operar. Esto se conoce como el "principio de manipulación posicional". Eye On Annapolis
+Mecánica
+La trampa se construye en 3 pasos:
+
+Invitar: dejar deliberadamente abierta una opción de pase aparentemente segura (típicamente al lateral rival).
+Cortar: una vez ejecutado el pase, cerrar todas las salidas con presión multi-direccional.
+Recuperar: forzar pérdida, intercepción o pase desesperado.
+
+Ejemplo Marsch / Red Bull
+El delantero cerca de la pelota presiona al central tras un cambio, creando una división con su sombra de cobertura y forzando un pase hacia las bandas. Cuando el delantero inicia la presión, el resto del equipo se desplaza orientado a la pelota mientras controla opciones. El pase al lateral es presionado diagonalmente por el extremo, que previene la progresión del equipo rojo. Red Bull Hub
+Zona típica de trampa
+Banda baja del rival, donde la línea lateral funciona como defensor adicional. El receptor del costado puede ser apretado desde todos los ángulos. La línea de fondo se desplaza para que la presión se aplique hacia la línea lateral. Medium
+7. Pressing triggers (gatillos)
+Los gatillos pre-definidos específicos son la columna vertebral de todo framework exitoso de pressing y cover shadow. Un gatillo es una acción que el rival debe completar que señala a toda la unidad defensiva que es momento de activar presión defensiva de alta intensidad. Eye On Annapolis
+Lista de gatillos universales
+Gatillos típicos: un pase lateral lento de un central, un pase atrás al arquero, o un rival de espaldas al arco, con la cabeza baja, recibiendo un pase en una zona de mediocampo/defensa vacía. Eye On Annapolis
+Lista operativa completa:
+
+Pase atrás al arquero → presión inmediata al GK.
+Pase lateral lento entre centrales → activar pressing al receptor.
+Pase telegrafiado o flotante (aéreo) → presión al control.
+Mal primer toque del receptor.
+Pase al lateral pegado a línea → encerrar.
+Receptor de espaldas al arco rival → presión al perfilarse.
+Conducción hacia adelante con cabeza baja.
+Pase a jugador aislado sin apoyos cercanos.
+Rebote o segunda jugada (50/50).
+Throw-in del rival en campo propio.
+
+Ejemplo Brighton
+Brighton implementa pressing estructurado con gatillos claros. Pressing alto cuando el rival construye desde atrás, defensa más profunda cuando el rival controla el mediocampo. Resultado: pressing sistemático y controlado que previene el defender caóticamente. Jobs In Football
+8. PPDA — Métrica clave de pressing
+Definición
+PPDA (Passes Per Defensive Action) es una estadística que mide la cantidad de pases que un equipo permite al rival hacer antes de intentar una acción defensiva — como una entrada, intercepción o falta — en los tercios defensivo y medio del rival. Da una indicación de cuán rápido y agresivamente un equipo intenta recuperar la posesión durante la fase de build-up del rival. The Football Analyst
+Interpretación de valores
+PPDA de 6.0 — intensidad de pressing extremadamente alta. El rival promedia solo 6 pases antes de enfrentar una acción defensiva. Típico de equipos pressing de elite. PPDA de 10-12 — intensidad moderada de pressing. Pressing activo pero con más selectividad sobre cuándo comprometerse. PPDA de 18+ — enfoque defensivo de bloque bajo. Explored Football
+Equipos mid-block: PPDA moderado (alrededor de 9-12) sugiere pressing selectivo manteniendo la forma. Equipos low-block: PPDA alto (13+), reflejando defender pasivo, permitiendo más pases antes de comprometerse. Footballizer
+Limitaciones del PPDA
+No considera contexto: el PPDA no revela por qué el pressing tuvo éxito (brillantez táctica vs. mal pase rival). Ignora el control del partido: un equipo controlando 70% de posesión naturalmente tiene PPDA más alto. Set-pieces distorsionan PPDA. Calidad vs. cantidad: el PPDA no distingue entre pressing que fuerza recuperación en zona ofensiva vs. pressing que fuerza un pase a la línea lateral. Jobs In Football
+Métrica complementaria: press-break rate
+Un PPDA bajo emparejado con una alta tasa de ruptura de pressing significa que tu equipo está comprometiéndose frecuentemente pero el rival está jugando a través de tu estructura de manera confiable. Esa combinación debería provocar una conversación táctica sobre gatillos de pressing y compactación, no sobre esfuerzo o output atlético. KiqIQ
+Casos reales
+Liverpool apunta a PPDA bajo (rango 4-5) a través de pressing sistemático. Los tres delanteros presionan inmediatamente a los defensores rivales, el mediocampo cubre opciones de pase, creando errores forzados. Manchester City controla la posesión (a menudo 60%+), resultando en PPDA naturalmente más alto. City presiona selectivamente en lugar de constantemente, manteniendo la forma estructurada. Jobs In Football
+9. Estructuras de pressing según formación
+Desde 4-4-2 → 4-2-4 al presionar
+El 4-2-4 es una estructura de pressing en ascenso — ha sido usada por el Manchester United de Ten Hag, el Arsenal de Arteta y el Tuchel. El 4-2-4 también permite al equipo presionante caer de regreso a un mid-block 4-4-2 si su pressing es vencido o la pelota es cambiada al lado lejano. El 4-2-4 es inherentemente una estructura de pressing al hombre, puramente como resultado de su forma emparejada contra un build-up 4-2. Medium
+Desde 4-3-3 → variantes
+Variante Klopp (forzar al centro): El equipo de Klopp intenta guiar el build-up rival hacia zonas centrales del campo para recuperar la posesión con sus tres mediocampistas. Los extremos defienden alto, lo que crea espacio en banda — los laterales deben estar listos para subir a presionar. Idealmente los extremos usan su sombra de cobertura para prevenir cualquier pase a zonas anchas. Total Football Analysis
+Variante 4-3-2-1 (cerrar el centro): Opuesto al 4-3-3 que guía hacia el centro, el 4-3-2-1 previene al rival de jugar en zonas centrales. El equipo presionante forma un 4-3-2-1 que se asemeja a una pirámide. All Football
+Desde 4-2-3-1
+El delantero está encargado de presionar a los dos centrales, mientras los extremos usualmente protegen las áreas centrales y medios espacios inicialmente antes de ser gatillados a presionar al lateral en zona ancha. El número 10 presionante puede marcar al hombre al pivote, mientras los dos mediocampistas de contención pueden también emparejarse hombre a hombre con los otros dos mediocampistas rivales. Total Football Analysis
+Uno de los factores importantes en presionar alto en un 4-2-3-1 es mantener presión constante sobre la línea de fondo. Si usás una variación del 4-2-3-1 que involucra un solo delantero presionando a dos centrales, esto puede ser desafiante. Total Football Analysis
+Desde 3-4-3
+El equipo presionante apunta a mantenerse compacto, presionar como unidad, forzar el juego hacia afuera o atraparlo. Tras un cambio de juego, el delantero externo que estaba presionando del lado fuerte ahora cae adentro para apoyar a los dos mediocampistas centrales y restaurar el balance. El delantero centro se desplaza para cubrir al volante de contención rival y bloquear la progresión central. Se mantiene la unidad de back-4 (tres centrales y un carrilero) mientras los mediocampistas pantallan los espacios centrales. Elite Soccer
+10. Dirección del pressing (steering / canalización)
+Forzar hacia afuera (forcing wide)
+Más común. Lógica: la línea lateral funciona como un defensor extra, y los pases laterales reducen ángulos.
+Cómo se ejecuta: el delantero presiona al central por adentro, dejando libre el pase al lateral. Una vez que el pase sale, el extremo cierra al lateral receptor mientras el equipo se desplaza hacia ese lado.
+Forzar hacia adentro (forcing inside)
+Menos común. Lógica: si el equipo tiene mucha densidad central, atrae al rival al centro para emboscarlo.
+Cómo se ejecuta: cerrar las opciones de banda con sombras de cobertura, dejar libre el pase al pivote o enganche, y cuando recibe, presionarlo desde múltiples direcciones.
+Forzar hacia atrás
+Pressing sin compromiso de recuperación inmediata: obligar al rival a retroceder al arquero o a un pelotazo. Sirve para ganar territorio sin riesgo.
+11. Salida del pressing (cuándo no presionar / replegar)
+Triggers de repliegue
+
+Press roto: el rival saltó la primera línea con éxito.
+Cambio de orientación rápido: imposible llegar a presionar al lado lejano a tiempo.
+Pelota controlada por jugador de alta calidad técnica en zona libre.
+Tiempo del partido: con resultado favorable, conservar energía.
+
+Modulación según contexto
+Un equipo inteligente modula su pressing según el contexto del partido: levantarlo después de perder la pelota, cuando el rival es vulnerable, o cuando se persigue un gol. Atenuarlo: cuando el rival tiene tiempo/espacio para contraatacar o tarde en el partido cuando se acumula la fatiga. Transición controlada: cambiar fluidamente de bloque alto a medio/bajo para evitar exposición. Angelo Quarenghi
+12. Fatiga y sostenibilidad del pressing
+La investigación usando datos de eventos de pressing de StatsBomb de las temporadas europeas 2018/19 encontró que el pressing de Liverpool se atenuaba significativamente después de la marca de los 30 minutos — el costo físico del pressing compounding con la fatiga. Explored Football
+El pressing alto raramente se puede sostener todo el partido. Se necesitan rotaciones, pausas y fases de recuperación táctica para preservar energía. Angelo Quarenghi
+Implicancias prácticas
+
+Atletizar el pressing por ráfagas (10-15 min de máxima intensidad, luego mid-block).
+Asociado a contextos específicos: tras el gol propio, salida desde el saque inicial, primeros 15' de cada tiempo.
+Rotaciones de plantel obligatorias para equipos de pressing alto sostenido.
+
+13. Riesgos del pressing alto
+Vulnerabilidad a contraataques si el pressing es vencido. Desalineamientos — una línea de fondo alta puede ser atacada a espaldas. Pérdida de solidez cuando el pressing está desorganizado o a medias. Por eso algunos rivales diseñan patrones para sortear el pressing, construyendo con salidas verticales y cambios rápidos. Angelo Quarenghi
+Coincidencia con la filosofía rival: contra rivales dominantes en posesión (City de Guardiola), el gegenpressing tiene problemas. Jobs In Football
+El pressing alto requiere perfiles de jugador específicos — específicamente "motores" en el mediocampo y centrales rápidos que puedan defender grandes espacios. Sin el personal adecuado, el pressing alto es receta para el desastre defensivo. Las estadísticas sugieren que los sistemas de alta intensidad pueden llevar a más lesiones de tejidos blandos (isquios/cuádriceps) si no se gestionan correctamente. Talking Bets
+14. Cómo los rivales rompen el pressing
+Conocer esto sirve al agente para diagnosticar fallas propias y reconocer planes rivales:
+
+Cambio de orientación rápido al lado lejano.
+Pelotazo a 9 fuerte que retiene: salta el pressing por arriba.
+Tercer hombre: pase corto, devolución a un tercero libre.
+Conducción del central sin nadie que salga a presionar.
+Lateral invertido que rompe la marca natural del extremo.
+Pivote bajando a línea de fondo (salida lavolpiana) para generar 3v2.
+Rotaciones posicionales que confunden las marcas hombre-orientadas.
+Mantener al arquero como hombre +1: 11v10 efectivo en salida.
+
+15. Perfiles de jugador por rol en pressing
+Delantero(s) presionante(s)
+
+Resistencia para múltiples sprints cortos repetidos.
+Inteligencia para usar sombras de cobertura.
+Capacidad de orientar el cuerpo al presionar.
+Lectura de gatillos.
+
+Extremos
+
+Capacidad de sprint largo (cubren mucho campo).
+Defender lateral 1v1 si el pressing se rompe.
+Capacidad de invertir y comprimir centro tras cambio de orientación.
+
+Mediocampistas
+
+"Motor" físico para cubrir espacio entre líneas.
+Anticipación e intercepción.
+Disponibilidad para entradas y duelos.
+
+Laterales
+
+Aceleración para saltar al extremo rival.
+Recuperación al espacio detrás si el rival cambia de orientación.
+
+Centrales
+
+Velocidad para defender la espalda (línea alta).
+Defensa 1v1 en campo abierto.
+Anticipación para salir a presionar al receptor entre líneas.
+
+Arquero
+
+"Sweeper-keeper": jugar lejos del arco para cubrir la espalda de la línea defensiva alta.
+Buen juego con los pies.
+Lectura del juego para salir o quedarse.
+
+16. Variantes por modelos de entrenadores
+Klopp / Rangnick / Marsch — escuela Red Bull
+Pressing alto agresivo, orientado al hombre con flexibilidad, gatillos claros, transiciones verticales tras recuperación.
+Bielsa
+Equipos de Bielsa: pressing de alta octanaje con principios hombre a hombre. Marca individual extrema durante todo el partido. The Football Analyst
+Guardiola
+Manchester City de Guardiola (primeras fases): presionar alto para inmediatamente recuperar el control tras pérdida. Pressing como herramienta de control, no como fin en sí mismo. The Football Analyst
+Simeone
+Atlético Madrid de Simeone: maestros de la compactación, cohesión vertical y defensa profunda. Mid-block / low-block activo con transiciones ofensivas rápidas. The Football Analyst
+Nagelsmann
+RB Leipzig bajo Rangnick y Nagelsmann: pressing alto compacto con transiciones verticales. Pressing zonal con orientación a la pelota y trampas pre-diseñadas. The Football Analyst
+17. Indicadores para evaluar el pressing en partido
+Para que el agente diagnostique:
+
+PPDA: ¿en qué rango está el equipo?
+Press success rate: ¿qué % de pressing termina en recuperación?
+Recuperaciones en tercio rival: cantidad y zona.
+xG generado tras recuperación alta: pressing como herramienta ofensiva.
+Goles concedidos en pressing roto: indicador de mal rest defence.
+Distancia entre líneas: visualmente, ¿más o menos de 15m?
+Compactación lateral: ¿hay desplazamiento colectivo al lado de la pelota?
+Uso de sombras de cobertura: ¿los presores cortan líneas mientras presionan?
+Identificación de gatillos: ¿se activa el equipo al mismo tiempo o hay desfasajes?
+Patrones del rival: ¿se identificó cómo está saltando el pressing?
+
+18. Checklist operativo para el primer presor
+Secuencia técnica al activarse el gatillo:
+
+Reconocer el gatillo (vista al portador y entorno).
+Arrancar a máxima velocidad los primeros 5 metros.
+Reducir velocidad al llegar para no ser superado por gambeta.
+Orientar el cuerpo para forzar dirección (interior abierto = forzar afuera).
+Aplicar sombra de cobertura para anular receptor a espaldas.
+No tirarse: mantener pies en el suelo, demorar para que llegue cobertura.
+Comunicar al compañero más cercano la dirección de la presión.
+Si la presión es exitosa: cerrar al receptor; si falla: replegar al lateral propio.

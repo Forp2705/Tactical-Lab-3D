@@ -15,20 +15,6 @@ type PitchProps = {
 const LINE_COLOR = "#f3f7f2";
 const LINE_Y = 0.072;
 const TURF_Y = 0;
-const MOW_BAND_KEYS = [
-  "mow-a",
-  "mow-b",
-  "mow-c",
-  "mow-d",
-  "mow-e",
-  "mow-f",
-  "mow-g",
-  "mow-h",
-  "mow-i",
-  "mow-j",
-  "mow-k",
-  "mow-l",
-];
 
 export function Pitch3D({ mode }: PitchProps) {
   const { length, width } = pitchDimensions(mode);
@@ -66,14 +52,12 @@ export function Pitch3D({ mode }: PitchProps) {
           roughnessMap={grass.roughness}
           aoMap={grass.ao}
           bumpMap={grass.bump}
-          bumpScale={0.045}
+          bumpScale={0.018}
           color="#64a64d"
           roughness={0.88}
           metalness={0.015}
         />
       </mesh>
-
-      <MowingBands length={length} width={width} />
 
       <FlatLine
         x={0}
@@ -179,44 +163,6 @@ export function Pitch3D({ mode }: PitchProps) {
           <TechnicalArea x={8} z={halfWidth + 1.7} />
         </>
       ) : null}
-    </group>
-  );
-}
-
-function MowingBands({ length, width }: { length: number; width: number }) {
-  const count = MOW_BAND_KEYS.length;
-  const stripeLength = length / count;
-
-  return (
-    <group>
-      {MOW_BAND_KEYS.map((key, index) => (
-        <mesh
-          key={key}
-          position={[
-            -length / 2 + (index + 0.5) * stripeLength,
-            LINE_Y - 0.047,
-            0,
-          ]}
-          receiveShadow
-        >
-          <boxGeometry args={[stripeLength, 0.012, width]} />
-          <meshStandardMaterial
-            color={index % 2 === 0 ? "#79b85a" : "#4f9444"}
-            transparent
-            opacity={index % 2 === 0 ? 0.16 : 0.1}
-            roughness={0.96}
-            metalness={0}
-          />
-        </mesh>
-      ))}
-      <mesh position={[0, LINE_Y - 0.04, 0]} rotation={[0, 0, -0.035]}>
-        <boxGeometry args={[length * 1.08, 0.01, width * 0.18]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.028} />
-      </mesh>
-      <mesh position={[0, LINE_Y - 0.039, 0]} rotation={[0, 0, 0.04]}>
-        <boxGeometry args={[length * 1.08, 0.01, width * 0.15]} />
-        <meshBasicMaterial color="#03170d" transparent opacity={0.04} />
-      </mesh>
     </group>
   );
 }
@@ -423,6 +369,54 @@ function Goal({ x }: { x: number }) {
           side={DoubleSide}
         />
       </mesh>
+      <GoalNet depthSign={depthSign} />
+    </group>
+  );
+}
+
+function GoalNet({ depthSign }: { depthSign: number }) {
+  const zLines = [-3.36, -2.52, -1.68, -0.84, 0, 0.84, 1.68, 2.52, 3.36];
+  const yLines = [0.18, 0.42, 0.66, 0.9, 1.14];
+
+  return (
+    <group>
+      {yLines.map((y) => (
+        <mesh key={`net-h-${y}`} position={[depthSign * 1.24, y, 0]}>
+          <boxGeometry args={[0.018, 0.018, 7.18]} />
+          <meshBasicMaterial
+            color="#eaf7ff"
+            transparent
+            opacity={0.28}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      {zLines.map((z) => (
+        <mesh key={`net-v-${z}`} position={[depthSign * 1.24, 0.66, z]}>
+          <boxGeometry args={[0.018, 1.12, 0.018]} />
+          <meshBasicMaterial
+            color="#eaf7ff"
+            transparent
+            opacity={0.24}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      {[-3.62, 3.62].map((z) => (
+        <mesh
+          key={`net-side-${z}`}
+          position={[depthSign * 0.62, 0.68, z]}
+          rotation={[0, 0, depthSign * -0.34]}
+        >
+          <boxGeometry args={[1.34, 0.018, 0.018]} />
+          <meshBasicMaterial
+            color="#eaf7ff"
+            transparent
+            opacity={0.3}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -451,8 +445,8 @@ function createGrassTextures(length: number, width: number) {
   for (const texture of textures) {
     texture.wrapS = RepeatWrapping;
     texture.wrapT = RepeatWrapping;
-    texture.repeat.set(Math.max(3, length / 8), Math.max(3, width / 8));
-    texture.anisotropy = 8;
+    texture.repeat.set(Math.max(2, length / 16), Math.max(2, width / 16));
+    texture.anisotropy = 4;
     texture.minFilter = LinearFilter;
     texture.magFilter = LinearFilter;
     texture.needsUpdate = true;

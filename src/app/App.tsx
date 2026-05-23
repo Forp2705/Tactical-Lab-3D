@@ -5,7 +5,7 @@ import { exportCanvasMedia } from "@/export/media";
 import { LibraryView } from "@/library/LibraryView";
 import { SessionsView } from "@/sessions/SessionsView";
 import { loadSnapshot, saveSnapshot } from "@/state/db";
-import { useAppStore } from "@/state/useAppStore";
+import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { TeamView } from "@/team/TeamView";
 import { AppShell } from "@/ui/AppShell";
 import { VideoView } from "@/video/VideoView";
@@ -35,9 +35,7 @@ export function App() {
   );
   const presentationMode = useAppStore((state) => state.presentationMode);
   const selectedExercise =
-    viewerExerciseOverride ??
-    catalog.find((exercise) => exercise.id === selectedExerciseId) ??
-    catalog[0];
+    viewerExerciseOverride ?? getExerciseById(selectedExerciseId) ?? catalog[0];
   const camera = useAppStore((state) => state.camera);
   const time = useAppStore((state) => state.time);
   const playing = useAppStore((state) => state.playing);
@@ -46,6 +44,7 @@ export function App() {
   const showRuns = useAppStore((state) => state.showRuns);
   const showPasses = useAppStore((state) => state.showPasses);
   const showPress = useAppStore((state) => state.showPress);
+  const personalSpace = useAppStore((state) => state.personalSpace);
   const layers = useAppStore((state) => state.layers);
 
   useEffect(() => {
@@ -58,18 +57,6 @@ export function App() {
       mounted = false;
     };
   }, []);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      const state = useAppStore.getState();
-      if (!state.playing) return;
-      const next = state.time + 0.033 * state.speed;
-      const duration = selectedExercise.scene.duration;
-      state.setTime(next > duration ? 0 : next);
-      if (next > duration) state.togglePlaying();
-    }, 33);
-    return () => window.clearInterval(interval);
-  }, [selectedExercise.scene.duration]);
 
   useEffect(() => {
     const handleSave = () => {
@@ -86,10 +73,12 @@ export function App() {
         phase: state.phase,
         level: state.level,
         principle: state.principle,
+        exerciseVariants: state.exerciseVariants,
         showZones: state.showZones,
         showRuns: state.showRuns,
         showPasses: state.showPasses,
         showPress: state.showPress,
+        personalSpace: state.personalSpace,
         layers: state.layers,
         team: state.team,
         session: state.session,
@@ -155,6 +144,7 @@ export function App() {
                 showPasses={showPasses}
                 showPress={showPress}
                 layers={layers}
+                personalSpace={personalSpace}
               />
             </div>
             <div className="timeline">
@@ -248,6 +238,16 @@ export function App() {
                   />{" "}
                   Presión
                 </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={personalSpace}
+                    onChange={() =>
+                      useAppStore.getState().togglePersonalSpace()
+                    }
+                  />{" "}
+                  Separación auto
+                </label>
               </div>
               <div className="layer-grid" style={{ marginTop: 12 }}>
                 {TACTICAL_LAYERS.map((layer) => (
@@ -275,7 +275,7 @@ export function App() {
                 type="button"
                 className="secondary"
                 onClick={() =>
-                  useAppStore.getState().selectExercise(selectedExercise.id)
+                  useAppStore.getState().duplicateSelectedExercise()
                 }
               >
                 Duplicar como variante

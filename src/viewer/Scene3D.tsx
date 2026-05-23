@@ -1,4 +1,5 @@
 import type { Actor, Exercise, Layer } from "@/data";
+import { useAppStore } from "@/state/useAppStore";
 import {
   Billboard,
   ContactShadows,
@@ -43,6 +44,7 @@ type SceneProps = {
   showPasses: boolean;
   showPress: boolean;
   layers: Record<Layer, boolean>;
+  personalSpace?: boolean;
 };
 
 export function Scene3D({
@@ -54,6 +56,7 @@ export function Scene3D({
   showPasses,
   showPress,
   layers,
+  personalSpace = false,
 }: SceneProps) {
   const mode = exercise.scene.pitchMode;
   const layerState = useMemo(
@@ -73,7 +76,10 @@ export function Scene3D({
     },
   );
   const zones = showZones ? getVisibleZones(exercise, time, layerState) : [];
-  const frame = useMemo(() => getMatchFrame(exercise, time), [exercise, time]);
+  const frame = useMemo(
+    () => getMatchFrame(exercise, time, { personalSpace }),
+    [exercise, time, personalSpace],
+  );
   const topFocus = useMemo(() => getTopFocus(frame, mode), [frame, mode]);
 
   return (
@@ -88,6 +94,7 @@ export function Scene3D({
         gl.outputColorSpace = SRGBColorSpace;
       }}
     >
+      <PlaybackDriver duration={exercise.scene.duration} />
       <color attach="background" args={["#0a1924"]} />
       <fog attach="fog" args={["#0a1924", 100, 250]} />
       <SceneCamera cameraMode={cameraMode} mode={mode} topFocus={topFocus} />
@@ -176,6 +183,24 @@ export function Scene3D({
       </EffectComposer>
     </Canvas>
   );
+}
+
+function PlaybackDriver({ duration }: { duration: number }) {
+  useFrame((_state, delta) => {
+    const state = useAppStore.getState();
+    if (state.view !== "viewer" || !state.playing) return;
+
+    const next = state.time + delta * state.speed;
+    if (next >= duration) {
+      state.setTime(0);
+      if (state.playing) state.togglePlaying();
+      return;
+    }
+
+    state.setTime(next);
+  });
+
+  return null;
 }
 
 function TriggerMarker({

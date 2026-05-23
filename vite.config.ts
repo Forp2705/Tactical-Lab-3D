@@ -1,6 +1,9 @@
 import type { IncomingMessage } from "node:http";
+import type { ServerResponse } from "node:http";
 import react from "@vitejs/plugin-react";
 import { type Plugin, defineConfig, loadEnv } from "vite";
+import { ZodError } from "zod";
+import type { CoachMatchAdvice } from "./src/ai/CoachSchemas";
 
 type GeminiProxyEnv = {
   GEMINI_API_KEY?: string;
@@ -18,6 +21,21 @@ function readBody(req: IncomingMessage) {
     req.on("end", () => resolve(body));
     req.on("error", reject);
   });
+}
+
+function sendJson(res: ServerResponse, statusCode: number, payload: unknown) {
+  res.statusCode = statusCode;
+  res.setHeader("content-type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(payload));
+}
+
+async function readJsonBody(req: IncomingMessage) {
+  const rawBody = await readBody(req);
+  return JSON.parse(rawBody || "{}") as Record<string, unknown>;
+}
+
+function statusForError(error: unknown) {
+  return error instanceof ZodError || error instanceof SyntaxError ? 400 : 500;
 }
 
 function geminiProxy(env: GeminiProxyEnv): Plugin {
@@ -118,11 +136,138 @@ function geminiProxy(env: GeminiProxyEnv): Plugin {
   };
 }
 
+function coachAgentProxy(): Plugin {
+  return {
+    name: "tactical-lab-coach-agent-proxy",
+    configureServer(server) {
+      server.middlewares.use("/api/coach-agent", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        let input = "";
+
+        try {
+          const rawBody = await readBody(req);
+          const body = JSON.parse(rawBody || "{}") as { input?: unknown };
+          input = typeof body.input === "string" ? body.input.trim() : "";
+        } catch {
+          sendJson(res, 400, { error: "Invalid JSON body" });
+          return;
+        }
+
+        if (!input) {
+          sendJson(res, 400, { error: "Input is required" });
+          return;
+        }
+
+        try {
+          const module = await server.ssrLoadModule("/src/ai/CoachAgent.ts");
+          const { generateCoachResponse } = module as {
+            generateCoachResponse: (
+              userInput: string,
+            ) => Promise<CoachMatchAdvice>;
+          };
+          const advice = await generateCoachResponse(input);
+          sendJson(res, 200, advice);
+        } catch (error) {
+          console.error("[coach-agent] request failed", error);
+          sendJson(res, 500, {
+            error: "Coach agent failed to generate a response.",
+          });
+        }
+      });
+
+      server.middlewares.use("/api/post-match/generate", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const body = await readJsonBody(req);
+          const module = await server.ssrLoadModule(
+            "/src/ai/post-match/generatePostMatchReport.ts",
+          );
+          const { generatePostMatchReport } = module as {
+            generatePostMatchReport: (input: unknown) => Promise<unknown>;
+          };
+          const report = await generatePostMatchReport(body);
+          sendJson(res, 200, report);
+        } catch (error) {
+          console.error("[post-match] generate failed", error);
+          sendJson(res, statusForError(error), {
+            error:
+              error instanceof ZodError
+                ? "Invalid post-match input."
+                : "Post-match report generation failed.",
+          });
+        }
+      });
+
+      server.middlewares.use("/api/post-match/reports", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const body = await readJsonBody(req);
+          const module = await server.ssrLoadModule(
+            "/src/ai/post-match/storage.ts",
+          );
+          const { savePostMatchReport } = module as {
+            savePostMatchReport: (payload: unknown) => Promise<unknown>;
+          };
+          const savedReport = await savePostMatchReport(body);
+          sendJson(res, 200, savedReport);
+        } catch (error) {
+          console.error("[post-match] save failed", error);
+          sendJson(res, statusForError(error), {
+            error:
+              error instanceof ZodError
+                ? "Invalid report payload."
+                : "Post-match report could not be saved.",
+          });
+        }
+      });
+
+      server.middlewares.use("/api/post-match/memory", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const body = await readJsonBody(req);
+          const module = await server.ssrLoadModule(
+            "/src/ai/post-match/storage.ts",
+          );
+          const { commitMemoryCandidates } = module as {
+            commitMemoryCandidates: (payload: unknown) => Promise<unknown>;
+          };
+          const result = await commitMemoryCandidates(body);
+          sendJson(res, 200, result);
+        } catch (error) {
+          console.error("[post-match] memory commit failed", error);
+          sendJson(res, statusForError(error), {
+            error:
+              error instanceof ZodError
+                ? "Invalid memory candidate payload."
+                : "Memory candidates could not be committed.",
+          });
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "") as GeminiProxyEnv;
 
   return {
-    plugins: [react(), geminiProxy(env)],
+    plugins: [react(), geminiProxy(env), coachAgentProxy()],
     resolve: {
       alias: {
         "@": "/src",

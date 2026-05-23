@@ -1,4 +1,4 @@
-import { AiPlanSchema, type AiPlan } from "./outputSchemas";
+import { AiPlanSchema, type AiPlan } from "./CoachSchemas";
 import { fallbackPlan } from "./guardrails";
 import { buildPrompt, type AiContext } from "./PromptBuilder";
 

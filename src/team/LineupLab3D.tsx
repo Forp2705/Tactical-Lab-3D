@@ -9,10 +9,10 @@ import {
 } from "@/viewer/lib/coords";
 import {
   Billboard,
+  ContactShadows,
   Environment,
   Line,
-  OrbitControls,
-  PerspectiveCamera,
+  OrthographicCamera,
   Text,
 } from "@react-three/drei";
 import { Canvas, type ThreeEvent, useFrame } from "@react-three/fiber";
@@ -36,6 +36,7 @@ type Shape = {
   name: string;
   phase: ShapePhase;
   positions: Record<string, Vec2>;
+  notes?: string;
   createdAt: number;
 };
 
@@ -47,6 +48,13 @@ type RivalChip = {
   id: string;
   num: number;
   role: string;
+};
+
+type LabSnapshot = {
+  ownPositions: Record<string, Vec2>;
+  rivalPositions: Record<string, Vec2>;
+  shapes: Shape[];
+  rivals: RivalChip[];
 };
 
 const FORMATIONS: Record<string, FormationSlot[]> = {
@@ -169,7 +177,7 @@ const FORMATIONS: Record<string, FormationSlot[]> = {
   ],
 };
 
-const RIVALS: RivalChip[] = [
+const DEFAULT_RIVALS: RivalChip[] = [
   { id: "rv-gk", num: 1, role: "GK" },
   { id: "rv-lb", num: 3, role: "LB" },
   { id: "rv-cb1", num: 4, role: "CB" },
@@ -203,6 +211,10 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   const [showRival, setShowRival] = useState(true);
   const [showLines, setShowLines] = useState(true);
   const [showMetrics, setShowMetrics] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [rivals, setRivals] = useState<RivalChip[]>(DEFAULT_RIVALS);
+  const [history, setHistory] = useState<LabSnapshot[]>([]);
   const [assignments, setAssignments] = useState<string[]>(() =>
     autoAssign(players, FORMATIONS["4-3-3"]),
   );
@@ -220,6 +232,9 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     assignments[0] ?? null,
   );
   const [shapes, setShapes] = useState<Shape[]>(() => defaultShapes(players));
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(
+    () => shapes[0]?.id ?? null,
+  );
   const [fromShapeId, setFromShapeId] = useState<string | null>(
     () => shapes[0]?.id ?? null,
   );
@@ -249,13 +264,13 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   );
   const rivalChips = useMemo(
     () =>
-      RIVALS.map((rival, index) => ({
+      rivals.map((rival, index) => ({
         rival,
         role: rival.role,
         pos: rivalPositions[rival.id] ??
           RIVAL_BASE[index]?.pos ?? { x: 50, y: 50 },
       })),
-    [rivalPositions],
+    [rivalPositions, rivals],
   );
   const metrics = useMemo(
     () => computeMetrics(ownChips, showRival ? rivalChips : []),
@@ -263,9 +278,14 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   );
   const fromShape = shapes.find((shape) => shape.id === fromShapeId);
   const toShape = shapes.find((shape) => shape.id === toShapeId);
+  const selectedShape = shapes.find((shape) => shape.id === selectedShapeId);
   const transitionDistances = useMemo(
     () => computeTransitionDistances(players, fromShape, toShape),
     [players, fromShape, toShape],
+  );
+  const heatmapCells = useMemo(
+    () => computeHeatmapCells(ownChips, showRival ? rivalChips : []),
+    [ownChips, rivalChips, showRival],
   );
 
   useEffect(() => {
@@ -289,7 +309,76 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     return () => window.cancelAnimationFrame(frame);
   }, [fromShape, toShape, transitionPlaying]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable=true]")) {
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undo();
+        return;
+      }
+
+      if (event.key === " ") {
+        event.preventDefault();
+        setTransitionPlaying((value) => !value);
+      } else if (event.key.toLowerCase() === "s") {
+        setSnap((value) => !value);
+      } else if (event.key.toLowerCase() === "r") {
+        setShowRival((value) => !value);
+      } else if (event.key.toLowerCase() === "l") {
+        setShowLines((value) => !value);
+      } else if (event.key.toLowerCase() === "m") {
+        setShowMetrics((value) => !value);
+      } else if (event.key.toLowerCase() === "h") {
+        setShowHeatmap((value) => !value);
+      } else if (event.key.toLowerCase() === "c") {
+        setCompareMode((value) => !value);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
+
+  function pushHistory() {
+    const snapshot: LabSnapshot = {
+      ownPositions: clonePositions(ownPositions),
+      rivalPositions: clonePositions(rivalPositions),
+      shapes: shapes.map((shape) => ({
+        ...shape,
+        positions: clonePositions(shape.positions),
+      })),
+      rivals: rivals.map((rival) => ({ ...rival })),
+    };
+    setHistory((current) => [...current.slice(-24), snapshot]);
+  }
+
+  function undo() {
+    const snapshot = history.at(-1);
+    if (!snapshot) return;
+    setOwnPositions(clonePositions(snapshot.ownPositions));
+    setRivalPositions(clonePositions(snapshot.rivalPositions));
+    setShapes(
+      snapshot.shapes.map((shape) => ({
+        ...shape,
+        positions: clonePositions(shape.positions),
+      })),
+    );
+    setRivals(snapshot.rivals.map((rival) => ({ ...rival })));
+    setHistory((current) => current.slice(0, -1));
+  }
+
+  function beginDrag(target: DragTarget) {
+    pushHistory();
+    setDragTarget(target);
+  }
+
   function changeFormation(nextFormation: string) {
+    pushHistory();
     const nextSlots = FORMATIONS[nextFormation];
     const nextAssignments = preserveOrAutoAssign(
       assignments,
@@ -316,6 +405,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   }
 
   function captureShape(phase: ShapePhase) {
+    pushHistory();
     const shape: Shape = {
       id: crypto.randomUUID(),
       name: `${formation} ${labelForPhase(phase)} ${shapes.length + 1}`,
@@ -323,16 +413,77 @@ export function LineupLab3D({ players }: { players: Player[] }) {
       positions: Object.fromEntries(
         ownChips.map((chip) => [chip.player.id, chip.pos]),
       ),
+      notes: "",
       createdAt: Date.now(),
     };
     setShapes((current) => [...current, shape]);
+    setSelectedShapeId(shape.id);
     if (!fromShapeId) setFromShapeId(shape.id);
     else if (!toShapeId) setToShapeId(shape.id);
   }
 
   function loadShape(shape: Shape) {
+    pushHistory();
     setOwnPositions((current) => ({ ...current, ...shape.positions }));
+    setSelectedShapeId(shape.id);
     setTransition(0);
+  }
+
+  function deleteShape(shapeId: string) {
+    if (shapes.length <= 1) return;
+    pushHistory();
+    const nextShapes = shapes.filter((shape) => shape.id !== shapeId);
+    setShapes(nextShapes);
+    if (fromShapeId === shapeId) setFromShapeId(nextShapes[0]?.id ?? null);
+    if (toShapeId === shapeId)
+      setToShapeId(nextShapes[1]?.id ?? nextShapes[0]?.id ?? null);
+    if (selectedShapeId === shapeId)
+      setSelectedShapeId(nextShapes[0]?.id ?? null);
+  }
+
+  function updateShapeNotes(shapeId: string, notes: string) {
+    setShapes((current) =>
+      current.map((shape) =>
+        shape.id === shapeId ? { ...shape, notes } : shape,
+      ),
+    );
+  }
+
+  function addRival() {
+    pushHistory();
+    const nextNum = Math.min(
+      99,
+      Math.max(1, ...rivals.map((rival) => rival.num)) + 1,
+    );
+    const id = `rv-custom-${Date.now()}`;
+    const rival: RivalChip = { id, num: nextNum, role: "ST" };
+    setRivals((current) => [...current, rival]);
+    setRivalPositions((current) => ({
+      ...current,
+      [id]: snapPitch({ x: 50 + (rivals.length % 3) * 5, y: 50 }),
+    }));
+    setShowRival(true);
+  }
+
+  function removeRival(rivalId: string) {
+    pushHistory();
+    setRivals((current) => current.filter((rival) => rival.id !== rivalId));
+    setRivalPositions((current) => {
+      const next = { ...current };
+      delete next[rivalId];
+      return next;
+    });
+  }
+
+  function exportLineupPng() {
+    const canvas = document.querySelector(
+      ".lineup-lab-canvas canvas",
+    ) as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `lineup-lab-${Date.now()}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
   }
 
   function updateTransition(value: number) {
@@ -342,6 +493,12 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         blendPositions(fromShape.positions, toShape.positions, value),
       );
     }
+  }
+
+  function resetTransition() {
+    setTransitionPlaying(false);
+    setCompareMode(false);
+    updateTransition(0);
   }
 
   function saveCurrentLineup(apply = false) {
@@ -386,6 +543,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
           <button
             type="button"
             onClick={() => {
+              pushHistory();
               const next = autoAssign(players, slots);
               setAssignments(next);
               setOwnPositions(positionsFromAssignments(next, slots));
@@ -414,7 +572,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         <div className="lineup-lab-canvas">
           <Canvas
             shadows="soft"
-            dpr={[1, 2]}
+            dpr={[1, 1.25]}
             gl={{ antialias: true, preserveDrawingBuffer: true }}
             onCreated={({ gl }) => {
               gl.toneMapping = ACESFilmicToneMapping;
@@ -424,15 +582,11 @@ export function LineupLab3D({ players }: { players: Player[] }) {
           >
             <color attach="background" args={["#07131e"]} />
             <fog attach="fog" args={["#07131e", 110, 230]} />
-            <PerspectiveCamera makeDefault position={[0, 62, 52]} fov={31} />
-            <OrbitControls
-              enableDamping
-              enablePan={false}
-              minDistance={38}
-              maxDistance={92}
-              minPolarAngle={0.58}
-              maxPolarAngle={1.06}
-              target={[0, 0, 0]}
+            <OrthographicCamera
+              makeDefault
+              position={[0, 130, 0]}
+              rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+              zoom={5.05}
             />
             <Environment preset="park" background={false} blur={0.35} />
             <hemisphereLight intensity={0.82} groundColor="#315f35" />
@@ -440,18 +594,45 @@ export function LineupLab3D({ players }: { players: Player[] }) {
               position={[20, 42, 18]}
               intensity={1.35}
               castShadow
-              shadow-mapSize-width={2048}
-              shadow-mapSize-height={2048}
+              shadow-mapSize-width={1024}
+              shadow-mapSize-height={1024}
               shadow-radius={6}
               shadow-bias={-0.0001}
             />
             <Pitch3D mode="full" />
+            <ContactShadows
+              position={[0, 0.08, 0]}
+              opacity={0.24}
+              blur={3}
+              far={8}
+              resolution={512}
+              scale={130}
+            />
             <DragPlane
               dragTarget={dragTarget}
               snap={snap}
               onMove={moveChip}
               onRelease={() => setDragTarget(null)}
             />
+            {showHeatmap ? <HeatmapLayer cells={heatmapCells} /> : null}
+            {fromShape && toShape ? (
+              <TransitionTrails
+                players={players}
+                fromShape={fromShape}
+                toShape={toShape}
+                visible={
+                  compareMode ||
+                  transitionPlaying ||
+                  (transition > 0 && transition < 1)
+                }
+              />
+            ) : null}
+            {compareMode && toShape ? (
+              <ComparisonGhosts
+                players={players}
+                positions={toShape.positions}
+              />
+            ) : null}
             {showLines ? (
               <TacticalLines chips={ownChips} metrics={metrics} />
             ) : null}
@@ -473,7 +654,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
                 onPointerDown={() => {
                   setSelectedId(chip.player.id);
                   useAppStore.getState().setSelectedPlayerId(chip.player.id);
-                  setDragTarget({ kind: "own", playerId: chip.player.id });
+                  beginDrag({ kind: "own", playerId: chip.player.id });
                 }}
               />
             ))}
@@ -496,7 +677,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
                       dragTarget.rivalId === chip.rival.id
                     }
                     onPointerDown={() =>
-                      setDragTarget({ kind: "rival", rivalId: chip.rival.id })
+                      beginDrag({ kind: "rival", rivalId: chip.rival.id })
                     }
                   />
                 ))
@@ -529,20 +710,46 @@ export function LineupLab3D({ players }: { players: Player[] }) {
             </div>
             <div className="shape-list">
               {shapes.map((shape) => (
-                <button
+                <div
                   key={shape.id}
-                  type="button"
-                  className="shape-row"
-                  onClick={() => loadShape(shape)}
+                  className={`shape-row-wrap ${
+                    selectedShapeId === shape.id ? "active" : ""
+                  }`}
                 >
-                  <ShapeMiniMap positions={shape.positions} />
-                  <span>
-                    <b>{shape.name}</b>
-                    <small>{labelForPhase(shape.phase)}</small>
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    className="shape-row"
+                    onClick={() => loadShape(shape)}
+                  >
+                    <ShapeMiniMap positions={shape.positions} />
+                    <span>
+                      <b>{shape.name}</b>
+                      <small>{labelForPhase(shape.phase)}</small>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary tiny-button"
+                    disabled={shapes.length <= 1}
+                    onClick={() => deleteShape(shape.id)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
               ))}
             </div>
+            {selectedShape ? (
+              <label className="shape-notes">
+                Notas del shape
+                <textarea
+                  value={selectedShape.notes ?? ""}
+                  onChange={(event) =>
+                    updateShapeNotes(selectedShape.id, event.target.value)
+                  }
+                  placeholder="Ej: bloque medio, lateral salta solo con pase orientado..."
+                />
+              </label>
+            ) : null}
           </div>
 
           <div className="lab-panel-card">
@@ -584,13 +791,26 @@ export function LineupLab3D({ players }: { players: Player[] }) {
               onChange={(event) => updateTransition(Number(event.target.value))}
             />
             <div className="toolbar compact">
-              <button type="button" onClick={() => setTransitionPlaying(true)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCompareMode(false);
+                  setTransitionPlaying(true);
+                }}
+              >
                 Play transición
               </button>
               <button
                 type="button"
                 className="secondary"
-                onClick={() => updateTransition(0)}
+                onClick={() => setCompareMode((value) => !value)}
+              >
+                Comparar {compareMode ? "on" : "off"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={resetTransition}
               >
                 Reset
               </button>
@@ -618,7 +838,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
                 value={`${metrics.compactness.toFixed(1)}m`}
               />
               <Metric label="Duelos" value={String(metrics.duels)} />
-              <Metric label="Espacios" value={String(metrics.freeSpaces)} />
+              <Metric label="Heat" value={`${metrics.heatScore.toFixed(0)}%`} />
             </div>
             <label className="toggle-line">
               <input
@@ -636,6 +856,47 @@ export function LineupLab3D({ players }: { players: Player[] }) {
               />
               Centro de masa y badges
             </label>
+            <label className="toggle-line">
+              <input
+                type="checkbox"
+                checked={showHeatmap}
+                onChange={() => setShowHeatmap((value) => !value)}
+              />
+              Heatmap de espacios
+            </label>
+          </div>
+
+          <div className="lab-panel-card">
+            <h4>Rivales</h4>
+            <div className="toolbar compact">
+              <button type="button" onClick={addRival}>
+                Agregar rival
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setShowRival((value) => !value)}
+              >
+                Rival {showRival ? "on" : "off"}
+              </button>
+            </div>
+            <div className="rival-list">
+              {rivals.map((rival) => (
+                <div key={rival.id} className="rival-row">
+                  <span>
+                    #{rival.num} {rival.role}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary tiny-button"
+                    disabled={rivals.length <= 1}
+                    onClick={() => removeRival(rival.id)}
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="lab-panel-card">
@@ -647,10 +908,29 @@ export function LineupLab3D({ players }: { players: Player[] }) {
               <button type="button" onClick={() => saveCurrentLineup(true)}>
                 Usar en visor
               </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!history.length}
+                onClick={undo}
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={exportLineupPng}
+              >
+                Export PNG
+              </button>
             </div>
             <p className="muted">
               Esto crea una instancia nueva desde el shape actual; no pisa el
               catalogo.
+            </p>
+            <p className="muted">
+              Atajos: espacio play, Ctrl+Z undo, S snap, R rival, L lineas, M
+              metricas, H heatmap, C comparar.
             </p>
           </div>
         </aside>
@@ -700,6 +980,129 @@ function DragPlane({
       <planeGeometry args={[length, width]} />
       <meshBasicMaterial transparent opacity={0} depthWrite={false} />
     </mesh>
+  );
+}
+
+type HeatmapCell = {
+  id: string;
+  x: number;
+  z: number;
+  value: number;
+};
+
+function HeatmapLayer({ cells }: { cells: HeatmapCell[] }) {
+  return (
+    <group>
+      {cells.map((cell) => (
+        <mesh
+          key={cell.id}
+          position={[cell.x, 0.115, cell.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[8.5, 6.8]} />
+          <meshBasicMaterial
+            color={cell.value > 0.72 ? "#facc15" : "#38bdf8"}
+            transparent
+            opacity={0.08 + cell.value * 0.18}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function TransitionTrails({
+  players,
+  fromShape,
+  toShape,
+  visible,
+}: {
+  players: Player[];
+  fromShape: Shape;
+  toShape: Shape;
+  visible: boolean;
+}) {
+  if (!visible) return null;
+
+  return (
+    <group>
+      {Object.entries(fromShape.positions).map(([playerId, from]) => {
+        const to = toShape.positions[playerId];
+        const player = players.find((item) => item.id === playerId);
+        if (!to || !player) return null;
+        const a = pitchToWorld(from, "full");
+        const b = pitchToWorld(to, "full");
+        const distance = Math.hypot(a.x - b.x, a.z - b.z);
+        const mid = [(a.x + b.x) / 2, 1.02, (a.z + b.z) / 2] as const;
+
+        return (
+          <group key={`trail-${playerId}`}>
+            <Line
+              points={[
+                [a.x, 0.72, a.z],
+                [b.x, 0.72, b.z],
+              ]}
+              color="#facc15"
+              lineWidth={1.8}
+              transparent
+              opacity={0.62}
+            />
+            <Billboard position={mid}>
+              <mesh position={[0, 0, -0.01]}>
+                <planeGeometry args={[2.15, 0.5]} />
+                <meshBasicMaterial color="#061018" transparent opacity={0.84} />
+              </mesh>
+              <Text
+                fontSize={0.17}
+                color="#facc15"
+                anchorX="center"
+                anchorY="middle"
+              >
+                {`${lastName(player.name)} ${distance.toFixed(0)}m`}
+              </Text>
+            </Billboard>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function ComparisonGhosts({
+  players,
+  positions,
+}: {
+  players: Player[];
+  positions: Record<string, Vec2>;
+}) {
+  return (
+    <group>
+      {Object.entries(positions).map(([playerId, pos]) => {
+        const player = players.find((item) => item.id === playerId);
+        if (!player) return null;
+        const world = pitchToWorld(pos, "full");
+
+        return (
+          <group key={`ghost-${playerId}`} position={[world.x, 0.2, world.z]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[1.8, 2.18, 48]} />
+              <meshBasicMaterial color="#facc15" transparent opacity={0.55} />
+            </mesh>
+            <Billboard position={[0, 1.0, 0]}>
+              <Text
+                fontSize={0.18}
+                color="#facc15"
+                anchorX="center"
+                anchorY="middle"
+              >
+                {lastName(player.name).toUpperCase()}
+              </Text>
+            </Billboard>
+          </group>
+        );
+      })}
+    </group>
   );
 }
 
@@ -887,7 +1290,7 @@ type TacticalMetrics = {
   depth: number;
   compactness: number;
   duels: number;
-  freeSpaces: number;
+  heatScore: number;
   center: { x: number; z: number };
 };
 
@@ -901,11 +1304,10 @@ function computeMetrics(
       depth: 0,
       compactness: 0,
       duels: 0,
-      freeSpaces: 0,
+      heatScore: 0,
       center: { x: 0, z: 0 },
     };
   }
-  const dims = pitchDimensions("full");
   const ownWorld = own.map((chip) => pitchToWorld(chip.pos, "full"));
   const minX = Math.min(...ownWorld.map((point) => point.x));
   const maxX = Math.max(...ownWorld.map((point) => point.x));
@@ -920,45 +1322,72 @@ function computeMetrics(
       (sum, point) => sum + Math.hypot(point.x - center.x, point.z - center.z),
       0,
     ) / ownWorld.length;
-  const duels = rivals.reduce((count, rival) => {
-    const rivalWorld = pitchToWorld(rival.pos, "full");
-    return (
-      count +
-      ownWorld.filter(
-        (point) =>
-          Math.hypot(point.x - rivalWorld.x, point.z - rivalWorld.z) < 3.5,
-      ).length
-    );
-  }, 0);
-  const freeSpaces = countFreeSpaces(own, rivals, dims.length, dims.width);
+  const duels = countLikelyDuels(own, rivals);
+  const heatmap = computeHeatmapCells(own, rivals);
+  const heatScore =
+    heatmap.reduce((sum, cell) => sum + cell.value, 0) /
+    Math.max(1, heatmap.length);
 
   return {
     width: maxZ - minZ,
     depth: maxX - minX,
     compactness,
     duels,
-    freeSpaces,
+    heatScore: heatScore * 100,
     center,
   };
 }
 
-function countFreeSpaces(
+function computeHeatmapCells(
   own: Array<{ pos: Vec2 }>,
   rivals: Array<{ pos: Vec2 }>,
-  length: number,
-  width: number,
-) {
+): HeatmapCell[] {
+  const { length, width } = pitchDimensions("full");
   const all = [...own, ...rivals].map((chip) => pitchToWorld(chip.pos, "full"));
-  let spaces = 0;
+  const cells: HeatmapCell[] = [];
+
   for (let x = -length / 2 + 12; x <= length / 2 - 12; x += 18) {
     for (let z = -width / 2 + 10; z <= width / 2 - 10; z += 14) {
       const nearest = Math.min(
-        ...all.map((point) => Math.hypot(point.x - x, point.z - z)),
+        ...(all.length
+          ? all.map((point) => Math.hypot(point.x - x, point.z - z))
+          : [18]),
       );
-      if (nearest > 9) spaces += 1;
+      const value = Math.max(0, Math.min(1, (nearest - 4) / 14));
+      cells.push({ id: `heat-${x}-${z}`, x, z, value });
     }
   }
-  return spaces;
+
+  return cells;
+}
+
+function countLikelyDuels(
+  own: Array<{ player: Player; role: string; pos: Vec2 }>,
+  rivals: Array<{ rival: RivalChip; role: string; pos: Vec2 }>,
+) {
+  const pairs = new Set<string>();
+
+  for (const rival of rivals) {
+    const rivalWorld = pitchToWorld(rival.pos, "full");
+    const nearest = own
+      .map((chip) => {
+        const ownWorld = pitchToWorld(chip.pos, "full");
+        return {
+          playerId: chip.player.id,
+          distance: Math.hypot(
+            ownWorld.x - rivalWorld.x,
+            ownWorld.z - rivalWorld.z,
+          ),
+        };
+      })
+      .sort((a, b) => a.distance - b.distance)[0];
+
+    if (nearest && nearest.distance < 3.8) {
+      pairs.add(`${nearest.playerId}-${rival.rival.id}`);
+    }
+  }
+
+  return pairs.size;
 }
 
 function groupLinePlayers(
@@ -1073,7 +1502,7 @@ function compatibleRoleAliases(role: string) {
 
 function rivalBasePositions(): Record<string, Vec2> {
   return Object.fromEntries(
-    RIVALS.map((rival, index) => [
+    DEFAULT_RIVALS.map((rival, index) => [
       rival.id,
       RIVAL_BASE[index]?.pos ?? { x: 50, y: 50 },
     ]),
@@ -1092,6 +1521,7 @@ function defaultShapes(players: Player[]): Shape[] {
       name: "4-3-3 ataque",
       phase: "attack",
       positions: base,
+      notes: "Shape base ofensivo.",
       createdAt: Date.now(),
     },
     {
@@ -1104,9 +1534,16 @@ function defaultShapes(players: Player[]): Shape[] {
           { x: Math.max(8, pos.x - 18), y: 50 + (pos.y - 50) * 0.78 },
         ]),
       ),
+      notes: "Repliegue a 4-5-1 compacto.",
       createdAt: Date.now(),
     },
   ];
+}
+
+function clonePositions(positions: Record<string, Vec2>): Record<string, Vec2> {
+  return Object.fromEntries(
+    Object.entries(positions).map(([id, pos]) => [id, { ...pos }]),
+  );
 }
 
 function blendPositions(

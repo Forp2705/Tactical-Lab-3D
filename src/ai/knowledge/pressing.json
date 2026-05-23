@@ -1,0 +1,391 @@
+[
+  {
+    "category": "pressing",
+    "principle": "Aplicar presión coordinada desde el campo rival para recuperar la pelota cerca del arco contrario y generar ocasión inmediata",
+    "context": "High press o presión alta, utilizando bloque alto en campo rival",
+    "risk": "Expone espacios detrás de la línea ofensiva si el pressing no es efectivo",
+    "tags": [
+      "alta presión",
+      "bloque alto",
+      "recuperación peligrosa"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Invitar al rival a avanzar hasta la línea de medio campo y activar la presión al cruzar esa línea",
+    "context": "Mid-block o presión media, con bloque medio entre áreas",
+    "risk": "Permite al rival controlar el mediocampo si no se presiona en el momento correcto",
+    "tags": [
+      "presión media",
+      "bloque medio",
+      "activación"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Mantener a los diez jugadores de campo detrás de la pelota en el tercio defensivo propio para priorizar solidez defensiva",
+    "context": "Low block o bloque bajo, con enfoque en negar espacio dentro y alrededor del área",
+    "risk": "Limita las opciones ofensivas y depende de acciones individuales para generar goles",
+    "tags": [
+      "bloque bajo",
+      "defensa profunda",
+      "solidez"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Alternar entre mid-block y low-block según el estado del partido o zonas del rival",
+    "context": "Bloque híbrido que adapta su posición defensiva según necesidades tácticas",
+    "risk": "Puede crear confusión táctica si los jugadores no entienden claramente los cambios de bloque",
+    "tags": [
+      "bloque híbrido",
+      "adaptativo",
+      "flexibilidad"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Aplicar presión inmediata tras la pérdida de balón para aprovechar la vulnerabilidad del rival en transición",
+    "context": "Counter-pressing o presión contragolpe, en los segundos inmediatamente después del cambio de posesión",
+    "risk": "Si falla, deja al equipo desorganizado y expone espacios en transición defensiva",
+    "tags": [
+      "counter-pressing",
+      "transición",
+      "presión inmediata"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "La intensidad del pressing es primariamente una decisión táctica del entrenador, no un reflejo de los jugadores disponibles",
+    "context": "Coordinación del pressing según instrucciones específicas del cuerpo técnico",
+    "risk": "Cambios frecuentes en la filosofía de pressing pueden generar confusión en los jugadores",
+    "tags": [
+      "decisión táctica",
+      "instrucciones",
+      "entrenador"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Organizar el pressing basado en los movimientos y posiciones de los rivales específicos asignados a cada jugador",
+    "context": "Orientación al hombre (man-oriented), con marcaje individual flexible o rígido",
+    "risk": "Dificulta la adaptación ante movimientos no previstos si el marcaje es demasiado rígido",
+    "tags": [
+      "marcaje individual",
+      "orientación hombre",
+      "flexible"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Mantener presión mínima y enfocarse puramente en la contención defensiva",
+    "context": "Bloque bajo pasivo, con prioridad en la contención sobre la recuperación agresiva",
+    "risk": "Permite al rival controlar el juego y crear oportunidades sin presión constante",
+    "tags": [
+      "bloque pasivo",
+      "contención",
+      "mínima presión"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Caer profundo pero aplicar presión selectiva o gatillos específicos para ganar la pelota",
+    "context": "Bloque bajo activo, combinando defensa profunda con presión estratégica",
+    "risk": "Requiere alta coordinación táctica para identificar correctamente los momentos de presión",
+    "tags": [
+      "bloque activo",
+      "presión selectiva",
+      "gatillos"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "compactness",
+    "context": "compactación",
+    "risk": "vulnerable",
+    "tags": [
+      "compactness"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Construir una trampa de presión en tres fases: invitar al rival a un pase seguro, cerrar todas las salidas con presión multidireccional y forzar la pérdida o pase desesperado.",
+    "context": "Se aplica cuando el equipo busca obligar al rival a jugar en zonas de alto riesgo, como la banda baja donde la línea lateral actúa como defensa adicional.",
+    "risk": "Si la fase de invitación no es convincente, el rival puede detectar la trampa y evitar el pase, perdiendo la oportunidad de recuperar la pelota.",
+    "tags": [
+      "pressing",
+      "traps",
+      "positional-manipulation"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Definir gatillos específicos (triggers) que, al ser ejecutados por el rival, activen la presión coordinada de todo el bloque defensivo.",
+    "context": "Ejemplos de gatillos: pase lateral lento entre centrales, pase atrás al arquero, receptor de espaldas al arco, conducción con cabeza baja, pase a jugador aislado, rebote 50/50, saque de banda en zona propia.",
+    "risk": "Un exceso de gatillos puede generar presión prematura y desorganizar la línea defensiva si el rival no los ejecuta.",
+    "tags": [
+      "pressing",
+      "triggers",
+      "defensive-coordination"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Utilizar la métrica PPDA para calibrar la intensidad del pressing: valores bajos (≈6) indican alta presión, mientras que valores más altos indican mayor tolerancia al juego del rival.",
+    "context": "Se emplea durante la fase de construcción del rival en los tercios defensivo y medio para decidir si mantener un pressing alto o bajar la línea.",
+    "risk": "Basarse exclusivamente en PPDA puede pasar por alto situaciones tácticas específicas, como la necesidad de cubrir espacios o la calidad del rival en posesión.",
+    "tags": [
+      "build-up",
+      "ppda",
+      "pressing-intensity"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "presionar con selectividad en bloques bajos, priorizando momentos clave para comprometerse",
+    "context": "equipos con PPDA alto (13+) mantienen defensa pasiva, permitiendo más pases antes de actuar",
+    "risk": "riesgo de dejar espacios si la selección no se alinea con la estructura defensiva",
+    "tags": [
+      "block",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "mantener forma estructurada durante presión moderada (PPDA 9-12)",
+    "context": "equipos mid-block combinan pressing selectivo con cobertura defensiva",
+    "risk": "pérdida de compactación si el pressing es vencido sin reorganización",
+    "tags": [
+      "compactness",
+      "pressing"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "usar formaciones como 4-2-4 para facilitar transición al presionar",
+    "context": "estructura 4-2-4 permite caer a mid-block 4-4-2 si el pressing falla",
+    "risk": "vulnerabilidad en bandas si no se controla el cambio de balón",
+    "tags": [
+      "build-up",
+      "pressing"
+    ]
+  },
+  {
+    "category": "strikers",
+    "principle": "tres delanteros presionando inmediatamente a defensores rivales para forzar errores",
+    "context": "estrategia de Liverpool con PPDA bajo (4-5) mediante presión sistemática",
+    "risk": "agotamiento físico si no se recupera rápidamente",
+    "tags": [
+      "strikers",
+      "pressing"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "mediocampistas cubriendo opciones de pase durante presión alta",
+    "context": "coordinación entre mediocampistas y delanteros para crear errores forzados",
+    "risk": "falta de apoyo si los mediocampistas no se posicionan correctamente",
+    "tags": [
+      "midfield",
+      "pressing"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "laterales defendiendo alto para forzar pases hacia zonas centrales",
+    "context": "variante Klopp en 4-3-3 que guía el build-up rival al centro",
+    "risk": "espacio en bandas si los laterales no suben a tiempo",
+    "tags": [
+      "wide-areas",
+      "pressing"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "formación 4-3-2-1 pirámide para cerrar zonas centrales",
+    "context": "evitar que el rival juegue en áreas centrales con presión concentrada",
+    "risk": "dificultad para cubrir laterales si el pivote no se mueve",
+    "tags": [
+      "defensive-transition",
+      "compactness"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "compromiso inmediato",
+    "context": "decision sobre dirección del pressing",
+    "risk": "fatiga y sostenibilidad",
+    "tags": [
+      "pressing",
+      "fatiga"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Los rivales pueden romper el pressing cambiando rápidamente de orientación al lado lejano.",
+    "context": "Durante la presión alta, los rivales ajustan su dirección para evitar la marca.",
+    "risk": "Si no se anticipa, se pierde la cobertura defensiva.",
+    "tags": [
+      "pressing"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "El uso de un tercer hombre con pase corto y devolución a un tercero libre desestabiliza el pressing.",
+    "context": "Estrategia para neutralizar la presión en el mediocampo.",
+    "risk": "Requiere coordinación para evitar espacios vacíos.",
+    "tags": [
+      "pressing",
+      "midfield"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "El pivote bajando a la línea de fondo genera un 3v2 en el rival.",
+    "context": "Técnica para crear desequilibrio numérico en el rival.",
+    "risk": "Si no se ejecuta con precisión, se pierde el control.",
+    "tags": [
+      "pressing",
+      "build-up"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "Los mediocampistas deben actuar como 'motores' físicos para cubrir espacios entre líneas.",
+    "context": "En sistemas de alta intensidad, su resistencia es clave.",
+    "risk": "Falta de resistencia física puede llevar a desastres defensivos.",
+    "tags": [
+      "midfield",
+      "pressing"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "La compactación vertical y horizontal es esencial para evitar espacios en el rival.",
+    "context": "Modelo de Simeone en Atlético Madrid.",
+    "risk": "Si no se mantiene, los rivales explotan huecos.",
+    "tags": [
+      "compactness",
+      "block"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "El pressing debe ser una herramienta para recuperar el control, no como fin en sí mismo.",
+    "context": "Enfoque de Guardiola en Manchester City.",
+    "risk": "Presión excesiva sin objetivo claro puede generar errores.",
+    "tags": [
+      "build-up",
+      "pressing"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "Los extremos deben invertir y comprimir el centro tras un cambio de orientación del rival.",
+    "context": "Estrategia para neutralizar el ataque lateral.",
+    "risk": "Si no se coordina, se deja espacio en el centro.",
+    "tags": [
+      "wide-areas",
+      "pressing"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "El arquero como 'sweeper-keeper' cubre la espalda de la línea defensiva alta.",
+    "context": "En sistemas de pressing alto.",
+    "risk": "Si no tiene buen juego con los pies, se expone.",
+    "tags": [
+      "defensive-transition",
+      "pressing"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "reconocer el gatillo (vista al portador y entorno)",
+    "context": "cuando el equipo actúa como primer presor al recuperar el balón",
+    "risk": "retraso en la reacción que permite al rival avanzar",
+    "tags": [
+      "gatillo",
+      "reconocimiento",
+      "press"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "arrancar a máxima velocidad los primeros 5 metros",
+    "context": "iniciar la presión tras identificar el gatillo",
+    "risk": "exposición a regates si se sobrepasa al delantero",
+    "tags": [
+      "aceleración",
+      "primeros-5m",
+      "press"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "reducir velocidad al llegar para no ser superado por gambeta",
+    "context": "al acercarse al portador del balón",
+    "risk": "pérdida de impulso y oportunidad de presión efectiva",
+    "tags": [
+      "desaceleración",
+      "gambeta",
+      "press"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "orientar el cuerpo para forzar dirección (interior abierto = forzar afuera)",
+    "context": "para canalizar al atacante hacia zonas menos peligrosas",
+    "risk": "mal orientación que lleva al atacante a zona de peligro",
+    "tags": [
+      "orientación-cuerpo",
+      "dirección",
+      "press"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "aplicar sombra de cobertura para anular receptor a espaldas",
+    "context": "para bloquear opciones de pase del receptor",
+    "risk": "exposición si la sombra falla y deja espacio",
+    "tags": [
+      "sombra-cobertura",
+      "cobertura",
+      "press"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "no tirarse: mantener pies en el suelo, demorar para que llegue cobertura",
+    "context": "para evitar perder posición y esperar apoyo",
+    "risk": "pérdida de tiempo que permite al rival avanzar",
+    "tags": [
+      "pies-en-suelo",
+      "cobertura",
+      "press"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "comunicar al compañero más cercano la dirección de la presión",
+    "context": "para coordinar la presión colectiva",
+    "risk": "falta de comunicación genera descoordinación",
+    "tags": [
+      "comunicación",
+      "coordinación",
+      "press"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "si la presión es exitosa: cerrar al receptor; si falla: replegar al lateral propio",
+    "context": "para decidir entre cerrar o replegar según el resultado",
+    "risk": "replegar demasiado tarde puede dejar espacios",
+    "tags": [
+      "cierre",
+      "replegar",
+      "lateral",
+      "press"
+    ]
+  }
+]

@@ -1,0 +1,564 @@
+[
+  {
+    "category": "build-up",
+    "principle": "Dividir el build-up en tres fases: tercio defensivo (salida limpia y atracción de presión), tercio medio (ruptura de líneas mediante sobrecargas) y tercio ofensivo (penetración y finalización).",
+    "context": "Para estructurar la progresión ofensiva del equipo desde el tercio defensivo hacia el ataque.",
+    "risk": "Si no se respetan las fases, el equipo puede apresurarse en el tercio medio o perder el control en el tercio ofensivo.",
+    "tags": [
+      "fases",
+      "progresion",
+      "control"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Crear superioridad numérica en zonas clave, por ejemplo, con un mediocampista que se desmarca a la línea de fondo para generar 3v2 contra los delanteros rivales.",
+    "context": "En la primera fase de build-up, contra defensas rivales con dos delanteros.",
+    "risk": "Si el rival ajusta con un mediocampista que presiona, se puede perder la superioridad numérica y quedar en inferioridad.",
+    "tags": [
+      "superioridad-numerica",
+      "mediocampista",
+      "linea-fondo"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Recibir la pelota en espacios donde el rival no puede defender inmediatamente, aprovechando huecos entre líneas.",
+    "context": "Durante la progresión en el tercio medio, buscando recepciones en zonas de difícil presión.",
+    "risk": "Si el espacio no está bien ocupado, el jugador puede recibir bajo presión y perder la pelota.",
+    "tags": [
+      "espacio",
+      "recepcion",
+      "presion"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "Provocar superioridad cualitativa en duelos individuales en las bandas, como un extremo veloz frente a un lateral lento.",
+    "context": "En la fase de progresión hacia el tercio ofensivo, buscando desequilibrios en las bandas.",
+    "risk": "Si el duelo es desfavorable, el equipo puede perder la posesión en zona de alto riesgo.",
+    "tags": [
+      "duelos",
+      "bandas",
+      "velocidad"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Utilizar movimientos coordinados y sincronizados entre compañeros para generar superioridad dinámica, como desmarques combinados.",
+    "context": "En cualquier fase de build-up, especialmente bajo presión rival, para crear opciones de pase y desorganizar.",
+    "risk": "Si los movimientos no están coordinados, pueden dejar espacios que el rival aproveche para contraatacar.",
+    "tags": [
+      "movimiento",
+      "sincronizacion",
+      "entendimiento"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Siempre tener un hombre libre delante de la primera línea de presión rival para crear superioridad numérica y maximizar opciones de pase verticales.",
+    "context": "En la fase de build-up, cuando el equipo sale desde el tercio defensivo.",
+    "risk": "Si no se logra, el equipo puede quedar atrapado con pocas opciones de pase y sufrir pérdidas en zona peligrosa.",
+    "tags": [
+      "free-man",
+      "superioridad-numerica",
+      "pase-vertical"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Dividir la cancha en zonas y asignar jugadores, asegurando nunca más de tres compañeros en el mismo plano horizontal ni más de dos en el mismo plano vertical para crear opciones de pase.",
+    "context": "En la fase de build-up, para estructurar el juego posicional y el reparto de responsabilidades.",
+    "risk": "Si se violan estas reglas, se reducen las líneas de pase y se facilita la presión rival.",
+    "tags": [
+      "zonas",
+      "posicionamiento",
+      "opciones-pase"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Ocupar los medios espacios durante el build-up para progresar a través de los tercios, permitiendo combinaciones con zonas centrales y de banda y creando triángulos y rombos.",
+    "context": "Cuando el equipo busca romper líneas en el tercio medio, utilizando los medios espacios como zona de transición.",
+    "risk": "Si no se ocupan, el equipo puede ser predecible y más fácil de presionar, sin generar superioridad en zonas clave.",
+    "tags": [
+      "medios-espacios",
+      "combinacion",
+      "romper-lineas"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Proveer amplitud para estirar la presión rival y profundidad para explotar espacios, construyendo líneas de pase limpias y activando al arquero como playmaker.",
+    "context": "En la fase de build-up, para desorganizar la estructura defensiva rival y crear huecos.",
+    "risk": "Si falta amplitud, la presión rival se concentra; si falta profundidad, no se explotan espacios detrás de la defensa.",
+    "tags": [
+      "amplitud",
+      "profundidad",
+      "arquero-playmaker"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "En la salida Lavolpiana, el pivote baja 10-12 metros para formar un triángulo con los centrales, creando superioridad numérica 3v2 contra los delanteros rivales.",
+    "context": "Cuando el equipo sale desde el tercio defensivo contra una presión con dos delanteros, para superar la primera línea de presión.",
+    "risk": "Si el pivote no baja lo suficiente o a tiempo, se pierde la superioridad numérica y el equipo puede quedar en inferioridad.",
+    "tags": [
+      "lavolpiana",
+      "pivote",
+      "triangulo"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Gestionar el tempo del build-up: acelerar para progresar rápidamente o reducir para atraer presión y crear espacios.",
+    "context": "Durante la fase de salida, según la organización defensiva rival y el contexto del partido.",
+    "risk": "Si el tempo es inadecuado, se puede facilitar la presión rival o perder la iniciativa ofensiva.",
+    "tags": [
+      "tempo",
+      "velocidad",
+      "presion"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "Los interiores (#8) bajan profundo mientras los extremos ocupan los espacios entre líneas, creando superioridad numérica 4v2 en el mediocampo y 2v1 contra los extremos rivales.",
+    "context": "Durante la fase de build‑up o posesión, cuando se busca romper la presión alta del rival.",
+    "risk": "Si los extremos no mantienen la posición adecuada, el equipo puede quedar desprotegido en los flancos y vulnerar a contraataques.",
+    "tags": [
+      "midfield",
+      "wide-areas",
+      "compactness"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Los laterales invertidos se desplazan al medio del campo en lugar de quedarse pegados a la línea, aportando superioridad numérica en el mediocampo durante la posesión.",
+    "context": "En la fase de build‑up, cuando el equipo quiere crear overloads y facilitar pases al pivote.",
+    "risk": "El movimiento de los laterales puede dejar espacios en la defensa si no se sincroniza con los centrales.",
+    "tags": [
+      "build-up",
+      "midfield",
+      "pressing"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Una línea de tres defensores brinda una sobrecarga en la primera línea, dificultando que el rival presione y permitiendo que el arquero actúe como cuarto atacante (4v3).",
+    "context": "En la fase de build‑up, al enfrentar una presión alta del rival.",
+    "risk": "Si el rival logra marcar a los tres defensores, la ventaja se pierde y el arquero queda aislado.",
+    "tags": [
+      "build-up",
+      "pressing",
+      "compactness"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "El tercer hombre (jugador B) recibe el pase, abre línea de pase al jugador C y obliga a los defensores a reubicarse, creando huecos y ventaja numérica.",
+    "context": "Cuando la línea de pase directa A→C está bloqueada por un defensor.",
+    "risk": "El pase a B puede ser interceptado si el defensor anticipa el movimiento.",
+    "tags": [
+      "midfield",
+      "pressing",
+      "build-up"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Invitar al rival a presionar alto usando al arquero como tercer central, lo que genera espacios detrás de la primera línea para ataques peligrosos.",
+    "context": "Durante la fase de build‑up contra equipos que presionan con tres o más jugadores.",
+    "risk": "Si el arquero pierde la pelota, el equipo queda expuesto sin cobertura defensiva.",
+    "tags": [
+      "pressing",
+      "build-up",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Recibir la pelota con la suela del pie y pausar el tiempo de reacción del presor, manipulando su timing para crear opciones de pase.",
+    "context": "En situaciones de presión alta durante la posesión.",
+    "risk": "Un mal timing puede provocar pérdida de balón y contraataque rápido.",
+    "tags": [
+      "pressing",
+      "midfield"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Ejecutar el patrón 'pase al pivote marcado, devolución al central, progresión por el lado liberado' para romper la presión y avanzar.",
+    "context": "Durante la build‑up cuando el pivote está marcado y se busca crear superioridad numérica.",
+    "risk": "El pase al pivote puede ser interceptado si el rival cierra la passing lane.",
+    "tags": [
+      "build-up",
+      "midfield",
+      "pressing"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Jugar contra la presión con un pase de rebote (bounce pass) que permite saltar al presor y encontrar al compañero detrás.",
+    "context": "Cuando el rival cubre al jugador libre y la línea de pase directa está bloqueada.",
+    "risk": "El pase de rebote puede ser interceptado si el defensor anticipa el movimiento.",
+    "tags": [
+      "pressing",
+      "build-up",
+      "midfield"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Buscar un jugador más allá de la siguiente línea defensiva mediante un pase preciso al espacio entre líneas, permitiendo que reciba de perfil y gire.",
+    "context": "En la fase final del build‑up para penetrar la defensa compacta.",
+    "risk": "El pase puede ser demasiado largo o impreciso, perdiendo la oportunidad de avanzar.",
+    "tags": [
+      "build-up",
+      "midfield",
+      "wide-areas"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "take quick decisions under pressure",
+    "context": "when the team is under high pressure and must choose actions rapidly",
+    "risk": "hesitation can lead to loss of possession or being pressed",
+    "tags": [
+      "quick-decision",
+      "pressure"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "central defenders open toward middle spaces to create width",
+    "context": "when building up against a high press, central defenders widen to open space in the middle",
+    "risk": "exposing central area if not covered by midfield",
+    "tags": [
+      "width",
+      "space",
+      "build-up"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "use dribbling (carry) to break the first defensive line when no one presses",
+    "context": "if no opponent steps up to press, a player can carry the ball to penetrate the first line",
+    "risk": "if a press arrives while dribbling, possession may be lost",
+    "tags": [
+      "dribble",
+      "first-line",
+      "pressing"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "play a broken pass to a player between lines or change orientation to progress",
+    "context": "when looking for a way through the press, a diagonal or turned pass can find space between lines",
+    "risk": "inaccurate pass may be intercepted",
+    "tags": [
+      "broken-pass",
+      "orientation",
+      "build-up"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "pivot (number 6) receives between lines providing a passing lane",
+    "context": "the pivot drops between the opponent's lines to receive the ball and open a passing option",
+    "risk": "if marked back-to-back, a quick one-touch return is needed",
+    "tags": [
+      "pivot",
+      "between-lines",
+      "midfield"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "if the pivot is marked back-to-back, return the ball in one touch to a free central defender",
+    "context": "under pressure, a quick outlet to a central defender maintains possession",
+    "risk": "delayed return can result in loss of ball",
+    "tags": [
+      "one-touch",
+      "central-defender",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "pivot and turn if space is found",
+    "context": "when the pivot finds space, turning creates a new passing angle",
+    "risk": "turning may expose the player to a tackle if press closes",
+    "tags": [
+      "turn",
+      "space",
+      "midfield"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "fullbacks have two roles: traditional wide to give width or inverted to cut inside and create central superiority",
+    "context": "depending on tactical plan, fullbacks either stay on the line for width or invert to the middle",
+    "risk": "inverted fullbacks may leave the flank exposed",
+    "tags": [
+      "fullback",
+      "wide",
+      "inverted",
+      "wide-areas"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "interior midfielders coordinate movements: drop when pivot drops to keep central density; open to intermediate channel when fullbacks invert",
+    "context": "midfielders adjust their positions to maintain shape and create passing lanes",
+    "risk": "miscoordination can break central compactness",
+    "tags": [
+      "coordination",
+      "central-density",
+      "midfield"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "execute a 3v2 outlet (lavolpiana) with the pivot dropping to break high press in a 4-4-2 with two forwards",
+    "context": "when facing a high press in a 4-4-2, the pivot drops creating a numerical advantage",
+    "risk": "if the pivot is pressed, the advantage disappears",
+    "tags": [
+      "3v2",
+      "lavolpiana",
+      "pressing"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "goalkeeper participates to create a 4v2 situation during build-up",
+    "context": "the keeper joins the outfield players, giving a numerical edge against the press",
+    "risk": "keeper involvement can be risky if press is intense",
+    "tags": [
+      "goalkeeper",
+      "4v2",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "central defenders open to drag forwards out of position",
+    "context": "by moving wide, central defenders pull strikers away, creating space",
+    "risk": "leaving gaps that can be exploited",
+    "tags": [
+      "defender-movement",
+      "space-creation",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "use a bounce pass to bypass a man‑to‑man press on the goalkeeper and central defender, finding a free player",
+    "context": "against man‑to‑man pressure, a short bounce pass around the presser creates a free target",
+    "risk": "mis‑timed bounce pass may be intercepted",
+    "tags": [
+      "bounce-pass",
+      "man-to-man",
+      "pressing"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "against rigid man‑marking, play long passes to bypass the press",
+    "context": "when opponents mark tightly, a long ball can bypass the press",
+    "risk": "long pass may be inaccurate or intercepted",
+    "tags": [
+      "long-pass",
+      "man-marking",
+      "build-up"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "invert a fullback to create central superiority against a 4-3-3 press and quickly change orientation to the far fullback",
+    "context": "cutting inside creates overload in the middle, and a quick switch to the opposite fullback opens space",
+    "risk": "poor timing can leave the far side exposed",
+    "tags": [
+      "inverted-fullback",
+      "4-3-3",
+      "pressing"
+    ]
+  },
+  {
+    "category": "strikers",
+    "principle": "striker makes a run behind the defense if the defensive line pushes high",
+    "context": "when the back line advances, the number 9 can run in behind to receive a through ball",
+    "risk": "offside trap or loss of ball if timing is off",
+    "tags": [
+      "striker-run",
+      "high-line",
+      "strikers"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "use asymmetric shapes: one fullback stays wide while a winger inverts to create a strong side for progression",
+    "context": "asymmetry distorts the opponent's pressing shape and concentrates pressure on one flank",
+    "risk": "imbalance may leave the opposite side vulnerable",
+    "tags": [
+      "asymmetry",
+      "strong-side",
+      "wide-areas"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "provoke the presser's jump with a slow pass or dribble to draw the forward out, creating a passing lane for the pivot",
+    "context": "a deliberate slow action forces the opponent's forward to step up, opening space",
+    "risk": "slow action may lose possession if the press anticipates",
+    "tags": [
+      "provoke-press",
+      "slow-pass",
+      "pressing"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "move the opponent laterally with pass sequences before breaking inside",
+    "context": "passes are used to shift the defensive block sideways, opening central gaps",
+    "risk": "if lateral movement fails, the block remains compact",
+    "tags": [
+      "lateral-movement",
+      "build-up",
+      "space-creation"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "pause the ball with the sole to fix the defender's position and open a side change option",
+    "context": "stopping the ball briefly forces the defender to commit, allowing a directional pass",
+    "risk": "loss of momentum may give the press time to reorganize",
+    "tags": [
+      "pause-ball",
+      "sole",
+      "pressing"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "circulate the ball horizontally between central defenders to force the opponent block to shift sideways and create gaps",
+    "context": "horizontal passes between centers stretch the defensive shape laterally",
+    "risk": "predictable circulation may be read by the press",
+    "tags": [
+      "horizontal-circulation",
+      "central-defenders",
+      "build-up"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "use decoy runs and rotations, including central defenders breaking the first line, to create passing options",
+    "context": "false movements mislead the press and open lanes for the ball carrier",
+    "risk": "decoy runs can waste space if not coordinated",
+    "tags": [
+      "decoy-runs",
+      "rotations",
+      "pressing"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "use positional rotations to generate vertical passing options and move the ball to a free player for angles through pressure",
+    "context": "rotations among players create new angles and find space between lines",
+    "risk": "mis‑timed rotations can disrupt shape",
+    "tags": [
+      "positional-rotation",
+      "vertical-options",
+      "build-up"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "ensure there is at least one player between the midfield and opponent's defense to enable breakthrough",
+    "context": "a player positioned between lines provides a passing lane to penetrate the defense",
+    "risk": "without such a player, progress is limited",
+    "tags": [
+      "between-lines",
+      "midfield",
+      "build-up"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "maintain at least three passing options (triangles/rombos) around the ball carrier",
+    "context": "creating passing triangles ensures multiple options and reduces pressure",
+    "risk": "fewer options make the player vulnerable to pressure",
+    "tags": [
+      "passing-triangles",
+      "options",
+      "build-up"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "keep the distance between own lines appropriate—not too short nor too long",
+    "context": "proper line distance balances pressure resistance and space for progression",
+    "risk": "incorrect distance can lead to disorganization or being overrun",
+    "tags": [
+      "line-distance",
+      "compactness",
+      "build-up"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "move the opponent, not just the ball; avoid sterile possession without progress",
+    "context": "active movement of players creates space and forces the press to react",
+    "risk": "static possession without movement yields no advancement",
+    "tags": [
+      "movement",
+      "pressing",
+      "progress"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "El pressing corto es poco efectivo contra equipos que se defienden en bloque bajo",
+    "context": "Contra equipos con líneas defensivas bajas y compactas",
+    "risk": "Baja productividad ofensiva",
+    "tags": [
+      "pressing corto",
+      "equipos compactos",
+      "bloque bajo"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Perder balones en la zona de salida crea oportunidades claras para el rival",
+    "context": "Durante la transición defensiva, específicamente en la zona de salida",
+    "risk": "Ocasiones claras en contra",
+    "tags": [
+      "zona de salida",
+      "pérdida balón",
+      "transición defensiva"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "La construcción del juego depende en gran medida de la calidad técnica del portero y los centrales",
+    "context": "Durante la fase de construcción de juego desde atrás",
+    "risk": "Si el portero o centrales no tienen suficiente calidad técnica, la construcción se ve comprometida",
+    "tags": [
+      "construcción juego",
+      "portero",
+      "defensores centrales",
+      "calidad técnica"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Depender demasiado de gestos provocativos para atraer presión es ineficaz si el rival no reacciona",
+    "context": "Durante fases de pressing activo para atraer presión rival y generar espacios",
+    "risk": "El rival puede ignorar las provocaciones, neutralizando la estrategia de generar espacios",
+    "tags": [
+      "gestos provocativos",
+      "atraer presión",
+      "generar espacios",
+      "romper bloques"
+    ]
+  }
+]

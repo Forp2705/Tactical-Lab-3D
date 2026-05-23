@@ -1,18 +1,30 @@
 import { catalog } from "@/data";
-import { useAppStore, getExerciseById } from "@/state/useAppStore";
+import { getExerciseById, useAppStore } from "@/state/useAppStore";
 
 export function LibraryView() {
   const search = useAppStore((state) => state.search);
   const phase = useAppStore((state) => state.phase);
   const level = useAppStore((state) => state.level);
   const principle = useAppStore((state) => state.principle);
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const selectExercise = useAppStore((state) => state.selectExercise);
+  const exercises = [...catalog, ...exerciseVariants];
 
-  const filtered = catalog.filter((exercise) => {
+  const filtered = exercises.filter((exercise) => {
     const q = search.trim().toLowerCase();
     return (
-      (!q || [exercise.title, exercise.phase, exercise.principle, exercise.level, exercise.objective.primary].join(" ").toLowerCase().includes(q)) &&
+      (!q ||
+        [
+          exercise.title,
+          exercise.phase,
+          exercise.principle,
+          exercise.level,
+          exercise.objective.primary,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(q)) &&
       (phase === "all" || exercise.phase === phase) &&
       (level === "all" || exercise.level === level) &&
       (principle === "all" || exercise.principle === principle)
@@ -24,9 +36,38 @@ export function LibraryView() {
   return (
     <section className="library-layout">
       <div>
+        <div className="coach-room-strip">
+          <div>
+            <span className="panel-eyebrow">Catalogo curado</span>
+            <b>{filtered.length}</b>
+            <small>ejercicios disponibles</small>
+          </div>
+          <div>
+            <span className="panel-eyebrow">Foco activo</span>
+            <b>{phase === "all" ? "TODAS" : phase}</b>
+            <small>fase tactica</small>
+          </div>
+          <div>
+            <span className="panel-eyebrow">Criterio</span>
+            <b>{principle === "all" ? "LIBRE" : principle}</b>
+            <small>principio de juego</small>
+          </div>
+        </div>
         <div className="toolbar">
-          <input className="grow" placeholder="Buscar ejercicio..." value={search} onChange={(event) => useAppStore.getState().setSearch(event.target.value)} />
-          <select value={phase} onChange={(event) => useAppStore.getState().setFilter("phase", event.target.value)}>
+          <input
+            className="grow"
+            placeholder="Buscar ejercicio..."
+            value={search}
+            onChange={(event) =>
+              useAppStore.getState().setSearch(event.target.value)
+            }
+          />
+          <select
+            value={phase}
+            onChange={(event) =>
+              useAppStore.getState().setFilter("phase", event.target.value)
+            }
+          >
             <option value="all">Todas las fases</option>
             <option value="attackOrg">Ataque organizado</option>
             <option value="defenseOrg">Defensa organizada</option>
@@ -35,7 +76,12 @@ export function LibraryView() {
             <option value="abpOff">ABP ofensiva</option>
             <option value="abpDef">ABP defensiva</option>
           </select>
-          <select value={level} onChange={(event) => useAppStore.getState().setFilter("level", event.target.value)}>
+          <select
+            value={level}
+            onChange={(event) =>
+              useAppStore.getState().setFilter("level", event.target.value)
+            }
+          >
             <option value="all">Todos los niveles</option>
             <option value="U12+">U12+</option>
             <option value="U14+">U14+</option>
@@ -46,9 +92,16 @@ export function LibraryView() {
             <option value="Amateur+">Amateur+</option>
             <option value="Semi-pro">Semi-pro</option>
           </select>
-          <select value={principle} onChange={(event) => useAppStore.getState().setFilter("principle", event.target.value)}>
+          <select
+            value={principle}
+            onChange={(event) =>
+              useAppStore.getState().setFilter("principle", event.target.value)
+            }
+          >
             <option value="all">Todos los principios</option>
-            {Array.from(new Set(catalog.map((exercise) => exercise.principle))).map((item) => (
+            {Array.from(
+              new Set(exercises.map((exercise) => exercise.principle)),
+            ).map((item) => (
               <option key={item} value={item}>
                 {item}
               </option>
@@ -57,7 +110,12 @@ export function LibraryView() {
         </div>
         <div className="exercise-grid">
           {filtered.map((exercise) => (
-            <article key={exercise.id} className={`exercise-card ${exercise.id === selectedExerciseId ? "selected" : ""}`} onClick={() => selectExercise(exercise.id)}>
+            <button
+              type="button"
+              key={exercise.id}
+              className={`exercise-card ${exercise.id === selectedExerciseId ? "selected" : ""}`}
+              onClick={() => selectExercise(exercise.id)}
+            >
               <canvas
                 width={320}
                 height={180}
@@ -96,13 +154,20 @@ export function LibraryView() {
                 <span className="tag">{exercise.phase}</span>
                 <span className="tag">{exercise.principle}</span>
                 <span className="tag">{exercise.level}</span>
-                <span className="tag">{exercise.players.min}-{exercise.players.max} jugadores</span>
+                <span className="tag">
+                  {exercise.players.min}-{exercise.players.max} jugadores
+                </span>
               </div>
-            </article>
+              <div className="card-load-row">
+                <span>RPE {exercise.rpe}</span>
+                <i style={{ width: `${exercise.rpe * 10}%` }} />
+              </div>
+            </button>
           ))}
         </div>
       </div>
       <aside className="detail-panel">
+        <span className="panel-eyebrow">Informe de campo</span>
         <h2>{selected.title}</h2>
         <div className="detail-grid">
           <div className="stat-box">
@@ -139,7 +204,15 @@ export function LibraryView() {
         <h3>Coaching points</h3>
         <div>
           {selected.coaching.map((item) => (
-            <span key={item} className="pill" style={{ marginRight: 6, marginBottom: 6, display: "inline-block" }}>
+            <span
+              key={item}
+              className="pill"
+              style={{
+                marginRight: 6,
+                marginBottom: 6,
+                display: "inline-block",
+              }}
+            >
               {item}
             </span>
           ))}
@@ -151,8 +224,17 @@ export function LibraryView() {
           ))}
         </ul>
         <div className="toolbar">
-          <button onClick={() => useAppStore.getState().setView("viewer")}>Abrir visor</button>
-          <button className="secondary" onClick={() => useAppStore.getState().addToSession(selected.id)}>
+          <button
+            type="button"
+            onClick={() => useAppStore.getState().setView("viewer")}
+          >
+            Abrir visor
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => useAppStore.getState().addToSession(selected.id)}
+          >
             Agregar a sesión
           </button>
         </div>

@@ -1,4 +1,4 @@
-import type { AiPlan } from "./outputSchemas";
+import type { AiPlan } from "./CoachSchemas";
 
 export function withGuardrails(plan: AiPlan) {
   return {

@@ -1,0 +1,674 @@
+[
+  {
+    "category": "compactness",
+    "principle": "Mantener una distancia vertical de no más de 10-15 metros entre las líneas del equipo para minimizar huecos y mejorar la coordinación del pressing.",
+    "context": "Compactación vertical: distancia entre la línea más adelantada y la más atrasada del equipo.",
+    "risk": "Si la línea defensiva está demasiado profunda, los delanteros no pueden presionar; si está demasiado alta, hay espacio a la espalda.",
+    "tags": [
+      "distancia vertical",
+      "pressing",
+      "huecos entre líneas"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "Mantener 8-12 metros de distancia horizontal entre jugadores de la misma línea para minimizar huecos laterales y evitar que el rival progrese por carriles intermedios o internos.",
+    "context": "Compactación horizontal: distancia entre jugadores de un mismo plano horizontal.",
+    "risk": "Formación demasiado angosta puede dejar espacios laterales explotables si la posición no se ajusta al bloque.",
+    "tags": [
+      "distancia horizontal",
+      "carriles internos",
+      "huecos laterales"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "Los equipos defensivos de élite mantienen simultáneamente compactación horizontal y vertical, lo que exige disciplina, comunicación y entendimiento colectivo.",
+    "context": "Compactación combinada: aplicación simultánea de ambos ejes.",
+    "risk": "La falta de comunicación o disciplina puede romper la compactación y generar espacios aprovechables por el rival.",
+    "tags": [
+      "compactación combinada",
+      "disciplina",
+      "comunicación colectiva"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "El bloque alto permite recuperar cerca del arco rival pero demanda esfuerzo físico máximo y es vulnerable a pelotazos o jugadores rápidos que exploten el espacio a la espalda de la línea defensiva.",
+    "context": "High block: defensa en campo rival, línea de fondo cerca del medio.",
+    "risk": "Espacio a la espalda de la línea defensiva explotado por balón largo o jugador rápido.",
+    "tags": [
+      "bloque alto",
+      "espacio atrás",
+      "esfuerzo físico"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "El bloque medio busca ser compacto y angosto colectivamente para negar al rival espacio en los carriles centrales y forzarle hacia afuera o hacia arriba.",
+    "context": "Mid block: foco en compactar y angostar el bloque colectivamente.",
+    "risk": "Si el rival logra romper la presión central, puede encontrar espacios en amplitud o en profundidad.",
+    "tags": [
+      "bloque medio",
+      "compacto",
+      "negar carriles centrales"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "La compactación óptima implica que los jugadores no estén demasiado lejos para entorpecer conexiones ni demasiado cerca para ceder espacio en otro lado.",
+    "context": "Principio operativo de compactación: equilibrio entre proximidad y espacio.",
+    "risk": "Exceso de cercanía entre líneas puede generar huecos por falta de cobertura; exceso de distancia dificulta pases y combinaciones.",
+    "tags": [
+      "compactación óptima",
+      "conexiones",
+      "espacio"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "En posesión, la compactación en ataque significa que el equipo con la pelota está lo suficientemente cerca como para establecer conexiones fáciles y líneas de pase entre jugadores.",
+    "context": "Compactación aplicada en posesión ofensiva.",
+    "risk": "Si el equipo se dispersa buscando amplitud, las conexiones se pierden y el rival puede contraatacar en los espacios dejados.",
+    "tags": [
+      "posesión",
+      "conexiones",
+      "líneas de pase"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "En defensa, la compactación significa no ceder espacio al rival, manteniendo las líneas lo suficientemente juntas para limitar los bolsillos entre ellas.",
+    "context": "Compactación aplicada en fase defensiva.",
+    "risk": "Si la línea defensiva se abre para cubrir un sector, el rival puede explotar el espacio dejado en otro.",
+    "tags": [
+      "defensa",
+      "no ceder espacio",
+      "bolsillos"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "mantener distancias óptimas entre unidades (8 a 12 metros)",
+    "context": "FIFA Training Centre - Coordinación entre laterales y extremos al presionar por afuera",
+    "risk": "exposición en los flancos si las distancias no son óptimas",
+    "tags": [
+      "compactness",
+      "defensive-transition",
+      "pressing"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "low block pasivo: enfoque puramente en contención con presión mínima",
+    "context": "The Football Analyst - Estrategia fuera-de-posesión priorizando proteger el tercio defensivo",
+    "risk": "pérdida de oportunidades de recuperación si el rival controla el juego",
+    "tags": [
+      "block",
+      "defensive-transition",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "low block activo: cae profundo pero aplica presión selectiva o gatillos",
+    "context": "The Football Analyst - Combinación de contención y presión en momentos clave",
+    "risk": "sobre-comprometerse si los gatillos no se activan correctamente",
+    "tags": [
+      "block",
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "mover el bloque como unidad lateralmente (ball-side shifting)",
+    "context": "Total Football Analysis - Toda la línea se mueve hacia el costado donde está la pelota",
+    "risk": "dejar huecos en el lado opuesto si la transición es lenta",
+    "tags": [
+      "block",
+      "defensive-transition",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "cubrir el centro primero",
+    "context": "Total Football Analysis - El centro es la zona desde donde se puede atacar a las dos bandas",
+    "risk": "perder el control del medio espacio permite al rival dominar el juego",
+    "tags": [
+      "block",
+      "defensive-transition",
+      "midfield"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "forzar hacia afuera",
+    "context": "The Football Analyst - Cerrar el centro para obligar al rival a jugar por fuera",
+    "risk": "crear espacios en profundidad si el bloque no se mantiene compacto",
+    "tags": [
+      "block",
+      "defensive-transition",
+      "pressing"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "achicar tras pase atrás del rival",
+    "context": "The Football Analyst - Primera línea de presión sube tras pases lentos o laterales",
+    "risk": "dejar espacios altos si el reajuste es lento",
+    "tags": [
+      "block",
+      "pressing",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "defender desde el lado fuerte (ball-side defending)",
+    "context": "El lado donde está la pelota = lado fuerte; se mete más jugadores",
+    "risk": "sobre-comprometerse en el lado de la pelota dejando el débil",
+    "tags": [
+      "block",
+      "defensive-transition",
+      "wide-areas"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Los jugadores del lado débil deben permanecer alertas y en posición para prevenir cambios y pases diagonales",
+    "context": "Posicionamiento defensivo",
+    "risk": "No especificado",
+    "tags": [
+      "balance defensivo",
+      "lado débil",
+      "prevención de pases diagonales"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Los jugadores anclados a su zona reaccionan al rival que entra en ella",
+    "context": "Marca zonal pura",
+    "risk": "No especificado",
+    "tags": [
+      "marca zonal",
+      "posición",
+      "reacción"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Orientarse hacia el rival es usado por equipos que juegan marca al hombre, especialmente en configuraciones individuales donde un lado tiende a cerrar al jugador que es individualmente la mayor amenaza del equipo rival",
+    "context": "Marca al hombre",
+    "risk": "Puede llevar a que la estructura entienda esté orientada al rival, con un impacto enorme en su compactación",
+    "tags": [
+      "marca al hombre",
+      "amenaza individual",
+      "orientación al rival"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "La línea atacante y la línea de mediocampo se involucran con movimientos orientados a opciones, intentando deshabilitar que el rival pase a sus mediocampistas, mientras la línea defensiva se ocupa de la cobertura al hombre",
+    "context": "Marca de opciones",
+    "risk": "No especificado",
+    "tags": [
+      "marca de opciones",
+      "líneas de pase",
+      "cobertura"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Marca al hombre en la línea defensiva (sobre delanteros rivales), zonal/option-oriented en mediocampo",
+    "context": "Marca híbrida",
+    "risk": "No especificado",
+    "tags": [
+      "marca híbrida",
+      "línea defensiva",
+      "mediocampo"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "En 4-4-2, enfocarse en compactación entre unidades y controlar partidos a través de cubrir espacios clave en la propia mitad",
+    "context": "Formación 4-4-2",
+    "risk": "No especificado",
+    "tags": [
+      "4-4-2",
+      "compactación",
+      "bloque medio",
+      "control de espacios"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "En 4-4-2 angosto, los extremos vuelven y se cierran para formar una línea de mediocampo compacta de cuatro, protegiendo a los laterales que presionan agresivamente hacia afuera",
+    "context": "Formación 4-4-2 de Dyche",
+    "risk": "No especificado",
+    "tags": [
+      "4-4-2 angosto",
+      "bloque bajo",
+      "protección de laterales",
+      "presión agresiva"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "En 5-3-2/5-4-1, el trío de mediocampo opera como motor del bloque defensivo, con un mediocampista como ancla central protegiendo la zona 14 y rompiendo el juego, mientras los otros dos bloquean líneas de pase a los medios espacios",
+    "context": "Formación 5-3-2/5-4-1",
+    "risk": "No especificado",
+    "tags": [
+      "5-3-2",
+      "5-4-1",
+      "bloque bajo",
+      "mediocampo",
+      "superioridad numérica"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "En sistemas como el 4-4-2/4-4-1-1 o 3-5-2/5-3-2, mantener una estructura profunda, angosta y compacta, con un mediocampista extra y central extra compactando zonas centrales",
+    "context": "Formaciones de Atlético",
+    "risk": "No especificado",
+    "tags": [
+      "4-4-2",
+      "4-4-1-1",
+      "3-5-2",
+      "5-3-2",
+      "compactación central",
+      "bloque profundo"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "En 4-1-4-1, mantener líneas angostas para proteger el carril central, pero ampliar rápidamente cuando la pelota va a la línea lateral, con distancias verticales cortas entre líneas para dificultar pases entre líneas",
+    "context": "Formación 4-1-4-1",
+    "risk": "No especificado",
+    "tags": [
+      "4-1-4-1",
+      "bloque medio",
+      "compactación",
+      "distancias cortas",
+      "protección central"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "En 4-1-4-1, el N°8 del lado de la pelota se desplaza hacia afuera para bloquear el canal interior, previniendo combinaciones en esa zona",
+    "context": "Defensa de costados en 4-1-4-1",
+    "risk": "No especificado",
+    "tags": [
+      "4-1-4-1",
+      "defensa de costado",
+      "bloqueo de canal interior",
+      "#8"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Utilizar al pivote y al mediocampista externo para sellar el carril interno y forzar al atacante a quedarse afuera, evitando sobrecargas 2v1 en el lateral.",
+    "context": "Durante la defensa en el flanco, cuando el rival intenta aislar al lateral.",
+    "risk": "Si no se logra sellar el carril interno, el atacante puede crear ventajas numéricas o combinar con el extremo.",
+    "tags": [
+      "wide-areas",
+      "defensive-transition",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Transformar el 4-3-3 en 4-5-1 al replegar, con los extremos bajando a la línea de mediocampo para mantener la compactación.",
+    "context": "Cuando el equipo pierde la posesión y debe reorganizarse defensivamente.",
+    "risk": "Pérdida de presión ofensiva si los extremos no bajan rápidamente.",
+    "tags": [
+      "block",
+      "formation",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "Cubrir los medios espacios con tres jugadores: N°8 del lado de la pelota, lateral que cierra adentro y pivote como respaldo.",
+    "context": "Después de un back-press exitoso, para evitar que el rival reciba libre en medio espacio.",
+    "risk": "Si el medio espacio no se cubre, el rival puede disparar entre líneas o combinar con el extremo.",
+    "tags": [
+      "midfield",
+      "defensive-transition",
+      "half-spaces"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "Elegir entre cobertura del ancho (back-5) o compactación central (back-4 angosta), ya que defender todo es imposible.",
+    "context": "Al diseñar la estructura defensiva según las prioridades tácticas.",
+    "risk": "Sobrecubrir un área deja otra vulnerable a ataques rápidos o combinaciones.",
+    "tags": [
+      "compactness",
+      "width",
+      "block"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Mover el bloque como unidad en dirección lateral, vertical hacia arriba (tras pase atrás) o diagonal (tras cambio de orientación).",
+    "context": "Durante la transición defensiva para mantener la estructura y evitar huecos.",
+    "risk": "Errores en el desplazamiento generan espacios para el rival en la estructura de pressing.",
+    "tags": [
+      "defensive-transition",
+      "shifting",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Usar conos para marcar distancias verticales máximas entre unidades y evitar exceso de espacio entre líneas.",
+    "context": "En entrenamientos para corregir la coordinación defensiva.",
+    "risk": "Demasiado espacio entre líneas permite al rival explorar zonas clave.",
+    "tags": [
+      "block",
+      "defensive-transition",
+      "compactness"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Realizar back-press con los delanteros cercanos para cortar opciones de cambio inmediato y forzar la pelota atrás.",
+    "context": "En la primera fase de defensa, tras perder la posesión.",
+    "risk": "Si el back-press falla, el rival puede combinar rápidamente y superar la presión.",
+    "tags": [
+      "defensive-transition",
+      "pressing",
+      "midfield"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "aplicar presión alta con movimientos laterales",
+    "context": "aproximación de laterales para forzar a los extremos hacia la línea lateral",
+    "risk": "mano a mano si no hay coordinación",
+    "tags": [
+      "pressing",
+      "compactness"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "bloquear pases centrales con pantallas",
+    "context": "pantallas de mediocampo al lado de la pelota",
+    "risk": "error individual = mano a mano",
+    "tags": [
+      "defensive-transition",
+      "block"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "controlar el espacio entre líneas",
+    "context": "mantener distancia mínima entre defensores y mediocampistas",
+    "risk": "pérdida de espacio si el bloque no es sólido",
+    "tags": [
+      "midfield",
+      "compactness"
+    ]
+  },
+  {
+    "category": "strikers",
+    "principle": "detener cambios de juego con movimiento lateral",
+    "context": "movimiento lateral rápido desde la back-4",
+    "risk": "pérdida de altura si no se ajusta",
+    "tags": [
+      "strikers",
+      "block"
+    ]
+  },
+  {
+    "category": "wide-areas",
+    "principle": "evitar cambios de juego en zonas amplias",
+    "context": "detener cambios al recibir pases al espacio",
+    "risk": "pérdida de control si no se comunica",
+    "tags": [
+      "wide-areas",
+      "block"
+    ]
+  },
+  {
+    "category": "building-up",
+    "principle": "controlar el espacio a la espalda",
+    "context": "GK y back-4 comunicándose para caer o sostener la línea",
+    "risk": "espacio entre líneas si no hay bloque",
+    "tags": [
+      "building-up",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "proteger el espacio entre líneas",
+    "context": "mantener distancia mínima entre defensores y mediocampistas",
+    "risk": "pérdida de altura y vulnerabilidad",
+    "tags": [
+      "block",
+      "defensive-transition"
+    ]
+  },
+  {
+    "category": "compactness",
+    "principle": "Mantener distancias horizontales y verticales dentro de rangos específicos para evitar huecos, especialmente bajo fatiga",
+    "context": "Durante fases defensivas largas, la fatiga puede causar desfasajes en el bloque, generando espacios en el lado lejano",
+    "risk": "Pérdida de compactness al no ajustar distancias, aumentando vulnerabilidad en el bloque",
+    "tags": [
+      "compactness",
+      "fatigue"
+    ]
+  },
+  {
+    "category": "pressing",
+    "principle": "Forzar al rival a cambiar de banda mediante sobrecarga horizontal y cambios rápidos de orientación",
+    "context": "Al romper un low block, el equipo en posesión estira al rival horizontalmente para crear espacio detrás de la defensa",
+    "risk": "Si no se ejecuta con precisión, el rival puede adaptarse y contrarrestar",
+    "tags": [
+      "pressing",
+      "low block"
+    ]
+  },
+  {
+    "category": "build-up",
+    "principle": "Utilizar pases verticales rápidos entre líneas para romper la marca zonal",
+    "context": "En un mid block, los atacantes pueden usar falsos 9 o pivotes para atraer defensores y crear espacios",
+    "risk": "Si los pases no son rápidos, el bloque puede reorganizarse",
+    "tags": [
+      "build-up",
+      "mid block"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Recuperar rápidamente tras perder el balón para minimizar el tiempo en transición",
+    "context": "En modelos como el de Dyche, se prioriza defender el área y transiciones largas tras recuperación",
+    "risk": "Transiciones lentas pueden permitir contraataques rivales",
+    "tags": [
+      "defensive-transition",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Ajustar la compactación según el modelo del entrenador (ej: ultra-compacto de Dyche o pragmático de Mourinho)",
+    "context": "Diferentes entrenadores aplican grados variables de angostura en el bloque, afectando su efectividad",
+    "risk": "No adaptar el bloque a las características del rival puede generar debilidades",
+    "tags": [
+      "block",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Mantener un bloque compacto bajo al defender",
+    "context": "Equipos como Arsenal de Arteta adoptan un low-block compacto, especialmente en mid-block, usando formaciones como 4-2-3-1 o 4-4-2",
+    "risk": "Sensibilidad a contrataques rápidos si el bloque se rompe",
+    "tags": [
+      "low-block",
+      "compact",
+      "mid-block",
+      "defensive-block"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Defender como un bloque compacto para frustrar al rival",
+    "context": "Equipos bien entrenados como Inter, Atlético y RB Leipzig destacan por su defensa como bloque unido",
+    "risk": "Rigidez que permite espacios entre líneas",
+    "tags": [
+      "compact-block",
+      "defensive-block",
+      "frustrate",
+      "team-defense"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Moverse como bloque unido en la misma dirección",
+    "context": "El sistema de Borussia Mönchengladbach de Favre se basa en la orientación posicional colectiva",
+    "risk": "Brechas si la coordinación falla entre jugadores",
+    "tags": [
+      "positional-orientation",
+      "block-movement",
+      "collective-shape",
+      "defensive-block"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "Estenerse en la zona asignada o seguir al rival fuera de ella",
+    "context": "Checklist para mediocampistas y delanteros en bloque defensivo",
+    "risk": "Desgaste físico y desorientación táctica",
+    "tags": [
+      "positioning",
+      "midfield",
+      "defensive-block",
+      "zone-coverage"
+    ]
+  },
+  {
+    "category": "midfield",
+    "principle": "Cubrir simultáneamente al portador y al compañero asignado",
+    "context": "Checklist para mediocampistas y delanteros en bloque defensivo",
+    "risk": "Espacios descubiertos si no se coordina la cobertura",
+    "tags": [
+      "coverage",
+      "midfield",
+      "defensive-block",
+      "dual-coverage"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Mantener distancia de 8-12m entre compañeros en la línea",
+    "context": "Checklist para mediocampistas y delanteros en bloque defensivo",
+    "risk": "Filtraciones por espacios excesivamente grandes",
+    "tags": [
+      "spacing",
+      "defensive-block",
+      "midfield",
+      "compactness"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Estar a 10-15m vertical de la línea de atrás",
+    "context": "Checklist para mediocampistas y delanteros en bloque defensivo",
+    "risk": "Filtraciones por profundidad si se aleja demasiado",
+    "tags": [
+      "vertical-positioning",
+      "defensive-block",
+      "midfield",
+      "spacing"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Orientar el cuerpo para cortar la línea de pase prioritaria",
+    "context": "Checklist para mediocampistas y delanteros en bloque defensivo",
+    "risk": "Pases descubiertos si la orientación es incorrecta",
+    "tags": [
+      "body-orientation",
+      "defensive-block",
+      "midfield",
+      "pass-disruption"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Desplazarse con el bloque cuando se mueve la pelota",
+    "context": "Checklist para mediocampistas y delanteros en bloque defensivo",
+    "risk": "Quedar atrás el jugador si no se mueve con el bloque",
+    "tags": [
+      "collective-movement",
+      "defensive-block",
+      "midfield",
+      "shape-maintenance"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Línea alineada sin escalonados",
+    "context": "Checklist para la línea de fondo en bloque defensivo",
+    "risk": "Espacios por escalonamientos en la defensa",
+    "tags": [
+      "alignment",
+      "defensive-line",
+      "back-line",
+      "shape"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Comunicación con el arquero sobre subir/caer",
+    "context": "Checklist para la línea de fondo en bloque defensivo",
+    "risk": "Errores en la altura de la línea defensiva",
+    "tags": [
+      "communication",
+      "goalkeeper",
+      "defensive-line",
+      "transition"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Cubrir la espalda del lateral al presionar",
+    "context": "Checklist para la línea de fondo en bloque defensivo",
+    "risk": "Contrarremates por detrás si el lateral se va solo",
+    "tags": [
+      "cover",
+      "defensive-transition",
+      "full-back",
+      "support"
+    ]
+  },
+  {
+    "category": "block",
+    "principle": "Mantener marca directa sin perder la pelota",
+    "context": "Checklist para la línea de fondo en bloque defensivo",
+    "risk": "Pérdida de marca o pelota si no se equilibra",
+    "tags": [
+      "marking",
+      "defensive-block",
+      "back-line",
+      "balance"
+    ]
+  },
+  {
+    "category": "defensive-transition",
+    "principle": "Listo para barrer al espacio si el rival entra",
+    "context": "Checklist para la línea de fondo en bloque defensivo",
+    "risk": "Goles evitables por mala posición en transición",
+    "tags": [
+      "clearance",
+      "defensive-transition",
+      "back-line",
+      "space-covering"
+    ]
+  }
+]

@@ -40,10 +40,12 @@ type AppState = {
   phase: string;
   level: string;
   principle: string;
+  exerciseVariants: Exercise[];
   showZones: boolean;
   showRuns: boolean;
   showPasses: boolean;
   showPress: boolean;
+  personalSpace: boolean;
   layers: Record<Layer, boolean>;
   team: TeamState;
   session: Session;
@@ -61,11 +63,13 @@ type AppState = {
   setSpeed: (speed: number) => void;
   togglePlaying: () => void;
   selectExercise: (id: string) => void;
+  duplicateSelectedExercise: () => void;
   setSearch: (value: string) => void;
   setFilter: (key: "phase" | "level" | "principle", value: string) => void;
   toggleLayer: (
     key: "showZones" | "showRuns" | "showPasses" | "showPress",
   ) => void;
+  togglePersonalSpace: () => void;
   toggleTacticalLayer: (layer: Layer) => void;
   addTag: (label: string, time: number) => void;
   addTrack: (x: number, y: number, time: number) => void;
@@ -135,14 +139,17 @@ const defaultLayers: Record<Layer, boolean> = {
   notes: true,
 };
 
-function recomputeSession(blocks: Session["blocks"]) {
+function recomputeSession(
+  blocks: Session["blocks"],
+  variants: Exercise[] = [],
+) {
   const materials = new Map<string, Material>();
   const objectives = new Set<string>();
   let totalDuration = 0;
   let totalLoad = 0;
 
   for (const block of blocks) {
-    const exercise = catalog.find((item) => item.id === block.exerciseId);
+    const exercise = findExercise(block.exerciseId, variants);
     if (!exercise) continue;
     totalDuration += block.durationMin;
     totalLoad += block.durationMin * exercise.rpe;
@@ -177,10 +184,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   phase: "all",
   level: "all",
   principle: "all",
+  exerciseVariants: [],
   showZones: true,
   showRuns: true,
   showPasses: true,
   showPress: true,
+  personalSpace: false,
   layers: defaultLayers,
   team: initialTeam,
   session: makeSession(),
@@ -208,6 +217,67 @@ export const useAppStore = create<AppState>((set, get) => ({
       playing: false,
       viewerExerciseOverride: null,
     }),
+  duplicateSelectedExercise: () => {
+    const state = get();
+    const source = findExercise(
+      state.selectedExerciseId,
+      state.exerciseVariants,
+    );
+    if (!source) return;
+    const variant: Exercise = {
+      ...source,
+      id: `${source.id}__variant__${Date.now()}`,
+      title: `${source.title} - variante`,
+      authorNotes: [source.authorNotes, "Variante local editable"]
+        .filter(Boolean)
+        .join(" | "),
+      scene: {
+        ...source.scene,
+        actors: source.scene.actors.map((actor) => ({
+          ...actor,
+          start: { ...actor.start },
+          path: actor.path.map((keyframe) => ({
+            ...keyframe,
+            pos: { ...keyframe.pos },
+          })),
+          state: actor.state.map((stateItem) => ({ ...stateItem })),
+        })),
+        ball: {
+          ...source.scene.ball,
+          start: { ...source.scene.ball.start },
+          path: source.scene.ball.path.map((keyframe) => ({
+            ...keyframe,
+            pos: { ...keyframe.pos },
+          })),
+        },
+        overlays: source.scene.overlays.map((overlay) => ({ ...overlay })),
+        zones: source.scene.zones.map((zone) => ({
+          ...zone,
+          rect: { ...zone.rect },
+          visibleInPhases: [...zone.visibleInPhases],
+        })),
+        triggers: source.scene.triggers.map((trigger) => ({
+          ...trigger,
+          cause: { ...trigger.cause },
+          visualMarker: trigger.visualMarker
+            ? { ...trigger.visualMarker, pos: { ...trigger.visualMarker.pos } }
+            : undefined,
+          activatesOverlays: [...trigger.activatesOverlays],
+        })),
+        phases: source.scene.phases.map((phase) => ({
+          ...phase,
+          activeLayers: [...phase.activeLayers],
+        })),
+      },
+    };
+    set({
+      exerciseVariants: [...state.exerciseVariants, variant],
+      selectedExerciseId: variant.id,
+      viewerExerciseOverride: null,
+      time: 0,
+      playing: false,
+    });
+  },
   setSearch: (value) => set({ search: value }),
   setFilter: (key, value) =>
     set({ [key]: value } as Pick<AppState, "phase" | "level" | "principle">),
@@ -216,6 +286,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       AppState,
       "showZones" | "showRuns" | "showPasses" | "showPress"
     >),
+  togglePersonalSpace: () => set({ personalSpace: !get().personalSpace }),
   toggleTacticalLayer: (layer) =>
     set((state) => ({
       layers: { ...state.layers, [layer]: !state.layers[layer] },
@@ -224,7 +295,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   addTrack: (x, y, time) =>
     set({ tracks: [...get().tracks, { x, y, time, label: "manual" }] }),
   addToSession: (exerciseId) => {
-    const exercise = catalog.find((item) => item.id === exerciseId);
+    const exercise = findExercise(exerciseId, get().exerciseVariants);
     if (!exercise) return;
     const nextBlock = {
       id: crypto.randomUUID(),
@@ -235,7 +306,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const session = get().session;
     const blocks = [...session.blocks, nextBlock];
     set({
-      session: { ...session, blocks, computed: recomputeSession(blocks) },
+      session: {
+        ...session,
+        blocks,
+        computed: recomputeSession(blocks, get().exerciseVariants),
+      },
     });
   },
   updateSessionBlock: (id, patch) =>
@@ -247,7 +322,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         session: {
           ...state.session,
           blocks,
-          computed: recomputeSession(blocks),
+          computed: recomputeSession(blocks, state.exerciseVariants),
         },
       };
     }),
@@ -258,7 +333,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         session: {
           ...state.session,
           blocks,
-          computed: recomputeSession(blocks),
+          computed: recomputeSession(blocks, state.exerciseVariants),
         },
       };
     }),
@@ -274,7 +349,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         session: {
           ...state.session,
           blocks,
-          computed: recomputeSession(blocks),
+          computed: recomputeSession(blocks, state.exerciseVariants),
         },
       };
     }),
@@ -284,7 +359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     const lineup = state.team.lineups.find((item) => item.id === lineupId);
     const base =
-      catalog.find((item) => item.id === state.selectedExerciseId) ??
+      findExercise(state.selectedExerciseId, state.exerciseVariants) ??
       catalog[0];
     if (!lineup || !base) return;
 
@@ -330,13 +405,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedPlayerId: (id) =>
     set({ team: { ...get().team, selectedPlayerId: id } }),
   updatePlayer: (id, patch) =>
-    set({
-      team: {
-        ...get().team,
-        players: get().team.players.map((player) =>
-          player.id === id ? { ...player, ...patch } : player,
-        ),
-      },
+    set((state) => {
+      const requestedNum =
+        typeof patch.num === "number"
+          ? uniqueJerseyNumber(patch.num, id, state.team.players)
+          : undefined;
+      const safePatch =
+        requestedNum === undefined ? patch : { ...patch, num: requestedNum };
+
+      return {
+        team: {
+          ...state.team,
+          players: state.team.players.map((player) =>
+            player.id === id ? { ...player, ...safePatch } : player,
+          ),
+        },
+      };
     }),
   loadSnapshot: (snapshot) =>
     set((current) => ({
@@ -350,7 +434,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 export function getExerciseById(id: string) {
-  return catalog.find((exercise) => exercise.id === id) ?? catalog[0];
+  return (
+    findExercise(id, useAppStore.getState().exerciseVariants) ?? catalog[0]
+  );
+}
+
+export function getAllExercises() {
+  return [...catalog, ...useAppStore.getState().exerciseVariants];
 }
 
 export function getSelectedPlayer(state = useAppStore.getState()) {
@@ -425,6 +515,29 @@ function applyLineupToExercise(
       },
     },
   };
+}
+
+function findExercise(id: string, variants: Exercise[]) {
+  return (
+    variants.find((exercise) => exercise.id === id) ??
+    catalog.find((exercise) => exercise.id === id)
+  );
+}
+
+function uniqueJerseyNumber(
+  requested: number,
+  playerId: string,
+  players: Player[],
+) {
+  const used = new Set(
+    players
+      .filter((player) => player.id !== playerId)
+      .map((player) => player.num),
+  );
+  let next = Math.max(1, Math.min(99, Math.round(requested)));
+  while (used.has(next) && next < 99) next += 1;
+  while (used.has(next) && next > 1) next -= 1;
+  return next;
 }
 
 function endpointIsValid(

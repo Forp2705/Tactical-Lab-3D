@@ -1,71 +1,57 @@
-import { generateAiPlan } from "@/ai/geminiClient";
-import { withGuardrails } from "@/ai/guardrails";
-import type { AiPlan } from "@/ai/outputSchemas";
-import { catalog } from "@/data";
+import type { CoachMatchAdvice } from "@/ai/CoachSchemas";
+import { requestCoachAgent } from "@/ai/coachAgentClient";
+import { PostMatchAnalysisView } from "@/ai/post-match/PostMatchAnalysisView";
 import { useAppStore } from "@/state/useAppStore";
 import { useState } from "react";
 
 export function AiView() {
   const prompt = useAppStore((state) => state.aiPrompt);
-  const team = useAppStore((state) => state.team);
-  const session = useAppStore((state) => state.session);
-  const microcycle = useAppStore((state) => state.microcycle);
-  const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
-  const selectedExercise =
-    catalog.find((exercise) => exercise.id === selectedExerciseId) ??
-    catalog[0];
-  const [plan, setPlan] = useState<AiPlan | null>(null);
+  const [mode, setMode] = useState<"coach" | "postMatch">("coach");
+  const [advice, setAdvice] = useState<CoachMatchAdvice | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function run(mode: AiPlan["mode"]) {
+  const input = prompt.trim();
+
+  async function runCoachAgent() {
+    if (!input || loading) return;
+
     setLoading(true);
-    const next = await generateAiPlan(mode, {
-      teamName: team.name,
-      model: team.model,
-      selectedExercise,
-      players: team.players,
-      session,
-      microcycle,
-      prompt,
-    });
-    setPlan(withGuardrails(next));
-    setLoading(false);
+    setError(null);
+
+    try {
+      const response = await requestCoachAgent(input);
+      setAdvice(response);
+    } catch (requestError) {
+      setAdvice(null);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudo consultar el agente tactico.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const current =
-    plan ??
-    withGuardrails({
-      mode: "query",
-      assumptions: [
-        "Equipo amateur/semi-pro",
-        "Consulta local",
-        "Gemini sin ejecutar todavia",
-      ],
-      confidence: 0.6,
-      planA:
-        "Escribi una consulta tactica y elegi Consulta, Critica o Plan de partido.",
-      planB:
-        "Cuanto mas contexto de rival, sistema y problema incluyas, mejor va a responder.",
-      abpSuggestions: [],
-      risks: ["Respuesta generica si falta contexto"],
-      why: [
-        "El asistente esta pensado para razonar con contexto, no para tirar recetas",
-      ],
-      checklist: [
-        "Describir el problema",
-        "Indicar sistema propio",
-        "Indicar sistema rival",
-      ],
-      linkedExercises: [],
-    });
-  const labels = labelsForMode(current.mode);
+  if (mode === "postMatch") {
+    return (
+      <>
+        <AiModeTabs mode={mode} setMode={setMode} />
+        <PostMatchAnalysisView />
+      </>
+    );
+  }
 
   return (
-    <section className="ai-layout">
-      <div className="team-card">
-        <h3>Asistente tactico con Gemini</h3>
+    <>
+      <AiModeTabs mode={mode} setMode={setMode} />
+      <section className="ai-layout">
+        <div className="team-card">
+        <span className="panel-eyebrow">Coach Agent</span>
+        <h3>Asistente tactico</h3>
         <textarea
-          placeholder="Ej: Tenemos 16 jugadores, queremos presion tras perdida y salida por banda..."
+          placeholder="Describi el problema tactico, contexto del partido, sistema propio, rival o comportamiento que queres analizar."
           value={prompt}
           onChange={(event) =>
             useAppStore.getState().setAiPrompt(event.target.value)
@@ -73,122 +59,134 @@ export function AiView() {
           style={{ width: "100%", minHeight: 180, marginTop: 12 }}
         />
         <div className="toolbar" style={{ marginTop: 12 }}>
-          <button type="button" onClick={() => void run("query")}>
-            {loading ? "Generando..." : "Consultar"}
-          </button>
           <button
             type="button"
-            className="secondary"
-            onClick={() => void run("critic")}
+            disabled={!input || loading}
+            onClick={() => void runCoachAgent()}
           >
-            Modo critica
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => void run("match")}
-          >
-            Plan de partido
+            {loading ? "Analizando..." : "Consultar agente"}
           </button>
         </div>
-      </div>
-      <div className="team-card ai-output" id="aiOutput">
-        <h3>Salida estructurada</h3>
+        {error ? (
+          <div className="ai-card" role="alert" style={{ marginTop: 16 }}>
+            <b>Error</b>
+            <p>{error}</p>
+          </div>
+        ) : null}
+        </div>
+
+        <div className="team-card ai-output" id="aiOutput">
+        <span className="panel-eyebrow">Salida estructurada</span>
+        <h3>Respuesta del agente</h3>
         <p className="muted-panel">
-          La salida usa Gemini por proxy local server-side. Si falta la key o
-          falla la API, cae a fallback local validado.
+          La consulta se ejecuta por el endpoint server-side{" "}
+          <code>/api/coach-agent</code>. La API key de OpenRouter queda fuera
+          del frontend.
         </p>
-        <div className="ai-card">
-          <b>Ejercicio actual</b>
-          <p>{selectedExercise.title}</p>
+
+        {advice ? <AdviceResult advice={advice} /> : <EmptyState />}
         </div>
-        <div className="ai-card">
-          <b>Supuestos</b>
-          <ul>
-            {current.assumptions.map((item, index) => (
-              <li key={`assumption-${index}-${item}`}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="ai-card">
-          <b>{labels.planA}</b>
-          <p>{current.planA}</p>
-        </div>
-        <div className="ai-card">
-          <b>{labels.planB}</b>
-          <p>{current.planB}</p>
-        </div>
-        {current.planC ? (
-          <div className="ai-card">
-            <b>{labels.planC}</b>
-            <p>{current.planC}</p>
-          </div>
-        ) : null}
-        {current.abpSuggestions.length ? (
-          <div className="ai-card">
-            <b>ABP</b>
-            <ul>
-              {current.abpSuggestions.map((item, index) => (
-                <li key={`abp-${index}-${item}`}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        <div className="ai-card">
-          <b>Riesgos</b>
-          <ul>
-            {current.risks.map((item, index) => (
-              <li key={`risk-${index}-${item}`}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="ai-card">
-          <b>Por que</b>
-          <ul>
-            {current.why.map((item, index) => (
-              <li key={`why-${index}-${item}`}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="ai-card">
-          <b>Checklist</b>
-          <ul>
-            {current.checklist.map((item, index) => (
-              <li key={`checklist-${index}-${item}`}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        {current.linkedExercises.length ? (
-          <div className="ai-card">
-            <b>Ejercicios vinculados</b>
-            <p>{current.linkedExercises.join(", ")}</p>
-          </div>
-        ) : null}
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 
-function labelsForMode(mode: AiPlan["mode"]) {
-  if (mode === "query") {
-    return {
-      planA: "Respuesta",
-      planB: "Alternativa",
-      planC: "Matiz",
-    };
-  }
+function AiModeTabs({
+  mode,
+  setMode,
+}: {
+  mode: "coach" | "postMatch";
+  setMode: (mode: "coach" | "postMatch") => void;
+}) {
+  return (
+    <div className="segmented ai-mode-tabs" style={{ marginBottom: 14 }}>
+      <button
+        type="button"
+        className={mode === "coach" ? "active" : ""}
+        onClick={() => setMode("coach")}
+      >
+        Consulta tactica
+      </button>
+      <button
+        type="button"
+        className={mode === "postMatch" ? "active" : ""}
+        onClick={() => setMode("postMatch")}
+      >
+        Post partido
+      </button>
+    </div>
+  );
+}
 
-  if (mode === "critic") {
-    return {
-      planA: "Lectura critica",
-      planB: "Mitigacion",
-      planC: "Escenario alternativo",
-    };
-  }
+function AdviceResult({ advice }: { advice: CoachMatchAdvice }) {
+  return (
+    <>
+      <TextCard title="Lectura tactica" value={advice.tacticalReading} />
+      <TextCard title="Causa probable" value={advice.probableCause} />
+      <TextCard title="Ajuste principal" value={advice.mainAdjustment} />
+      <ListCard
+        title="Instrucciones de campo"
+        items={advice.onFieldInstructions}
+      />
+      <TextCard title="Test del miercoles" value={advice.wednesdayTest} />
+      <TextCard title="Foco del sabado" value={advice.saturdayFocus} />
+      <ListCard title="Riesgos del ajuste" items={advice.adjustmentRisks} />
+      <ListCard title="Senales de exito" items={advice.successSignals} />
+      <div className="ai-card">
+        <b>Reflexion</b>
+        <dl className="ai-reflection">
+          <div>
+            <dt>Incertidumbre principal</dt>
+            <dd>{advice.reflection.mainUncertainty}</dd>
+          </div>
+          <div>
+            <dt>Informacion faltante</dt>
+            <dd>{advice.reflection.missingInformation}</dd>
+          </div>
+          <div>
+            <dt>Interpretacion alternativa</dt>
+            <dd>{advice.reflection.alternativeInterpretation}</dd>
+          </div>
+          <div>
+            <dt>Confianza</dt>
+            <dd>{Math.round(advice.reflection.confidence * 100)}%</dd>
+          </div>
+        </dl>
+      </div>
+    </>
+  );
+}
 
-  return {
-    planA: "Plan A",
-    planB: "Plan B",
-    planC: "Plan C",
-  };
+function EmptyState() {
+  return (
+    <div className="ai-card">
+      <b>Sin respuesta todavia</b>
+      <p>
+        Escribi una consulta tactica y ejecuta el agente para ver la salida
+        validada.
+      </p>
+    </div>
+  );
+}
+
+function TextCard({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="ai-card">
+      <b>{title}</b>
+      <p>{value}</p>
+    </div>
+  );
+}
+
+function ListCard({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="ai-card">
+      <b>{title}</b>
+      <ul>
+        {items.map((item, index) => (
+          <li key={`${title}-${index}-${item}`}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }

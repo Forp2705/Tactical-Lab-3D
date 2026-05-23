@@ -11,6 +11,9 @@ export function Ball3D({ position }: BallProps) {
   const last = useRef(new Vector3(position[0], position[1], position[2]));
   const target = useMemo(() => new Vector3(), []);
   const ballTexture = useMemo(() => createBallTexture(), []);
+  const height = Math.max(0, position[1] - 0.16);
+  const shadowOpacity = Math.max(0.06, 0.28 - height * 0.16);
+  const shadowScale = 1 + height * 0.9;
 
   useFrame((_state, delta) => {
     if (!mesh.current) return;
@@ -42,9 +45,14 @@ export function Ball3D({ position }: BallProps) {
       <mesh
         position={[position[0], 0.015, position[2]]}
         rotation={[-Math.PI / 2, 0, 0]}
+        scale={[shadowScale, shadowScale, 1]}
       >
         <circleGeometry args={[0.48, 36]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.22} />
+        <meshBasicMaterial
+          color="#000000"
+          transparent
+          opacity={shadowOpacity}
+        />
       </mesh>
     </group>
   );

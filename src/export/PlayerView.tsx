@@ -1,5 +1,5 @@
 import { type Layer, catalog } from "@/data";
-import { useAppStore } from "@/state/useAppStore";
+import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { Scene3D } from "@/viewer/Scene3D";
 import { useState } from "react";
 
@@ -34,8 +34,7 @@ export function PlayerView() {
   const safeIndex = Math.min(blockIndex, blocks.length - 1);
   const focusBlock = blocks[safeIndex];
   const focusExercise =
-    catalog.find((item) => item.id === focusBlock.exerciseId) ??
-    fallbackExercise;
+    getExerciseById(focusBlock.exerciseId) ?? fallbackExercise;
 
   return (
     <section className="team-card" style={{ maxWidth: 1080, margin: "0 auto" }}>
