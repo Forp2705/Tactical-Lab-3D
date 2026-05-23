@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { TacticalMemorySchema } from "../CoachSchemas";
+import { writableDataPath } from "../serverDataPaths";
 import {
   CommitMemoryCandidatesRequestSchema,
   SavePostMatchReportRequestSchema,
@@ -65,8 +66,10 @@ export async function commitMemoryCandidates(payload: unknown) {
 }
 
 async function loadReports() {
+  const reportsPath = writableDataPath(REPORTS_PATH);
+
   try {
-    const raw = await fs.readFile(REPORTS_PATH, "utf-8");
+    const raw = await fs.readFile(reportsPath, "utf-8");
     const parsed = JSON.parse(raw);
     return SavedPostMatchReportSchema.array().parse(parsed);
   } catch {
@@ -75,8 +78,10 @@ async function loadReports() {
 }
 
 async function loadGeneratedMemory() {
+  const runtimePath = writableDataPath(GENERATED_MEMORY_PATH);
+
   try {
-    const raw = await fs.readFile(GENERATED_MEMORY_PATH, "utf-8");
+    const raw = await fs.readFile(runtimePath, "utf-8");
     const parsed = JSON.parse(raw);
     return TacticalMemorySchema.parse(parsed);
   } catch {
@@ -148,6 +153,11 @@ function normalize(value: string) {
 }
 
 async function writeJson(filePath: string, payload: unknown) {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf-8");
+  const runtimePath = writableDataPath(filePath);
+  await fs.mkdir(path.dirname(runtimePath), { recursive: true });
+  await fs.writeFile(
+    runtimePath,
+    `${JSON.stringify(payload, null, 2)}\n`,
+    "utf-8",
+  );
 }
