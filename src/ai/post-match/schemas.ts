@@ -13,6 +13,14 @@ export const PostMatchTagSchema = z.object({
 export const MatchContextSchema = z.object({
   opponent: z.string().min(1),
   result: z.string().min(1),
+  interpretedResult: z
+    .object({
+      ownGoals: z.number().int().min(0),
+      rivalGoals: z.number().int().min(0),
+      outcome: z.enum(["win", "draw", "loss"]),
+      label: z.string(),
+    })
+    .optional(),
   competition: z.string().optional(),
   date: z.string().optional(),
   ownSystem: z.string().min(1),
@@ -57,6 +65,47 @@ export const PostMatchReportSchema = z.object({
   matchContext: MatchContextSchema,
   executiveSummary: z.string().min(1),
   matchStory: z.string().min(1),
+  ownStrengths: z.array(
+    z.object({
+      strength: z.string().min(1),
+      evidence: z.array(z.string()).default([]),
+    }),
+  ).default([]),
+  ownProblems: z.array(
+    z.object({
+      problem: z.string().min(1),
+      evidence: z.array(z.string()).default([]),
+      severity: z.enum(["low", "medium", "high"]),
+    }),
+  ).default([]),
+  rivalVulnerabilities: z.array(
+    z.object({
+      vulnerability: z.string().min(1),
+      evidence: z.array(z.string()).default([]),
+      howWeExploitedIt: z.string().optional(),
+    }),
+  ).default([]),
+  observedRisks: z.array(
+    z.object({
+      risk: z.string().min(1),
+      evidence: z.array(z.string()).default([]),
+      owner: z.enum(["own", "rival", "both", "unclear"]),
+    }),
+  ).default([]),
+  tacticalInferences: z.array(
+    z.object({
+      inference: z.string().min(1),
+      basedOn: z.array(z.string()).default([]),
+      confidence: ConfidenceSchema,
+    }),
+  ).default([]),
+  memoryInfluence: z.array(
+    z.object({
+      memoryItem: z.string().min(1),
+      usedAs: z.enum(["contextOnly", "supportedByCurrentEvidence"]),
+      currentEvidence: z.array(z.string()).default([]),
+    }),
+  ).default([]),
   keyPatterns: z.array(
     z.object({
       pattern: z.string().min(1),

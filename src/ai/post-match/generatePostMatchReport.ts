@@ -35,7 +35,7 @@ function getClient() {
 }
 
 export async function generatePostMatchReport(rawInput: unknown) {
-  const input = PostMatchInputSchema.parse(rawInput);
+  const input = withInterpretedResult(PostMatchInputSchema.parse(rawInput));
   const searchableInput = buildSearchableInput(input);
   const relevantContext = retrieveRelevantContext(searchableInput);
   const relevantGeneratedMemory =
@@ -72,6 +72,22 @@ export async function generatePostMatchReport(rawInput: unknown) {
     id: parsed.id ?? reportId,
     createdAt: parsed.createdAt ?? new Date().toISOString(),
     matchContext: input.matchContext,
+    ownStrengths: Array.isArray(parsed.ownStrengths)
+      ? parsed.ownStrengths
+      : [],
+    ownProblems: Array.isArray(parsed.ownProblems) ? parsed.ownProblems : [],
+    rivalVulnerabilities: Array.isArray(parsed.rivalVulnerabilities)
+      ? parsed.rivalVulnerabilities
+      : [],
+    observedRisks: Array.isArray(parsed.observedRisks)
+      ? parsed.observedRisks
+      : [],
+    tacticalInferences: Array.isArray(parsed.tacticalInferences)
+      ? parsed.tacticalInferences
+      : [],
+    memoryInfluence: Array.isArray(parsed.memoryInfluence)
+      ? parsed.memoryInfluence
+      : [],
     memoryCandidates: Array.isArray(parsed.memoryCandidates)
       ? parsed.memoryCandidates.map((candidate: { id?: string }, index: number) => ({
           ...candidate,
@@ -114,6 +130,23 @@ Modo: ANALISIS POST-PARTIDO.
 
 Trabajas como asistente de staff. No inventes el partido. Usá solo contexto, notas, tags y evidencia disponible. Si falta evidencia, declaralo en missingInformation o reflection.
 
+Regla de resultado:
+- El resultado SIEMPRE esta cargado desde la perspectiva del equipo propio.
+- Resultado cargado: ${input.matchContext.result}
+- Interpretacion obligatoria: ${input.matchContext.interpretedResult?.label ?? "resultado no interpretable"}
+- Si outcome es "win", NO describas el partido como derrota propia.
+- Si outcome es "loss", NO describas el partido como victoria propia.
+- Si outcome es "draw", describilo como empate.
+
+Reglas de grounding y atribucion de sujeto:
+- No inventes minutos, clips, eventos ni secuencias. Solo podes mencionar minutos si aparecen en tags.
+- No conviertas vulnerabilidades del rival en problemas propios.
+- Si las notas dicen que el rival defendio con linea alta o defensores lentos, eso es vulnerabilidad del rival, no problema propio.
+- No atribuyas memoria previa al partido actual salvo que haya evidencia actual explicita.
+- Diferencia evidencia actual, inferencia tactica y memoria previa.
+- Si usas memoria previa, ponela en memoryInfluence y aclara si es contextOnly o supportedByCurrentEvidence.
+- No digas que el bloque propio se hundio, que los delanteros propios retrocedieron o que hubo un problema recurrente si eso no esta en notas/tags del partido actual.
+
 Regla critica:
 - NO actualices memoria.
 - Solo propone memoryCandidates.
@@ -126,6 +159,47 @@ Respond ONLY with valid JSON using this exact structure:
 {
   "executiveSummary": "string",
   "matchStory": "string",
+  "ownStrengths": [
+    {
+      "strength": "string",
+      "evidence": ["string"]
+    }
+  ],
+  "ownProblems": [
+    {
+      "problem": "string",
+      "evidence": ["string"],
+      "severity": "low|medium|high"
+    }
+  ],
+  "rivalVulnerabilities": [
+    {
+      "vulnerability": "string",
+      "evidence": ["string"],
+      "howWeExploitedIt": "string"
+    }
+  ],
+  "observedRisks": [
+    {
+      "risk": "string",
+      "evidence": ["string"],
+      "owner": "own|rival|both|unclear"
+    }
+  ],
+  "tacticalInferences": [
+    {
+      "inference": "string",
+      "basedOn": ["string"],
+      "confidence": "low|medium|high"
+    }
+  ],
+  "memoryInfluence": [
+    {
+      "memoryItem": "string",
+      "usedAs": "contextOnly|supportedByCurrentEvidence",
+      "currentEvidence": ["string"]
+    }
+  ],
   "keyPatterns": [
     {
       "pattern": "string",
@@ -198,4 +272,42 @@ ${COACH_RULES}
 Post-match input:
 ${JSON.stringify(input, null, 2)}
 `;
+}
+
+function withInterpretedResult(input: PostMatchInput): PostMatchInput {
+  const interpretedResult = parseOwnPerspectiveResult(
+    input.matchContext.result,
+  );
+
+  return {
+    ...input,
+    matchContext: {
+      ...input.matchContext,
+      ...(interpretedResult ? { interpretedResult } : {}),
+    },
+  };
+}
+
+export function parseOwnPerspectiveResult(result: string) {
+  const normalized = result.trim();
+  const match = normalized.match(/^(\d{1,2})\s*[-:x]\s*(\d{1,2})$/i);
+  if (!match) return null;
+
+  const ownGoals = Number(match[1]);
+  const rivalGoals = Number(match[2]);
+  const outcome =
+    ownGoals > rivalGoals ? "win" : ownGoals < rivalGoals ? "loss" : "draw";
+  const outcomeLabel =
+    outcome === "win"
+      ? "victoria propia"
+      : outcome === "loss"
+        ? "derrota propia"
+        : "empate";
+
+  return {
+    ownGoals,
+    rivalGoals,
+    outcome,
+    label: `${outcomeLabel} ${ownGoals} a ${rivalGoals}`,
+  } as const;
 }

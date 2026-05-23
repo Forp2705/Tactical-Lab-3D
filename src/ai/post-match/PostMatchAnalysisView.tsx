@@ -302,7 +302,28 @@ function ReportReview({
   return (
     <>
       <TextCard title="Resumen ejecutivo" value={report.executiveSummary} />
+      {report.matchContext.interpretedResult ? (
+        <TextCard
+          title="Resultado interpretado"
+          value={report.matchContext.interpretedResult.label}
+        />
+      ) : null}
       <TextCard title="Historia del partido" value={report.matchStory} />
+      <EvidenceCards
+        title="Fortalezas propias"
+        items={report.ownStrengths}
+        labelKey="strength"
+      />
+      <EvidenceCards
+        title="Problemas propios"
+        items={report.ownProblems}
+        labelKey="problem"
+        metaKey="severity"
+      />
+      <RivalVulnerabilityCards items={report.rivalVulnerabilities} />
+      <ObservedRiskCards items={report.observedRisks} />
+      <InferenceCards items={report.tacticalInferences} />
+      <MemoryInfluenceCards items={report.memoryInfluence} />
       <PatternCards patterns={report.keyPatterns} />
       <ProblemCards problems={report.mainProblems} />
       <ListCard title="Positivos" items={report.positives} />
@@ -400,6 +421,127 @@ function ListCard({ title, items }: { title: string; items: string[] }) {
   );
 }
 
+function EvidenceCards<T extends Record<string, unknown>>({
+  title,
+  items,
+  labelKey,
+  metaKey,
+}: {
+  title: string;
+  items: T[];
+  labelKey: keyof T;
+  metaKey?: keyof T;
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>{title}</b>
+      {items.map((item, index) => {
+        const label = textValue(item[labelKey]);
+        const meta = metaKey ? textValue(item[metaKey]) : "";
+        const evidence = Array.isArray(item.evidence)
+          ? item.evidence.map((entry) => String(entry))
+          : [];
+
+        return (
+          <div className="report-subcard" key={`${title}-${index}-${label}`}>
+            <strong>{meta ? `${label} · ${meta}` : label}</strong>
+            <SmallList items={evidence} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RivalVulnerabilityCards({
+  items,
+}: {
+  items: PostMatchReport["rivalVulnerabilities"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Vulnerabilidades del rival</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.vulnerability}-${index}`}>
+          <strong>{item.vulnerability}</strong>
+          {item.howWeExploitedIt ? <p>{item.howWeExploitedIt}</p> : null}
+          <SmallList items={item.evidence} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ObservedRiskCards({
+  items,
+}: {
+  items: PostMatchReport["observedRisks"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Riesgos observados</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.risk}-${index}`}>
+          <strong>
+            {item.risk} · sujeto: {item.owner}
+          </strong>
+          <SmallList items={item.evidence} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InferenceCards({
+  items,
+}: {
+  items: PostMatchReport["tacticalInferences"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Inferencias tacticas</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.inference}-${index}`}>
+          <strong>
+            {item.inference} · {item.confidence}
+          </strong>
+          <SmallList items={item.basedOn} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MemoryInfluenceCards({
+  items,
+}: {
+  items: PostMatchReport["memoryInfluence"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Memoria previa usada</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.memoryItem}-${index}`}>
+          <strong>
+            {item.memoryItem} · {item.usedAs}
+          </strong>
+          <SmallList items={item.currentEvidence} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PatternCards({
   patterns,
 }: {
@@ -417,6 +559,14 @@ function PatternCards({
       ))}
     </div>
   );
+}
+
+function textValue(value: unknown) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "";
 }
 
 function ProblemCards({

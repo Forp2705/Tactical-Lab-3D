@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { methodNotAllowed, sendJson } from "../src/server/api.js";
+import { methodNotAllowed, sendJson } from "./_utils.js";
 
 export default function handler(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== "GET") {
