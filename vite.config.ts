@@ -9,6 +9,9 @@ type GeminiProxyEnv = {
   GEMINI_API_KEY?: string;
   GOOGLE_API_KEY?: string;
   GEMINI_MODEL?: string;
+  // Flag explicita: el endpoint Gemini es legacy y queda desactivado salvo
+  // que se ponga ENABLE_GEMINI=true. El camino principal del coach es OpenRouter.
+  ENABLE_GEMINI?: string;
 };
 
 function readBody(req: IncomingMessage) {
@@ -266,11 +269,46 @@ function coachAgentProxy(): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "") as GeminiProxyEnv;
 
+  const geminiEnabled =
+    (process.env.ENABLE_GEMINI ?? env.ENABLE_GEMINI) === "true";
+
   return {
-    plugins: [react(), geminiProxy(env), coachAgentProxy()],
+    plugins: [
+      react(),
+      ...(geminiEnabled ? [geminiProxy(env)] : []),
+      coachAgentProxy(),
+    ],
     resolve: {
       alias: {
         "@": "/src",
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // Separamos las dependencias pesadas en vendor chunks con nombre
+          // propio. Mejora el cacheo entre deploys y hace honesto el reporte de
+          // tamano (antes "three" caia dentro de un chunk llamado Pitch3D).
+          // No cambia el lazy-loading: estos paquetes solo los importan vistas
+          // que ya se cargan bajo demanda.
+          manualChunks(id: string) {
+            if (!id.includes("node_modules")) return undefined;
+            if (
+              id.includes("/three/") ||
+              id.includes("@react-three") ||
+              id.includes("postprocessing")
+            ) {
+              return "three-vendor";
+            }
+            if (id.includes("@react-pdf") || id.includes("react-pdf")) {
+              return "pdf-vendor";
+            }
+            if (id.includes("@ffmpeg")) {
+              return "ffmpeg-vendor";
+            }
+            return undefined;
+          },
+        },
       },
     },
   };

@@ -19,6 +19,53 @@ export type ViewId =
   | "ai"
   | "player";
 export type CameraId = "top" | "iso" | "broadcast";
+export type ViewerQuality = "high" | "medium" | "low";
+
+export type ExportStatus = {
+  phase: "recording" | "encoding";
+  format: "mp4" | "gif";
+};
+
+export type CoachShapePlayer = {
+  playerId: string;
+  name: string;
+  role: string;
+  x: number;
+  y: number;
+};
+
+export type CoachShapeSummary = {
+  id: string;
+  name: string;
+  phase: string;
+  notes?: string;
+  summary: string;
+  players: CoachShapePlayer[];
+};
+
+export type CoachRivalReference = {
+  id: string;
+  num: number;
+  role: string;
+  x: number;
+  y: number;
+};
+
+export type CoachShapeContext = {
+  formation: string;
+  selectedShapeId: string | null;
+  selectedShapeName?: string;
+  currentBoardSummary: string;
+  currentBoard: CoachShapePlayer[];
+  transition?: {
+    fromShapeId: string | null;
+    fromShapeName?: string;
+    toShapeId: string | null;
+    toShapeName?: string;
+  };
+  shapes: CoachShapeSummary[];
+  rivalReference?: CoachRivalReference[];
+};
 
 type TeamState = {
   name: string;
@@ -33,6 +80,7 @@ type AppState = {
   selectedExerciseId: string;
   view: ViewId;
   camera: CameraId;
+  viewerQuality: ViewerQuality;
   time: number;
   speed: number;
   playing: boolean;
@@ -53,12 +101,16 @@ type AppState = {
   tags: { label: string; time: number }[];
   tracks: { time: number; x: number; y: number; label: string }[];
   aiPrompt: string;
+  coachShapeContext: CoachShapeContext | null;
   initialized: boolean;
   viewerExerciseOverride: Exercise | null;
   presentationMode: boolean;
+  exportStatus: ExportStatus | null;
   setView: (view: ViewId) => void;
   setPresentationMode: (enabled: boolean) => void;
+  setExportStatus: (status: ExportStatus | null) => void;
   setCamera: (camera: CameraId) => void;
+  setViewerQuality: (quality: ViewerQuality) => void;
   setTime: (time: number) => void;
   setSpeed: (speed: number) => void;
   togglePlaying: () => void;
@@ -88,6 +140,7 @@ type AppState = {
   loadSnapshot: (snapshot: Partial<AppState>) => void;
   markInitialized: () => void;
   setAiPrompt: (prompt: string) => void;
+  setCoachShapeContext: (context: CoachShapeContext | null) => void;
 };
 
 const makeSession = (): Session => ({
@@ -177,6 +230,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedExerciseId: catalog[0]?.id ?? "",
   view: "library",
   camera: "iso",
+  viewerQuality: "medium",
   time: 0,
   speed: 1,
   playing: false,
@@ -197,16 +251,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   tags: [],
   tracks: [],
   aiPrompt: "",
+  coachShapeContext: null,
   initialized: false,
   viewerExerciseOverride: null,
   presentationMode: false,
+  exportStatus: null,
   setView: (view) =>
     set({
       view,
       presentationMode: view === "viewer" ? get().presentationMode : false,
     }),
   setPresentationMode: (enabled) => set({ presentationMode: enabled }),
+  setExportStatus: (exportStatus) => set({ exportStatus }),
   setCamera: (camera) => set({ camera }),
+  setViewerQuality: (viewerQuality) => set({ viewerQuality }),
   setTime: (time) => set({ time }),
   setSpeed: (speed) => set({ speed }),
   togglePlaying: () => set({ playing: !get().playing }),
@@ -431,6 +489,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   markInitialized: () => set({ initialized: true }),
   setAiPrompt: (prompt) => set({ aiPrompt: prompt }),
+  setCoachShapeContext: (coachShapeContext) => set({ coachShapeContext }),
 }));
 
 export function getExerciseById(id: string) {

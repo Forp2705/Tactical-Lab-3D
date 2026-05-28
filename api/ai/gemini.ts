@@ -15,6 +15,17 @@ export default async function handler(
     return;
   }
 
+  // Endpoint legacy: desactivado salvo ENABLE_GEMINI=true. El camino principal
+  // del coach es OpenRouter (api/coach-agent.ts).
+  if (process.env.ENABLE_GEMINI !== "true") {
+    sendJson(res, 404, {
+      ok: false,
+      configured: false,
+      error: "Gemini endpoint disabled (set ENABLE_GEMINI=true to enable).",
+    });
+    return;
+  }
+
   const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
   const model = process.env.GEMINI_MODEL ?? "gemini-3.1-flash-lite";
 

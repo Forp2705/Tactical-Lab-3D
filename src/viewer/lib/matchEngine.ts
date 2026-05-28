@@ -360,33 +360,86 @@ function findInterception(
 
 function applyPersonalSpace(actors: EngineActorPose[]) {
   const adjusted = actors.map((pose) => ({ ...pose, pos: { ...pose.pos } }));
-  for (let iteration = 0; iteration < 4; iteration += 1) {
-    for (let a = 0; a < adjusted.length; a += 1) {
-      for (let b = a + 1; b < adjusted.length; b += 1) {
-        const first = adjusted[a];
-        const second = adjusted[b];
-        const minDistance = first.actor.team === second.actor.team ? 2.1 : 1.55;
-        const dx = second.pos.x - first.pos.x;
-        const dy = second.pos.y - first.pos.y;
-        const distance = Math.max(0.001, Math.hypot(dx, dy));
-        if (distance >= minDistance) continue;
+  const maxPersonalDistance = 2.1;
+  const neighborOffsets = [-1, 0, 1] as const;
 
-        const push = (minDistance - distance) * 0.5;
-        const ux = dx / distance;
-        const uy = dy / distance;
-        first.pos = clampPitchPoint({
-          x: first.pos.x - ux * push,
-          y: first.pos.y - uy * push,
-        });
-        second.pos = clampPitchPoint({
-          x: second.pos.x + ux * push,
-          y: second.pos.y + uy * push,
-        });
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    const grid = buildSpatialGrid(adjusted, maxPersonalDistance);
+
+    for (let firstIndex = 0; firstIndex < adjusted.length; firstIndex += 1) {
+      const first = adjusted[firstIndex];
+      const baseCell = gridCell(first.pos, maxPersonalDistance);
+
+      for (const dxCell of neighborOffsets) {
+        for (const dyCell of neighborOffsets) {
+          const cellActors =
+            grid.get(`${baseCell.x + dxCell}:${baseCell.y + dyCell}`) ?? [];
+
+          for (const secondIndex of cellActors) {
+            if (secondIndex <= firstIndex) continue;
+            pushApart(adjusted[firstIndex], adjusted[secondIndex]);
+          }
+        }
       }
     }
   }
 
   return adjusted;
+}
+
+function buildSpatialGrid(actors: EngineActorPose[], cellSize: number) {
+  const grid = new Map<string, number[]>();
+
+  actors.forEach((pose, index) => {
+    const cell = gridCell(pose.pos, cellSize);
+    const key = `${cell.x}:${cell.y}`;
+    const existing = grid.get(key);
+    if (existing) {
+      existing.push(index);
+      return;
+    }
+    grid.set(key, [index]);
+  });
+
+  return grid;
+}
+
+function gridCell(point: Vec2, cellSize: number) {
+  return {
+    x: Math.floor(point.x / cellSize),
+    y: Math.floor(point.y / cellSize),
+  };
+}
+
+function pushApart(first: EngineActorPose, second: EngineActorPose) {
+  const minDistance = first.actor.team === second.actor.team ? 2.1 : 1.55;
+  const dx = second.pos.x - first.pos.x;
+  const dy = second.pos.y - first.pos.y;
+  const rawDistance = Math.hypot(dx, dy);
+  const distance = Math.max(0.001, rawDistance);
+  if (distance >= minDistance) return;
+
+  const push = (minDistance - distance) * 0.5;
+  const fallbackAngle = pairAngle(first.actor.id, second.actor.id);
+  const ux = rawDistance < 0.001 ? Math.cos(fallbackAngle) : dx / distance;
+  const uy = rawDistance < 0.001 ? Math.sin(fallbackAngle) : dy / distance;
+  first.pos = clampPitchPoint({
+    x: first.pos.x - ux * push,
+    y: first.pos.y - uy * push,
+  });
+  second.pos = clampPitchPoint({
+    x: second.pos.x + ux * push,
+    y: second.pos.y + uy * push,
+  });
+}
+
+function pairAngle(firstId: string, secondId: string) {
+  const key = `${firstId}:${secondId}`;
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
+  }
+  return (hash / 0xffffffff) * Math.PI * 2;
 }
 
 export function classifyActorMotion(

@@ -39,7 +39,7 @@ export async function generatePostMatchReport(rawInput: unknown) {
   const input = withInterpretedResult(PostMatchInputSchema.parse(rawInput));
   const evidenceLedger = buildEvidenceLedger(input);
   const searchableInput = buildSearchableInput(input);
-  const relevantContext = retrieveRelevantContext(searchableInput);
+  const relevantContext = await retrieveRelevantContext(searchableInput);
   const relevantGeneratedMemory =
     await retrieveRelevantGeneratedMemory(searchableInput);
   const relevantKnowledge = await retrieveRelevantKnowledge(searchableInput);

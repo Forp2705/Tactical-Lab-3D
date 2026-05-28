@@ -18,10 +18,12 @@ export async function requestPostMatchReport(
 
 export async function savePostMatchReport(
   report: PostMatchReport,
+  sourceInput: PostMatchInput,
   staffReview: StaffReview,
 ): Promise<SavedPostMatchReport> {
   return postJson<SavedPostMatchReport>("/api/post-match/reports", {
     report,
+    sourceInput,
     staffReview,
   });
 }
@@ -34,6 +36,24 @@ export async function commitMemoryCandidates({
   candidates: MemoryCandidate[];
 }): Promise<{ committedCount: number; skippedDuplicates: number }> {
   return postJson("/api/post-match/memory", { reportId, candidates });
+}
+
+export async function listPostMatchReports(): Promise<SavedPostMatchReport[]> {
+  const response = await fetch("/api/post-match/reports");
+  const payload = (await response.json().catch(() => null)) as
+    | SavedPostMatchReport[]
+    | ApiError
+    | null;
+
+  if (!response.ok) {
+    const message =
+      isApiError(payload) && payload.error
+        ? payload.error
+        : "Post-match history request failed.";
+    throw new Error(message);
+  }
+
+  return Array.isArray(payload) ? payload : [];
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {

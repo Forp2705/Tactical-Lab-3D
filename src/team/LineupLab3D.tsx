@@ -1,4 +1,5 @@
 import type { Lineup, Player, Vec2 } from "@/data";
+import type { CoachShapeContext, CoachShapePlayer } from "@/state/useAppStore";
 import { useAppStore } from "@/state/useAppStore";
 import { Pitch3D } from "@/viewer/Pitch3D";
 import {
@@ -343,6 +344,35 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
+
+  useEffect(() => {
+    useAppStore.getState().setCoachShapeContext(
+      buildCoachShapeContext({
+        formation,
+        players,
+        ownChips,
+        shapes,
+        selectedShapeId,
+        fromShapeId,
+        toShapeId,
+        rivalChips: showRival ? rivalChips : [],
+      }),
+    );
+
+    return () => {
+      useAppStore.getState().setCoachShapeContext(null);
+    };
+  }, [
+    formation,
+    fromShapeId,
+    ownChips,
+    players,
+    rivalChips,
+    selectedShapeId,
+    shapes,
+    showRival,
+    toShapeId,
+  ]);
 
   function pushHistory() {
     const snapshot: LabSnapshot = {
@@ -1592,6 +1622,155 @@ function computeTransitionDistances(
         Boolean(entry),
     )
     .sort((a, b) => b.distance - a.distance);
+}
+
+function buildCoachShapeContext({
+  formation,
+  players,
+  ownChips,
+  shapes,
+  selectedShapeId,
+  fromShapeId,
+  toShapeId,
+  rivalChips,
+}: {
+  formation: string;
+  players: Player[];
+  ownChips: Array<{ player: Player; role: string; pos: Vec2 }>;
+  shapes: Shape[];
+  selectedShapeId: string | null;
+  fromShapeId: string | null;
+  toShapeId: string | null;
+  rivalChips: Array<{ rival: RivalChip; role: string; pos: Vec2 }>;
+}): CoachShapeContext {
+  const selectedShape = shapes.find((shape) => shape.id === selectedShapeId);
+  const fromShape = shapes.find((shape) => shape.id === fromShapeId);
+  const toShape = shapes.find((shape) => shape.id === toShapeId);
+
+  return {
+    formation,
+    selectedShapeId,
+    selectedShapeName: selectedShape?.name,
+    currentBoardSummary: summarizeBoard(
+      ownChips.map((chip) => ({
+        playerId: chip.player.id,
+        name: chip.player.name,
+        role: chip.role,
+        x: chip.pos.x,
+        y: chip.pos.y,
+      })),
+    ),
+    currentBoard: ownChips.map((chip) => ({
+      playerId: chip.player.id,
+      name: chip.player.name,
+      role: chip.role,
+      x: roundPos(chip.pos.x),
+      y: roundPos(chip.pos.y),
+    })),
+    transition: {
+      fromShapeId,
+      fromShapeName: fromShape?.name,
+      toShapeId,
+      toShapeName: toShape?.name,
+    },
+    shapes: shapes.map((shape) => {
+      const shapePlayers = Object.entries(shape.positions)
+        .map(([playerId, pos]) => {
+          const player = players.find((item) => item.id === playerId);
+          if (!player) return null;
+          const currentRole =
+            ownChips.find((chip) => chip.player.id === playerId)?.role ??
+            player.positions[0] ??
+            "CM";
+
+          return {
+            playerId,
+            name: player.name,
+            role: currentRole,
+            x: roundPos(pos.x),
+            y: roundPos(pos.y),
+          };
+        })
+        .filter((entry): entry is CoachShapePlayer => Boolean(entry));
+
+      return {
+        id: shape.id,
+        name: shape.name,
+        phase: shape.phase,
+        notes: shape.notes,
+        summary: summarizeBoard(shapePlayers),
+        players: shapePlayers,
+      };
+    }),
+    rivalReference: rivalChips.length
+      ? rivalChips.map((chip) => ({
+          id: chip.rival.id,
+          num: chip.rival.num,
+          role: chip.role,
+          x: roundPos(chip.pos.x),
+          y: roundPos(chip.pos.y),
+        }))
+      : undefined,
+  };
+}
+
+function summarizeBoard(players: CoachShapePlayer[]) {
+  if (!players.length) return "Sin shape cargado.";
+
+  const sortedByX = [...players].sort((a, b) => a.x - b.x);
+  const width = Math.max(...players.map((player) => player.y)) -
+    Math.min(...players.map((player) => player.y));
+  const depth = Math.max(...players.map((player) => player.x)) -
+    Math.min(...players.map((player) => player.x));
+  const defense = players.filter((player) => isDefenderRole(player.role));
+  const midfield = players.filter((player) => isMidfieldRole(player.role));
+  const attack = players.filter((player) => isAttackRole(player.role));
+  const defenseLine = averageX(defense);
+  const midfieldLine = averageX(midfield);
+  const attackLine = averageX(attack);
+  const leftWide = players.filter((player) => player.y <= 28).length;
+  const rightWide = players.filter((player) => player.y >= 72).length;
+  const deepest = sortedByX[0];
+  const highest = sortedByX.at(-1);
+
+  return [
+    `ancho ${width.toFixed(1)} / profundidad ${depth.toFixed(1)}`,
+    defense.length ? `defensa en x ${defenseLine.toFixed(1)}` : "",
+    midfield.length ? `medio en x ${midfieldLine.toFixed(1)}` : "",
+    attack.length ? `ataque en x ${attackLine.toFixed(1)}` : "",
+    `izquierda ocupada ${leftWide}, derecha ocupada ${rightWide}`,
+    deepest ? `mas bajo ${lastName(deepest.name)} ${deepest.role}` : "",
+    highest ? `mas alto ${lastName(highest.name)} ${highest.role}` : "",
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function averageX(players: CoachShapePlayer[]) {
+  if (!players.length) return 0;
+  return players.reduce((sum, player) => sum + player.x, 0) / players.length;
+}
+
+function isDefenderRole(role: string) {
+  const value = role.toUpperCase();
+  return value.includes("CB") || value.includes("LB") || value.includes("RB") ||
+    value.includes("WB");
+}
+
+function isMidfieldRole(role: string) {
+  const value = role.toUpperCase();
+  return value.includes("CM") || value.includes("CDM") || value.includes("CAM") ||
+    value.includes("DM") || value.includes("AM");
+}
+
+function isAttackRole(role: string) {
+  const value = role.toUpperCase();
+  return value.includes("ST") || value.includes("LW") || value.includes("RW") ||
+    value.includes("LM") || value.includes("RM");
+}
+
+function roundPos(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 function snapPitch(pos: Vec2) {

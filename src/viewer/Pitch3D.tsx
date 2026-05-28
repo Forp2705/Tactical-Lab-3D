@@ -435,11 +435,38 @@ function GoalPost({
   );
 }
 
+// Los canvases del cesped son caros de generar (~1M operaciones por canal) y
+// NO dependen del tamano de cancha: el patron se tilea. Por eso se generan una
+// sola vez por sesion y se reutilizan en cada modo de cancha; solo cambia el
+// `repeat` de cada textura. Esto evita el tiron al abrir el visor y al cambiar
+// de tipo de cancha.
+type GrassCanvases = {
+  diffuse: HTMLCanvasElement;
+  roughness: HTMLCanvasElement;
+  ao: HTMLCanvasElement;
+  bump: HTMLCanvasElement;
+};
+
+let grassCanvasCache: GrassCanvases | null = null;
+
+function getGrassCanvases(): GrassCanvases {
+  if (!grassCanvasCache) {
+    grassCanvasCache = {
+      diffuse: makeGrassCanvas("diffuse"),
+      roughness: makeGrassCanvas("roughness"),
+      ao: makeGrassCanvas("ao"),
+      bump: makeGrassCanvas("bump"),
+    };
+  }
+  return grassCanvasCache;
+}
+
 function createGrassTextures(length: number, width: number) {
-  const diffuse = new CanvasTexture(makeGrassCanvas("diffuse"));
-  const roughness = new CanvasTexture(makeGrassCanvas("roughness"));
-  const ao = new CanvasTexture(makeGrassCanvas("ao"));
-  const bump = new CanvasTexture(makeGrassCanvas("bump"));
+  const canvases = getGrassCanvases();
+  const diffuse = new CanvasTexture(canvases.diffuse);
+  const roughness = new CanvasTexture(canvases.roughness);
+  const ao = new CanvasTexture(canvases.ao);
+  const bump = new CanvasTexture(canvases.bump);
   const textures = [diffuse, roughness, ao, bump];
 
   for (const texture of textures) {

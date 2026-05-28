@@ -1,8 +1,9 @@
 import { useAppStore } from "@/state/useAppStore";
 import type { Dispatch, SetStateAction } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   commitMemoryCandidates,
+  listPostMatchReports,
   requestPostMatchReport,
   savePostMatchReport,
 } from "./postMatchClient";
@@ -20,6 +21,7 @@ import type {
   PostMatchInput,
   PostMatchReport,
   PostMatchTag,
+  SavedPostMatchReport,
 } from "./schemas";
 
 type FormState = {
@@ -57,8 +59,10 @@ export function PostMatchAnalysisView() {
   );
   const [staffReviewNotes, setStaffReviewNotes] = useState("");
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  const [history, setHistory] = useState<SavedPostMatchReport[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [loading, setLoading] = useState<"generate" | "save" | "memory" | null>(
     null,
   );
@@ -69,6 +73,24 @@ export function PostMatchAnalysisView() {
       form.ownSystem.trim() &&
       (form.staffNotes.trim() || parsedTags.length),
   );
+
+  useEffect(() => {
+    void refreshHistory();
+  }, []);
+
+  async function refreshHistory() {
+    try {
+      const nextHistory = await listPostMatchReports();
+      setHistory(nextHistory);
+      setHistoryError(null);
+    } catch (requestError) {
+      setHistoryError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudo cargar el historial de reportes.",
+      );
+    }
+  }
 
   async function generateReport() {
     if (!canGenerate || loading) return;
@@ -101,12 +123,16 @@ export function PostMatchAnalysisView() {
     setStatus(null);
 
     try {
-      const saved = await savePostMatchReport(report, {
+      const saved = await savePostMatchReport(report, buildInput(form), {
         notes: staffReviewNotes,
         acceptedMemoryCandidateIds: [],
       });
       setReport(saved.report);
       setSavedReportId(saved.id);
+      setHistory((current) => [
+        saved,
+        ...current.filter((item) => item.id !== saved.id),
+      ]);
       try {
         const { downloadPostMatchPdf } = await import("./PostMatchPdf");
         await downloadPostMatchPdf(saved.report, staffReviewNotes);
@@ -158,6 +184,16 @@ export function PostMatchAnalysisView() {
     } finally {
       setLoading(null);
     }
+  }
+
+  function openSavedReport(saved: SavedPostMatchReport) {
+    setForm(formFromSavedReport(saved));
+    setReport(saved.report);
+    setSavedReportId(saved.id);
+    setStaffReviewNotes(saved.staffReview.notes ?? "");
+    setSelectedCandidateIds(saved.staffReview.acceptedMemoryCandidateIds);
+    setStatus(`Reporte ${saved.id} cargado desde historial.`);
+    setError(null);
   }
 
   return (
@@ -234,9 +270,13 @@ export function PostMatchAnalysisView() {
             onChange={(event) =>
               updateField(setForm, "tagsText", event.target.value)
             }
-            placeholder="Un evento por linea. Si agregas minuto al comienzo, se usa como evidencia temporal."
+            placeholder="Una linea por evento. Formato sugerido: 12' recuperacion alta | carril central | robo tras pase atras."
           />
         </label>
+        <p className="muted-panel" style={{ marginTop: 8 }}>
+          Formato recomendado: <code>12&apos; label | zone | note</code>. El
+          minuto es opcional, pero ayuda a ordenar la evidencia.
+        </p>
         <div className="toolbar" style={{ marginTop: 12 }}>
           <button
             type="button"
@@ -260,6 +300,44 @@ export function PostMatchAnalysisView() {
           La generacion no escribe memoria. Los aprendizajes quedan como
           candidatos hasta que el staff los seleccione.
         </p>
+        <div className="ai-card" style={{ marginTop: 16 }}>
+          <div className="section-title">
+            <b>Historial de reportes</b>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void refreshHistory()}
+            >
+              Refrescar
+            </button>
+          </div>
+          {historyError ? <p className="muted-panel">{historyError}</p> : null}
+          {history.length ? (
+            <div className="report-history-list">
+              {history.map((saved) => (
+                <button
+                  type="button"
+                  className="report-history-item secondary"
+                  key={saved.id}
+                  onClick={() => openSavedReport(saved)}
+                >
+                  <b>
+                    {saved.report.matchContext.opponent} ·{" "}
+                    {saved.report.matchContext.result}
+                  </b>
+                  <small>
+                    {saved.report.matchContext.date ?? "sin fecha"} ·{" "}
+                    {saved.report.matchContext.ownSystem}
+                  </small>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-panel">
+              Todavia no hay reportes guardados en historial.
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="team-card ai-output">
@@ -366,6 +444,17 @@ function ReportReview({
         candidates={report.memoryCandidates}
         selectedIds={selectedCandidateIds}
         setSelectedIds={setSelectedCandidateIds}
+      />
+      <ObservedRiskCards items={report.observedRisks} />
+      <TacticalInferenceCards items={report.tacticalInferences} />
+      <MemoryInfluenceCards items={report.memoryInfluence} />
+      <ListCard
+        title="Claims no sostenidos"
+        items={report.grounding.unsupportedClaims}
+      />
+      <ListCard
+        title="Alertas de atribucion"
+        items={report.grounding.subjectAttributionWarnings}
       />
       <div className="ai-card">
         <b>Reflexion / confianza</b>
@@ -603,6 +692,75 @@ function PatternCards({
   );
 }
 
+function ObservedRiskCards({
+  items,
+}: {
+  items: PostMatchReport["observedRisks"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Riesgos observados</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.risk}-${index}`}>
+          <strong>
+            {humanizeReportText(item.risk)} - {subjectLabel(item.owner)}
+          </strong>
+          <SmallList items={humanizeEvidenceList(item.evidence)} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TacticalInferenceCards({
+  items,
+}: {
+  items: PostMatchReport["tacticalInferences"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Inferencias tacticas</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.inference}-${index}`}>
+          <strong>
+            {humanizeReportText(item.inference)} - {item.confidence}
+          </strong>
+          <SmallList items={humanizeEvidenceList(item.basedOn)} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MemoryInfluenceCards({
+  items,
+}: {
+  items: PostMatchReport["memoryInfluence"];
+}) {
+  if (!items.length) return null;
+
+  return (
+    <div className="ai-card">
+      <b>Influencia de memoria previa</b>
+      {items.map((item, index) => (
+        <div className="report-subcard" key={`${item.memoryItem}-${index}`}>
+          <strong>{humanizeReportText(item.memoryItem)}</strong>
+          <p>
+            {item.usedAs === "supportedByCurrentEvidence"
+              ? "Confirmada por evidencia actual."
+              : "Usada solo como contexto."}
+          </p>
+          <SmallList items={humanizeEvidenceList(item.currentEvidence)} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function textValue(value: unknown) {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") {
@@ -695,23 +853,6 @@ function SmallList({ items }: { items: string[] }) {
   );
 }
 
-function LabeledSmallList({
-  label,
-  items,
-}: {
-  label: string;
-  items: string[];
-}) {
-  if (!items.length) return null;
-
-  return (
-    <>
-      <p>{label}</p>
-      <SmallList items={items} />
-    </>
-  );
-}
-
 function buildInput(form: FormState): PostMatchInput {
   return {
     matchContext: {
@@ -735,9 +876,13 @@ function parseTags(text: string): PostMatchTag[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const match = line.match(/^(\d{1,3})(?:'|m|min)?\s*[-:.,]?\s*(.*)$/i);
-      const minute = match ? Number(match[1]) : undefined;
-      const content = match ? match[2]?.trim() : line;
+      const match = line.match(
+        /^(\d{1,3})(?::(\d{1,2}))?(?:'|m|min)?\s*[-.,]?\s*(.*)$/i,
+      );
+      const minute = match
+        ? Number(match[1]) + Number(match[2] ?? 0) / 60
+        : undefined;
+      const content = match ? match[3]?.trim() : line;
       const [labelPart, zonePart, notePart] = content
         .split("|")
         .map((part) => part.trim());
@@ -754,8 +899,48 @@ function parseTags(text: string): PostMatchTag[] {
 
 function tagsFromVideo(tags: { label: string; time: number }[]) {
   return tags
-    .map((tag) => `${Math.floor(tag.time / 60)} ${tag.label}`)
+    .map((tag) => `${formatTagTime(tag.time)} ${tag.label}`)
     .join("\n");
+}
+
+function formFromSavedReport(saved: SavedPostMatchReport): FormState {
+  const source = saved.sourceInput;
+  return {
+    opponent: saved.report.matchContext.opponent,
+    result: saved.report.matchContext.result,
+    competition: saved.report.matchContext.competition ?? "",
+    date: saved.report.matchContext.date ?? INITIAL_FORM.date,
+    ownSystem: saved.report.matchContext.ownSystem,
+    opponentSystem: saved.report.matchContext.opponentSystem ?? "",
+    venue: saved.report.matchContext.venue ?? "",
+    planBeforeMatch: source?.planBeforeMatch ?? "",
+    staffNotes: source?.staffNotes ?? "",
+    tagsText: source?.tags?.length ? stringifyTags(source.tags) : "",
+  };
+}
+
+function stringifyTags(tags: PostMatchTag[]) {
+  return tags
+    .map((tag) => {
+      const time = typeof tag.minute === "number" ? formatMinuteTag(tag.minute) : "";
+      const payload = [tag.label, tag.zone, tag.note].filter(Boolean).join(" | ");
+      return [time, payload].filter(Boolean).join(" ");
+    })
+    .join("\n");
+}
+
+function formatTagTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.floor(seconds % 60);
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function formatMinuteTag(minute: number) {
+  const wholeMinutes = Math.floor(minute);
+  const rawSeconds = Math.round((minute - wholeMinutes) * 60);
+  const seconds = rawSeconds === 60 ? 59 : rawSeconds;
+  if (!seconds) return `${wholeMinutes}'`;
+  return `${wholeMinutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function optionalText(value: string | undefined) {

@@ -78,8 +78,10 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
             label="Sistema rival"
             value={report.matchContext.opponentSystem}
           />
+          <Meta label="Sede / contexto" value={report.matchContext.venue} />
           <Meta label="Competencia" value={report.matchContext.competition} />
           <Meta label="Fecha" value={report.matchContext.date} />
+          <Meta label="Generado" value={report.createdAt} />
         </View>
 
         <TextSection
@@ -98,6 +100,7 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
           items={report.conditioningContext}
         />
         <TextSection title="Historia del partido" value={report.matchStory} />
+        <ListSection title="Lecturas positivas" items={report.positives} />
 
         <EvidenceSection
           title="Fortalezas propias"
@@ -111,6 +114,13 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
           items={report.rivalVulnerabilities.map((item) => ({
             title: item.vulnerability,
             body: item.howWeExploitedIt,
+            evidence: item.evidence,
+          }))}
+        />
+        <EvidenceSection
+          title="Riesgos observados"
+          items={report.observedRisks.map((item) => ({
+            title: `${item.risk} (${subjectLabel(item.owner)})`,
             evidence: item.evidence,
           }))}
         />
@@ -148,6 +158,24 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
             evidence: item.evidence,
           }))}
         />
+        <EvidenceSection
+          title="Inferencias tacticas"
+          items={report.tacticalInferences.map((item) => ({
+            title: `${item.inference} (${item.confidence})`,
+            evidence: item.basedOn,
+          }))}
+        />
+        <EvidenceSection
+          title="Influencia de memoria previa"
+          items={report.memoryInfluence.map((item) => ({
+            title: item.memoryItem,
+            body:
+              item.usedAs === "supportedByCurrentEvidence"
+                ? "Confirmada por evidencia actual."
+                : "Usada solo como contexto, no como conclusion.",
+            evidence: item.currentEvidence,
+          }))}
+        />
 
         <EvidenceSection
           title="Prioridades de entrenamiento"
@@ -170,6 +198,14 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
         <ListSection
           title="Informacion faltante"
           items={report.missingInformation}
+        />
+        <ListSection
+          title="Claims no sostenidos"
+          items={report.grounding.unsupportedClaims}
+        />
+        <ListSection
+          title="Alertas de atribucion"
+          items={report.grounding.subjectAttributionWarnings}
         />
 
         <EvidenceSection

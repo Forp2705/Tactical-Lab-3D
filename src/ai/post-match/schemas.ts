@@ -209,11 +209,13 @@ export const SavedPostMatchReportSchema = z.object({
   id: z.string().min(1),
   savedAt: z.string(),
   report: PostMatchReportSchema,
+  sourceInput: PostMatchInputSchema.optional(),
   staffReview: StaffReviewSchema,
 });
 
 export const SavePostMatchReportRequestSchema = z.object({
   report: PostMatchReportSchema,
+  sourceInput: PostMatchInputSchema.optional(),
   staffReview: StaffReviewSchema.default({
     notes: "",
     acceptedMemoryCandidateIds: [],

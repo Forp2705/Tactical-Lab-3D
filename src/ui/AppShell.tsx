@@ -1,3 +1,8 @@
+import {
+  APP_SNAPSHOT_VERSION,
+  parseSnapshot,
+  saveSnapshot,
+} from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import type { ChangeEvent, ReactNode } from "react";
 
@@ -169,40 +174,58 @@ function subtitleFor(view: string) {
       sessions:
         "Planificador practico con carga estimada y exportacion simple.",
       video: "Tagging manual, marcadores y tracking asistido.",
-      ai: "Sugerencias contextuales con guardrails visibles.",
+      ai: "Consulta tactica y analisis post-partido con salida estructurada.",
       player: "Vista limpia para jugadores sin ruido del staff.",
     }[view] ?? ""
   );
 }
 
 async function saveProject() {
-  const { saveSnapshot } = await import("@/state/db");
-  const { useAppStore } = await import("@/state/useAppStore");
   await saveSnapshot(snapshotFromState(useAppStore.getState()));
 }
 
 function exportProject() {
-  import("@/state/useAppStore").then(({ useAppStore }) => {
-    const snapshot = snapshotFromState(useAppStore.getState());
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
-      type: "application/json",
-    });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "tactical-lab-3d-project.json";
-    link.click();
+  const envelope = {
+    app: "tactical-lab-3d",
+    version: APP_SNAPSHOT_VERSION,
+    exportedAt: new Date().toISOString(),
+    snapshot: snapshotFromState(useAppStore.getState()),
+  };
+  const blob = new Blob([JSON.stringify(envelope, null, 2)], {
+    type: "application/json",
   });
+  const stamp = envelope.exportedAt.slice(0, 10);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `tactical-lab-3d-project-${stamp}.json`;
+  link.click();
 }
 
 async function importProject(event: ChangeEvent<HTMLInputElement>) {
   const file = event.target.files?.[0];
   if (!file) return;
-  const text = await file.text();
-  const { parseSnapshot } = await import("@/state/db");
-  const snapshot = parseSnapshot(JSON.parse(text));
-  if (!snapshot) return;
-  const { useAppStore } = await import("@/state/useAppStore");
-  useAppStore.getState().loadSnapshot(snapshot);
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text) as unknown;
+    // Acepta el formato nuevo con envelope { snapshot } y tambien un snapshot
+    // plano exportado por versiones anteriores. En ambos casos se valida y
+    // migra igual que al abrir la app.
+    const raw =
+      parsed && typeof parsed === "object" && "snapshot" in parsed
+        ? (parsed as { snapshot: unknown }).snapshot
+        : parsed;
+    const snapshot = parseSnapshot(raw);
+    if (!snapshot) {
+      window.alert("El archivo no contiene un proyecto valido.");
+      return;
+    }
+    useAppStore.getState().loadSnapshot(snapshot);
+  } catch {
+    window.alert("No se pudo leer el archivo de proyecto.");
+  } finally {
+    // Permite reimportar el mismo archivo dos veces seguidas.
+    event.target.value = "";
+  }
 }
 
 function exportViewerPng() {
@@ -222,6 +245,7 @@ function snapshotFromState(state: ReturnType<typeof useAppStore.getState>) {
     selectedExerciseId: state.selectedExerciseId,
     view: state.view,
     camera: state.camera,
+    viewerQuality: state.viewerQuality,
     time: state.time,
     speed: state.speed,
     playing: state.playing,

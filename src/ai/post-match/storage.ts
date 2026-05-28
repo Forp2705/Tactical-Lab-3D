@@ -26,6 +26,7 @@ export async function savePostMatchReport(payload: unknown) {
       id,
       createdAt: request.report.createdAt ?? savedAt,
     },
+    sourceInput: request.sourceInput,
     staffReview: request.staffReview,
   };
   const nextReports = [
@@ -35,6 +36,10 @@ export async function savePostMatchReport(payload: unknown) {
 
   await writeJson(REPORTS_PATH, nextReports);
   return savedReport;
+}
+
+export async function loadSavedPostMatchReports() {
+  return loadReports();
 }
 
 export async function commitMemoryCandidates(payload: unknown) {

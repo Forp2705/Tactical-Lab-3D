@@ -21,7 +21,7 @@ import { ACESFilmicToneMapping, SRGBColorSpace } from "three";
 import { Ball3D } from "./Ball3D";
 import { OverlayLayer } from "./Overlays";
 import { Pitch3D } from "./Pitch3D";
-import { Player3D } from "./Player3D";
+import { Player3D, SimplePlayer3D } from "./Player3D";
 import { type PitchMode, pitchDimensions } from "./lib/coords";
 import {
   type EngineActorPose,
@@ -39,6 +39,7 @@ type SceneProps = {
   exercise: Exercise;
   time: number;
   cameraMode: "top" | "iso" | "broadcast";
+  quality?: "high" | "medium" | "low";
   showZones: boolean;
   showRuns: boolean;
   showPasses: boolean;
@@ -51,6 +52,7 @@ export function Scene3D({
   exercise,
   time,
   cameraMode,
+  quality = "medium",
   showZones,
   showRuns,
   showPasses,
@@ -81,6 +83,8 @@ export function Scene3D({
     [exercise, time, personalSpace],
   );
   const topFocus = useMemo(() => getTopFocus(frame, mode), [frame, mode]);
+  const useSimplifiedActors = cameraMode !== "top" && frame.actors.length > 14;
+  const renderSettings = renderSettingsForQuality(quality);
 
   return (
     <Canvas
@@ -104,22 +108,24 @@ export function Scene3D({
       <directionalLight
         position={[24, 42, 18]}
         intensity={1.45}
-        castShadow
-        shadow-mapSize-width={4096}
-        shadow-mapSize-height={4096}
-        shadow-radius={6}
+        castShadow={renderSettings.shadows}
+        shadow-mapSize-width={renderSettings.shadowMapSize}
+        shadow-mapSize-height={renderSettings.shadowMapSize}
+        shadow-radius={renderSettings.shadowRadius}
         shadow-bias={-0.0001}
       />
       <directionalLight position={[-18, 26, -12]} intensity={0.42} />
       <Pitch3D mode={mode} />
-      <ContactShadows
-        position={[0, 0.08, 0]}
-        opacity={0.4}
-        blur={2.6}
-        far={10}
-        resolution={1024}
-        scale={140}
-      />
+      {renderSettings.contactShadows ? (
+        <ContactShadows
+          position={[0, 0.08, 0]}
+          opacity={0.4}
+          blur={2.6}
+          far={10}
+          resolution={renderSettings.contactShadowResolution}
+          scale={140}
+        />
+      ) : null}
       {zones.map((zone) => {
         const a = worldFromPitch({ x: zone.rect.x, y: zone.rect.y }, mode);
         const b = worldFromPitch(
@@ -159,30 +165,118 @@ export function Scene3D({
         cameraMode === "top" ? (
           <TopActorNode key={pose.actor.id} pose={pose} mode={mode} />
         ) : (
-          <ActorNode key={pose.actor.id} pose={pose} time={time} mode={mode} />
+          <ActorNode
+            key={pose.actor.id}
+            pose={pose}
+            time={time}
+            mode={mode}
+            simplified={useSimplifiedActors}
+          />
         ),
       )}
       <BallNode pose={frame.ball} mode={mode} top={cameraMode === "top"} />
+      {renderSettings.postprocessing ? (
+        <PostProcessingStack settings={renderSettings} />
+      ) : null}
+    </Canvas>
+  );
+}
+
+function PostProcessingStack({
+  settings,
+}: { settings: ReturnType<typeof renderSettingsForQuality> }) {
+  if (!settings.ssao) {
+    return (
+      <EffectComposer multisampling={0}>
+        <Vignette offset={0.18} darkness={0.4} />
+        <SMAA />
+      </EffectComposer>
+    );
+  }
+
+  if (!settings.bloom) {
+    return (
       <EffectComposer multisampling={0}>
         <SSAO
-          intensity={20}
-          radius={4}
+          intensity={settings.ssaoIntensity}
+          radius={settings.ssaoRadius}
           luminanceInfluence={0.35}
           worldDistanceThreshold={1}
           worldDistanceFalloff={1}
           worldProximityThreshold={1}
           worldProximityFalloff={1}
         />
-        <Bloom
-          intensity={0.35}
-          luminanceThreshold={0.85}
-          luminanceSmoothing={0.25}
-        />
         <Vignette offset={0.18} darkness={0.4} />
         <SMAA />
       </EffectComposer>
-    </Canvas>
+    );
+  }
+
+  return (
+    <EffectComposer multisampling={0}>
+      <SSAO
+        intensity={settings.ssaoIntensity}
+        radius={settings.ssaoRadius}
+        luminanceInfluence={0.35}
+        worldDistanceThreshold={1}
+        worldDistanceFalloff={1}
+        worldProximityThreshold={1}
+        worldProximityFalloff={1}
+      />
+      <Bloom
+        intensity={0.35}
+        luminanceThreshold={0.85}
+        luminanceSmoothing={0.25}
+      />
+      <Vignette offset={0.18} darkness={0.4} />
+      <SMAA />
+    </EffectComposer>
   );
+}
+
+function renderSettingsForQuality(quality: "high" | "medium" | "low") {
+  if (quality === "high") {
+    return {
+      shadows: true,
+      shadowMapSize: 4096,
+      shadowRadius: 6,
+      contactShadows: true,
+      contactShadowResolution: 1024,
+      postprocessing: true,
+      ssao: true,
+      ssaoIntensity: 20,
+      ssaoRadius: 4,
+      bloom: true,
+    };
+  }
+
+  if (quality === "low") {
+    return {
+      shadows: false,
+      shadowMapSize: 1024,
+      shadowRadius: 2,
+      contactShadows: false,
+      contactShadowResolution: 256,
+      postprocessing: false,
+      ssao: false,
+      ssaoIntensity: 0,
+      ssaoRadius: 0,
+      bloom: false,
+    };
+  }
+
+  return {
+    shadows: true,
+    shadowMapSize: 2048,
+    shadowRadius: 4,
+    contactShadows: true,
+    contactShadowResolution: 512,
+    postprocessing: true,
+    ssao: true,
+    ssaoIntensity: 12,
+    ssaoRadius: 3,
+    bloom: false,
+  };
 }
 
 function PlaybackDriver({ duration }: { duration: number }) {
@@ -301,9 +395,30 @@ function ActorNode({
   pose,
   time,
   mode,
-}: { pose: EngineActorPose; time: number; mode: PitchMode }) {
+  simplified,
+}: {
+  pose: EngineActorPose;
+  time: number;
+  mode: PitchMode;
+  simplified: boolean;
+}) {
   const position = worldFromPitch(pose.pos, mode);
   const teamColor = teamColorFor(pose.actor.team);
+  if (simplified) {
+    return (
+      <SimplePlayer3D
+        actor={pose.actor}
+        position={[position[0], 0, position[2]]}
+        angle={pose.direction}
+        color={teamColor}
+        scale={playerScale(mode)}
+        time={time}
+        moving={pose.moving}
+        motion={pose.motion}
+      />
+    );
+  }
+
   return (
     <Player3D
       actor={pose.actor}

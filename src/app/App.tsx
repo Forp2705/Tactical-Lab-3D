@@ -1,18 +1,80 @@
-import { AiView } from "@/ai/AiView";
 import { type Layer, catalog } from "@/data";
-import { PlayerView } from "@/export/PlayerView";
-import { exportCanvasMedia } from "@/export/media";
-import { LibraryView } from "@/library/LibraryView";
-import { SessionsView } from "@/sessions/SessionsView";
 import { loadSnapshot, saveSnapshot } from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
-import { TeamView } from "@/team/TeamView";
 import { AppShell } from "@/ui/AppShell";
-import { VideoView } from "@/video/VideoView";
-import { Scene3D } from "@/viewer/Scene3D";
 import { useViewerKeyboard } from "@/viewer/useKeyboard";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import "./theme.css";
+
+// Code-splitting: cada vista y el visor 3D (Three.js) se cargan bajo demanda
+// para sacarlos del bundle inicial.
+const Scene3D = lazy(() =>
+  import("@/viewer/Scene3D").then((m) => ({ default: m.Scene3D })),
+);
+const LibraryView = lazy(() =>
+  import("@/library/LibraryView").then((m) => ({ default: m.LibraryView })),
+);
+const TeamView = lazy(() =>
+  import("@/team/TeamView").then((m) => ({ default: m.TeamView })),
+);
+const SessionsView = lazy(() =>
+  import("@/sessions/SessionsView").then((m) => ({ default: m.SessionsView })),
+);
+const VideoView = lazy(() =>
+  import("@/video/VideoView").then((m) => ({ default: m.VideoView })),
+);
+const AiView = lazy(() =>
+  import("@/ai/AiView").then((m) => ({ default: m.AiView })),
+);
+const PlayerView = lazy(() =>
+  import("@/export/PlayerView").then((m) => ({ default: m.PlayerView })),
+);
+
+function ViewFallback() {
+  return <div className="view-loading">Cargando modulo...</div>;
+}
+
+async function exportCurrentCanvas(format: "mp4" | "gif") {
+  const canvas = document.querySelector(
+    ".canvas-wrap canvas",
+  ) as HTMLCanvasElement | null;
+  if (!canvas) return;
+
+  const store = useAppStore.getState();
+  if (store.exportStatus) return; // ya hay una exportacion en curso
+
+  const exercise =
+    store.viewerExerciseOverride ??
+    getExerciseById(store.selectedExerciseId) ??
+    catalog[0];
+  // Grabamos la jugada completa: desde t=0 hasta el final de la escena.
+  const duration = Math.max(1, Math.ceil(exercise.scene.duration));
+
+  // Estado de reproduccion previo, para restaurarlo al terminar.
+  const previous = {
+    time: store.time,
+    playing: store.playing,
+    speed: store.speed,
+  };
+
+  try {
+    // Reproducimos la escena desde el inicio, a 1x, mientras se graba.
+    store.setTime(0);
+    store.setSpeed(1);
+    if (!useAppStore.getState().playing) store.togglePlaying();
+
+    const { exportCanvasMedia } = await import("@/export/media");
+    await exportCanvasMedia(canvas, format, duration, (phase) =>
+      useAppStore.getState().setExportStatus({ phase, format }),
+    );
+  } finally {
+    const after = useAppStore.getState();
+    after.setTime(previous.time);
+    after.setSpeed(previous.speed);
+    if (after.playing !== previous.playing) after.togglePlaying();
+    after.setExportStatus(null);
+  }
+}
 
 const TACTICAL_LAYERS: { id: Layer; label: string }[] = [
   { id: "withBall", label: "Con pelota" },
@@ -37,6 +99,7 @@ export function App() {
   const selectedExercise =
     viewerExerciseOverride ?? getExerciseById(selectedExerciseId) ?? catalog[0];
   const camera = useAppStore((state) => state.camera);
+  const viewerQuality = useAppStore((state) => state.viewerQuality);
   const time = useAppStore((state) => state.time);
   const playing = useAppStore((state) => state.playing);
   const speed = useAppStore((state) => state.speed);
@@ -46,6 +109,7 @@ export function App() {
   const showPress = useAppStore((state) => state.showPress);
   const personalSpace = useAppStore((state) => state.personalSpace);
   const layers = useAppStore((state) => state.layers);
+  const exportStatus = useAppStore((state) => state.exportStatus);
 
   useEffect(() => {
     let mounted = true;
@@ -66,6 +130,7 @@ export function App() {
         selectedExerciseId: state.selectedExerciseId,
         view: state.view,
         camera: state.camera,
+        viewerQuality: state.viewerQuality,
         time: state.time,
         speed: state.speed,
         playing: state.playing,
@@ -94,7 +159,8 @@ export function App() {
 
   return (
     <AppShell>
-      {view === "library" ? <LibraryView /> : null}
+      <Suspense fallback={<ViewFallback />}>
+        {view === "library" ? <LibraryView /> : null}
       {view === "viewer" ? (
         <section className="viewer-layout">
           <div className="stage-card">
@@ -135,10 +201,19 @@ export function App() {
               <div className="phase-badge">
                 {phaseLabel(selectedExercise, time)}
               </div>
+              {exportStatus ? (
+                <div className="export-overlay">
+                  <span className="export-spinner" />
+                  {exportStatus.phase === "recording"
+                    ? `Grabando escena (${exportStatus.format.toUpperCase()})...`
+                    : "Procesando video..."}
+                </div>
+              ) : null}
               <Scene3D
                 exercise={selectedExercise}
                 time={time}
                 cameraMode={camera}
+                quality={viewerQuality}
                 showZones={showZones}
                 showRuns={showRuns}
                 showPasses={showPasses}
@@ -198,6 +273,23 @@ export function App() {
                 <b>Éxito:</b> {selectedExercise.success}
               </p>
               <div className="layer-grid">
+                <label>
+                  Calidad
+                  <select
+                    value={viewerQuality}
+                    onChange={(event) =>
+                      useAppStore
+                        .getState()
+                        .setViewerQuality(
+                          event.target.value as typeof viewerQuality,
+                        )
+                    }
+                  >
+                    <option value="high">Alta</option>
+                    <option value="medium">Media</option>
+                    <option value="low">Baja</option>
+                  </select>
+                </label>
                 <label>
                   <input
                     type="checkbox"
@@ -282,16 +374,18 @@ export function App() {
               </button>
               <button
                 type="button"
+                disabled={!!exportStatus}
                 onClick={() => void exportCurrentCanvas("mp4")}
               >
-                Exportar MP4
+                {exportStatus?.format === "mp4" ? "Exportando..." : "Exportar MP4"}
               </button>
               <button
                 type="button"
                 className="secondary"
+                disabled={!!exportStatus}
                 onClick={() => void exportCurrentCanvas("gif")}
               >
-                Exportar GIF
+                {exportStatus?.format === "gif" ? "Exportando..." : "Exportar GIF"}
               </button>
             </aside>
           )}
@@ -301,7 +395,8 @@ export function App() {
       {view === "sessions" ? <SessionsView /> : null}
       {view === "video" ? <VideoView /> : null}
       {view === "ai" ? <AiView /> : null}
-      {view === "player" ? <PlayerView /> : null}
+        {view === "player" ? <PlayerView /> : null}
+      </Suspense>
     </AppShell>
   );
 }
@@ -312,12 +407,4 @@ function phaseLabel(exercise: (typeof catalog)[number], time: number) {
       (item) => time >= item.start && time <= item.end,
     ) ?? exercise.scene.phases[0];
   return phase?.name ?? "Setup";
-}
-
-async function exportCurrentCanvas(format: "mp4" | "gif") {
-  const canvas = document.querySelector(
-    ".canvas-wrap canvas",
-  ) as HTMLCanvasElement | null;
-  if (!canvas) return;
-  await exportCanvasMedia(canvas, format, 5);
 }

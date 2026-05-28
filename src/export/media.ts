@@ -4,8 +4,17 @@ const CORE_URL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.js
 const WASM_URL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm";
 const WORKER_URL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.worker.js";
 
-export async function exportCanvasMedia(canvas: HTMLCanvasElement, format: ExportFormat, seconds = 5) {
+type ExportPhase = "recording" | "encoding";
+
+export async function exportCanvasMedia(
+  canvas: HTMLCanvasElement,
+  format: ExportFormat,
+  seconds = 5,
+  onPhase?: (phase: ExportPhase) => void,
+) {
+  onPhase?.("recording");
   const webm = await recordCanvas(canvas, seconds);
+  onPhase?.("encoding");
   try {
     const { FFmpeg } = await import("@ffmpeg/ffmpeg");
     const { fetchFile } = await import("@ffmpeg/util");

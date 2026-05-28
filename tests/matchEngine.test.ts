@@ -82,6 +82,29 @@ describe("match engine triggers", () => {
   });
 });
 
+describe("match engine personal space", () => {
+  it("keeps actor positions untouched when personal space is disabled", () => {
+    const frame = getMatchFrame(makePersonalSpaceExercise(), 0, {
+      personalSpace: false,
+    });
+    const first = actorPosition(frame, "a");
+    const second = actorPosition(frame, "b");
+
+    expect(first).toEqual({ x: 50, y: 50 });
+    expect(second).toEqual({ x: 50, y: 50 });
+  });
+
+  it("separates overlapping actors when personal space is enabled", () => {
+    const frame = getMatchFrame(makePersonalSpaceExercise(), 0, {
+      personalSpace: true,
+    });
+    const first = actorPosition(frame, "a");
+    const second = actorPosition(frame, "b");
+
+    expect(distance(first, second)).toBeGreaterThan(2.09);
+  });
+});
+
 function makeExercise({
   withDefenderInLane,
 }: { withDefenderInLane: boolean }): Exercise {
@@ -264,6 +287,52 @@ function makeMotionExercise(): Exercise {
 
 function actorMotion(frame: ReturnType<typeof getMatchFrame>, actorId: string) {
   return frame.actors.find((pose) => pose.actor.id === actorId)?.motion;
+}
+
+function actorPosition(
+  frame: ReturnType<typeof getMatchFrame>,
+  actorId: string,
+) {
+  const pose = frame.actors.find((actor) => actor.actor.id === actorId);
+  if (!pose) throw new Error(`Expected actor ${actorId} in frame`);
+  return pose.pos;
+}
+
+function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function makePersonalSpaceExercise(): Exercise {
+  const base = makeExercise({ withDefenderInLane: false });
+  return {
+    ...base,
+    scene: {
+      ...base.scene,
+      actors: [
+        {
+          id: "a",
+          team: "own",
+          num: 6,
+          role: "MC",
+          start: { x: 50, y: 50 },
+          path: [],
+          facingMode: "auto",
+          state: [],
+        },
+        {
+          id: "b",
+          team: "own",
+          num: 8,
+          role: "INT",
+          start: { x: 50, y: 50 },
+          path: [],
+          facingMode: "auto",
+          state: [],
+        },
+      ],
+      overlays: [],
+    },
+  };
 }
 
 function makeTriggerExercise(): Exercise {

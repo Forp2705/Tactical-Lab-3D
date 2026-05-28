@@ -98,6 +98,49 @@ export function Player3D({
   );
 }
 
+export function SimplePlayer3D({
+  actor,
+  position,
+  angle,
+  color,
+  scale = 1,
+}: PlayerProps) {
+  return (
+    <group
+      position={position}
+      rotation={[0, -angle + Math.PI / 2, 0]}
+      scale={scale}
+    >
+      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.82, 28]} />
+        <meshBasicMaterial color="#02070a" transparent opacity={0.32} />
+      </mesh>
+      <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.34, 0.42, 0.82, 16]} />
+        <meshStandardMaterial color={color} roughness={0.68} metalness={0.03} />
+      </mesh>
+      <mesh position={[0, 1.02, 0]} castShadow>
+        <sphereGeometry args={[0.24, 16, 16]} />
+        <meshStandardMaterial color="#f2c394" roughness={0.72} />
+      </mesh>
+      <mesh position={[0, 0.16, -0.18]} castShadow>
+        <boxGeometry args={[0.62, 0.25, 0.34]} />
+        <meshStandardMaterial color={shadeColor(color, -42)} roughness={0.7} />
+      </mesh>
+      <mesh position={[-0.17, -0.18, -0.06]} castShadow>
+        <capsuleGeometry args={[0.09, 0.42, 4, 8]} />
+        <meshStandardMaterial color={shadeColor(color, 18)} roughness={0.7} />
+      </mesh>
+      <mesh position={[0.17, -0.18, -0.06]} castShadow>
+        <capsuleGeometry args={[0.09, 0.42, 4, 8]} />
+        <meshStandardMaterial color={shadeColor(color, 18)} roughness={0.7} />
+      </mesh>
+      <JerseyBackNumber actor={actor} />
+      <PlayerLabel actor={actor} teamColor={color} />
+    </group>
+  );
+}
+
 function JerseyBackNumber({ actor }: { actor: Actor }) {
   return (
     <group position={[0, 1.08, -0.18]} rotation={[0, Math.PI, 0]}>

@@ -17,10 +17,12 @@ export default async function handler(
   }
 
   let input = "";
+  let coachContext: unknown;
 
   try {
     const body = await readJsonBody(req);
     input = typeof body.input === "string" ? body.input.trim() : "";
+    coachContext = body.coachContext ?? body.shapeContext;
   } catch {
     badRequest(res, "Invalid JSON body");
     return;
@@ -33,7 +35,7 @@ export default async function handler(
 
   try {
     const { generateCoachResponse } = await import("../src/ai/CoachAgent.js");
-    const advice = await generateCoachResponse(input);
+    const advice = await generateCoachResponse(input, coachContext);
     sendJson(res, 200, advice);
   } catch (error) {
     console.error("[coach-agent] request failed", error);

@@ -11,6 +11,22 @@ export default async function handler(
   req: IncomingMessage,
   res: ServerResponse,
 ) {
+  if (req.method === "GET") {
+    try {
+      const { loadSavedPostMatchReports } = await import(
+        "../../src/ai/post-match/storage.js"
+      );
+      const reports = await loadSavedPostMatchReports();
+      sendJson(res, 200, reports);
+    } catch (error) {
+      console.error("[post-match] list failed", error);
+      sendJson(res, safeErrorStatus(error), {
+        error: "Post-match history could not be loaded.",
+      });
+    }
+    return;
+  }
+
   if (req.method !== "POST") {
     methodNotAllowed(res);
     return;

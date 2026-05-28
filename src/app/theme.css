@@ -1786,6 +1786,25 @@ video {
   color: var(--muted);
 }
 
+.report-history-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.report-history-item {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.report-history-item small {
+  color: var(--muted);
+}
+
 .success-text {
   padding: 10px 12px;
   border: 1px solid rgba(142, 202, 210, 0.22);
@@ -2058,4 +2077,46 @@ textarea:focus {
 .timeline input[type="range"],
 .range-row input[type="range"] {
   accent-color: var(--setpiece);
+}
+
+.view-loading {
+  padding: 32px;
+  color: var(--muted, #8aa);
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* Overlay mientras se graba/procesa la exportacion de la escena a video. */
+.export-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(8, 16, 24, 0.82);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.export-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(248, 250, 252, 0.35);
+  border-top-color: #5eead4;
+  animation: export-spin 0.8s linear infinite;
+}
+
+@keyframes export-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
