@@ -1,5 +1,6 @@
 import { MATCH_OBSERVATIONS } from "./MatchObservations.js"
 import { loadSavedPostMatchReports } from "./post-match/storage.js"
+import { rankDocuments } from "./retrievalScoring.js"
 import { TACTICAL_KEYWORDS } from "./tacticalKeywords.js"
 
 type MatchObservation = {
@@ -11,7 +12,6 @@ type MatchObservation = {
 }
 
 export async function retrieveRelevantContext(userInput: string) {
-  const normalizedInput = userInput.toLowerCase()
   const runtimeObservations =
     await loadRuntimeMatchObservations()
   const observations = [
@@ -19,26 +19,23 @@ export async function retrieveRelevantContext(userInput: string) {
     ...MATCH_OBSERVATIONS,
   ]
 
-  return observations.filter((observation) => {
-    const searchableObservation = `
-${observation.phase}
-${observation.observation}
-${observation.tags.join(" ")}
-`.toLowerCase()
+  const documents = observations.map((observation, index) => ({
+    id: `OBS-${index + 1}-${slug(observation.match)}`,
+    sourceType: "observation" as const,
+    title: `${observation.match} | ${observation.phase}${typeof observation.minute === "number" ? ` | ${observation.minute}'` : ""}`,
+    text: [
+      observation.match,
+      observation.phase,
+      observation.observation,
+      observation.tags.join(" "),
+    ].join("\n"),
+    tags: observation.tags,
+    payload: observation,
+    authorityScore: observation.match.startsWith("vs ") ? 0.75 : 0.45,
+  }))
 
-    return observation.tags.some((tag) => {
-      const keywords = TACTICAL_KEYWORDS[tag] ?? [tag]
-
-      return keywords.some((keyword) =>
-        normalizedInput.includes(keyword.toLowerCase()) ||
-        searchableObservation.includes(keyword.toLowerCase())
-      )
-    }) || normalizedInput
-      .split(/\s+/)
-      .filter((token) => token.length >= 4)
-      .some((token) =>
-        searchableObservation.includes(token.toLowerCase())
-      )
+  return rankDocuments(userInput, documents, {
+    limit: 6,
   })
 }
 
@@ -129,4 +126,13 @@ function inferObservationTags(text: string) {
       )
     )
     .map(([tag]) => tag)
+}
+
+function slug(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
 }

@@ -129,6 +129,9 @@ Regla de resultado:
 Reglas de grounding y atribucion de sujeto:
 - No inventes minutos, clips, eventos ni secuencias. Solo podes mencionar minutos si aparecen en tags.
 - Toda evidencia debe referenciar el ledger de evidencia por ID (ej: EV-NOTES, EV-TAG-1).
+- Los tags tienen severidad/confiabilidad: high = validado/manual por staff; medium = evidencia util sin confirmacion extra; low = tracking asistido no confirmado.
+- No bases conclusiones centrales solo en tags low. Si usas evidencia low, tratala como indicio a revisar o informacion faltante salvo que este confirmada por notas/staff.
+- Prioriza evidencia high sobre medium y medium sobre low cuando haya contradicciones.
 - Si algo no aparece en el ledger de evidencia, tratálo como inferencia o informacion faltante, no como hecho.
 - No conviertas vulnerabilidades del rival en problemas propios.
 - Si las notas dicen que el rival defendio con linea alta o defensores lentos, eso es vulnerabilidad del rival, no problema propio.
@@ -309,6 +312,7 @@ type EvidenceItem = {
   source: "result" | "plan" | "staffNotes" | "tag";
   text: string;
   minute?: number;
+  severity?: "low" | "medium" | "high";
 };
 
 export function normalizePostMatchReport(
@@ -455,7 +459,15 @@ function buildEvidenceLedger(input: PostMatchInput): EvidenceItem[] {
     evidence.push({
       id: `EV-TAG-${index + 1}`,
       source: "tag",
-      text: [tag.label, tag.zone, tag.note].filter(Boolean).join(" | "),
+      text: [
+        tag.label,
+        tag.zone,
+        tag.note,
+        `confiabilidad: ${tag.severity}`,
+      ]
+        .filter(Boolean)
+        .join(" | "),
+      severity: tag.severity,
       ...(typeof tag.minute === "number" ? { minute: tag.minute } : {}),
     });
   });

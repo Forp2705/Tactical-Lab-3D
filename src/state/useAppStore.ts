@@ -6,11 +6,13 @@ import type {
   Microcycle,
   Player,
   Session,
+  Vec2,
 } from "@/data";
 import { catalog, demoPlayers } from "@/data";
 import { create } from "zustand";
 
 export type ViewId =
+  | "home"
   | "library"
   | "viewer"
   | "team"
@@ -20,10 +22,53 @@ export type ViewId =
   | "player";
 export type CameraId = "top" | "iso" | "broadcast";
 export type ViewerQuality = "high" | "medium" | "low";
+export type AiMode = "coach" | "postMatch";
 
 export type ExportStatus = {
   phase: "recording" | "encoding";
   format: "mp4" | "gif";
+};
+
+export type VideoMoment = "firstHalf" | "secondHalf" | "extraTime" | "unknown";
+
+export type VideoEventSeverity = "low" | "medium" | "high";
+
+export type VideoTag = {
+  id: string;
+  matchId: string;
+  label: string;
+  time: number;
+  moment: VideoMoment;
+  playerId?: string;
+  playerName?: string;
+  zone?: string;
+  note?: string;
+  severity: VideoEventSeverity;
+};
+
+export type VideoTrack = {
+  id: string;
+  matchId: string;
+  time: number;
+  x: number;
+  y: number;
+  label: string;
+  moment: VideoMoment;
+  playerId?: string;
+  playerName?: string;
+  zone?: string;
+  note?: string;
+};
+
+type VideoTagInput = Omit<VideoTag, "id" | "moment" | "severity"> & {
+  id?: string;
+  moment?: VideoMoment;
+  severity?: VideoEventSeverity;
+};
+
+type VideoTrackInput = Omit<VideoTrack, "id" | "moment"> & {
+  id?: string;
+  moment?: VideoMoment;
 };
 
 export type CoachShapePlayer = {
@@ -64,7 +109,46 @@ export type CoachShapeContext = {
     toShapeName?: string;
   };
   shapes: CoachShapeSummary[];
+  savedTransitions?: CoachSavedTransitionSummary[];
   rivalReference?: CoachRivalReference[];
+};
+
+export type CoachSavedTransitionSummary = {
+  id: string;
+  name: string;
+  fromShapeId: string;
+  fromShapeName: string;
+  toShapeId: string;
+  toShapeName: string;
+  notes?: string;
+};
+
+export type LabShapePhase = "attack" | "defense" | "transition" | "buildup" | "abp";
+
+export type LineupLabShape = {
+  id: string;
+  name: string;
+  phase: LabShapePhase;
+  positions: Record<string, Vec2>;
+  notes?: string;
+  createdAt: number;
+};
+
+export type LineupLabSavedTransition = {
+  id: string;
+  name: string;
+  fromShapeId: string;
+  fromShapeName: string;
+  toShapeId: string;
+  toShapeName: string;
+  notes?: string;
+  createdAt: number;
+};
+
+export type LineupLabStoreState = {
+  shapes: LineupLabShape[];
+  savedTransitions: LineupLabSavedTransition[];
+  pendingShapeId: string | null;
 };
 
 type TeamState = {
@@ -98,9 +182,12 @@ type AppState = {
   team: TeamState;
   session: Session;
   microcycle: Microcycle;
-  tags: { label: string; time: number }[];
-  tracks: { time: number; x: number; y: number; label: string }[];
+  lineupLab: LineupLabStoreState;
+  tags: VideoTag[];
+  tracks: VideoTrack[];
+  aiMode: AiMode;
   aiPrompt: string;
+  pendingPostMatchEvidenceText: string | null;
   coachShapeContext: CoachShapeContext | null;
   initialized: boolean;
   viewerExerciseOverride: Exercise | null;
@@ -116,6 +203,14 @@ type AppState = {
   togglePlaying: () => void;
   selectExercise: (id: string) => void;
   duplicateSelectedExercise: () => void;
+  createExerciseVariantFrom: (
+    exerciseId: string,
+    options?: { title?: string; authorNotes?: string },
+  ) => string | null;
+  createExerciseFromShape: (
+    shapeId: string,
+    options?: { title?: string; authorNotes?: string },
+  ) => string | null;
   setSearch: (value: string) => void;
   setFilter: (key: "phase" | "level" | "principle", value: string) => void;
   toggleLayer: (
@@ -123,8 +218,11 @@ type AppState = {
   ) => void;
   togglePersonalSpace: () => void;
   toggleTacticalLayer: (layer: Layer) => void;
-  addTag: (label: string, time: number) => void;
-  addTrack: (x: number, y: number, time: number) => void;
+  addTag: (tag: VideoTagInput) => void;
+  addTrack: (track: VideoTrackInput) => void;
+  updateTrack: (id: string, patch: Partial<Omit<VideoTrack, "id">>) => void;
+  removeTrack: (id: string) => void;
+  clearAssistedTracks: (matchId?: string) => void;
   addToSession: (exerciseId: string) => void;
   updateSessionBlock: (
     id: string,
@@ -134,12 +232,21 @@ type AppState = {
   reorderSessionBlocks: (activeId: string, overId: string) => void;
   addLineup: (lineup: Lineup) => void;
   applyLineupToViewer: (lineupId: string) => void;
+  setLineupLabShapes: (shapes: LineupLabShape[]) => void;
+  setLineupLabTransitions: (
+    savedTransitions: LineupLabSavedTransition[],
+  ) => void;
+  requestApplyShape: (shapeId: string) => void;
+  consumePendingShape: () => void;
   addPlayer: () => void;
   setSelectedPlayerId: (id: string) => void;
   updatePlayer: (id: string, patch: Partial<Player>) => void;
   loadSnapshot: (snapshot: Partial<AppState>) => void;
   markInitialized: () => void;
+  setAiMode: (mode: AiMode) => void;
   setAiPrompt: (prompt: string) => void;
+  setPendingPostMatchEvidenceText: (text: string | null) => void;
+  consumePendingPostMatchEvidenceText: () => string | null;
   setCoachShapeContext: (context: CoachShapeContext | null) => void;
 };
 
@@ -178,6 +285,12 @@ const initialTeam: TeamState = {
   players: demoPlayers,
   selectedPlayerId: demoPlayers[0]?.id ?? "",
   lineups: [],
+};
+
+const initialLineupLab: LineupLabStoreState = {
+  shapes: [],
+  savedTransitions: [],
+  pendingShapeId: null,
 };
 
 const defaultLayers: Record<Layer, boolean> = {
@@ -228,7 +341,7 @@ function recomputeSession(
 export const useAppStore = create<AppState>((set, get) => ({
   version: 1,
   selectedExerciseId: catalog[0]?.id ?? "",
-  view: "library",
+  view: "home",
   camera: "iso",
   viewerQuality: "medium",
   time: 0,
@@ -248,9 +361,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   team: initialTeam,
   session: makeSession(),
   microcycle: makeMicrocycle(),
+  lineupLab: initialLineupLab,
   tags: [],
   tracks: [],
+  aiMode: "coach",
   aiPrompt: "",
+  pendingPostMatchEvidenceText: null,
   coachShapeContext: null,
   initialized: false,
   viewerExerciseOverride: null,
@@ -282,52 +398,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       state.exerciseVariants,
     );
     if (!source) return;
-    const variant: Exercise = {
-      ...source,
-      id: `${source.id}__variant__${Date.now()}`,
-      title: `${source.title} - variante`,
-      authorNotes: [source.authorNotes, "Variante local editable"]
-        .filter(Boolean)
-        .join(" | "),
-      scene: {
-        ...source.scene,
-        actors: source.scene.actors.map((actor) => ({
-          ...actor,
-          start: { ...actor.start },
-          path: actor.path.map((keyframe) => ({
-            ...keyframe,
-            pos: { ...keyframe.pos },
-          })),
-          state: actor.state.map((stateItem) => ({ ...stateItem })),
-        })),
-        ball: {
-          ...source.scene.ball,
-          start: { ...source.scene.ball.start },
-          path: source.scene.ball.path.map((keyframe) => ({
-            ...keyframe,
-            pos: { ...keyframe.pos },
-          })),
-        },
-        overlays: source.scene.overlays.map((overlay) => ({ ...overlay })),
-        zones: source.scene.zones.map((zone) => ({
-          ...zone,
-          rect: { ...zone.rect },
-          visibleInPhases: [...zone.visibleInPhases],
-        })),
-        triggers: source.scene.triggers.map((trigger) => ({
-          ...trigger,
-          cause: { ...trigger.cause },
-          visualMarker: trigger.visualMarker
-            ? { ...trigger.visualMarker, pos: { ...trigger.visualMarker.pos } }
-            : undefined,
-          activatesOverlays: [...trigger.activatesOverlays],
-        })),
-        phases: source.scene.phases.map((phase) => ({
-          ...phase,
-          activeLayers: [...phase.activeLayers],
-        })),
-      },
-    };
+    const variant = cloneExerciseVariant(source);
     set({
       exerciseVariants: [...state.exerciseVariants, variant],
       selectedExerciseId: variant.id,
@@ -335,6 +406,37 @@ export const useAppStore = create<AppState>((set, get) => ({
       time: 0,
       playing: false,
     });
+  },
+  createExerciseVariantFrom: (exerciseId, options) => {
+    const state = get();
+    const source = findExercise(exerciseId, state.exerciseVariants);
+    if (!source) return null;
+    const variant = cloneExerciseVariant(source, options);
+    set({
+      exerciseVariants: [...state.exerciseVariants, variant],
+      selectedExerciseId: variant.id,
+      viewerExerciseOverride: null,
+      view: "viewer",
+      time: 0,
+      playing: false,
+    });
+    return variant.id;
+  },
+  createExerciseFromShape: (shapeId, options) => {
+    const state = get();
+    const shape = state.lineupLab.shapes.find((item) => item.id === shapeId);
+    if (!shape) return null;
+    const exercise = buildExerciseFromShape(shape, state.team.players, options);
+    if (!exercise) return null;
+    set({
+      exerciseVariants: [...state.exerciseVariants, exercise],
+      selectedExerciseId: exercise.id,
+      viewerExerciseOverride: null,
+      view: "viewer",
+      time: 0,
+      playing: false,
+    });
+    return exercise.id;
   },
   setSearch: (value) => set({ search: value }),
   setFilter: (key, value) =>
@@ -349,9 +451,47 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       layers: { ...state.layers, [layer]: !state.layers[layer] },
     })),
-  addTag: (label, time) => set({ tags: [...get().tags, { label, time }] }),
-  addTrack: (x, y, time) =>
-    set({ tracks: [...get().tracks, { x, y, time, label: "manual" }] }),
+  addTag: (tag) =>
+    set({
+      tags: [
+        ...get().tags,
+        {
+          ...tag,
+          id: tag.id ?? makeEntityId("tag"),
+          moment: tag.moment ?? videoMomentFromTime(tag.time),
+          severity: tag.severity ?? "medium",
+        },
+      ],
+    }),
+  addTrack: (track) =>
+    set({
+      tracks: [
+        ...get().tracks,
+        {
+          ...track,
+          id: track.id ?? makeEntityId("track"),
+          moment: track.moment ?? videoMomentFromTime(track.time),
+        },
+      ],
+    }),
+  updateTrack: (id, patch) =>
+    set((state) => ({
+      tracks: state.tracks.map((track) =>
+        track.id === id ? { ...track, ...patch } : track,
+      ),
+    })),
+  removeTrack: (id) =>
+    set((state) => ({
+      tracks: state.tracks.filter((track) => track.id !== id),
+    })),
+  clearAssistedTracks: (matchId) =>
+    set((state) => ({
+      tracks: state.tracks.filter((track) => {
+        const isAssisted = track.label.startsWith("assist-");
+        const isSameMatch = !matchId || track.matchId === matchId;
+        return !(isAssisted && isSameMatch);
+      }),
+    })),
   addToSession: (exerciseId) => {
     const exercise = findExercise(exerciseId, get().exerciseVariants);
     if (!exercise) return;
@@ -432,6 +572,40 @@ export const useAppStore = create<AppState>((set, get) => ({
       playing: false,
     });
   },
+  setLineupLabShapes: (shapes) =>
+    set((state) => ({
+      lineupLab: {
+        ...state.lineupLab,
+        shapes: shapes.map((shape) => ({
+          ...shape,
+          positions: clonePositions(shape.positions),
+        })),
+      },
+    })),
+  setLineupLabTransitions: (savedTransitions) =>
+    set((state) => ({
+      lineupLab: {
+        ...state.lineupLab,
+        savedTransitions: savedTransitions.map((transition) => ({
+          ...transition,
+        })),
+      },
+    })),
+  requestApplyShape: (shapeId) =>
+    set((state) => ({
+      view: "team",
+      lineupLab: {
+        ...state.lineupLab,
+        pendingShapeId: shapeId,
+      },
+    })),
+  consumePendingShape: () =>
+    set((state) => ({
+      lineupLab: {
+        ...state.lineupLab,
+        pendingShapeId: null,
+      },
+    })),
   addPlayer: () => {
     const nextIndex = get().team.players.length + 1;
     const player: Player = {
@@ -488,7 +662,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       initialized: true,
     })),
   markInitialized: () => set({ initialized: true }),
+  setAiMode: (aiMode) => set({ aiMode }),
   setAiPrompt: (prompt) => set({ aiPrompt: prompt }),
+  setPendingPostMatchEvidenceText: (pendingPostMatchEvidenceText) =>
+    set({ pendingPostMatchEvidenceText }),
+  consumePendingPostMatchEvidenceText: () => {
+    const value = get().pendingPostMatchEvidenceText;
+    set({ pendingPostMatchEvidenceText: null });
+    return value;
+  },
   setCoachShapeContext: (coachShapeContext) => set({ coachShapeContext }),
 }));
 
@@ -576,6 +758,195 @@ function applyLineupToExercise(
   };
 }
 
+function cloneExerciseVariant(
+  source: Exercise,
+  options?: { title?: string; authorNotes?: string },
+): Exercise {
+  return {
+    ...source,
+    id: `${source.id}__variant__${Date.now()}`,
+    title: options?.title?.trim() || `${source.title} - variante`,
+    authorNotes: [source.authorNotes, options?.authorNotes, "Variante local"]
+      .filter(Boolean)
+      .join(" | "),
+    scene: {
+      ...source.scene,
+      actors: source.scene.actors.map((actor) => ({
+        ...actor,
+        start: { ...actor.start },
+        path: actor.path.map((keyframe) => ({
+          ...keyframe,
+          pos: { ...keyframe.pos },
+        })),
+        state: actor.state.map((stateItem) => ({ ...stateItem })),
+      })),
+      ball: {
+        ...source.scene.ball,
+        start: { ...source.scene.ball.start },
+        path: source.scene.ball.path.map((keyframe) => ({
+          ...keyframe,
+          pos: { ...keyframe.pos },
+        })),
+      },
+      overlays: source.scene.overlays.map((overlay) => ({ ...overlay })),
+      zones: source.scene.zones.map((zone) => ({
+        ...zone,
+        rect: { ...zone.rect },
+        visibleInPhases: [...zone.visibleInPhases],
+      })),
+      triggers: source.scene.triggers.map((trigger) => ({
+        ...trigger,
+        cause: { ...trigger.cause },
+        visualMarker: trigger.visualMarker
+          ? { ...trigger.visualMarker, pos: { ...trigger.visualMarker.pos } }
+          : undefined,
+        activatesOverlays: [...trigger.activatesOverlays],
+      })),
+      phases: source.scene.phases.map((phase) => ({
+        ...phase,
+        activeLayers: [...phase.activeLayers],
+      })),
+    },
+  };
+}
+
+function clonePositions(positions: Record<string, Vec2>): Record<string, Vec2> {
+  return Object.fromEntries(
+    Object.entries(positions).map(([id, pos]) => [id, { ...pos }]),
+  );
+}
+
+function buildExerciseFromShape(
+  shape: LineupLabShape,
+  players: Player[],
+  options?: { title?: string; authorNotes?: string },
+): Exercise | null {
+  const actors = Object.entries(shape.positions)
+    .map(([playerId, pos]) => {
+      const player = players.find((item) => item.id === playerId);
+      if (!player) return null;
+      return {
+        id: `shape-${shape.id}-${playerId}`,
+        team: "own" as const,
+        num: player.num,
+        role: player.positions[0] ?? "CM",
+        start: { ...pos },
+        path: [],
+        facingMode: "auto" as const,
+        state: [{ t: 0, state: "idle" as const }],
+      };
+    })
+    .filter((actor): actor is NonNullable<typeof actor> => Boolean(actor));
+  if (!actors.length) return null;
+  const firstActor = actors[0];
+  const playerCount = actors.length;
+
+  return {
+    id: `shape-exercise-${shape.id}-${Date.now()}`,
+    title:
+      options?.title?.trim() ||
+      `Ejercicio desde shape: ${shape.name}`,
+    phase: phaseFromShape(shape.phase),
+    principle: "shape táctico",
+    level: "intermedio",
+    intensity: "med",
+    rpe: 5,
+    density: 0.55,
+    players: {
+      min: playerCount,
+      max: playerCount,
+    },
+    duration: 12,
+    space: "Cancha completa adaptable",
+    material: [{ name: "conos", qty: 8, unit: "u" }],
+    objective: {
+      primary: `Transformar el shape "${shape.name}" en una tarea de campo.`,
+      secondary: shape.notes,
+    },
+    organization:
+      "Ubicar al equipo en el shape guardado y trabajar movimientos por fases.",
+    rules: [
+      "Congelar la estructura inicial antes de activar la circulación.",
+      "Corregir distancias entre líneas antes de sumar oposición.",
+      "Repetir la transición hasta que las alturas sean coordinadas.",
+    ],
+    coaching: [
+      "Ajustar altura del bloque como unidad, no por líneas aisladas.",
+      "Mantener referencias de ancho y profundidad según el rol.",
+      "Pedir comunicación entre centrales, pivote y extremos antes del pase.",
+    ],
+    errors: [
+      "Saltar una línea sin que la siguiente achique.",
+      "Perder amplitud por mirar solo la pelota.",
+      "Transformar el shape en posiciones fijas sin comportamiento.",
+    ],
+    success:
+      "El equipo reconoce la estructura, conserva distancias y llega coordinado a la siguiente fase.",
+    progressions: [
+      "Agregar rival pasivo.",
+      "Agregar pérdida y transición defensiva.",
+      "Limitar toques para acelerar decisiones.",
+    ],
+    regressions: [
+      "Trabajar sin oposición.",
+      "Reducir a una zona del campo.",
+      "Separar defensa, medio y ataque por bloques.",
+    ],
+    scene: {
+      duration: 10,
+      pitchMode: "full",
+      actors,
+      ball: {
+        start: {
+          ...(firstActor?.start ?? { x: 50, y: 50 }),
+          z: 0,
+        },
+        path: [],
+        carrier: firstActor?.id,
+      },
+      overlays: [],
+      zones: [],
+      triggers: [],
+      phases: [
+        {
+          id: "setup",
+          name: "Setup",
+          start: 0,
+          end: 3,
+          activeLayers: ["withBall", "withoutBall", "notes"],
+          notes: "Ordenar referencias del shape.",
+        },
+        {
+          id: "execution",
+          name: "Ejecución",
+          start: 3,
+          end: 8,
+          activeLayers: ["withBall", "withoutBall", "press", "cover"],
+          notes: "Activar movimiento coordinado.",
+        },
+        {
+          id: "outcome",
+          name: "Resultado",
+          start: 8,
+          end: 10,
+          activeLayers: ["withBall", "withoutBall", "notes"],
+          notes: "Evaluar distancias y roles.",
+        },
+      ],
+    },
+    authorNotes: [shape.notes, options?.authorNotes, "Creado desde Lineup Lab"]
+      .filter(Boolean)
+      .join(" | "),
+  };
+}
+
+function phaseFromShape(phase: LabShapePhase): Exercise["phase"] {
+  if (phase === "defense") return "defenseOrg";
+  if (phase === "transition") return "transDef";
+  if (phase === "abp") return "abpOff";
+  return "attackOrg";
+}
+
 function findExercise(id: string, variants: Exercise[]) {
   return (
     variants.find((exercise) => exercise.id === id) ??
@@ -604,4 +975,15 @@ function endpointIsValid(
   actorIds: Set<string>,
 ) {
   return typeof endpoint !== "string" || actorIds.has(endpoint);
+}
+
+function makeEntityId(prefix: string) {
+  return `${prefix}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`;
+}
+
+export function videoMomentFromTime(time: number): VideoMoment {
+  if (!Number.isFinite(time) || time < 0) return "unknown";
+  if (time < 45 * 60) return "firstHalf";
+  if (time < 90 * 60) return "secondHalf";
+  return "extraTime";
 }

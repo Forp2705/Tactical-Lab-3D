@@ -502,7 +502,7 @@ function BallNode({
     return <TopBallMarker position={[position[0], 0, position[2]]} />;
   }
   return (
-    <Ball3D position={[position[0], pose.pos.z * 0.55 + 0.16, position[2]]} />
+    <Ball3D position={[position[0], pose.pos.z * 0.55 + 0.13, position[2]]} />
   );
 }
 

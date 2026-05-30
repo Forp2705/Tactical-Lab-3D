@@ -38,6 +38,7 @@ function snapshotFromDefaults(): AppSnapshot {
     team: s.team,
     session: s.session,
     microcycle: s.microcycle,
+    lineupLab: s.lineupLab,
     tags: s.tags,
     tracks: s.tracks,
     aiPrompt: s.aiPrompt,

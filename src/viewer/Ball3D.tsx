@@ -11,7 +11,7 @@ export function Ball3D({ position }: BallProps) {
   const last = useRef(new Vector3(position[0], position[1], position[2]));
   const target = useMemo(() => new Vector3(), []);
   const ballTexture = useMemo(() => createBallTexture(), []);
-  const height = Math.max(0, position[1] - 0.16);
+  const height = Math.max(0, position[1] - 0.13);
   const shadowOpacity = Math.max(0.06, 0.28 - height * 0.16);
   const shadowScale = 1 + height * 0.9;
 
@@ -25,8 +25,8 @@ export function Ball3D({ position }: BallProps) {
     const dz = current.z - before.z;
     const distance = Math.hypot(dx, dz);
     if (distance > 0.0001) {
-      mesh.current.rotation.z -= dx / 0.32;
-      mesh.current.rotation.x += dz / 0.32;
+      mesh.current.rotation.z -= dx / 0.13;
+      mesh.current.rotation.x += dz / 0.13;
     }
     last.current.copy(current);
   });
@@ -34,7 +34,7 @@ export function Ball3D({ position }: BallProps) {
   return (
     <group>
       <mesh ref={mesh} castShadow position={position}>
-        <sphereGeometry args={[0.32, 64, 64]} />
+        <sphereGeometry args={[0.13, 48, 48]} />
         <meshStandardMaterial
           map={ballTexture}
           color="#ffffff"
@@ -47,7 +47,7 @@ export function Ball3D({ position }: BallProps) {
         rotation={[-Math.PI / 2, 0, 0]}
         scale={[shadowScale, shadowScale, 1]}
       >
-        <circleGeometry args={[0.48, 36]} />
+        <circleGeometry args={[0.2, 36]} />
         <meshBasicMaterial
           color="#000000"
           transparent

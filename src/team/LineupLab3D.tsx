@@ -1,5 +1,11 @@
 import type { Lineup, Player, Vec2 } from "@/data";
-import type { CoachShapeContext, CoachShapePlayer } from "@/state/useAppStore";
+import type {
+  CoachShapeContext,
+  CoachShapePlayer,
+  LabShapePhase,
+  LineupLabSavedTransition,
+  LineupLabShape,
+} from "@/state/useAppStore";
 import { useAppStore } from "@/state/useAppStore";
 import { Pitch3D } from "@/viewer/Pitch3D";
 import {
@@ -30,16 +36,9 @@ type FormationSlot = {
   pos: Vec2;
 };
 
-type ShapePhase = "attack" | "defense" | "transition" | "buildup" | "abp";
-
-type Shape = {
-  id: string;
-  name: string;
-  phase: ShapePhase;
-  positions: Record<string, Vec2>;
-  notes?: string;
-  createdAt: number;
-};
+type ShapePhase = LabShapePhase;
+type Shape = LineupLabShape;
+type SavedTransition = LineupLabSavedTransition;
 
 type DragTarget =
   | { kind: "own"; playerId: string }
@@ -55,6 +54,7 @@ type LabSnapshot = {
   ownPositions: Record<string, Vec2>;
   rivalPositions: Record<string, Vec2>;
   shapes: Shape[];
+  savedTransitions: SavedTransition[];
   rivals: RivalChip[];
 };
 
@@ -207,6 +207,16 @@ const RIVAL_BASE = [
 ];
 
 export function LineupLab3D({ players }: { players: Player[] }) {
+  const pendingShapeId = useAppStore(
+    (state) => state.lineupLab.pendingShapeId,
+  );
+  const setLineupLabShapes = useAppStore((state) => state.setLineupLabShapes);
+  const setLineupLabTransitions = useAppStore(
+    (state) => state.setLineupLabTransitions,
+  );
+  const consumePendingShape = useAppStore(
+    (state) => state.consumePendingShape,
+  );
   const [formation, setFormation] = useState("4-3-3");
   const [snap, setSnap] = useState(true);
   const [showRival, setShowRival] = useState(true);
@@ -232,7 +242,10 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     assignments[0] ?? null,
   );
-  const [shapes, setShapes] = useState<Shape[]>(() => defaultShapes(players));
+  const [shapes, setShapes] = useState<Shape[]>(() => {
+    const stored = useAppStore.getState().lineupLab.shapes;
+    return stored.length ? cloneShapes(stored) : defaultShapes(players);
+  });
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(
     () => shapes[0]?.id ?? null,
   );
@@ -244,6 +257,14 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   );
   const [transition, setTransition] = useState(0);
   const [transitionPlaying, setTransitionPlaying] = useState(false);
+  const [savedTransitions, setSavedTransitions] = useState<SavedTransition[]>(
+    () => {
+      const stored = useAppStore.getState().lineupLab.savedTransitions;
+      return stored.length
+        ? stored.map((transitionPreset) => ({ ...transitionPreset }))
+        : defaultTransitions(shapes);
+    },
+  );
   const slots = FORMATIONS[formation];
   const ownChips = useMemo(
     () =>
@@ -346,12 +367,28 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   });
 
   useEffect(() => {
+    setLineupLabShapes(shapes);
+  }, [setLineupLabShapes, shapes]);
+
+  useEffect(() => {
+    setLineupLabTransitions(savedTransitions);
+  }, [savedTransitions, setLineupLabTransitions]);
+
+  useEffect(() => {
+    if (!pendingShapeId) return;
+    const shape = shapes.find((item) => item.id === pendingShapeId);
+    if (shape) loadShape(shape);
+    consumePendingShape();
+  }, [consumePendingShape, pendingShapeId, shapes]);
+
+  useEffect(() => {
     useAppStore.getState().setCoachShapeContext(
       buildCoachShapeContext({
         formation,
         players,
         ownChips,
         shapes,
+        savedTransitions,
         selectedShapeId,
         fromShapeId,
         toShapeId,
@@ -368,6 +405,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     ownChips,
     players,
     rivalChips,
+    savedTransitions,
     selectedShapeId,
     shapes,
     showRival,
@@ -382,6 +420,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         ...shape,
         positions: clonePositions(shape.positions),
       })),
+      savedTransitions: savedTransitions.map((item) => ({ ...item })),
       rivals: rivals.map((rival) => ({ ...rival })),
     };
     setHistory((current) => [...current.slice(-24), snapshot]);
@@ -398,6 +437,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         positions: clonePositions(shape.positions),
       })),
     );
+    setSavedTransitions(snapshot.savedTransitions.map((item) => ({ ...item })));
     setRivals(snapshot.rivals.map((rival) => ({ ...rival })));
     setHistory((current) => current.slice(0, -1));
   }
@@ -469,6 +509,11 @@ export function LineupLab3D({ players }: { players: Player[] }) {
       setToShapeId(nextShapes[1]?.id ?? nextShapes[0]?.id ?? null);
     if (selectedShapeId === shapeId)
       setSelectedShapeId(nextShapes[0]?.id ?? null);
+    setSavedTransitions((current) =>
+      current.filter(
+        (item) => item.fromShapeId !== shapeId && item.toShapeId !== shapeId,
+      ),
+    );
   }
 
   function updateShapeNotes(shapeId: string, notes: string) {
@@ -529,6 +574,42 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     setTransitionPlaying(false);
     setCompareMode(false);
     updateTransition(0);
+  }
+
+  function saveTransitionPreset() {
+    if (!fromShape || !toShape || fromShape.id === toShape.id) return;
+    const transitionPreset: SavedTransition = {
+      id: crypto.randomUUID(),
+      name: `${fromShape.name} -> ${toShape.name}`,
+      fromShapeId: fromShape.id,
+      fromShapeName: fromShape.name,
+      toShapeId: toShape.id,
+      toShapeName: toShape.name,
+      notes: selectedShape?.notes,
+      createdAt: Date.now(),
+    };
+    setSavedTransitions((current) => [
+      transitionPreset,
+      ...current.filter(
+        (item) =>
+          item.fromShapeId !== transitionPreset.fromShapeId ||
+          item.toShapeId !== transitionPreset.toShapeId,
+      ),
+    ]);
+  }
+
+  function loadTransitionPreset(transitionPreset: SavedTransition) {
+    setFromShapeId(transitionPreset.fromShapeId);
+    setToShapeId(transitionPreset.toShapeId);
+    setCompareMode(false);
+    setTransitionPlaying(false);
+    setTransition(0);
+  }
+
+  function deleteTransitionPreset(transitionId: string) {
+    setSavedTransitions((current) =>
+      current.filter((item) => item.id !== transitionId),
+    );
   }
 
   function saveCurrentLineup(apply = false) {
@@ -844,7 +925,37 @@ export function LineupLab3D({ players }: { players: Player[] }) {
               >
                 Reset
               </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!fromShape || !toShape || fromShape.id === toShape.id}
+                onClick={saveTransitionPreset}
+              >
+                Guardar transiciÃ³n
+              </button>
             </div>
+            {savedTransitions.length ? (
+              <div className="distance-list">
+                {savedTransitions.map((item) => (
+                  <div key={item.id}>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => loadTransitionPreset(item)}
+                    >
+                      {item.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary tiny-button"
+                      onClick={() => deleteTransitionPreset(item.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="distance-list">
               {transitionDistances.slice(0, 4).map((entry) => (
                 <div key={entry.playerId}>
@@ -1570,10 +1681,37 @@ function defaultShapes(players: Player[]): Shape[] {
   ];
 }
 
+function defaultTransitions(shapes: Shape[]): SavedTransition[] {
+  const attack = shapes.find((shape) => shape.phase === "attack") ?? shapes[0];
+  const defense =
+    shapes.find((shape) => shape.phase === "defense") ?? shapes[1];
+  if (!attack || !defense || attack.id === defense.id) return [];
+
+  return [
+    {
+      id: "transition-attack-defense",
+      name: "Ataque -> defensa",
+      fromShapeId: attack.id,
+      fromShapeName: attack.name,
+      toShapeId: defense.id,
+      toShapeName: defense.name,
+      notes: "Transicion base entre shape ofensivo y repliegue.",
+      createdAt: Date.now(),
+    },
+  ];
+}
+
 function clonePositions(positions: Record<string, Vec2>): Record<string, Vec2> {
   return Object.fromEntries(
     Object.entries(positions).map(([id, pos]) => [id, { ...pos }]),
   );
+}
+
+function cloneShapes(shapes: Shape[]): Shape[] {
+  return shapes.map((shape) => ({
+    ...shape,
+    positions: clonePositions(shape.positions),
+  }));
 }
 
 function blendPositions(
@@ -1629,6 +1767,7 @@ function buildCoachShapeContext({
   players,
   ownChips,
   shapes,
+  savedTransitions,
   selectedShapeId,
   fromShapeId,
   toShapeId,
@@ -1638,6 +1777,7 @@ function buildCoachShapeContext({
   players: Player[];
   ownChips: Array<{ player: Player; role: string; pos: Vec2 }>;
   shapes: Shape[];
+  savedTransitions: SavedTransition[];
   selectedShapeId: string | null;
   fromShapeId: string | null;
   toShapeId: string | null;
@@ -1702,6 +1842,15 @@ function buildCoachShapeContext({
         players: shapePlayers,
       };
     }),
+    savedTransitions: savedTransitions.map((item) => ({
+      id: item.id,
+      name: item.name,
+      fromShapeId: item.fromShapeId,
+      fromShapeName: item.fromShapeName,
+      toShapeId: item.toShapeId,
+      toShapeName: item.toShapeName,
+      notes: item.notes,
+    })),
     rivalReference: rivalChips.length
       ? rivalChips.map((chip) => ({
           id: chip.rival.id,

@@ -37,6 +37,7 @@ function snapshotFromDefaults(): AppSnapshot {
     team: s.team,
     session: s.session,
     microcycle: s.microcycle,
+    lineupLab: s.lineupLab,
     tags: s.tags,
     tracks: s.tracks,
     aiPrompt: s.aiPrompt,
@@ -80,5 +81,31 @@ describe("parseSnapshot", () => {
     expect(parsed?.team.players.length).toBe(base.team.players.length);
     expect(parsed?.session.id).toBe(base.session.id);
     expect(parsed?.microcycle.id).toBe(base.microcycle.id);
+  });
+
+  it("migra tags y tracks legacy al dominio de video", () => {
+    const base = snapshotFromDefaults();
+    const legacy = {
+      ...base,
+      tags: [{ label: "presion", time: 120 }],
+      tracks: [{ label: "manual", time: 125, x: 48, y: 61 }],
+    } as unknown as AppSnapshot;
+
+    const parsed = parseSnapshot(legacy);
+    expect(parsed?.tags[0]).toMatchObject({
+      matchId: "current-match",
+      label: "presion",
+      moment: "firstHalf",
+      severity: "medium",
+    });
+    expect(parsed?.tags[0]?.id).toBeTruthy();
+    expect(parsed?.tracks[0]).toMatchObject({
+      matchId: "current-match",
+      label: "manual",
+      moment: "firstHalf",
+      x: 48,
+      y: 61,
+    });
+    expect(parsed?.tracks[0]?.id).toBeTruthy();
   });
 });

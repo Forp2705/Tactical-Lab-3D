@@ -5,6 +5,7 @@ import { AppShell } from "@/ui/AppShell";
 import { useViewerKeyboard } from "@/viewer/useKeyboard";
 import { Suspense, lazy, useEffect } from "react";
 import "./theme.css";
+import "./tactical-ui.css";
 
 // Code-splitting: cada vista y el visor 3D (Three.js) se cargan bajo demanda
 // para sacarlos del bundle inicial.
@@ -13,6 +14,9 @@ const Scene3D = lazy(() =>
 );
 const LibraryView = lazy(() =>
   import("@/library/LibraryView").then((m) => ({ default: m.LibraryView })),
+);
+const HomeView = lazy(() =>
+  import("@/home/HomeView").then((m) => ({ default: m.HomeView })),
 );
 const TeamView = lazy(() =>
   import("@/team/TeamView").then((m) => ({ default: m.TeamView })),
@@ -148,6 +152,7 @@ export function App() {
         team: state.team,
         session: state.session,
         microcycle: state.microcycle,
+        lineupLab: state.lineupLab,
         tags: state.tags,
         tracks: state.tracks,
         aiPrompt: state.aiPrompt,
@@ -160,6 +165,7 @@ export function App() {
   return (
     <AppShell>
       <Suspense fallback={<ViewFallback />}>
+        {view === "home" ? <HomeView /> : null}
         {view === "library" ? <LibraryView /> : null}
       {view === "viewer" ? (
         <section className="viewer-layout">

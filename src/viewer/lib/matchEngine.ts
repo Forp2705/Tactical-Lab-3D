@@ -143,9 +143,15 @@ function getActiveTriggers(exercise: Exercise, time: number) {
   );
 }
 
+// Umbrales de velocidad en unidades de cancha (0-100) por segundo.
+const WALK_SPEED = 0.6;
+const RUN_SPEED = 2.4;
+const SPRINT_SPEED = 5.6;
+const SPEED_SAMPLE_DT = 0.1;
+
 export function actorPoseAt(actor: Actor, time: number): EngineActorPose {
   const { pos, prev, next } = interpolatePath(actor.start, actor.path, time);
-  const distance = Math.hypot(next.x - prev.x, next.y - prev.y);
+  const speed = sampleActorSpeed(actor, time);
 
   return {
     actor,
@@ -153,10 +159,30 @@ export function actorPoseAt(actor: Actor, time: number): EngineActorPose {
     prev,
     next,
     direction: actorDirectionFromPoints(prev, next),
-    moving: distance > 0.8,
+    moving: speed >= WALK_SPEED,
     hasBall: false,
-    motion: distance > 0.8 ? "Run" : "Idle",
+    motion: motionFromSpeed(speed),
   };
+}
+
+// Velocidad instantanea muestreando la posicion interpolada un instante antes
+// y despues de 'time'. Un jugador quieto (o parado al final de su recorrido) da
+// ~0 y queda en Idle, en vez de quedar "corriendo" solo porque el tramo entre
+// sus waypoints es largo (que era el bug anterior).
+function sampleActorSpeed(actor: Actor, time: number): number {
+  const fromTime = Math.max(0, time - SPEED_SAMPLE_DT);
+  const toTime = time + SPEED_SAMPLE_DT;
+  const before = interpolatePath(actor.start, actor.path, fromTime).pos;
+  const after = interpolatePath(actor.start, actor.path, toTime).pos;
+  const span = Math.max(0.001, toTime - fromTime);
+  return Math.hypot(after.x - before.x, after.y - before.y) / span;
+}
+
+function motionFromSpeed(speed: number): ActorMotion {
+  if (speed < WALK_SPEED) return "Idle";
+  if (speed < RUN_SPEED) return "Walk";
+  if (speed < SPRINT_SPEED) return "Run";
+  return "Sprint";
 }
 
 export function actorDirectionFromPoints(prev: Vec2, next: Vec2) {
@@ -492,14 +518,9 @@ export function classifyActorMotion(
   );
   if (activeCover) return pose.moving ? "Walk" : "DefensiveIdle";
 
-  const speedHint = Math.hypot(
-    pose.next.x - pose.prev.x,
-    pose.next.y - pose.prev.y,
-  );
-  if (pose.moving && speedHint > 12) return "Sprint";
-  if (pose.moving && speedHint < 4) return "Walk";
-  if (pose.moving) return "Run";
-  return "Idle";
+  // pose.motion ya viene clasificado por velocidad real (Idle/Walk/Run/Sprint),
+  // asi que respetamos esa lectura para el caso general.
+  return pose.motion;
 }
 
 function fallbackBallFromPath(

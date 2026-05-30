@@ -4,11 +4,87 @@ import {
   MicrocycleSchema,
   PlayerSchema,
   SessionSchema,
+  Vec2Schema,
 } from "@/data";
 import Dexie, { type Table } from "dexie";
 import { z } from "zod";
 
 export const APP_SNAPSHOT_VERSION = 1;
+
+const VideoMomentSchema = z.enum([
+  "firstHalf",
+  "secondHalf",
+  "extraTime",
+  "unknown",
+]);
+
+const VideoTagSnapshotSchema = z
+  .object({
+    id: z.string().optional(),
+    matchId: z.string().optional(),
+    label: z.string(),
+    time: z.number().min(0),
+    moment: VideoMomentSchema.optional(),
+    playerId: z.string().optional(),
+    playerName: z.string().optional(),
+    zone: z.string().optional(),
+    note: z.string().optional(),
+    severity: z.enum(["low", "medium", "high"]).optional(),
+  })
+  .transform((tag) => ({
+    ...tag,
+    id: tag.id || makeStableEventId("tag", tag.time, tag.label),
+    matchId: tag.matchId || "current-match",
+    moment: tag.moment ?? videoMomentFromTime(tag.time),
+    severity: tag.severity ?? "medium",
+  }));
+
+const VideoTrackSnapshotSchema = z
+  .object({
+    id: z.string().optional(),
+    matchId: z.string().optional(),
+    time: z.number().min(0),
+    x: z.number().min(0).max(100),
+    y: z.number().min(0).max(100),
+    label: z.string(),
+    moment: VideoMomentSchema.optional(),
+    playerId: z.string().optional(),
+    playerName: z.string().optional(),
+    zone: z.string().optional(),
+    note: z.string().optional(),
+  })
+  .transform((track) => ({
+    ...track,
+    id: track.id || makeStableEventId("track", track.time, track.label),
+    matchId: track.matchId || "current-match",
+    moment: track.moment ?? videoMomentFromTime(track.time),
+  }));
+
+const LineupLabShapeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  phase: z.enum(["attack", "defense", "transition", "buildup", "abp"]),
+  positions: z.record(z.string(), Vec2Schema),
+  notes: z.string().optional(),
+  createdAt: z.number(),
+});
+
+const LineupLabSavedTransitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  fromShapeId: z.string(),
+  fromShapeName: z.string(),
+  toShapeId: z.string(),
+  toShapeName: z.string(),
+  notes: z.string().optional(),
+  createdAt: z.number(),
+});
+
+const LineupLabSnapshotSchema = z.object({
+  shapes: z.array(LineupLabShapeSchema).default([]),
+  savedTransitions: z.array(LineupLabSavedTransitionSchema).default([]),
+  pendingShapeId: z.string().nullable().default(null),
+});
 
 // Forma del snapshot definida campo por campo. Mantener el shape separado del
 // schema permite validar cada campo de forma aislada para la recuperacion
@@ -17,6 +93,7 @@ const snapshotShape = {
   version: z.number().int().min(1).default(APP_SNAPSHOT_VERSION),
   selectedExerciseId: z.string(),
   view: z.enum([
+    "home",
     "library",
     "viewer",
     "team",
@@ -62,15 +139,9 @@ const snapshotShape = {
   }),
   session: SessionSchema,
   microcycle: MicrocycleSchema,
-  tags: z.array(z.object({ label: z.string(), time: z.number().min(0) })),
-  tracks: z.array(
-    z.object({
-      time: z.number().min(0),
-      x: z.number().min(0).max(100),
-      y: z.number().min(0).max(100),
-      label: z.string(),
-    }),
-  ),
+  lineupLab: LineupLabSnapshotSchema.optional(),
+  tags: z.array(VideoTagSnapshotSchema),
+  tracks: z.array(VideoTrackSnapshotSchema),
   aiPrompt: z.string(),
 } as const;
 
@@ -182,6 +253,13 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
     exerciseVariants: migrated.exerciseVariants ?? [],
     personalSpace: migrated.personalSpace ?? false,
     viewerQuality: migrated.viewerQuality ?? "medium",
+    lineupLab: migrated.lineupLab ?? {
+      shapes: [],
+      savedTransitions: [],
+      pendingShapeId: null,
+    },
+    tags: (migrated.tags ?? []).map(normalizeVideoTag),
+    tracks: (migrated.tracks ?? []).map(normalizeVideoTrack),
   };
 }
 
@@ -211,4 +289,42 @@ export function parseSnapshot(value: unknown): AppSnapshot | null {
   // completa el resto con sus defaults al hacer loadSnapshot. Se castea a
   // AppSnapshot por contrato: el consumidor (store) fusiona sobre el estado.
   return recoverSnapshot(value) as AppSnapshot | null;
+}
+
+function normalizeVideoTag(
+  tag: z.infer<typeof VideoTagSnapshotSchema>,
+): z.infer<typeof VideoTagSnapshotSchema> {
+  return {
+    ...tag,
+    id: tag.id ?? makeStableEventId("tag", tag.time, tag.label),
+    matchId: tag.matchId ?? "current-match",
+    moment: tag.moment ?? videoMomentFromTime(tag.time),
+    severity: tag.severity ?? "medium",
+  };
+}
+
+function normalizeVideoTrack(
+  track: z.infer<typeof VideoTrackSnapshotSchema>,
+): z.infer<typeof VideoTrackSnapshotSchema> {
+  return {
+    ...track,
+    id: track.id ?? makeStableEventId("track", track.time, track.label),
+    matchId: track.matchId ?? "current-match",
+    moment: track.moment ?? videoMomentFromTime(track.time),
+  };
+}
+
+function makeStableEventId(prefix: string, time: number, label: string) {
+  return `${prefix}-${Math.round(time * 1000)}-${label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48)}`;
+}
+
+function videoMomentFromTime(time: number) {
+  if (!Number.isFinite(time) || time < 0) return "unknown" as const;
+  if (time < 45 * 60) return "firstHalf" as const;
+  if (time < 90 * 60) return "secondHalf" as const;
+  return "extraTime" as const;
 }

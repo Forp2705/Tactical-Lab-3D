@@ -24,6 +24,41 @@ export type CoachAgentRuntimeContext = {
   teamModel?: string;
   availableSquad: CoachAgentSquadPlayer[];
   unavailableSquad: CoachAgentSquadPlayer[];
+  savedLineups?: Array<{
+    id: string;
+    name: string;
+    formation: string;
+    players: Array<{
+      playerId: string;
+      playerName?: string;
+      role: string;
+      x: number;
+      y: number;
+    }>;
+  }>;
+  lineupLabShapes?: Array<{
+    id: string;
+    name: string;
+    phase: string;
+    notes?: string;
+    players: Array<{
+      playerId: string;
+      playerName: string;
+      num: number;
+      positions: string[];
+      x: number;
+      y: number;
+    }>;
+  }>;
+  lineupLabTransitions?: Array<{
+    id: string;
+    name: string;
+    fromShapeId: string;
+    fromShapeName: string;
+    toShapeId: string;
+    toShapeName: string;
+    notes?: string;
+  }>;
 };
 
 export async function requestCoachAgent(

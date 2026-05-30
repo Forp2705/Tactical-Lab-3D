@@ -1,5 +1,30 @@
 import { z } from "zod";
 
+export const CoachActionSchema = z.object({
+  type: z.enum([
+    "openExercise",
+    "addToSession",
+    "createExerciseVariant",
+    "applyLineup",
+    "applyShape",
+    "createExerciseFromShape",
+  ]),
+  label: z.string().optional(),
+  exerciseId: z.string().optional(),
+  lineupId: z.string().optional(),
+  shapeId: z.string().optional(),
+  title: z.string().optional(),
+  rationale: z.string().optional(),
+});
+
+export const CoachEvidenceCitationSchema = z.object({
+  sourceType: z.enum(["knowledge", "memory", "observation", "report"]),
+  sourceId: z.string().min(1),
+  title: z.string().min(1),
+  excerpt: z.string().min(1),
+  relevance: z.number().min(0).max(1).optional(),
+});
+
 export const CoachMatchAdviceSchema = z.object({
   tacticalReading: z.string(),
   probableCause: z.string(),
@@ -15,6 +40,9 @@ export const CoachMatchAdviceSchema = z.object({
     alternativeInterpretation: z.string(),
     confidence: z.number().min(0).max(1),
   }),
+  linkedExercises: z.array(z.string()).default([]),
+  actions: z.array(CoachActionSchema).default([]),
+  evidenceCitations: z.array(CoachEvidenceCitationSchema).default([]),
 });
 
 export const AiPlanSchema = z.object({
@@ -68,5 +96,7 @@ export const MatchObservationSchema = z.object({
 export const MatchObservationsSchema = z.array(MatchObservationSchema);
 
 export type MatchObservation = z.infer<typeof MatchObservationSchema>;
+export type CoachAction = z.infer<typeof CoachActionSchema>;
+export type CoachEvidenceCitation = z.infer<typeof CoachEvidenceCitationSchema>;
 export type CoachMatchAdvice = z.infer<typeof CoachMatchAdviceSchema>;
 export type AiPlan = z.infer<typeof AiPlanSchema>;

@@ -1,5 +1,5 @@
 import { loadGeneratedMemory } from "./loadGeneratedMemory.js"
-import { TACTICAL_KEYWORDS } from "./tacticalKeywords.js"
+import { rankDocuments } from "./retrievalScoring.js"
 
 const MAX_MEMORY_ITEMS = 3
 
@@ -24,62 +24,20 @@ export async function retrieveRelevantGeneratedMemory(
   userInput: string
 ) {
   const generatedMemory = await loadGeneratedMemory()
-  const normalizedInput = userInput.toLowerCase()
+  const documents = generatedMemory.map((item, index) => ({
+    id: `MEM-${index + 1}-${item.lastSeen}`,
+    sourceType: "memory" as const,
+    title: `${item.category}: ${item.pattern.slice(0, 90)}`,
+    text: [item.category, item.pattern, item.impact].join("\n"),
+    tags: [item.category],
+    payload: item,
+    recencyScore: getRecencyScore(item.lastSeen),
+    authorityScore:
+      Math.min(item.frequency, 10) / 10 * 0.35 +
+      item.severityScore * 0.65,
+  }))
 
-  const scoredMemory = generatedMemory
-    .map((item) => {
-      let keywordScore = 0
-
-      const searchableText = `
-${item.category}
-${item.pattern}
-${item.impact}
-`.toLowerCase()
-
-      for (const [tag, keywords] of Object.entries(TACTICAL_KEYWORDS)) {
-        const tagMatchesMemory =
-          searchableText.includes(tag.toLowerCase()) ||
-          keywords.some((keyword) =>
-            searchableText.includes(keyword.toLowerCase())
-          )
-
-        if (!tagMatchesMemory) continue
-
-        const tagMatchesInput =
-          normalizedInput.includes(tag.toLowerCase()) ||
-          keywords.some((keyword) =>
-            normalizedInput.includes(keyword.toLowerCase())
-          )
-
-        if (tagMatchesInput) {
-          keywordScore += 1
-        }
-      }
-
-      const frequencyScore =
-        Math.min(item.frequency, 10) / 10
-
-      const severityScore =
-        item.severityScore
-
-      const recencyScore =
-        getRecencyScore(item.lastSeen)
-
-      const finalScore =
-        keywordScore * 2 +
-        frequencyScore * 1 +
-        severityScore * 2 +
-        recencyScore * 1
-
-      return {
-        item,
-        score: finalScore,
-      }
-    })
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
-
-  return scoredMemory
-    .slice(0, MAX_MEMORY_ITEMS)
-    .map((entry) => entry.item)
+  return rankDocuments(userInput, documents, {
+    limit: MAX_MEMORY_ITEMS,
+  })
 }

@@ -1,4 +1,12 @@
 import { useAppStore } from "@/state/useAppStore";
+import {
+  formatVideoEvidenceTime,
+  getVideoEvidenceItems,
+  summarizeVideoEvidence,
+  videoEvidenceToTagsText,
+  type VideoEvidenceItem,
+  type VideoEvidenceSummary,
+} from "@/video/videoEvidence";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -52,6 +60,13 @@ const INITIAL_FORM: FormState = {
 
 export function PostMatchAnalysisView() {
   const videoTags = useAppStore((state) => state.tags);
+  const videoTracks = useAppStore((state) => state.tracks);
+  const pendingVideoEvidenceText = useAppStore(
+    (state) => state.pendingPostMatchEvidenceText,
+  );
+  const consumePendingPostMatchEvidenceText = useAppStore(
+    (state) => state.consumePendingPostMatchEvidenceText,
+  );
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [report, setReport] = useState<PostMatchReport | null>(null);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>(
@@ -67,6 +82,14 @@ export function PostMatchAnalysisView() {
     null,
   );
   const parsedTags = useMemo(() => parseTags(form.tagsText), [form.tagsText]);
+  const videoEvidenceItems = useMemo(
+    () => getVideoEvidenceItems(videoTags, videoTracks),
+    [videoTags, videoTracks],
+  );
+  const videoEvidenceSummary = useMemo(
+    () => summarizeVideoEvidence(videoTags, videoTracks),
+    [videoTags, videoTracks],
+  );
   const canGenerate = Boolean(
     form.opponent.trim() &&
       form.result.trim() &&
@@ -77,6 +100,17 @@ export function PostMatchAnalysisView() {
   useEffect(() => {
     void refreshHistory();
   }, []);
+
+  useEffect(() => {
+    if (!pendingVideoEvidenceText) return;
+    const evidenceText = consumePendingPostMatchEvidenceText();
+    if (!evidenceText) return;
+    setForm((current) => ({
+      ...current,
+      tagsText: mergeEvidenceText(current.tagsText, evidenceText),
+    }));
+    setStatus("Evidencia del video importada para revisar antes de generar.");
+  }, [consumePendingPostMatchEvidenceText, pendingVideoEvidenceText]);
 
   async function refreshHistory() {
     try {
@@ -273,6 +307,20 @@ export function PostMatchAnalysisView() {
             placeholder="Una linea por evento. Formato sugerido: 12' recuperacion alta | carril central | robo tras pase atras."
           />
         </label>
+        <VideoEvidenceImportPanel
+          items={videoEvidenceItems}
+          summary={videoEvidenceSummary}
+          onImport={() =>
+            updateField(
+              setForm,
+              "tagsText",
+              mergeEvidenceText(
+                form.tagsText,
+                videoEvidenceToTagsText(videoTags, videoTracks),
+              ),
+            )
+          }
+        />
         <p className="muted-panel" style={{ marginTop: 8 }}>
           Formato recomendado: <code>12&apos; label | zone | note</code>. El
           minuto es opcional, pero ayuda a ordenar la evidencia.
@@ -288,12 +336,21 @@ export function PostMatchAnalysisView() {
           <button
             type="button"
             className="secondary"
-            disabled={!videoTags.length || Boolean(loading)}
+            disabled={
+              (!videoTags.length && !videoTracks.length) || Boolean(loading)
+            }
             onClick={() =>
-              updateField(setForm, "tagsText", tagsFromVideo(videoTags))
+              updateField(
+                setForm,
+                "tagsText",
+                mergeEvidenceText(
+                  form.tagsText,
+                  videoEvidenceToTagsText(videoTags, videoTracks),
+                ),
+              )
             }
           >
-            Usar tags del video
+            Importar evidencia del video
           </button>
         </div>
         <p className="muted-panel" style={{ marginTop: 12 }}>
@@ -510,6 +567,92 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
       />
     </label>
+  );
+}
+
+function VideoEvidenceImportPanel({
+  items,
+  summary,
+  onImport,
+}: {
+  items: VideoEvidenceItem[];
+  summary: VideoEvidenceSummary;
+  onImport: () => void;
+}) {
+  return (
+    <div className="video-evidence-panel post-match-evidence-panel">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Video / Post partido / IA</span>
+          <h4>Evidencia importable</h4>
+        </div>
+        <button type="button" disabled={!summary.total} onClick={onImport}>
+          Importar al informe
+        </button>
+      </div>
+      <div className="video-evidence-summary">
+        <VideoEvidenceCount label="Total" value={summary.total} />
+        <VideoEvidenceCount label="Tags" value={summary.tags} />
+        <VideoEvidenceCount label="Tracks manuales" value={summary.manualTracks} />
+        <VideoEvidenceCount label="Validados" value={summary.confirmedTracks} />
+        <VideoEvidenceCount
+          label="Asistidos"
+          value={summary.assistedTracks}
+          tone="low"
+        />
+      </div>
+      {summary.assistedTracks ? (
+        <p className="video-evidence-warning">
+          Los tracks asistidos se mandan como evidencia de confianza baja. El
+          informe debe tratarlos como apoyo, no como hecho confirmado.
+        </p>
+      ) : null}
+      {items.length ? (
+        <div className="video-evidence-preview">
+          {items.slice(0, 8).map((item) => (
+            <VideoEvidencePreviewItem item={item} key={item.id} />
+          ))}
+        </div>
+      ) : (
+        <p className="muted-panel">
+          Todavia no hay tags/tracks de video para importar.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function VideoEvidencePreviewItem({ item }: { item: VideoEvidenceItem }) {
+  return (
+    <article
+      className={`video-evidence-item ${item.kind} ${item.confidence}`}
+    >
+      <span>{formatVideoEvidenceTime(item.time)}</span>
+      <b>{item.label}</b>
+      <small>
+        {item.sourceLabel} - {item.confidenceLabel}
+        {item.zone ? ` - ${item.zone}` : ""}
+        {item.playerName ? ` - ${item.playerName}` : ""}
+      </small>
+      {item.note ? <small>{item.note}</small> : null}
+    </article>
+  );
+}
+
+function VideoEvidenceCount({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "low";
+}) {
+  return (
+    <div className={`video-evidence-count ${tone ?? ""}`}>
+      <span>{label}</span>
+      <b>{value}</b>
+    </div>
   );
 }
 
@@ -892,15 +1035,32 @@ function parseTags(text: string): PostMatchTag[] {
         label: labelPart || content || line,
         zone: optionalText(zonePart),
         note: optionalText(notePart),
-        severity: "medium" as const,
+        severity: inferEvidenceSeverity(labelPart || content || line, notePart),
       };
     });
 }
 
-function tagsFromVideo(tags: { label: string; time: number }[]) {
-  return tags
-    .map((tag) => `${formatTagTime(tag.time)} ${tag.label}`)
-    .join("\n");
+function inferEvidenceSeverity(
+  label: string,
+  note?: string,
+): PostMatchTag["severity"] {
+  const text = `${label} ${note ?? ""}`.toLowerCase();
+  if (/\b(severidad|severity)\s*:?\s*(high|alta)\b/.test(text)) return "high";
+  if (/\b(severidad|severity)\s*:?\s*(low|baja)\b/.test(text)) return "low";
+  if (/\b(severidad|severity)\s*:?\s*(medium|media)\b/.test(text)) {
+    return "medium";
+  }
+  if (text.includes("confirmed-track") || text.includes("validado")) {
+    return "high";
+  }
+  if (text.includes("tracking manual")) return "high";
+  if (text.includes("assist-track") || text.includes("assist-start")) {
+    return "low";
+  }
+  if (text.includes("tracking asistido") && !text.includes("validado")) {
+    return "low";
+  }
+  return "medium";
 }
 
 function formFromSavedReport(saved: SavedPostMatchReport): FormState {
@@ -923,16 +1083,19 @@ function stringifyTags(tags: PostMatchTag[]) {
   return tags
     .map((tag) => {
       const time = typeof tag.minute === "number" ? formatMinuteTag(tag.minute) : "";
-      const payload = [tag.label, tag.zone, tag.note].filter(Boolean).join(" | ");
+      const note = [tag.note, severityNote(tag)]
+        .filter(Boolean)
+        .join("; ");
+      const payload = [tag.label, tag.zone, note].filter(Boolean).join(" | ");
       return [time, payload].filter(Boolean).join(" ");
     })
     .join("\n");
 }
 
-function formatTagTime(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const remainder = Math.floor(seconds % 60);
-  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+function severityNote(tag: PostMatchTag) {
+  if (tag.severity === "medium") return "";
+  if (tag.note?.toLowerCase().includes("severidad")) return "";
+  return `severidad: ${tag.severity}`;
 }
 
 function formatMinuteTag(minute: number) {
@@ -941,6 +1104,19 @@ function formatMinuteTag(minute: number) {
   const seconds = rawSeconds === 60 ? 59 : rawSeconds;
   if (!seconds) return `${wholeMinutes}'`;
   return `${wholeMinutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function mergeEvidenceText(current: string, incoming: string) {
+  const existing = current.trim();
+  const next = incoming.trim();
+  if (!existing) return next;
+  if (!next) return existing;
+  const lines = new Set(
+    [...existing.split(/\r?\n/), ...next.split(/\r?\n/)]
+      .map((line) => line.trim())
+      .filter(Boolean),
+  );
+  return Array.from(lines).join("\n");
 }
 
 function optionalText(value: string | undefined) {

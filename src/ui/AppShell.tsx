@@ -4,9 +4,10 @@ import {
   saveSnapshot,
 } from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
-import type { ChangeEvent, ReactNode } from "react";
+import { type ChangeEvent, type ReactNode, useState } from "react";
 
 type NavView =
+  | "home"
   | "library"
   | "viewer"
   | "team"
@@ -15,72 +16,129 @@ type NavView =
   | "ai"
   | "player";
 
+type NavItem = {
+  code: string;
+  label: string;
+  view: NavView;
+  isActive?: (view: NavView, aiMode: string) => boolean;
+  onSelect?: () => void;
+};
+
+const PRIMARY_NAV: NavItem[] = [
+  { view: "home", code: "HOME", label: "Inicio" },
+  { view: "viewer", code: "3D", label: "Visor tactico" },
+  { view: "team", code: "XI", label: "Equipo · Lineup" },
+  {
+    view: "ai",
+    code: "AI",
+    label: "Asistente tactico",
+    isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
+    onSelect: () => useAppStore.getState().setAiMode("coach"),
+  },
+  { view: "video", code: "VID", label: "Video + tracking" },
+  {
+    view: "ai",
+    code: "PM",
+    label: "Post-partido",
+    isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
+    onSelect: () => useAppStore.getState().setAiMode("postMatch"),
+  },
+];
+
+const SECONDARY_NAV: NavItem[] = [
+  { view: "library", code: "LIB", label: "Biblioteca" },
+  { view: "sessions", code: "MD", label: "Sesion" },
+  { view: "player", code: "PL", label: "Modo jugador" },
+];
+
 export function AppShell({ children }: { children: ReactNode }) {
   const view = useAppStore((state) => state.view);
   const session = useAppStore((state) => state.session);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const presentationMode = useAppStore((state) => state.presentationMode);
+  const [navOpen, setNavOpen] = useState(false);
   const selectedExercise = getExerciseById(selectedExerciseId);
   const exerciseLabel = selectedExercise?.title ?? selectedExerciseId ?? "-";
 
   return (
     <div
-      className={`app-shell ${presentationMode ? "presentation-shell" : ""}`}
+      className={`app-shell ${presentationMode ? "presentation-shell" : ""} ${navOpen ? "nav-open" : ""}`}
     >
+      {!presentationMode && navOpen ? (
+        <button
+          type="button"
+          className="nav-scrim"
+          aria-label="Cerrar menu"
+          onClick={() => setNavOpen(false)}
+        />
+      ) : null}
       {presentationMode ? null : (
         <aside className="sidebar">
           <div className="brand">
             <div className="brand-mark">TL</div>
             <div>
-              <span className="brand-kicker">COACH ROOM / PRO 3D</span>
-              <h1>Tactical Lab Pro 3D</h1>
-              <p>Matchday cockpit para entrenadores</p>
+              <span className="eyebrow">Coach room / Pro 3D</span>
+              <h1>Tactical Lab Pro</h1>
             </div>
           </div>
           <nav className="nav">
-            <NavButton view="library" label="Biblioteca" code="LIB" />
-            <NavButton view="viewer" label="Visor tactico" code="3D" />
-            <NavButton view="team" label="Equipo" code="XI" />
-            <NavButton view="sessions" label="Sesion" code="MD" />
-            <NavButton view="video" label="Video" code="VID" />
-            <NavButton view="ai" label="Asistente" code="AI" />
-            <NavButton view="player" label="Modo jugador" code="PL" />
-          </nav>
-          <div className="quick-status">
-            <span className="panel-eyebrow">Estado de campo</span>
-            <div className="status-row">
-              <span>Vista</span>
-              <b>{view.toUpperCase()}</b>
-            </div>
-            <div className="status-row">
-              <span>Ejercicio</span>
-              <b>{exerciseLabel}</b>
-            </div>
-            <div className="status-row">
-              <span>Sesion</span>
-              <b>{session.blocks.length} bloques</b>
-            </div>
-          </div>
-          <div className="project-actions">
-            <span className="panel-eyebrow">Proyecto local</span>
-            <button type="button" onClick={() => void saveProject()}>
-              Guardar local
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => exportProject()}
-            >
-              Exportar JSON
-            </button>
-            <label className="file-label">
-              Importar JSON
-              <input
-                type="file"
-                accept="application/json"
-                onChange={importProject}
+            {PRIMARY_NAV.map((item) => (
+              <NavButton
+                key={`${item.code}-${item.label}`}
+                item={item}
+                onNavigate={() => setNavOpen(false)}
               />
-            </label>
+            ))}
+            <div className="nav-section-label">Herramientas</div>
+            {SECONDARY_NAV.map((item) => (
+              <NavButton
+                key={`${item.code}-${item.label}`}
+                item={item}
+                onNavigate={() => setNavOpen(false)}
+              />
+            ))}
+          </nav>
+          <div className="side-foot">
+            <div className="status-card">
+              <span className="eyebrow">Estado de campo</span>
+              <div className="status-row">
+                <span>Vista</span>
+                <b>{view.toUpperCase()}</b>
+              </div>
+              <div className="status-row">
+                <span>Ejercicio</span>
+                <b>{exerciseLabel}</b>
+              </div>
+              <div className="status-row">
+                <span>Sesion</span>
+                <b>{session.blocks.length} bloques</b>
+              </div>
+            </div>
+            <div className="status-card project-actions">
+              <span className="eyebrow">Proyecto local</span>
+              <button type="button" className="btn ghost" onClick={() => void saveProject()}>
+                Guardar local
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => exportProject()}
+              >
+                Exportar JSON
+              </button>
+              <label className="file-label btn ghost">
+                Importar JSON
+                <input
+                  type="file"
+                  accept="application/json"
+                  onChange={importProject}
+                />
+              </label>
+              <span className="live-pill">
+                <i />
+                Local / IndexedDB
+              </span>
+            </div>
           </div>
         </aside>
       )}
@@ -88,7 +146,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         {presentationMode ? null : (
           <header className="topbar">
             <div className="topbar-copy">
-              <span className="topbar-kicker">TACTICAL LAB / FIELD READY</span>
+              <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  className="icon-btn menu-toggle"
+                  onClick={() => setNavOpen(true)}
+                >
+                  Menu
+                </button>
+                <span className="eyebrow">{metaFor(view)[0]}</span>
+              </div>
               <h2>{titleFor(view)}</h2>
               <p>{subtitleFor(view)}</p>
             </div>
@@ -107,8 +174,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="top-actions">
+              <span className="chip">
+                <span className="status-dot available" />
+                Sesion guardada
+              </span>
               <button
                 type="button"
+                className="btn ghost"
                 onClick={() => {
                   useAppStore.getState().setView("viewer");
                   useAppStore.getState().setPresentationMode(true);
@@ -118,7 +190,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
               <button
                 type="button"
-                className="secondary"
+                className="btn ghost"
                 onClick={exportViewerPng}
               >
                 Exportar PNG
@@ -133,29 +205,53 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function NavButton({
-  view,
-  label,
-  code,
-}: { view: NavView; label: string; code: string }) {
-  const active = useAppStore((state) => state.view === view);
+  item,
+  onNavigate,
+}: { item: NavItem; onNavigate?: () => void }) {
+  const active = useAppStore((state) =>
+    item.isActive
+      ? item.isActive(state.view, state.aiMode)
+      : state.view === item.view,
+  );
   return (
     <button
       type="button"
-      className={active ? "active" : ""}
-      onClick={() => useAppStore.getState().setView(view)}
+      className={`nav-btn ${active ? "active" : ""}`}
+      onClick={() => {
+        item.onSelect?.();
+        useAppStore.getState().setView(item.view);
+        onNavigate?.();
+      }}
     >
-      <span className="nav-code">{code}</span>
-      <span className="nav-label">{label}</span>
+      <span className="nav-code">{item.code}</span>
+      <span className="nav-label">{item.label}</span>
+      <span className="nav-dot" />
     </button>
+  );
+}
+
+function metaFor(view: string) {
+  return (
+    {
+      home: ["Matchday cockpit"],
+      library: ["Library"],
+      viewer: ["Field ready"],
+      team: ["Sistema de equipo"],
+      sessions: ["Microciclo"],
+      video: ["Analisis"],
+      ai: ["Asistente local"],
+      player: ["Player mode"],
+    }[view] ?? ["Tactical Lab"]
   );
 }
 
 function titleFor(view: string) {
   return (
     {
+      home: "Centro de mando del cuerpo tecnico",
       library: "Biblioteca de ejercicios",
       viewer: "Visor tactico 3D integrado",
-      team: "Sistema de equipo",
+      team: "Equipo · Lineup Lab",
       sessions: "Sesiones y microciclo",
       video: "Video + tracking asistido",
       ai: "Asistente tactico local",
@@ -167,10 +263,11 @@ function titleFor(view: string) {
 function subtitleFor(view: string) {
   return (
     {
+      home: "Lo importante de la semana en un vistazo.",
       library:
         "Catalogo curado, filtros simples y escenas entendibles en 5 segundos.",
       viewer: "Reproduccion 3D con camaras, capas y fases.",
-      team: "Plantel, atributos, alineaciones y validaciones basicas.",
+      team: "Plantel, shapes y snapshot contextual para el asistente.",
       sessions:
         "Planificador practico con carga estimada y exportacion simple.",
       video: "Tagging manual, marcadores y tracking asistido.",
@@ -263,6 +360,7 @@ function snapshotFromState(state: ReturnType<typeof useAppStore.getState>) {
     team: state.team,
     session: state.session,
     microcycle: state.microcycle,
+    lineupLab: state.lineupLab,
     tags: state.tags,
     tracks: state.tracks,
     aiPrompt: state.aiPrompt,
