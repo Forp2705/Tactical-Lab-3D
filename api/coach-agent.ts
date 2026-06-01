@@ -1,5 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
+  CoachInterviewStateSchema,
+  CollectedAnswerSchema,
+  type CoachInterviewState,
+  type CollectedAnswer,
+} from "../src/ai/CoachSchemas.js";
+import {
   badRequest,
   methodNotAllowed,
   publicServerError,
@@ -18,11 +24,27 @@ export default async function handler(
 
   let input = "";
   let coachContext: unknown;
+  let collectedEvidence: CollectedAnswer[] = [];
+  let interviewState: CoachInterviewState | null = null;
+  let skipInterview = false;
 
   try {
     const body = await readJsonBody(req);
     input = typeof body.input === "string" ? body.input.trim() : "";
     coachContext = body.coachContext ?? body.shapeContext;
+    const collectedEvidenceResult = CollectedAnswerSchema.array().safeParse(
+      body.collectedEvidence,
+    );
+    const interviewStateResult = CoachInterviewStateSchema.nullable().safeParse(
+      body.interviewState ?? null,
+    );
+    collectedEvidence = collectedEvidenceResult.success
+      ? collectedEvidenceResult.data
+      : [];
+    interviewState = interviewStateResult.success
+      ? interviewStateResult.data
+      : null;
+    skipInterview = body.skipInterview === true;
   } catch {
     badRequest(res, "Invalid JSON body");
     return;
@@ -34,9 +56,15 @@ export default async function handler(
   }
 
   try {
-    const { generateCoachResponse } = await import("../src/ai/CoachAgent.js");
-    const advice = await generateCoachResponse(input, coachContext);
-    sendJson(res, 200, advice);
+    const { runCoachTurn } = await import("../src/ai/CoachAgent.js");
+    const response = await runCoachTurn({
+      input,
+      coachContext,
+      collectedEvidence,
+      interviewState,
+      skipInterview,
+    });
+    sendJson(res, 200, response);
   } catch (error) {
     console.error("[coach-agent] request failed", error);
     const response = publicServerError(

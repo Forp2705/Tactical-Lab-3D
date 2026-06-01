@@ -1,4 +1,12 @@
 import type {
+  CoachResponse,
+  CollectedAnswer,
+  ContextualQuestion,
+  EvidenceAudit,
+  ImpliedClaim,
+  TacticalIntent,
+} from "@/ai/CoachSchemas";
+import type {
   Exercise,
   Layer,
   Lineup,
@@ -85,6 +93,7 @@ export type CoachShapeSummary = {
   phase: string;
   notes?: string;
   summary: string;
+  metrics?: CoachShapeMetrics;
   players: CoachShapePlayer[];
 };
 
@@ -101,6 +110,7 @@ export type CoachShapeContext = {
   selectedShapeId: string | null;
   selectedShapeName?: string;
   currentBoardSummary: string;
+  currentMetrics?: CoachShapeMetrics;
   currentBoard: CoachShapePlayer[];
   transition?: {
     fromShapeId: string | null;
@@ -111,6 +121,24 @@ export type CoachShapeContext = {
   shapes: CoachShapeSummary[];
   savedTransitions?: CoachSavedTransitionSummary[];
   rivalReference?: CoachRivalReference[];
+};
+
+export type CoachShapeMetrics = {
+  width: number;
+  depth: number;
+  compactness: number;
+  duels: number;
+  heatScore: number;
+  blockHeight: number;
+  center: { x: number; z: number };
+  lineDistances: {
+    defense?: number;
+    midfield?: number;
+    attack?: number;
+    defenseToMidfield?: number;
+    midfieldToAttack?: number;
+    defenseToAttack?: number;
+  };
 };
 
 export type CoachSavedTransitionSummary = {
@@ -159,6 +187,17 @@ type TeamState = {
   lineups: Lineup[];
 };
 
+export type CoachInterviewRuntimeState = {
+  active: boolean;
+  intent: TacticalIntent | null;
+  temptingClaims: ImpliedClaim[];
+  audit: EvidenceAudit | null;
+  questions: ContextualQuestion[];
+  collectedEvidence: CollectedAnswer[];
+  turn: number;
+  skipped: boolean;
+};
+
 type AppState = {
   version: number;
   selectedExerciseId: string;
@@ -187,6 +226,7 @@ type AppState = {
   tracks: VideoTrack[];
   aiMode: AiMode;
   aiPrompt: string;
+  coachInterview: CoachInterviewRuntimeState;
   pendingPostMatchEvidenceText: string | null;
   coachShapeContext: CoachShapeContext | null;
   initialized: boolean;
@@ -245,6 +285,11 @@ type AppState = {
   markInitialized: () => void;
   setAiMode: (mode: AiMode) => void;
   setAiPrompt: (prompt: string) => void;
+  recordCoachAnswer: (answer: CollectedAnswer) => void;
+  clearCoachAnswer: (questionId: string) => void;
+  applyCoachTurnResult: (response: CoachResponse) => void;
+  skipCoachInterview: () => void;
+  resetCoachInterview: () => void;
   setPendingPostMatchEvidenceText: (text: string | null) => void;
   consumePendingPostMatchEvidenceText: () => string | null;
   setCoachShapeContext: (context: CoachShapeContext | null) => void;
@@ -291,6 +336,17 @@ const initialLineupLab: LineupLabStoreState = {
   shapes: [],
   savedTransitions: [],
   pendingShapeId: null,
+};
+
+const initialCoachInterview: CoachInterviewRuntimeState = {
+  active: false,
+  intent: null,
+  temptingClaims: [],
+  audit: null,
+  questions: [],
+  collectedEvidence: [],
+  turn: 0,
+  skipped: false,
 };
 
 const defaultLayers: Record<Layer, boolean> = {
@@ -366,6 +422,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   tracks: [],
   aiMode: "coach",
   aiPrompt: "",
+  coachInterview: initialCoachInterview,
   pendingPostMatchEvidenceText: null,
   coachShapeContext: null,
   initialized: false,
@@ -659,11 +716,83 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...current,
       ...snapshot,
       layers: { ...defaultLayers, ...snapshot.layers },
+      coachInterview: initialCoachInterview,
       initialized: true,
     })),
   markInitialized: () => set({ initialized: true }),
-  setAiMode: (aiMode) => set({ aiMode }),
-  setAiPrompt: (prompt) => set({ aiPrompt: prompt }),
+  setAiMode: (aiMode) =>
+    set({ aiMode, coachInterview: initialCoachInterview }),
+  setAiPrompt: (prompt) =>
+    set((state) => ({
+      aiPrompt: prompt,
+      coachInterview:
+        prompt === state.aiPrompt ? state.coachInterview : initialCoachInterview,
+    })),
+  recordCoachAnswer: (answer) =>
+    set((state) => {
+      const nextEvidence = [
+        ...state.coachInterview.collectedEvidence.filter(
+          (item) => item.questionId !== answer.questionId,
+        ),
+        answer,
+      ];
+
+      return {
+        coachInterview: {
+          ...state.coachInterview,
+          active: true,
+          collectedEvidence: nextEvidence,
+        },
+      };
+    }),
+  clearCoachAnswer: (questionId) =>
+    set((state) => ({
+      coachInterview: {
+        ...state.coachInterview,
+        collectedEvidence: state.coachInterview.collectedEvidence.filter(
+          (item) => item.questionId !== questionId,
+        ),
+      },
+    })),
+  applyCoachTurnResult: (response) =>
+    set((state) => {
+      if (response.mode === "question") {
+        return {
+          coachInterview: {
+            ...state.coachInterview,
+            active: true,
+            intent: response.intent,
+            temptingClaims: response.blockedClaims,
+            audit: response.evidenceAudit,
+            questions: response.selectedQuestions,
+            turn: state.coachInterview.turn + 1,
+            skipped: false,
+          },
+        };
+      }
+
+      return {
+        coachInterview: {
+          ...state.coachInterview,
+          active: response.mode === "hypothesis",
+          intent: response.intent,
+          temptingClaims: state.coachInterview.temptingClaims,
+          audit: response.evidenceAudit,
+          questions:
+            response.mode === "hypothesis" ? response.followUpQuestions : [],
+          turn: state.coachInterview.turn + 1,
+          skipped: false,
+        },
+      };
+    }),
+  skipCoachInterview: () =>
+    set((state) => ({
+      coachInterview: {
+        ...state.coachInterview,
+        skipped: true,
+      },
+    })),
+  resetCoachInterview: () => set({ coachInterview: initialCoachInterview }),
   setPendingPostMatchEvidenceText: (pendingPostMatchEvidenceText) =>
     set({ pendingPostMatchEvidenceText }),
   consumePendingPostMatchEvidenceText: () => {

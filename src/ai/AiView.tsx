@@ -1,10 +1,22 @@
-import type { CoachAction, CoachMatchAdvice } from "@/ai/CoachSchemas";
+import type {
+  CoachAction,
+  CoachInterviewState,
+  CoachMatchAdvice,
+  CoachResponse,
+  CollectedAnswer,
+  ContextualQuestion,
+  EvidenceAudit,
+} from "@/ai/CoachSchemas";
 import {
-  requestCoachAgent,
+  requestCoachTurn,
   type CoachAgentRuntimeContext,
 } from "@/ai/coachAgentClient";
 import { PostMatchAnalysisView } from "@/ai/post-match/PostMatchAnalysisView";
 import { listPostMatchReports } from "@/ai/post-match/postMatchClient";
+import {
+  detectTeamPatterns,
+  type TeamPattern,
+} from "@/ai/patternDetection";
 import type {
   MemoryCandidate,
   SavedPostMatchReport,
@@ -48,6 +60,7 @@ type CockpitContext = {
     opponent: string;
     candidate: MemoryCandidate;
   }>;
+  teamPatterns: TeamPattern[];
 };
 
 type CoachEvidenceCitation = CoachMatchAdvice["evidenceCitations"][number];
@@ -76,7 +89,16 @@ export function AiView() {
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const mode = useAppStore((state) => state.aiMode);
   const setMode = useAppStore((state) => state.setAiMode);
+  const coachInterview = useAppStore((state) => state.coachInterview);
+  const recordCoachAnswer = useAppStore((state) => state.recordCoachAnswer);
+  const applyCoachTurnResult = useAppStore(
+    (state) => state.applyCoachTurnResult,
+  );
+  const skipCoachInterview = useAppStore((state) => state.skipCoachInterview);
   const [advice, setAdvice] = useState<CoachMatchAdvice | null>(null);
+  const [responseMode, setResponseMode] =
+    useState<CoachResponse["mode"] | null>(null);
+  const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
@@ -137,9 +159,16 @@ export function AiView() {
     }
   }
 
-  async function runCoachAgent() {
+  async function runCoachAgent(options?: {
+    collectedEvidence?: CollectedAnswer[];
+    skipInterview?: boolean;
+  }) {
     if (!input || loading) return;
     const coachContext = buildCoachRuntimeContext(team, coachShapeContext);
+    const runtimeInterview = useAppStore.getState().coachInterview;
+    const collectedEvidence =
+      options?.collectedEvidence ?? runtimeInterview.collectedEvidence;
+    const interviewState = buildCoachInterviewState(runtimeInterview);
     const startedAt = new Date().toISOString();
 
     setLoading(true);
@@ -147,8 +176,17 @@ export function AiView() {
     setLastRun({ state: "running", at: startedAt });
 
     try {
-      const response = await requestCoachAgent(input, coachContext);
-      setAdvice(response);
+      const response = await requestCoachTurn(input, coachContext, {
+        collectedEvidence,
+        interviewState,
+        skipInterview: options?.skipInterview,
+      });
+      applyCoachTurnResult(response);
+      setResponseMode(response.mode);
+      setAdvice(response.mode === "question" ? null : response.advice);
+      if (response.mode === "question") {
+        setDraftAnswers({});
+      }
       setLastRun({
         state: "success",
         at: new Date().toISOString(),
@@ -170,6 +208,41 @@ export function AiView() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function submitInterviewAnswers() {
+    const answers = coachInterview.questions.flatMap((question) => {
+      const answer = draftAnswers[question.id]?.trim();
+      if (!answer) return [];
+
+      return [
+        buildCollectedAnswer(question, answer),
+      ];
+    });
+
+    if (!answers.length) {
+      setError("Responde al menos una pregunta o salta a hipotesis.");
+      return;
+    }
+
+    for (const answer of answers) {
+      recordCoachAnswer(answer);
+    }
+
+    const replacedQuestionIds = new Set(answers.map((answer) => answer.questionId));
+    const nextCollectedEvidence = [
+      ...coachInterview.collectedEvidence.filter(
+        (answer) => !replacedQuestionIds.has(answer.questionId),
+      ),
+      ...answers,
+    ];
+
+    void runCoachAgent({ collectedEvidence: nextCollectedEvidence });
+  }
+
+  function skipInterviewAndRunHypothesis() {
+    skipCoachInterview();
+    void runCoachAgent({ skipInterview: true });
   }
 
   if (mode === "postMatch") {
@@ -226,6 +299,7 @@ export function AiView() {
               error={reportsError}
             />
             <MemoryPanel acceptedMemory={cockpitContext.acceptedMemory} />
+            <PatternsPanel patterns={cockpitContext.teamPatterns} />
           </aside>
 
           <main className="ai-workbench">
@@ -267,16 +341,81 @@ export function AiView() {
               ) : null}
             </section>
 
+            {coachInterview.active && coachInterview.questions.length ? (
+              <InterviewPanel
+                questions={coachInterview.questions}
+                audit={coachInterview.audit}
+                drafts={draftAnswers}
+                loading={loading}
+                onDraftChange={(questionId, value) =>
+                  setDraftAnswers((current) => ({
+                    ...current,
+                    [questionId]: value,
+                  }))
+                }
+                onSubmit={submitInterviewAnswers}
+                onSkip={skipInterviewAndRunHypothesis}
+              />
+            ) : null}
+
             {advice ? (
-              <AdviceResult advice={advice} />
-            ) : (
+              <AdviceResult advice={advice} responseMode={responseMode} />
+            ) : !coachInterview.active || !coachInterview.questions.length ? (
               <EmptyState context={cockpitContext} />
-            )}
+            ) : null}
           </main>
         </div>
       </section>
     </>
   );
+}
+
+function buildCoachInterviewState(
+  interview: ReturnType<typeof useAppStore.getState>["coachInterview"],
+): CoachInterviewState | null {
+  if (!interview.intent || !interview.audit) return null;
+
+  return {
+    intent: interview.intent,
+    temptingClaims: interview.temptingClaims,
+    audit: interview.audit,
+  };
+}
+
+function buildCollectedAnswer(
+  question: ContextualQuestion,
+  rawAnswer: string,
+): CollectedAnswer {
+  return {
+    questionId: question.id,
+    evidenceTarget: question.evidenceTarget,
+    category: question.category,
+    answerKind: question.options?.includes(rawAnswer)
+      ? "singleChoice"
+      : question.answerKind,
+    rawAnswer,
+  };
+}
+
+function evidenceStrengthLabel(
+  strength: CoachInterviewState["audit"]["evidenceStrength"],
+) {
+  const labels: Record<CoachInterviewState["audit"]["evidenceStrength"], string> = {
+    none: "Muy baja",
+    weak: "Baja",
+    partial: "Media",
+    sufficient: "Suficiente",
+  };
+  return labels[strength];
+}
+
+function impactLabel(value: ContextualQuestion["expectedImpactOnDiagnosis"]) {
+  const labels: Record<ContextualQuestion["expectedImpactOnDiagnosis"], string> = {
+    high: "impacto alto",
+    medium: "impacto medio",
+    low: "impacto bajo",
+  };
+  return labels[value];
 }
 
 function buildCoachRuntimeContext(
@@ -414,6 +553,7 @@ function buildCockpitContext({
     videoTracks: tracksCount,
     recentReports,
     acceptedMemory: acceptedMemory.slice(0, 5),
+    teamPatterns: detectTeamPatterns(reports, { limit: 4 }),
   };
 }
 
@@ -594,7 +734,149 @@ function MemoryPanel({
   );
 }
 
-function AdviceResult({ advice }: { advice: CoachMatchAdvice }) {
+function PatternsPanel({ patterns }: { patterns: TeamPattern[] }) {
+  return (
+    <section className="ai-rail-card">
+      <span className="panel-eyebrow">Patrones</span>
+      <h4>Historia del equipo</h4>
+      {patterns.length ? (
+        <div className="ai-mini-list">
+          {patterns.map((pattern) => (
+            <PatternCard pattern={pattern} key={pattern.id} />
+          ))}
+        </div>
+      ) : (
+        <p className="muted-panel">
+          Sin patrones detectados todavia. Se activan cuando haya reportes
+          post-partido comparables.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function InterviewPanel({
+  questions,
+  audit,
+  drafts,
+  loading,
+  onDraftChange,
+  onSubmit,
+  onSkip,
+}: {
+  questions: ContextualQuestion[];
+  audit: EvidenceAudit | null;
+  drafts: Record<string, string>;
+  loading: boolean;
+  onDraftChange: (questionId: string, value: string) => void;
+  onSubmit: () => void;
+  onSkip: () => void;
+}) {
+  return (
+    <section className="coach-report interview-panel">
+      <header className="coach-report-head compact">
+        <div>
+          <span className="panel-eyebrow">Entrevista tactica</span>
+          <h3>Falta evidencia antes de diagnosticar</h3>
+          <p>
+            Respondé lo que puedas. Si preferís avanzar igual, el agente va a
+            devolver una hipotesis con confianza limitada.
+          </p>
+        </div>
+        <div className="confidence-badge">
+          <span>Evidencia</span>
+          <b>{audit ? evidenceStrengthLabel(audit.evidenceStrength) : "Baja"}</b>
+        </div>
+      </header>
+
+      {audit?.missing.length ? (
+        <div className="interview-missing">
+          <span>Lo que falta confirmar</span>
+          <p>
+            {audit.missing
+              .slice(0, 3)
+              .map((item) => item.reason)
+              .join(" ")}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="interview-question-list">
+        {questions.map((question) => (
+          <QuestionCard
+            question={question}
+            value={drafts[question.id] ?? ""}
+            onChange={(value) => onDraftChange(question.id, value)}
+            key={question.id}
+          />
+        ))}
+      </div>
+
+      <div className="ai-command-footer interview-actions">
+        <button type="button" disabled={loading} onClick={onSubmit}>
+          {loading ? "Analizando..." : "Responder y continuar analisis"}
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          disabled={loading}
+          onClick={onSkip}
+        >
+          Saltar y recibir hipotesis
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function QuestionCard({
+  question,
+  value,
+  onChange,
+}: {
+  question: ContextualQuestion;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <article className="interview-question-card">
+      <div className="interview-question-head">
+        <span>{question.category}</span>
+        <b>{impactLabel(question.expectedImpactOnDiagnosis)}</b>
+      </div>
+      <h4>{question.question}</h4>
+      <p>{question.whyItMatters}</p>
+      {question.options?.length ? (
+        <div className="interview-options">
+          {question.options.map((option) => (
+            <button
+              type="button"
+              className={value === option ? "active" : "secondary"}
+              onClick={() => onChange(option)}
+              key={option}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <textarea
+        className="interview-answer"
+        value={value}
+        placeholder="Respuesta libre opcional..."
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </article>
+  );
+}
+
+function AdviceResult({
+  advice,
+  responseMode,
+}: {
+  advice: CoachMatchAdvice;
+  responseMode: CoachResponse["mode"] | null;
+}) {
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const lineups = useAppStore((state) => state.team.lineups);
   const shapes = useAppStore((state) => state.lineupLab.shapes);
@@ -667,16 +949,17 @@ function AdviceResult({ advice }: { advice: CoachMatchAdvice }) {
       <header className="coach-report-head">
         <div>
           <span className="panel-eyebrow">Informe de staff</span>
-          <h3>Lectura del Coach AI</h3>
+          <h3>
+            {responseMode === "hypothesis"
+              ? "Hipotesis del Coach AI"
+              : "Lectura del Coach AI"}
+          </h3>
           <p>
             Respuesta basada en contexto activo, memoria validada, reportes y
             evidencia disponible.
           </p>
         </div>
-        <div className="confidence-badge">
-          <span>Confianza</span>
-          <b>{Math.round(advice.reflection.confidence * 100)}%</b>
-        </div>
+        <ConfidenceBadge confidence={advice.reflection.confidence} />
       </header>
 
       <article className="coach-main-read">
@@ -773,9 +1056,7 @@ function KnowledgeGapPanel({
           <span className="panel-eyebrow">Confianza operativa</span>
           <h4>Que sabe / que no sabe</h4>
         </div>
-        <span className={`confidence-chip ${confidenceTone}`}>
-          {confidencePercent}% confianza
-        </span>
+        <ConfidenceBadge confidence={advice.reflection.confidence} compact />
       </div>
       <div className={`confidence-meter ${confidenceTone}`}>
         <span style={{ width: `${confidencePercent}%` }} />
@@ -819,6 +1100,11 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
         </div>
         <span className="ai-context-chip">{evidenceItems.length} fuentes</span>
       </div>
+      <EvidenceBar
+        current={currentEvidence.length}
+        memory={previousMemory.length}
+        context={contextSources.length}
+      />
       {evidenceItems.length ? (
         <div className="evidence-groups">
           <EvidenceGroup
@@ -846,6 +1132,92 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
       )}
     </section>
   );
+}
+
+function ConfidenceBadge({
+  confidence,
+  compact,
+}: {
+  confidence: number;
+  compact?: boolean;
+}) {
+  const percent = Math.round(confidence * 100);
+  const tone = percent >= 75 ? "ok" : percent >= 55 ? "medium" : "warn";
+
+  if (compact) {
+    return (
+      <span className={`confidence-chip ${tone}`}>
+        {percent}% confianza
+      </span>
+    );
+  }
+
+  return (
+    <div className="confidence-badge">
+      <span>Confianza</span>
+      <b>{percent}%</b>
+      <small>{confidenceLabel(tone)}</small>
+    </div>
+  );
+}
+
+function EvidenceBar({
+  current,
+  memory,
+  context,
+}: {
+  current: number;
+  memory: number;
+  context: number;
+}) {
+  const total = Math.max(1, current + memory + context);
+  return (
+    <div
+      className="confidence-meter"
+      title="Distribucion de evidencia"
+      style={{ display: "flex", marginBottom: 12 }}
+    >
+      <span
+        style={{
+          background: "var(--accent)",
+          width: `${(current / total) * 100}%`,
+        }}
+      />
+      <span
+        style={{
+          background: "var(--warn)",
+          width: `${(memory / total) * 100}%`,
+        }}
+      />
+      <span
+        style={{
+          background: "color-mix(in oklch,var(--text) 35%,transparent)",
+          width: `${(context / total) * 100}%`,
+        }}
+      />
+    </div>
+  );
+}
+
+function PatternCard({ pattern }: { pattern: TeamPattern }) {
+  return (
+    <div className="ai-mini-item">
+      <b>{patternKindLabel(pattern.kind)}</b>
+      <small>
+        {pattern.domain} - {pattern.confidence}
+      </small>
+      <p>{pattern.statement}</p>
+      {pattern.evidence.length ? (
+        <small>Apoyado en: {pattern.evidence.slice(0, 2).join(" / ")}</small>
+      ) : null}
+    </div>
+  );
+}
+
+function confidenceLabel(tone: "ok" | "medium" | "warn") {
+  if (tone === "ok") return "usable";
+  if (tone === "medium") return "con cautela";
+  return "limitada";
 }
 
 function EvidenceGroup({
@@ -1224,6 +1596,16 @@ function memoryCategoryLabel(category: MemoryCandidate["category"]) {
     sideAsymmetry: "Asimetria por banda",
   };
   return labels[category];
+}
+
+function patternKindLabel(kind: TeamPattern["kind"]) {
+  const labels: Record<TeamPattern["kind"], string> = {
+    repeatedProblem: "Problema repetido",
+    newProblem: "Problema nuevo",
+    improvement: "Mejora posible",
+    regression: "Retroceso posible",
+  };
+  return labels[kind];
 }
 
 function labelForLastRun(lastRun: LastRunState, loading: boolean) {

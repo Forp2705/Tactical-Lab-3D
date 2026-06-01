@@ -1,4 +1,9 @@
-import { type CoachMatchAdvice, CoachMatchAdviceSchema } from "./CoachSchemas.js";
+import {
+  type CoachMatchAdvice,
+  CoachMatchAdviceSchema,
+  type CoachResponse,
+  CoachResponseSchema,
+} from "./CoachSchemas.js";
 
 /**
  * Utilidades puras para volver robusto el parseo de la respuesta del coach.
@@ -87,6 +92,17 @@ export function parseCoachAdvice(rawText: string): CoachMatchAdvice {
   const json = extractJsonObject(rawText);
   const parsed = JSON.parse(json);
   return CoachMatchAdviceSchema.parse(parsed);
+}
+
+/**
+ * Extrae + parsea + valida la respuesta nueva del coach.
+ * Mantiene separada la union discriminada para que mode="question" no exija
+ * campos de diagnostico.
+ */
+export function parseCoachResponse(rawText: string): CoachResponse {
+  const json = extractJsonObject(rawText);
+  const parsed = JSON.parse(json);
+  return CoachResponseSchema.parse(parsed);
 }
 
 /**

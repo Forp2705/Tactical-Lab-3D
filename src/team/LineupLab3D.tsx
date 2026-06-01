@@ -1,12 +1,19 @@
 import type { Lineup, Player, Vec2 } from "@/data";
 import type {
   CoachShapeContext,
+  CoachShapeMetrics,
   CoachShapePlayer,
   LabShapePhase,
   LineupLabSavedTransition,
   LineupLabShape,
 } from "@/state/useAppStore";
 import { useAppStore } from "@/state/useAppStore";
+import {
+  computeHeatmapCells,
+  computeMetrics,
+  type HeatmapCell,
+  type TacticalMetrics,
+} from "@/team/lib/shapeMetrics";
 import { Pitch3D } from "@/viewer/Pitch3D";
 import {
   clampPitch,
@@ -295,7 +302,21 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     [rivalPositions, rivals],
   );
   const metrics = useMemo(
-    () => computeMetrics(ownChips, showRival ? rivalChips : []),
+    () =>
+      computeMetrics(
+        ownChips.map((chip) => ({
+          id: chip.player.id,
+          role: chip.role,
+          pos: chip.pos,
+        })),
+        showRival
+          ? rivalChips.map((chip) => ({
+              id: chip.rival.id,
+              role: chip.role,
+              pos: chip.pos,
+            }))
+          : [],
+      ),
     [ownChips, rivalChips, showRival],
   );
   const fromShape = shapes.find((shape) => shape.id === fromShapeId);
@@ -387,6 +408,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         formation,
         players,
         ownChips,
+        metrics,
         shapes,
         savedTransitions,
         selectedShapeId,
@@ -402,6 +424,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   }, [
     formation,
     fromShapeId,
+    metrics,
     ownChips,
     players,
     rivalChips,
@@ -1124,13 +1147,6 @@ function DragPlane({
   );
 }
 
-type HeatmapCell = {
-  id: string;
-  x: number;
-  z: number;
-  value: number;
-};
-
 function HeatmapLayer({ cells }: { cells: HeatmapCell[] }) {
   return (
     <group>
@@ -1426,111 +1442,6 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-type TacticalMetrics = {
-  width: number;
-  depth: number;
-  compactness: number;
-  duels: number;
-  heatScore: number;
-  center: { x: number; z: number };
-};
-
-function computeMetrics(
-  own: Array<{ player: Player; role: string; pos: Vec2 }>,
-  rivals: Array<{ rival: RivalChip; role: string; pos: Vec2 }>,
-): TacticalMetrics {
-  if (own.length === 0) {
-    return {
-      width: 0,
-      depth: 0,
-      compactness: 0,
-      duels: 0,
-      heatScore: 0,
-      center: { x: 0, z: 0 },
-    };
-  }
-  const ownWorld = own.map((chip) => pitchToWorld(chip.pos, "full"));
-  const minX = Math.min(...ownWorld.map((point) => point.x));
-  const maxX = Math.max(...ownWorld.map((point) => point.x));
-  const minZ = Math.min(...ownWorld.map((point) => point.z));
-  const maxZ = Math.max(...ownWorld.map((point) => point.z));
-  const center = {
-    x: ownWorld.reduce((sum, point) => sum + point.x, 0) / ownWorld.length,
-    z: ownWorld.reduce((sum, point) => sum + point.z, 0) / ownWorld.length,
-  };
-  const compactness =
-    ownWorld.reduce(
-      (sum, point) => sum + Math.hypot(point.x - center.x, point.z - center.z),
-      0,
-    ) / ownWorld.length;
-  const duels = countLikelyDuels(own, rivals);
-  const heatmap = computeHeatmapCells(own, rivals);
-  const heatScore =
-    heatmap.reduce((sum, cell) => sum + cell.value, 0) /
-    Math.max(1, heatmap.length);
-
-  return {
-    width: maxZ - minZ,
-    depth: maxX - minX,
-    compactness,
-    duels,
-    heatScore: heatScore * 100,
-    center,
-  };
-}
-
-function computeHeatmapCells(
-  own: Array<{ pos: Vec2 }>,
-  rivals: Array<{ pos: Vec2 }>,
-): HeatmapCell[] {
-  const { length, width } = pitchDimensions("full");
-  const all = [...own, ...rivals].map((chip) => pitchToWorld(chip.pos, "full"));
-  const cells: HeatmapCell[] = [];
-
-  for (let x = -length / 2 + 12; x <= length / 2 - 12; x += 18) {
-    for (let z = -width / 2 + 10; z <= width / 2 - 10; z += 14) {
-      const nearest = Math.min(
-        ...(all.length
-          ? all.map((point) => Math.hypot(point.x - x, point.z - z))
-          : [18]),
-      );
-      const value = Math.max(0, Math.min(1, (nearest - 4) / 14));
-      cells.push({ id: `heat-${x}-${z}`, x, z, value });
-    }
-  }
-
-  return cells;
-}
-
-function countLikelyDuels(
-  own: Array<{ player: Player; role: string; pos: Vec2 }>,
-  rivals: Array<{ rival: RivalChip; role: string; pos: Vec2 }>,
-) {
-  const pairs = new Set<string>();
-
-  for (const rival of rivals) {
-    const rivalWorld = pitchToWorld(rival.pos, "full");
-    const nearest = own
-      .map((chip) => {
-        const ownWorld = pitchToWorld(chip.pos, "full");
-        return {
-          playerId: chip.player.id,
-          distance: Math.hypot(
-            ownWorld.x - rivalWorld.x,
-            ownWorld.z - rivalWorld.z,
-          ),
-        };
-      })
-      .sort((a, b) => a.distance - b.distance)[0];
-
-    if (nearest && nearest.distance < 3.8) {
-      pairs.add(`${nearest.playerId}-${rival.rival.id}`);
-    }
-  }
-
-  return pairs.size;
-}
-
 function groupLinePlayers(
   chips: Array<{ role: string; pos: Vec2; player: Player }>,
 ) {
@@ -1766,6 +1677,7 @@ function buildCoachShapeContext({
   formation,
   players,
   ownChips,
+  metrics,
   shapes,
   savedTransitions,
   selectedShapeId,
@@ -1776,6 +1688,7 @@ function buildCoachShapeContext({
   formation: string;
   players: Player[];
   ownChips: Array<{ player: Player; role: string; pos: Vec2 }>;
+  metrics: TacticalMetrics;
   shapes: Shape[];
   savedTransitions: SavedTransition[];
   selectedShapeId: string | null;
@@ -1800,6 +1713,7 @@ function buildCoachShapeContext({
         y: chip.pos.y,
       })),
     ),
+    currentMetrics: toCoachMetrics(metrics),
     currentBoard: ownChips.map((chip) => ({
       playerId: chip.player.id,
       name: chip.player.name,
@@ -1839,6 +1753,20 @@ function buildCoachShapeContext({
         phase: shape.phase,
         notes: shape.notes,
         summary: summarizeBoard(shapePlayers),
+        metrics: toCoachMetrics(
+          computeMetrics(
+            shapePlayers.map((player) => ({
+              id: player.playerId,
+              role: player.role,
+              pos: { x: player.x, y: player.y },
+            })),
+            rivalChips.map((chip) => ({
+              id: chip.rival.id,
+              role: chip.role,
+              pos: chip.pos,
+            })),
+          ),
+        ),
         players: shapePlayers,
       };
     }),
@@ -1861,6 +1789,43 @@ function buildCoachShapeContext({
         }))
       : undefined,
   };
+}
+
+function toCoachMetrics(metrics: TacticalMetrics): CoachShapeMetrics {
+  return {
+    width: roundMetric(metrics.width),
+    depth: roundMetric(metrics.depth),
+    compactness: roundMetric(metrics.compactness),
+    duels: metrics.duels,
+    heatScore: roundMetric(metrics.heatScore),
+    blockHeight: roundMetric(metrics.blockHeight),
+    center: {
+      x: roundMetric(metrics.center.x),
+      z: roundMetric(metrics.center.z),
+    },
+    lineDistances: {
+      defense: roundOptionalMetric(metrics.lineDistances.defense),
+      midfield: roundOptionalMetric(metrics.lineDistances.midfield),
+      attack: roundOptionalMetric(metrics.lineDistances.attack),
+      defenseToMidfield: roundOptionalMetric(
+        metrics.lineDistances.defenseToMidfield,
+      ),
+      midfieldToAttack: roundOptionalMetric(
+        metrics.lineDistances.midfieldToAttack,
+      ),
+      defenseToAttack: roundOptionalMetric(
+        metrics.lineDistances.defenseToAttack,
+      ),
+    },
+  };
+}
+
+function roundMetric(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function roundOptionalMetric(value?: number) {
+  return value === undefined ? undefined : roundMetric(value);
 }
 
 function summarizeBoard(players: CoachShapePlayer[]) {

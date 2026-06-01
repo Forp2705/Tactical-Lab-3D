@@ -4,6 +4,7 @@ import { catalog } from "@/data";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
 import { useEffect, useMemo, useState } from "react";
+import { TeamTimeline } from "./TeamTimeline";
 
 export function HomeView() {
   const team = useAppStore((state) => state.team);
@@ -48,10 +49,10 @@ export function HomeView() {
     <div className="view-enter grid" style={{ gap: 16 }}>
       <section className="hero">
         <span className="eyebrow">Matchday cockpit / {activeDay.label}</span>
-        <h2>{selectedExercise?.objective.primary ?? "Plan de la semana"}</h2>
+        <h2>¿Qué querés resolver hoy?</h2>
         <p>
-          Centro operativo para preparar la sesion, revisar el visor tactico,
-          alimentar post-partido y consultar al asistente con contexto real.
+          Arrancá por una observación, convertíla en diagnóstico con evidencia
+          y cerrá el ciclo con sesión, post-partido y memoria validada.
         </p>
         <div className="hero-actions">
           <button
@@ -81,6 +82,8 @@ export function HomeView() {
         </div>
       </section>
 
+      <TacticalHomeActions />
+
       <section className="stat-row">
         <Stat eyebrow="Plantel" big={`${availablePlayers}/${team.players.length}`} sub="jugadores disponibles" />
         <Stat eyebrow="Sesion" big={session.blocks.length} sub={`${session.computed?.totalDuration ?? 0} min planificados`} />
@@ -92,6 +95,7 @@ export function HomeView() {
         <div className="grid" style={{ gap: 16 }}>
           <MicrocycleCard />
           <SessionCard />
+          <TeamTimeline reports={reports} />
         </div>
 
         <div className="grid" style={{ gap: 16 }}>
@@ -136,6 +140,66 @@ export function HomeView() {
         </div>
       </section>
     </div>
+  );
+}
+
+function TacticalHomeActions() {
+  const actions = [
+    {
+      title: "Consultar al Coach",
+      eyebrow: "Observacion -> diagnostico",
+      body: "Plantea un problema táctico. Si falta evidencia, el agente entrevista antes de diagnosticar.",
+      code: "AI",
+      onClick: () => {
+        useAppStore.getState().setAiMode("coach");
+        useAppStore.getState().setView("ai");
+      },
+    },
+    {
+      title: "Cargar post-partido simple",
+      eyebrow: "Partido -> reporte",
+      body: "Resultado, rival y tres notas. Suficiente para generar un informe corto sin abrumar.",
+      code: "PM",
+      onClick: () => {
+        useAppStore.getState().setAiMode("postMatch");
+        useAppStore.getState().setView("ai");
+      },
+    },
+    {
+      title: "Armar sesión desde diagnóstico",
+      eyebrow: "Diagnostico -> entrenamiento",
+      body: "Revisá bloques, carga y ejercicios sugeridos para convertir ajustes en trabajo de cancha.",
+      code: "MD",
+      onClick: () => useAppStore.getState().setView("sessions"),
+    },
+    {
+      title: "Trabajar shape / XI",
+      eyebrow: "Lineup Lab -> evidencia objetiva",
+      body: "Ajustá el equipo, guardá shapes y usá métricas geométricas como contexto del Coach.",
+      code: "XI",
+      onClick: () => useAppStore.getState().setView("team"),
+    },
+  ];
+
+  return (
+    <section className="home-grid">
+      {actions.map((action) => (
+        <button
+          type="button"
+          className="card list-row"
+          key={action.title}
+          onClick={action.onClick}
+          style={{ alignItems: "flex-start", textAlign: "left" }}
+        >
+          <div className="lr-icon">{action.code}</div>
+          <div>
+            <span className="eyebrow">{action.eyebrow}</span>
+            <b>{action.title}</b>
+            <small>{action.body}</small>
+          </div>
+        </button>
+      ))}
+    </section>
   );
 }
 

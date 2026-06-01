@@ -45,6 +45,20 @@ type FormState = {
   tagsText: string;
 };
 
+type PostMatchMode = "simple" | "advanced";
+
+type SimpleFormState = {
+  opponent: string;
+  result: string;
+  date: string;
+  ownSystem: string;
+  note1: string;
+  note2: string;
+  note3: string;
+  problems: string;
+  positives: string;
+};
+
 const INITIAL_FORM: FormState = {
   opponent: "",
   result: "",
@@ -58,6 +72,18 @@ const INITIAL_FORM: FormState = {
   tagsText: "",
 };
 
+const INITIAL_SIMPLE_FORM: SimpleFormState = {
+  opponent: "",
+  result: "",
+  date: new Date().toISOString().slice(0, 10),
+  ownSystem: "4-4-2",
+  note1: "",
+  note2: "",
+  note3: "",
+  problems: "",
+  positives: "",
+};
+
 export function PostMatchAnalysisView() {
   const videoTags = useAppStore((state) => state.tags);
   const videoTracks = useAppStore((state) => state.tracks);
@@ -68,7 +94,12 @@ export function PostMatchAnalysisView() {
     (state) => state.consumePendingPostMatchEvidenceText,
   );
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [mode, setMode] = useState<PostMatchMode>("simple");
+  const [simpleForm, setSimpleForm] =
+    useState<SimpleFormState>(INITIAL_SIMPLE_FORM);
   const [report, setReport] = useState<PostMatchReport | null>(null);
+  const [lastGeneratedInput, setLastGeneratedInput] =
+    useState<PostMatchInput | null>(null);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>(
     [],
   );
@@ -91,10 +122,15 @@ export function PostMatchAnalysisView() {
     [videoTags, videoTracks],
   );
   const canGenerate = Boolean(
-    form.opponent.trim() &&
-      form.result.trim() &&
-      form.ownSystem.trim() &&
-      (form.staffNotes.trim() || parsedTags.length),
+    mode === "simple"
+      ? simpleForm.opponent.trim() &&
+          simpleForm.result.trim() &&
+          simpleForm.ownSystem.trim() &&
+          simpleHasEvidence(simpleForm)
+      : form.opponent.trim() &&
+          form.result.trim() &&
+          form.ownSystem.trim() &&
+          (form.staffNotes.trim() || parsedTags.length),
   );
 
   useEffect(() => {
@@ -133,8 +169,11 @@ export function PostMatchAnalysisView() {
     setStatus(null);
 
     try {
-      const nextReport = await requestPostMatchReport(buildInput(form));
+      const input =
+        mode === "simple" ? buildSimpleInput(simpleForm) : buildInput(form);
+      const nextReport = await requestPostMatchReport(input);
       setReport(nextReport);
+      setLastGeneratedInput(input);
       setSavedReportId(null);
       setSelectedCandidateIds([]);
       setStatus("Informe generado. Revisalo antes de guardar o pasar memoria.");
@@ -157,10 +196,14 @@ export function PostMatchAnalysisView() {
     setStatus(null);
 
     try {
-      const saved = await savePostMatchReport(report, buildInput(form), {
-        notes: staffReviewNotes,
-        acceptedMemoryCandidateIds: [],
-      });
+      const saved = await savePostMatchReport(
+        report,
+        lastGeneratedInput ?? buildInput(form),
+        {
+          notes: staffReviewNotes,
+          acceptedMemoryCandidateIds: [],
+        },
+      );
       setReport(saved.report);
       setSavedReportId(saved.id);
       setHistory((current) => [
@@ -222,6 +265,8 @@ export function PostMatchAnalysisView() {
 
   function openSavedReport(saved: SavedPostMatchReport) {
     setForm(formFromSavedReport(saved));
+    setMode("advanced");
+    setLastGeneratedInput(saved.sourceInput ?? null);
     setReport(saved.report);
     setSavedReportId(saved.id);
     setStaffReviewNotes(saved.staffReview.notes ?? "");
@@ -235,111 +280,31 @@ export function PostMatchAnalysisView() {
       <div className="team-card">
         <span className="panel-eyebrow">Post Match</span>
         <h3>Analisis post-partido</h3>
-        <div className="form-grid">
-          <Field
-            label="Rival"
-            value={form.opponent}
-            onChange={(value) => updateField(setForm, "opponent", value)}
-          />
-          <Field
-            label="Resultado"
-            value={form.result}
-            onChange={(value) => updateField(setForm, "result", value)}
-          />
-          <Field
-            label="Competencia"
-            value={form.competition}
-            onChange={(value) => updateField(setForm, "competition", value)}
-          />
-          <Field
-            label="Fecha"
-            type="date"
-            value={form.date}
-            onChange={(value) => updateField(setForm, "date", value)}
-          />
-          <Field
-            label="Sistema propio"
-            value={form.ownSystem}
-            onChange={(value) => updateField(setForm, "ownSystem", value)}
-          />
-          <Field
-            label="Sistema rival"
-            value={form.opponentSystem}
-            onChange={(value) => updateField(setForm, "opponentSystem", value)}
-          />
-        </div>
-        <label className="stacked-field">
-          Sede / contexto
-          <input
-            value={form.venue}
-            onChange={(event) =>
-              updateField(setForm, "venue", event.target.value)
-            }
-          />
-        </label>
-        <label className="stacked-field">
-          Plan previo
-          <textarea
-            value={form.planBeforeMatch}
-            onChange={(event) =>
-              updateField(setForm, "planBeforeMatch", event.target.value)
-            }
-            placeholder="Que querian hacer antes del partido."
-          />
-        </label>
-        <label className="stacked-field">
-          Notas del staff
-          <textarea
-            value={form.staffNotes}
-            onChange={(event) =>
-              updateField(setForm, "staffNotes", event.target.value)
-            }
-            placeholder="Lectura del cuerpo tecnico, dudas, problemas, cosas positivas y contexto."
-          />
-        </label>
-        <label className="stacked-field">
-          Tags / evidencia
-          <textarea
-            value={form.tagsText}
-            onChange={(event) =>
-              updateField(setForm, "tagsText", event.target.value)
-            }
-            placeholder="Una linea por evento. Formato sugerido: 12' recuperacion alta | carril central | robo tras pase atras."
-          />
-        </label>
-        <VideoEvidenceImportPanel
-          items={videoEvidenceItems}
-          summary={videoEvidenceSummary}
-          onImport={() =>
-            updateField(
-              setForm,
-              "tagsText",
-              mergeEvidenceText(
-                form.tagsText,
-                videoEvidenceToTagsText(videoTags, videoTracks),
-              ),
-            )
-          }
-        />
-        <p className="muted-panel" style={{ marginTop: 8 }}>
-          Formato recomendado: <code>12&apos; label | zone | note</code>. El
-          minuto es opcional, pero ayuda a ordenar la evidencia.
-        </p>
-        <div className="toolbar" style={{ marginTop: 12 }}>
+        <div className="segmented-control" style={{ marginBottom: 14 }}>
           <button
             type="button"
-            disabled={!canGenerate || Boolean(loading)}
-            onClick={() => void generateReport()}
+            className={mode === "simple" ? "active" : ""}
+            onClick={() => setMode("simple")}
           >
-            {loading === "generate" ? "Generando..." : "Generar informe"}
+            Simple
           </button>
           <button
             type="button"
-            className="secondary"
-            disabled={
-              (!videoTags.length && !videoTracks.length) || Boolean(loading)
-            }
-            onClick={() =>
+            className={mode === "advanced" ? "active" : ""}
+            onClick={() => setMode("advanced")}
+          >
+            Avanzado
+          </button>
+        </div>
+        {mode === "simple" ? (
+          <SimplePostMatchForm form={simpleForm} setForm={setSimpleForm} />
+        ) : (
+          <AdvancedPostMatchForm
+            form={form}
+            setForm={setForm}
+            videoEvidenceItems={videoEvidenceItems}
+            videoEvidenceSummary={videoEvidenceSummary}
+            onImportVideoEvidence={() =>
               updateField(
                 setForm,
                 "tagsText",
@@ -349,9 +314,37 @@ export function PostMatchAnalysisView() {
                 ),
               )
             }
+          />
+        )}
+        <div className="toolbar" style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            disabled={!canGenerate || Boolean(loading)}
+            onClick={() => void generateReport()}
           >
-            Importar evidencia del video
+            {loading === "generate" ? "Generando..." : "Generar informe"}
           </button>
+          {mode === "advanced" ? (
+            <button
+              type="button"
+              className="secondary"
+              disabled={
+                (!videoTags.length && !videoTracks.length) || Boolean(loading)
+              }
+              onClick={() =>
+                updateField(
+                  setForm,
+                  "tagsText",
+                  mergeEvidenceText(
+                    form.tagsText,
+                    videoEvidenceToTagsText(videoTags, videoTracks),
+                  ),
+                )
+              }
+            >
+              Importar evidencia del video
+            </button>
+          ) : null}
         </div>
         <p className="muted-panel" style={{ marginTop: 12 }}>
           La generacion no escribe memoria. Los aprendizajes quedan como
@@ -430,6 +423,192 @@ export function PostMatchAnalysisView() {
         )}
       </div>
     </section>
+  );
+}
+
+function SimplePostMatchForm({
+  form,
+  setForm,
+}: {
+  form: SimpleFormState;
+  setForm: Dispatch<SetStateAction<SimpleFormState>>;
+}) {
+  return (
+    <>
+      <p className="muted-panel" style={{ marginBottom: 12 }}>
+        Carga lo minimo para un informe corto. Si necesitás plan previo, tags o
+        más contexto, pasá a modo avanzado.
+      </p>
+      <div className="form-grid">
+        <Field
+          label="Rival"
+          value={form.opponent}
+          onChange={(value) => updateSimpleField(setForm, "opponent", value)}
+        />
+        <Field
+          label="Resultado"
+          value={form.result}
+          onChange={(value) => updateSimpleField(setForm, "result", value)}
+        />
+        <Field
+          label="Fecha"
+          type="date"
+          value={form.date}
+          onChange={(value) => updateSimpleField(setForm, "date", value)}
+        />
+        <Field
+          label="Sistema propio"
+          value={form.ownSystem}
+          onChange={(value) => updateSimpleField(setForm, "ownSystem", value)}
+        />
+      </div>
+      <label className="stacked-field">
+        Nota principal 1
+        <input
+          value={form.note1}
+          onChange={(event) =>
+            updateSimpleField(setForm, "note1", event.target.value)
+          }
+          placeholder="Ej: nos costó sostener el bloque tras pérdida."
+        />
+      </label>
+      <label className="stacked-field">
+        Nota principal 2
+        <input
+          value={form.note2}
+          onChange={(event) =>
+            updateSimpleField(setForm, "note2", event.target.value)
+          }
+        />
+      </label>
+      <label className="stacked-field">
+        Nota principal 3
+        <input
+          value={form.note3}
+          onChange={(event) =>
+            updateSimpleField(setForm, "note3", event.target.value)
+          }
+        />
+      </label>
+      <label className="stacked-field">
+        Problemas destacados
+        <textarea
+          value={form.problems}
+          onChange={(event) =>
+            updateSimpleField(setForm, "problems", event.target.value)
+          }
+          placeholder="Qué problemas propios viste, sin inventar causas si no están claras."
+        />
+      </label>
+      <label className="stacked-field">
+        Aspectos positivos
+        <textarea
+          value={form.positives}
+          onChange={(event) =>
+            updateSimpleField(setForm, "positives", event.target.value)
+          }
+          placeholder="Qué funcionó o qué vulnerabilidad rival se aprovechó."
+        />
+      </label>
+    </>
+  );
+}
+
+function AdvancedPostMatchForm({
+  form,
+  setForm,
+  videoEvidenceItems,
+  videoEvidenceSummary,
+  onImportVideoEvidence,
+}: {
+  form: FormState;
+  setForm: Dispatch<SetStateAction<FormState>>;
+  videoEvidenceItems: VideoEvidenceItem[];
+  videoEvidenceSummary: VideoEvidenceSummary;
+  onImportVideoEvidence: () => void;
+}) {
+  return (
+    <>
+      <div className="form-grid">
+        <Field
+          label="Rival"
+          value={form.opponent}
+          onChange={(value) => updateField(setForm, "opponent", value)}
+        />
+        <Field
+          label="Resultado"
+          value={form.result}
+          onChange={(value) => updateField(setForm, "result", value)}
+        />
+        <Field
+          label="Competencia"
+          value={form.competition}
+          onChange={(value) => updateField(setForm, "competition", value)}
+        />
+        <Field
+          label="Fecha"
+          type="date"
+          value={form.date}
+          onChange={(value) => updateField(setForm, "date", value)}
+        />
+        <Field
+          label="Sistema propio"
+          value={form.ownSystem}
+          onChange={(value) => updateField(setForm, "ownSystem", value)}
+        />
+        <Field
+          label="Sistema rival"
+          value={form.opponentSystem}
+          onChange={(value) => updateField(setForm, "opponentSystem", value)}
+        />
+      </div>
+      <label className="stacked-field">
+        Sede / contexto
+        <input
+          value={form.venue}
+          onChange={(event) => updateField(setForm, "venue", event.target.value)}
+        />
+      </label>
+      <label className="stacked-field">
+        Plan previo
+        <textarea
+          value={form.planBeforeMatch}
+          onChange={(event) =>
+            updateField(setForm, "planBeforeMatch", event.target.value)
+          }
+          placeholder="Que querian hacer antes del partido."
+        />
+      </label>
+      <label className="stacked-field">
+        Notas del staff
+        <textarea
+          value={form.staffNotes}
+          onChange={(event) =>
+            updateField(setForm, "staffNotes", event.target.value)
+          }
+          placeholder="Lectura del cuerpo tecnico, dudas, problemas, cosas positivas y contexto."
+        />
+      </label>
+      <label className="stacked-field">
+        Tags / evidencia
+        <textarea
+          value={form.tagsText}
+          onChange={(event) =>
+            updateField(setForm, "tagsText", event.target.value)
+          }
+          placeholder="Una linea por evento. Formato sugerido: 12' recuperacion alta | carril central | robo tras pase atras."
+        />
+      </label>
+      <VideoEvidenceImportPanel
+        items={videoEvidenceItems}
+        summary={videoEvidenceSummary}
+        onImport={onImportVideoEvidence}
+      />
+      <p className="muted-panel" style={{ marginTop: 8 }}>
+        Formato recomendado: <code>12&apos; label | zone | note</code>. El
+        minuto es opcional, pero ayuda a ordenar la evidencia.
+      </p>
+    </>
   );
 }
 
@@ -1013,6 +1192,45 @@ function buildInput(form: FormState): PostMatchInput {
   };
 }
 
+function buildSimpleInput(form: SimpleFormState): PostMatchInput {
+  const notes = [form.note1, form.note2, form.note3]
+    .map((note) => note.trim())
+    .filter(Boolean);
+  const staffNotes = [
+    "MODO SIMPLE POST-PARTIDO: generar un reporte corto, accionable y sin secciones innecesarias. Si falta evidencia, declararlo.",
+    notes.length ? `Notas principales:\n- ${notes.join("\n- ")}` : "",
+    optionalText(form.problems)
+      ? `Problemas destacados:\n${form.problems.trim()}`
+      : "",
+    optionalText(form.positives)
+      ? `Aspectos positivos:\n${form.positives.trim()}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    matchContext: {
+      opponent: form.opponent.trim(),
+      result: form.result.trim(),
+      date: optionalText(form.date),
+      ownSystem: form.ownSystem.trim(),
+    },
+    staffNotes,
+    tags: [],
+  };
+}
+
+function simpleHasEvidence(form: SimpleFormState) {
+  return Boolean(
+    form.note1.trim() ||
+      form.note2.trim() ||
+      form.note3.trim() ||
+      form.problems.trim() ||
+      form.positives.trim(),
+  );
+}
+
 function parseTags(text: string): PostMatchTag[] {
   return text
     .split(/\r?\n/)
@@ -1127,6 +1345,14 @@ function optionalText(value: string | undefined) {
 function updateField(
   setForm: Dispatch<SetStateAction<FormState>>,
   key: keyof FormState,
+  value: string,
+) {
+  setForm((current) => ({ ...current, [key]: value }));
+}
+
+function updateSimpleField(
+  setForm: Dispatch<SetStateAction<SimpleFormState>>,
+  key: keyof SimpleFormState,
   value: string,
 ) {
   setForm((current) => ({ ...current, [key]: value }));

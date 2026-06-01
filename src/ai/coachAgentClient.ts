@@ -1,4 +1,10 @@
-import type { CoachMatchAdvice } from "./CoachSchemas";
+import {
+  CoachResponseSchema,
+  type CoachInterviewState,
+  type CoachMatchAdvice,
+  type CoachResponse,
+  type CollectedAnswer,
+} from "./CoachSchemas";
 import type { CoachShapeContext } from "@/state/useAppStore";
 
 type CoachAgentError = {
@@ -61,14 +67,54 @@ export type CoachAgentRuntimeContext = {
   }>;
 };
 
+export type CoachTurnOptions = {
+  collectedEvidence?: CollectedAnswer[];
+  interviewState?: CoachInterviewState | null;
+  skipInterview?: boolean;
+};
+
 export async function requestCoachAgent(
   input: string,
   coachContext?: CoachAgentRuntimeContext | null,
+  options?: CoachTurnOptions,
 ): Promise<CoachMatchAdvice> {
+  const payload = await postCoachTurn(input, coachContext, options);
+  const parsed = CoachResponseSchema.safeParse(payload);
+
+  if (parsed.success) {
+    if (parsed.data.mode === "question") {
+      throw new Error("El agente necesita evidencia antes de diagnosticar.");
+    }
+    return parsed.data.advice;
+  }
+
+  return payload as CoachMatchAdvice;
+}
+
+export async function requestCoachTurn(
+  input: string,
+  coachContext?: CoachAgentRuntimeContext | null,
+  options?: CoachTurnOptions,
+): Promise<CoachResponse> {
+  const payload = await postCoachTurn(input, coachContext, options);
+  const parsed = CoachResponseSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new Error("Coach agent response had an invalid interview format.");
+  }
+
+  return parsed.data;
+}
+
+async function postCoachTurn(
+  input: string,
+  coachContext?: CoachAgentRuntimeContext | null,
+  options?: CoachTurnOptions,
+) {
   const response = await fetch("/api/coach-agent", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ input, coachContext }),
+    body: JSON.stringify({ input, coachContext, ...options }),
   });
 
   const payload = (await response.json().catch(() => null)) as
@@ -84,5 +130,5 @@ export async function requestCoachAgent(
     throw new Error(message);
   }
 
-  return payload as CoachMatchAdvice;
+  return payload;
 }
