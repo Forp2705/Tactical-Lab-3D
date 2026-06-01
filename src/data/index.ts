@@ -1,10 +1,10 @@
-export { catalog } from "./exercises/catalog";
+export { catalog } from "./exercises/catalog.js";
 export {
   abpExercises,
   attackExercises,
   defenseExercises,
   exercisesByPhase,
   rondoExercises,
-} from "./exercises/groups";
-export { demoPlayers } from "./players";
-export * from "./schemas";
+} from "./exercises/groups.js";
+export { demoPlayers } from "./players.js";
+export * from "./schemas.js";

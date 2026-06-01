@@ -5,7 +5,7 @@ import {
   type Layer,
   type Phase,
   type Vec2,
-} from "../schemas";
+} from "../schemas.js";
 
 const phases = (
   duration: number,

@@ -1,5 +1,5 @@
-import type { Exercise } from "../schemas";
-import { catalog } from "./catalog";
+import type { Exercise } from "../schemas.js";
+import { catalog } from "./catalog.js";
 
 export const exercisesByPhase = groupExercises(
   catalog,
