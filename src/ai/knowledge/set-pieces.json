@@ -1,0 +1,58 @@
+[
+  {
+    "category": "set-pieces",
+    "principle": "Definir el sistema defensivo de ABP (zona, hombre o mixto) y que cada jugador sepa exactamente su responsabilidad.",
+    "context": "Al defender corners y tiros libres laterales.",
+    "risk": "Mezclar criterios sin claridad deja hombres libres y diluye las responsabilidades cuando llega el gol.",
+    "tags": ["abp", "pelota-parada", "corner", "marca", "zona"]
+  },
+  {
+    "category": "set-pieces",
+    "principle": "Defender el primer contacto y disputar la primera pelota dentro de la zona de penal.",
+    "context": "En corners y centros de tiro libre.",
+    "risk": "Ceder el primer contacto obliga a defender rebotes en desorden y dentro del área.",
+    "tags": ["abp", "pelota-parada", "primer-contacto", "corner"]
+  },
+  {
+    "category": "set-pieces",
+    "principle": "Organizar la segunda pelota dejando uno o dos jugadores en el borde del área para los rechazos.",
+    "context": "Después de despejar un corner o un centro de pelota parada.",
+    "risk": "Sin cobertura de la segunda pelota, el rival remata cómodo desde la frontal del área.",
+    "tags": ["abp", "pelota-parada", "segunda-pelota", "rebote"]
+  },
+  {
+    "category": "set-pieces",
+    "principle": "Cuidar la salida rápida tras defender una ABP: no quedar todos metidos en el área propia.",
+    "context": "Inmediatamente después de despejar una pelota parada en contra.",
+    "risk": "Quedar amontonado atrás regala la contra del rival apenas se despeja.",
+    "tags": ["abp", "pelota-parada", "transicion", "salida"]
+  },
+  {
+    "category": "set-pieces",
+    "principle": "Atacar zonas concretas con bloqueos simples y movimientos coordinados, no improvisar el remate.",
+    "context": "En corners y tiros libres ofensivos.",
+    "risk": "Improvisar diluye la amenaza y deja al equipo mal parado ante la contra rival.",
+    "tags": ["abp", "pelota-parada", "corner", "bloqueo", "ataque"]
+  },
+  {
+    "category": "set-pieces",
+    "principle": "Dejar resguardo en ABP ofensiva (dos o tres jugadores atrás) para no quedar expuesto a la contra.",
+    "context": "Al lanzar un corner o tiro libre propio cerca del área rival.",
+    "risk": "Subir a todos al área deja el equipo abierto a un contragolpe directo.",
+    "tags": ["abp", "pelota-parada", "rest-defense", "resguardo"]
+  },
+  {
+    "category": "set-pieces",
+    "principle": "Variar el saque (corto, al primer palo, al segundo) según cómo defiende el rival, para no ser previsible.",
+    "context": "Cuando el rival defiende siempre con el mismo esquema.",
+    "risk": "Repetir siempre el mismo saque vuelve la ABP previsible y fácil de neutralizar.",
+    "tags": ["abp", "pelota-parada", "corner", "variantes"]
+  },
+  {
+    "category": "set-pieces",
+    "principle": "Tratar el saque de banda largo en campo rival como una ABP: ocupar el área si hay un lanzador con alcance.",
+    "context": "Lateral con saque de banda largo cerca del área contraria.",
+    "risk": "Tratarlo como una jugada menor desperdicia una situación clara de gol.",
+    "tags": ["abp", "pelota-parada", "saque-de-banda", "area"]
+  }
+]

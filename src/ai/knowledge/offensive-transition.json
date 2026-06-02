@@ -1,0 +1,44 @@
+[
+  {
+    "category": "offensive-transition",
+    "principle": "Primer pase seguro tras recuperar, pero buscando progresar: asegurar la posesión antes de arriesgar, sin renunciar a atacar.",
+    "context": "En los primeros segundos después de robar la pelota.",
+    "risk": "Un primer pase apurado hacia una zona congestionada regala la reconquista inmediata del rival.",
+    "tags": ["transicion-ofensiva", "contra", "primer-pase", "recuperacion"]
+  },
+  {
+    "category": "offensive-transition",
+    "principle": "Atacar la espalda del lateral o de la línea rival que quedó subida tras perder su ataque.",
+    "context": "Cuando se roba con el rival volcado al ataque y desordenado atrás.",
+    "risk": "Si nadie ataca la profundidad de inmediato, el rival se reordena y se pierde la ventaja del desorden.",
+    "tags": ["transicion-ofensiva", "contra", "profundidad", "espalda-defensa"]
+  },
+  {
+    "category": "offensive-transition",
+    "principle": "Decidir rápido entre atacar o asegurar contando referencias propias adelante frente a los defensores rivales.",
+    "context": "En los primeros 3-4 segundos tras el robo, antes de comprometer la jugada.",
+    "risk": "Atacar en inferioridad numérica termina en pérdida y deja al equipo expuesto a la contra-contra.",
+    "tags": ["transicion-ofensiva", "contra", "decision", "superioridad"]
+  },
+  {
+    "category": "offensive-transition",
+    "principle": "Dar al portador del contragolpe un apoyo cercano y otro en profundidad para sostener la jugada.",
+    "context": "Contragolpe iniciado en campo propio o medio.",
+    "risk": "El portador solo termina perdiendo la pelota o siendo frenado; sin profundidad, el contra muere.",
+    "tags": ["transicion-ofensiva", "contra", "apoyos", "profundidad"]
+  },
+  {
+    "category": "offensive-transition",
+    "principle": "Usar al 9 como referencia de descarga para fijar y dar continuidad cuando se roba lejos del arco rival.",
+    "context": "Robo en campo propio con el 9 de espaldas y compañeros lejos.",
+    "risk": "Si el 9 queda aislado sin segunda línea de apoyo, el contraataque se corta enseguida.",
+    "tags": ["transicion-ofensiva", "9", "descarga", "apoyos"]
+  },
+  {
+    "category": "offensive-transition",
+    "principle": "Reconocer cuándo NO contraatacar: si el rival ya está ordenado, pasar a posesión y atacar organizado.",
+    "context": "Robo con el rival equilibrado y sin espacios a la espalda.",
+    "risk": "Forzar la contra contra un bloque armado regala transiciones peligrosas al rival.",
+    "tags": ["transicion-ofensiva", "decision", "posesion", "control"]
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "category": "organized-attack",
+    "principle": "Dar amplitud real con los extremos pegados a la línea de cal para estirar al rival y abrir intervalos interiores.",
+    "context": "Cuando el rival defiende en bloque medio o bajo y compacto, y cuesta encontrar espacios por dentro.",
+    "risk": "Si los extremos se cierran antes de tiempo, el bloque rival queda junto y no aparece ninguna vía de progresión.",
+    "tags": ["ataque", "amplitud", "extremos", "intervalos", "banda"]
+  },
+  {
+    "category": "organized-attack",
+    "principle": "Atacar el medio espacio: los interiores rompen en el espacio entre el lateral y el central rival una vez que los extremos fijaron amplitud.",
+    "context": "Contra defensas en línea de 4 que ya tuvieron que abrirse por la amplitud propia.",
+    "risk": "Si nadie sostiene la amplitud, el intervalo se cierra; si los interiores llegan tarde, caen en fuera de juego o en posesión estéril.",
+    "tags": ["ataque", "medio-espacio", "interior", "intervalos", "ruptura"]
+  },
+  {
+    "category": "organized-attack",
+    "principle": "Ocupar el área con al menos dos referencias y un tercer hombre al borde para atacar el rebote.",
+    "context": "Al preparar un centro o una llegada por banda.",
+    "risk": "Amontonar el área sin escalonar deja al rival ganar todos los rechazos y salir de contra.",
+    "tags": ["ataque", "area", "centro", "finalizacion", "segunda-pelota"]
+  },
+  {
+    "category": "organized-attack",
+    "principle": "Fijar y soltar: el poseedor atrae a un defensor antes de soltar al compañero libre para generar superioridad cerca del área.",
+    "context": "En zonas de progresión donde hace falta romper una marca para liberar a un compañero.",
+    "risk": "Si suelta tarde lo presionan y pierde; si fija de más, se cae el tempo de la jugada.",
+    "tags": ["ataque", "superioridad", "progresion", "tercer-hombre"]
+  },
+  {
+    "category": "organized-attack",
+    "principle": "Combinar amenaza a la espalda con apoyo a los pies para que el rival no pueda subir la línea cómodo.",
+    "context": "Contra bloques que defienden adelantados o quieren achicar el juego corto.",
+    "risk": "Sin amenaza de profundidad, el rival achica metros y ahoga la circulación.",
+    "tags": ["ataque", "profundidad", "ruptura", "apoyos"]
+  },
+  {
+    "category": "organized-attack",
+    "principle": "Cambiar la orientación para atacar el lado débil cuando un costado quedó sobrecargado y el otro en 1v1.",
+    "context": "Cuando se atrajo al rival hacia un lado y el lado contrario queda con ventaja.",
+    "risk": "Cambiar sin que el lado débil esté alto desperdicia la ventaja, y un cambio lento permite que el rival bascule a tiempo.",
+    "tags": ["ataque", "cambio-de-orientacion", "amplitud", "lado-debil"]
+  },
+  {
+    "category": "organized-attack",
+    "principle": "Entrar al área con tercer hombre: pared y aparición de un interior llegando desde atrás, sin depender solo del centro.",
+    "context": "Para finalizar contra bloques cerrados que defienden bien los centros.",
+    "risk": "Si el que llega arranca tarde o el pivote no asegura el resto defensivo, queda expuesta la contra.",
+    "tags": ["ataque", "tercer-hombre", "finalizacion", "llegada"]
+  },
+  {
+    "category": "organized-attack",
+    "principle": "Circular con propósito para desordenar al rival y acelerar recién cuando aparece el intervalo, no por circular.",
+    "context": "Contra bloque bajo y compacto que invita a la posesión estéril.",
+    "risk": "Circular sin intención vuelve al equipo previsible y lento; acelerar sin espacio regala la pelota.",
+    "tags": ["ataque", "ritmo", "posesion", "paciencia"]
+  }
+]
