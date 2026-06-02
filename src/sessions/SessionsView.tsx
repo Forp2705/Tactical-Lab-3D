@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { computeMicrocycleAlerts } from "./MicrocycleAlerts";
+import { LoadMeter, PitchViz } from "@/ui/tacticalPrimitives";
 
 type DragMeta =
   | { type: "exercise"; exerciseId: string }
@@ -166,7 +167,7 @@ export function SessionsView() {
               <div className="micro-day" key={day}>
                 <strong>{day}</strong>
                 <p>{value.objective}</p>
-                <small>{value.targetLoad}</small>
+                <LoadMeter load={value.targetLoad} label={day} />
               </div>
             ))}
           </div>
@@ -299,6 +300,22 @@ function SessionBlockCard({ id, index }: { id: string; index: number }) {
           Quitar
         </button>
       </div>
+      <PitchViz
+        compact
+        title="Preview tactico"
+        subtitle={`${exercise.phase} / ${exercise.principle}`}
+        overlays={[
+          {
+            type: "zone",
+            x: exercise.phase.includes("attack") ? 58 : 24,
+            y: 18,
+            w: 28,
+            h: 28,
+            tone: exercise.intensity === "high" || exercise.intensity === "veryHigh" ? "warn" : "info",
+            label: exercise.principle.slice(0, 12),
+          },
+        ]}
+      />
       <div className="toolbar">
         <input
           type="number"

@@ -11,7 +11,7 @@ export default function handler(req: IncomingMessage, res: ServerResponse) {
     ok: true,
     openRouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
     openRouterModel:
-      process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-chat-v3-0324:free",
+      process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
     geminiConfigured: Boolean(
       process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY,
     ),

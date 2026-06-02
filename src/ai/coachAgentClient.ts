@@ -6,6 +6,8 @@ import {
   type CollectedAnswer,
 } from "./CoachSchemas";
 import type { CoachShapeContext } from "@/state/useAppStore";
+import type { GameModel } from "@/data/gameModel";
+import type { OpponentScout } from "@/scout/opponentScout";
 
 type CoachAgentError = {
   error?: string;
@@ -17,17 +19,22 @@ export type CoachAgentSquadPlayer = {
   positions: string[];
   status: "available" | "doubt" | "injured" | "suspended";
   profile: string;
-  attributes: {
-    speed: number;
-    pass: number;
-    tactical: number;
-    duel: number;
-  };
+    attributes: {
+      speed: number;
+      stamina?: number;
+      pass: number;
+      control?: number;
+      press?: number;
+      tactical: number;
+      duel: number;
+    };
 };
 
 export type CoachAgentRuntimeContext = {
   shapeContext?: CoachShapeContext | null;
   teamModel?: string;
+  gameModel?: GameModel;
+  opponentScout?: OpponentScout;
   availableSquad: CoachAgentSquadPlayer[];
   unavailableSquad: CoachAgentSquadPlayer[];
   savedLineups?: Array<{

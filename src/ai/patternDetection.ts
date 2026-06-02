@@ -1,7 +1,14 @@
 import type { SavedPostMatchReport } from "@/ai/post-match/schemas";
 import type { TacticalDomain } from "@/ai/CoachSchemas";
+import type { GameModel } from "@/data/gameModel";
 
-export type TeamPatternKind = "repeatedProblem" | "newProblem" | "improvement" | "regression";
+export type TeamPatternKind =
+  | "repeatedProblem"
+  | "newProblem"
+  | "improvement"
+  | "regression"
+  | "problemNotTrained"
+  | "gameModelContradiction";
 
 export type TeamPattern = {
   id: string;
@@ -24,7 +31,11 @@ type ProblemRecord = {
 
 export function detectTeamPatterns(
   reports: SavedPostMatchReport[],
-  options: { limit?: number } = {},
+  options: {
+    limit?: number;
+    sessionObjectives?: string[];
+    gameModel?: GameModel;
+  } = {},
 ): TeamPattern[] {
   if (reports.length < 1) return [];
 
@@ -38,6 +49,10 @@ export function detectTeamPatterns(
   patterns.push(...detectNewProblems(sorted, records));
   patterns.push(...detectImprovements(sorted, records));
   patterns.push(...detectRegressions(records));
+  patterns.push(...detectProblemsNotTrained(records, options.sessionObjectives ?? []));
+  if (options.gameModel) {
+    patterns.push(...detectGameModelContradictions(records, options.gameModel));
+  }
 
   return dedupePatterns(patterns).slice(0, options.limit ?? 6);
 }
@@ -159,6 +174,65 @@ function detectRegressions(records: ProblemRecord[]): TeamPattern[] {
   return patterns;
 }
 
+function detectProblemsNotTrained(
+  records: ProblemRecord[],
+  sessionObjectives: string[],
+): TeamPattern[] {
+  if (!sessionObjectives.length) return [];
+  const trainedText = normalize(sessionObjectives.join(" "));
+  const recent = records.slice(0, 8);
+
+  return recent
+    .filter((record) => similarity(record.text, trainedText) < 0.18)
+    .slice(0, 2)
+    .map((record) => ({
+      id: `not-trained-${record.domain}-${hashText(record.text)}`,
+      kind: "problemNotTrained" as const,
+      domain: record.domain,
+      statement: `Sigue apareciendo sin foco claro en la sesion activa: ${record.text}`,
+      evidence: [`${record.date} vs ${record.opponent}`],
+      reportIds: [record.reportId],
+      confidence: "low" as const,
+    }));
+}
+
+function detectGameModelContradictions(
+  records: ProblemRecord[],
+  gameModel: GameModel,
+): TeamPattern[] {
+  const normalizedModel = normalize(
+    [
+      gameModel.identity,
+      ...gameModel.nonNegotiables,
+      ...gameModel.defensivePrinciples,
+      gameModel.pressing.height,
+    ].join(" "),
+  );
+
+  return records
+    .filter((record) => {
+      const text = normalize(record.text);
+      return (
+        (normalizedModel.includes("presion") &&
+          hasAny(text, ["no presiona", "repliegue bajo", "bloque bajo"])) ||
+        (normalizedModel.includes("partido") &&
+          hasAny(text, ["bloque partido", "entre lineas", "distancia"])) ||
+        (normalizedModel.includes("9") &&
+          hasAny(text, ["9 aislado", "delantero aislado", "sin apoyos"]))
+      );
+    })
+    .slice(0, 3)
+    .map((record) => ({
+      id: `model-contradiction-${record.domain}-${hashText(record.text)}`,
+      kind: "gameModelContradiction" as const,
+      domain: record.domain,
+      statement: `Contradice el modelo de juego: ${record.text}`,
+      evidence: [`${record.date} vs ${record.opponent}`],
+      reportIds: [record.reportId],
+      confidence: "medium" as const,
+    }));
+}
+
 function extractProblemRecords(savedReport: SavedPostMatchReport): ProblemRecord[] {
   const report = savedReport.report;
   const date = getReportDate(savedReport);
@@ -257,6 +331,8 @@ function labelForKind(kind: TeamPatternKind) {
     newProblem: "problema nuevo",
     improvement: "mejora posible",
     regression: "retroceso posible",
+    problemNotTrained: "problema no entrenado",
+    gameModelContradiction: "contradice modelo",
   };
   return labels[kind];
 }

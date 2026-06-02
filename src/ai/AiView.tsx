@@ -22,6 +22,15 @@ import type {
   SavedPostMatchReport,
 } from "@/ai/post-match/schemas";
 import type { Exercise, Player } from "@/data";
+import { buildSessionPlanFromDiagnosis } from "@/sessions/diagnosisSession";
+import { exportCoachDiagnosisHtml } from "@/export/premiumExports";
+import {
+  ConfidenceMeter,
+  EvidenceChip,
+  FitChip,
+  ModeBadge,
+  PitchViz,
+} from "@/ui/tacticalPrimitives";
 import {
   getAllExercises,
   getExerciseById,
@@ -82,6 +91,8 @@ export function AiView() {
   const prompt = useAppStore((state) => state.aiPrompt);
   const coachShapeContext = useAppStore((state) => state.coachShapeContext);
   const team = useAppStore((state) => state.team);
+  const gameModel = useAppStore((state) => state.gameModel);
+  const opponentScout = useAppStore((state) => state.opponentScout);
   const lineupLab = useAppStore((state) => state.lineupLab);
   const tags = useAppStore((state) => state.tags);
   const tracks = useAppStore((state) => state.tracks);
@@ -164,7 +175,12 @@ export function AiView() {
     skipInterview?: boolean;
   }) {
     if (!input || loading) return;
-    const coachContext = buildCoachRuntimeContext(team, coachShapeContext);
+    const coachContext = buildCoachRuntimeContext(
+      team,
+      coachShapeContext,
+      gameModel,
+      opponentScout,
+    );
     const runtimeInterview = useAppStore.getState().coachInterview;
     const collectedEvidence =
       options?.collectedEvidence ?? runtimeInterview.collectedEvidence;
@@ -260,7 +276,7 @@ export function AiView() {
       <section className="ai-cockpit">
         <header className="ai-cockpit-hero team-card">
           <div>
-            <span className="panel-eyebrow">Coach AI / Command center</span>
+            <span className="panel-eyebrow">Coach / informe tactico</span>
             <h3>Asistente tactico con contexto del club</h3>
             <p>
               Consulta el problema, revisa que evidencia usa y ejecuta acciones
@@ -326,7 +342,7 @@ export function AiView() {
                   disabled={!input || loading}
                   onClick={() => void runCoachAgent()}
                 >
-                  {loading ? "Analizando..." : "Consultar Coach AI"}
+                  {loading ? "Analizando..." : "Consultar Coach"}
                 </button>
                 <span>
                   Usa plantel, Lineup Lab, reportes, memoria y evidencia de
@@ -339,6 +355,7 @@ export function AiView() {
                   <p>{error}</p>
                 </div>
               ) : null}
+              {loading ? <CoachThinkingPanel /> : null}
             </section>
 
             {coachInterview.active && coachInterview.questions.length ? (
@@ -423,6 +440,8 @@ function buildCoachRuntimeContext(
   coachShapeContext: ReturnType<
     typeof useAppStore.getState
   >["coachShapeContext"],
+  gameModel: ReturnType<typeof useAppStore.getState>["gameModel"],
+  opponentScout: ReturnType<typeof useAppStore.getState>["opponentScout"],
 ): CoachAgentRuntimeContext {
   const lineupLab = useAppStore.getState().lineupLab;
   const playerById = new Map(team.players.map((player) => [player.id, player]));
@@ -433,16 +452,21 @@ function buildCoachRuntimeContext(
     status: player.status,
     profile: player.profile,
     attributes: {
-      speed: player.attributes.speed,
-      pass: player.attributes.pass,
-      tactical: player.attributes.tactical,
-      duel: player.attributes.duel,
-    },
+        speed: player.attributes.speed,
+        stamina: player.attributes.stamina,
+        pass: player.attributes.pass,
+        control: player.attributes.control,
+        press: player.attributes.press,
+        tactical: player.attributes.tactical,
+        duel: player.attributes.duel,
+      },
   });
 
   return {
     shapeContext: coachShapeContext,
     teamModel: team.model,
+    gameModel,
+    opponentScout,
     savedLineups: team.lineups.map((lineup) => ({
       id: lineup.id,
       name: lineup.name,
@@ -633,10 +657,37 @@ function AgentStatusPanel({
         />
       </div>
       {statusError ? <p className="muted-panel">{statusError}</p> : null}
+      {status && !status.openRouterConfigured ? (
+        <div className="tester-edge-state">
+          <b>Falta configurar IA</b>
+          <small>
+            Agrega OPENROUTER_API_KEY en el entorno server-side antes de pasar
+            el link a testers.
+          </small>
+        </div>
+      ) : null}
       {lastRun.state === "error" ? (
-        <p className="muted-panel">{lastRun.message}</p>
+        <div className="tester-edge-state warn">
+          <b>El proveedor no respondio bien</b>
+          <small>{humanizeAgentError(lastRun.message)}</small>
+        </div>
       ) : null}
     </section>
+  );
+}
+
+function CoachThinkingPanel() {
+  return (
+    <div className="coach-thinking-panel" aria-live="polite">
+      <span className="coach-thinking-dot" />
+      <div>
+        <b>El Coach esta trabajando</b>
+        <small>
+          Recolectando evidencia, contrastando modelo de juego y preparando
+          alternativas con trade-off.
+        </small>
+      </div>
+    </div>
   );
 }
 
@@ -772,21 +823,42 @@ function InterviewPanel({
   onSubmit: () => void;
   onSkip: () => void;
 }) {
+  const answered = questions.filter((question) => drafts[question.id]?.trim()).length;
+  const criticalTotal = Math.max(
+    questions.length,
+    (audit?.missing.length ?? 0) + (audit?.covered.length ?? 0),
+    1,
+  );
+  const evidenceValue =
+    audit?.evidenceStrength === "sufficient"
+      ? 0.85
+      : audit?.evidenceStrength === "partial"
+        ? 0.58
+        : audit?.evidenceStrength === "weak"
+          ? 0.35
+          : 0.18;
+
   return (
     <section className="coach-report interview-panel">
       <header className="coach-report-head compact">
         <div>
-          <span className="panel-eyebrow">Entrevista tactica</span>
+          <div className="football-report-kicker">
+            <ModeBadge mode="question" />
+            <span className="panel-eyebrow">Modo entrevista tactica</span>
+          </div>
           <h3>Falta evidencia antes de diagnosticar</h3>
           <p>
             Respondé lo que puedas. Si preferís avanzar igual, el agente va a
             devolver una hipotesis con confianza limitada.
           </p>
         </div>
-        <div className="confidence-badge">
-          <span>Evidencia</span>
-          <b>{audit ? evidenceStrengthLabel(audit.evidenceStrength) : "Baja"}</b>
-        </div>
+        <ConfidenceMeter
+          value={evidenceValue}
+          label="Evidencia"
+          reason={`${answered}/${criticalTotal} datos criticos respondidos. Estado: ${
+            audit ? evidenceStrengthLabel(audit.evidenceStrength) : "Baja"
+          }.`}
+        />
       </header>
 
       {audit?.missing.length ? (
@@ -843,6 +915,10 @@ function QuestionCard({
       <div className="interview-question-head">
         <span>{question.category}</span>
         <b>{impactLabel(question.expectedImpactOnDiagnosis)}</b>
+        <EvidenceChip
+          type="staff"
+          label={value.trim() ? "respondida" : "pendiente"}
+        />
       </div>
       <h4>{question.question}</h4>
       <p>{question.whyItMatters}</p>
@@ -881,8 +957,18 @@ function AdviceResult({
   const lineups = useAppStore((state) => state.team.lineups);
   const shapes = useAppStore((state) => state.lineupLab.shapes);
   const actionGroups = buildAdviceActionGroups(advice);
+  const diagnosisSessionPlan = buildSessionPlanFromDiagnosis(
+    advice,
+    getAllExercises(),
+  );
   const evidenceItems = buildEvidenceViewModel(advice.evidenceCitations);
+  const currentEvidence = evidenceItems.filter((item) => item.bucket === "current").length;
+  const modelWarningCount =
+    advice.modelContrast.contradictions.length +
+    advice.modelContrast.insufficientEvidence.length;
+  const pitchOverlays = buildDiagnosisPitchOverlays(advice);
   const directActions = advice.actions.filter((action) => {
+    if (action.type === "createSessionFromDiagnosis") return true;
     if (action.type === "applyLineup") {
       return lineups.some((lineup) => lineup.id === action.lineupId);
     }
@@ -941,53 +1027,145 @@ function AdviceResult({
           ? "Ejercicio creado desde el shape y abierto en el visor."
           : "No se pudo crear el ejercicio desde ese shape.",
       );
+      return;
+    }
+    if (action.type === "createSessionFromDiagnosis") {
+      const response: CoachResponse = {
+        mode: "diagnosis",
+        advice,
+        intent: {
+          domains: [],
+          specificity: "general",
+          requestType: "actionPlan",
+          impliedClaims: [],
+        },
+        evidenceAudit: {
+          covered: [],
+          missing: [],
+          criticalMissingCount: 0,
+          evidenceStrength: "partial",
+        },
+      };
+      const created = store.createSessionFromCoachAdvice(response);
+      setActionStatus(
+        created
+              ? "Sesion creada desde el diagnostico con bloques, carga y senales."
+          : "No se pudo crear la sesion desde este diagnostico.",
+      );
     }
   }
 
   return (
-    <section className="coach-report">
-      <header className="coach-report-head">
+    <section className="coach-report football-report">
+      <header className="football-report-hero">
         <div>
-          <span className="panel-eyebrow">Informe de staff</span>
+          <div className="football-report-kicker">
+            <ModeBadge mode={responseMode} />
+            <EvidenceChip
+              type="observation"
+              label={`${currentEvidence} evidencias actuales`}
+            />
+            <EvidenceChip
+              type="shape"
+              label={`${modelWarningCount} alertas modelo`}
+            />
+          </div>
           <h3>
             {responseMode === "hypothesis"
-              ? "Hipotesis del Coach AI"
-              : "Lectura del Coach AI"}
+              ? "Hipotesis del Coach"
+              : "Lectura del Coach"}
           </h3>
-          <p>
-            Respuesta basada en contexto activo, memoria validada, reportes y
-            evidencia disponible.
-          </p>
+          <p>{advice.tacticalReading}</p>
         </div>
-        <ConfidenceBadge confidence={advice.reflection.confidence} />
+        <ConfidenceMeter
+          value={advice.reflection.confidence}
+          reason={advice.reflection.missingInformation}
+        />
       </header>
-
-      <article className="coach-main-read">
-        <span>Lectura tactica</span>
-        <p>{advice.tacticalReading}</p>
-      </article>
-
-      <KnowledgeGapPanel advice={advice} evidenceItems={evidenceItems} />
 
       <div className="coach-report-grid">
         <ReportBlock title="Causa probable" value={advice.probableCause} />
         <ReportBlock title="Ajuste principal" value={advice.mainAdjustment} />
       </div>
 
+      <ProblemBreakdownPanel advice={advice} />
+
+      <AlternativeAdjustmentsPanel advice={advice} />
+
+      <div className="football-report-grid">
+        <PitchViz
+          title="Zona tactica del diagnostico"
+          subtitle="lectura aproximada"
+          overlays={pitchOverlays}
+        />
+        <section className="coach-report-card">
+          <span className="panel-eyebrow">Accion recomendada</span>
+          <p>{advice.wednesdayTest}</p>
+          <div className="toolbar compact" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={() =>
+                runAction({
+                  type: "createSessionFromDiagnosis",
+                  label: "Crear sesion desde diagnostico",
+                })
+              }
+            >
+              Convertir en sesion
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => useAppStore.getState().setView("team")}
+            >
+              Simular ajuste
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => exportCoachDiagnosisHtml(advice)}
+            >
+              Exportar diagnostico
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <KnowledgeGapPanel advice={advice} evidenceItems={evidenceItems} />
+
+      <ModelContrastPanel advice={advice} />
+
       <ReportList
         title="Instrucciones de campo"
         items={advice.onFieldInstructions}
       />
 
+      <DiagnosisSessionPanel plan={diagnosisSessionPlan} />
+
+      <details className="football-report-details">
+        <summary>Ver riesgos, evidencia y reflexion completa</summary>
       <div className="coach-report-grid">
-        <ReportBlock title="Test del miercoles" value={advice.wednesdayTest} />
-        <ReportBlock title="Foco del sabado" value={advice.saturdayFocus} />
+        <ReportBlock title="Test de mitad de semana" value={advice.wednesdayTest} />
+        <ReportBlock title="Foco de partido" value={advice.saturdayFocus} />
       </div>
 
       <div className="coach-report-grid">
         <ReportList title="Riesgos del ajuste" items={advice.adjustmentRisks} />
-        <ReportList title="Senales de exito" items={advice.successSignals} />
+        <ReportList title="Senales de validacion" items={advice.successSignals} />
       </div>
+
+      {advice.playerFitWarnings.length ? (
+        <section className="coach-report-card">
+          <span className="panel-eyebrow">Fit del plantel</span>
+          <div className="toolbar compact" style={{ flexWrap: "wrap", marginTop: 10 }}>
+            {advice.playerFitWarnings.map((warning) => (
+              <FitChip level="risk" key={warning}>
+                {warning}
+              </FitChip>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <EvidencePanel evidenceItems={evidenceItems} />
 
@@ -1015,6 +1193,7 @@ function AdviceResult({
           </div>
         </dl>
       </section>
+      </details>
     </section>
   );
 }
@@ -1084,6 +1263,82 @@ function KnowledgeGapPanel({
       </div>
     </section>
   );
+}
+
+function buildDiagnosisPitchOverlays(advice: CoachMatchAdvice) {
+  const text = normalizeText(
+    [
+      advice.tacticalReading,
+      advice.probableCause,
+      advice.mainAdjustment,
+      advice.saturdayFocus,
+    ].join(" "),
+  );
+  const overlays = [];
+
+  if (text.includes("banda")) {
+    overlays.push({
+      type: "zone" as const,
+      x: 58,
+      y: text.includes("derecha") ? 42 : 7,
+      w: 30,
+      h: 15,
+      tone: "warn" as const,
+      label: "banda",
+    });
+  }
+  if (text.includes("lineas") || text.includes("bloque")) {
+    overlays.push({
+      type: "zone" as const,
+      x: 34,
+      y: 22,
+      w: 26,
+      h: 20,
+      tone: "danger" as const,
+      label: "entre lineas",
+    });
+    overlays.push({
+      type: "blockHeight" as const,
+      x: text.includes("alto") ? 68 : 46,
+      tone: text.includes("alto") ? ("warn" as const) : ("info" as const),
+      label: "altura bloque",
+    });
+  }
+  if (text.includes("9") || text.includes("delanter")) {
+    overlays.push({
+      type: "zone" as const,
+      x: 72,
+      y: 25,
+      w: 15,
+      h: 14,
+      tone: "warn" as const,
+      label: "9 aislado",
+    });
+  }
+  if (text.includes("salida") || text.includes("pivote")) {
+    overlays.push({
+      type: "zone" as const,
+      x: 15,
+      y: 22,
+      w: 25,
+      h: 20,
+      tone: "info" as const,
+      label: "salida",
+    });
+  }
+  if (!overlays.length) {
+    overlays.push({
+      type: "zone" as const,
+      x: 38,
+      y: 18,
+      w: 24,
+      h: 28,
+      tone: "info" as const,
+      label: "zona a validar",
+    });
+  }
+
+  return overlays;
 }
 
 function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }) {
@@ -1332,7 +1587,11 @@ function ActionPanel({
             className="secondary"
             key={`${action.type}-${action.lineupId ?? action.shapeId ?? index}`}
             disabled={
-              action.type === "applyLineup" ? !action.lineupId : !action.shapeId
+              action.type === "createSessionFromDiagnosis"
+                ? false
+                : action.type === "applyLineup"
+                  ? !action.lineupId
+                  : !action.shapeId
             }
             onClick={() => runAction(action)}
           >
@@ -1481,6 +1740,116 @@ function ReportList({ title, items }: { title: string; items: string[] }) {
   );
 }
 
+function ProblemBreakdownPanel({ advice }: { advice: CoachMatchAdvice }) {
+  const rows = [
+    ["Zona", advice.problemBreakdown.zone],
+    ["Momento", advice.problemBreakdown.moment],
+    ["Gatillo", advice.problemBreakdown.trigger],
+    ["Propio / rival", advice.problemBreakdown.ownVsRival],
+  ];
+
+  return (
+    <section className="coach-report-card">
+      <span className="panel-eyebrow">Desglose del problema</span>
+      <div className="problem-breakdown-grid">
+        {rows.map(([label, value]) => (
+          <div className="problem-breakdown-item" key={label}>
+            <span>{label}</span>
+            <b>{value}</b>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AlternativeAdjustmentsPanel({ advice }: { advice: CoachMatchAdvice }) {
+  if (!advice.alternativeAdjustments.length) return null;
+
+  return (
+    <section className="coach-report-card">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Caminos alternativos</span>
+          <h4>Opciones con costo</h4>
+        </div>
+        <span className="ai-context-chip">
+          {advice.alternativeAdjustments.length} alternativas
+        </span>
+      </div>
+      <div className="alternative-adjustment-grid">
+        {advice.alternativeAdjustments.map((item, index) => (
+          <article className="alternative-adjustment-card" key={item.adjustment}>
+            <span className="mono">{String(index + 1).padStart(2, "0")}</span>
+            <b>{item.adjustment}</b>
+            <small>Usalo cuando: {item.whenToUse}</small>
+            <p>Costo: {item.tradeoff}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ModelContrastPanel({ advice }: { advice: CoachMatchAdvice }) {
+  const aligned = advice.modelContrast.aligned;
+  const contradictions = advice.modelContrast.contradictions;
+  const insufficient = advice.modelContrast.insufficientEvidence;
+
+  if (!aligned.length && !contradictions.length && !insufficient.length) {
+    return null;
+  }
+
+  return (
+    <section className="coach-report-card">
+      <span className="panel-eyebrow">Contraste vs modelo de juego</span>
+      <div className="trust-columns">
+        <article className="trust-card positive">
+          <span>Confirma identidad</span>
+          <ul>
+            {(aligned.length ? aligned : ["Sin confirmaciones claras."]).map(
+              (item) => (
+                <li key={`aligned-${item}`}>{item}</li>
+              ),
+            )}
+          </ul>
+        </article>
+        <article className="trust-card warning">
+          <span>Desvios / evidencia faltante</span>
+          <ul>
+            {[...contradictions, ...insufficient].map((item) => (
+              <li key={`model-gap-${item}`}>{item}</li>
+            ))}
+          </ul>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function DiagnosisSessionPanel({ plan }: { plan: ReturnType<typeof buildSessionPlanFromDiagnosis> }) {
+  if (!plan.exerciseIds.length) return null;
+
+  return (
+    <section className="coach-report-card">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Diagnostico a sesion</span>
+          <h4>Bloque entrenable sugerido</h4>
+        </div>
+        <span className="ai-context-chip">
+          {plan.estimatedDuration}' / carga {plan.estimatedLoad}
+        </span>
+      </div>
+      <p>{plan.tacticalObjective}</p>
+      <div className="coach-report-grid">
+        <ReportList title="Coaching points" items={plan.coachingPoints.slice(0, 4)} />
+        <ReportList title="Senales sabado" items={plan.saturdaySignals.slice(0, 4)} />
+      </div>
+    </section>
+  );
+}
+
 function EmptyState({ context }: { context: CockpitContext }) {
   return (
     <section className="coach-report empty-coach-state">
@@ -1514,6 +1883,7 @@ function labelForAction(type: CoachAction["type"]) {
     applyLineup: "Aplicar XI / lineup",
     applyShape: "Aplicar shape en Lab 3D",
     createExerciseFromShape: "Crear ejercicio desde shape",
+    createSessionFromDiagnosis: "Crear sesion desde diagnostico",
   };
   return labels[type];
 }
@@ -1604,6 +1974,8 @@ function patternKindLabel(kind: TeamPattern["kind"]) {
     newProblem: "Problema nuevo",
     improvement: "Mejora posible",
     regression: "Retroceso posible",
+    problemNotTrained: "Problema no entrenado",
+    gameModelContradiction: "Contradice modelo",
   };
   return labels[kind];
 }
@@ -1613,6 +1985,22 @@ function labelForLastRun(lastRun: LastRunState, loading: boolean) {
   if (lastRun.state === "success") return `OK ${formatClock(lastRun.at)}`;
   if (lastRun.state === "error") return `Error ${formatClock(lastRun.at)}`;
   return "Sin consultas";
+}
+
+function humanizeAgentError(message: string) {
+  const normalized = normalizeText(message);
+  if (normalized.includes("missing openrouter_api_key")) {
+    return "Falta configurar la key server-side. La app puede abrir, pero el Coach no puede responder.";
+  }
+  if (
+    normalized.includes("no devolvio choices") ||
+    normalized.includes("rate limit") ||
+    normalized.includes("sin credito") ||
+    normalized.includes("model")
+  ) {
+    return "El modelo no devolvio una respuesta util. Reintenta o cambia a un modelo rapido y pago para testing.";
+  }
+  return message;
 }
 
 function formatClock(value: string) {

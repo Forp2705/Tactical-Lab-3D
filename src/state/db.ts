@@ -6,10 +6,15 @@ import {
   SessionSchema,
   Vec2Schema,
 } from "@/data";
+import { DEFAULT_GAME_MODEL, GameModelSchema } from "@/data/gameModel";
+import {
+  DEFAULT_OPPONENT_SCOUT,
+  OpponentScoutSchema,
+} from "@/scout/opponentScout";
 import Dexie, { type Table } from "dexie";
 import { z } from "zod";
 
-export const APP_SNAPSHOT_VERSION = 1;
+export const APP_SNAPSHOT_VERSION = 2;
 
 const VideoMomentSchema = z.enum([
   "firstHalf",
@@ -137,6 +142,8 @@ const snapshotShape = {
     selectedPlayerId: z.string(),
     lineups: z.array(LineupSchema),
   }),
+  gameModel: GameModelSchema.default(DEFAULT_GAME_MODEL),
+  opponentScout: OpponentScoutSchema.default(DEFAULT_OPPONENT_SCOUT),
   session: SessionSchema,
   microcycle: MicrocycleSchema,
   lineupLab: LineupLabSnapshotSchema.optional(),
@@ -172,7 +179,14 @@ const BACKUP_PREFIX = "backup:";
 const MIGRATIONS: Record<
   number,
   (snap: Record<string, unknown>) => Record<string, unknown>
-> = {};
+> = {
+  1: (snap) => ({
+    ...snap,
+    version: 2,
+    gameModel: snap.gameModel ?? DEFAULT_GAME_MODEL,
+    opponentScout: snap.opponentScout ?? DEFAULT_OPPONENT_SCOUT,
+  }),
+};
 
 function applyVersionMigrations<T extends Record<string, unknown>>(snap: T): T {
   let current: Record<string, unknown> = { ...snap };
@@ -253,6 +267,8 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
     exerciseVariants: migrated.exerciseVariants ?? [],
     personalSpace: migrated.personalSpace ?? false,
     viewerQuality: migrated.viewerQuality ?? "medium",
+    gameModel: migrated.gameModel ?? DEFAULT_GAME_MODEL,
+    opponentScout: migrated.opponentScout ?? DEFAULT_OPPONENT_SCOUT,
     lineupLab: migrated.lineupLab ?? {
       shapes: [],
       savedTransitions: [],

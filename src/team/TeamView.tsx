@@ -5,7 +5,14 @@ import type {
 } from "@/state/useAppStore";
 import type { Player, Vec2 } from "@/data";
 import { useAppStore } from "@/state/useAppStore";
+import { OpponentScoutPanel } from "@/scout/OpponentScoutPanel";
 import { type PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
+import { GameModelBuilder } from "./GameModelBuilder";
+import { ScenarioSimulatorPanel } from "./ScenarioSimulatorPanel";
+import { explainShapeMetrics } from "./metricExplanations";
+import { computeMetrics } from "./lib/shapeMetrics";
+import { analyzePlayerFit } from "@/ai/playerFit";
+import { FitChip, PitchViz } from "@/ui/tacticalPrimitives";
 
 type LineupSlot = {
   playerId: string;
@@ -83,6 +90,8 @@ const STATUS_LABEL: Record<Player["status"], string> = {
 
 export function TeamView() {
   const team = useAppStore((state) => state.team);
+  const coachShapeContext = useAppStore((state) => state.coachShapeContext);
+  const [activeTab, setActiveTab] = useState<"lineup" | "model" | "simulator" | "scout">("lineup");
   const [formation, setFormation] = useState("4-3-3");
   const [lineup, setLineup] = useState<LineupSlot[]>(() =>
     buildLineup(team.players, "4-3-3"),
@@ -131,6 +140,45 @@ export function TeamView() {
 
   return (
     <div className="view-enter team-mock-view">
+      <div className="team-mock-toolbar">
+        <div className="segmented">
+          <button
+            type="button"
+            className={activeTab === "lineup" ? "active" : ""}
+            onClick={() => setActiveTab("lineup")}
+          >
+            Lineup
+          </button>
+          <button
+            type="button"
+            className={activeTab === "model" ? "active" : ""}
+            onClick={() => setActiveTab("model")}
+          >
+            Modelo
+          </button>
+          <button
+            type="button"
+            className={activeTab === "simulator" ? "active" : ""}
+            onClick={() => setActiveTab("simulator")}
+          >
+            Simulador
+          </button>
+          <button
+            type="button"
+            className={activeTab === "scout" ? "active" : ""}
+            onClick={() => setActiveTab("scout")}
+          >
+            Scout
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "model" ? <GameModelBuilder /> : null}
+      {activeTab === "simulator" ? <ScenarioSimulatorPanel /> : null}
+      {activeTab === "scout" ? <OpponentScoutPanel /> : null}
+
+      {activeTab === "lineup" ? (
+        <>
       <div className="team-mock-toolbar">
         <div className="segmented">
           {Object.keys(FORMATIONS).map((item) => (
@@ -189,6 +237,10 @@ export function TeamView() {
           <p className="mono team-mock-hint">
             El snapshot del shape se inyecta como contexto al asistente tactico.
           </p>
+          <ShapeMetricsPanel
+            metrics={coachShapeContext?.currentMetrics}
+            players={team.players}
+          />
         </div>
 
         <aside className="grid team-mock-side">
@@ -276,7 +328,80 @@ export function TeamView() {
           </div>
         </aside>
       </div>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+function ShapeMetricsPanel({
+  metrics,
+  players,
+}: {
+  metrics: CoachShapeContext["currentMetrics"];
+  players: Player[];
+}) {
+  const explanations = explainShapeMetrics(metrics);
+  const fitFindings = analyzePlayerFit(players, ["highBlock", "freeFullback"]);
+  if (!explanations.length) {
+    return (
+      <div className="coach-report-card" style={{ marginTop: 12 }}>
+        <span className="panel-eyebrow">Metricas explicadas</span>
+        <p>Publica el shape para ver ancho, profundidad, compacidad y riesgos.</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ marginTop: 12 }}>
+        <PitchViz
+          title="Cancha analitica"
+          subtitle="ancho / profundidad / altura"
+          overlays={[
+            {
+              type: "zone",
+              x: 18,
+              y: 12,
+              w: Math.min(64, Math.max(24, metrics?.depth ?? 34)),
+              h: Math.min(42, Math.max(18, metrics?.width ?? 28)),
+              tone:
+                (metrics?.compactness ?? 0) > 28
+                  ? "danger"
+                  : (metrics?.compactness ?? 0) > 22
+                    ? "warn"
+                    : "good",
+              label: "estructura",
+            },
+            {
+              type: "blockHeight",
+              x: Math.min(90, Math.max(10, metrics?.blockHeight ?? 50)),
+              tone: (metrics?.blockHeight ?? 0) > 72 ? "warn" : "info",
+              label: "bloque",
+            },
+          ]}
+        />
+      </div>
+      <div className="coach-report-grid" style={{ marginTop: 12 }}>
+        {explanations.map((item) => (
+          <article className={`coach-report-card ${item.tone}`} key={item.id}>
+            <span className="panel-eyebrow">{item.label}</span>
+            <h4>{item.value}</h4>
+            <p>{item.reading}</p>
+            <small>{item.risk}</small>
+          </article>
+        ))}
+      </div>
+      {fitFindings.length ? (
+        <div className="toolbar compact" style={{ flexWrap: "wrap", marginTop: 12 }}>
+          {fitFindings.slice(0, 4).map((finding) => (
+            <FitChip level={finding.level} key={finding.id}>
+              {finding.statement}
+            </FitChip>
+          ))}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -476,11 +601,19 @@ function coachContextFromShape(
       };
     });
   const summary = summarizeBoard(players);
+  const metrics = computeMetrics(
+    players.map((player) => ({
+      id: player.playerId,
+      role: player.role,
+      pos: { x: player.x, y: player.y },
+    })),
+  );
   return {
     formation,
     selectedShapeId: shape.id,
     selectedShapeName: shape.name,
     currentBoardSummary: summary,
+    currentMetrics: metrics,
     currentBoard: players,
     shapes: [
       {
@@ -489,6 +622,7 @@ function coachContextFromShape(
         phase: shape.phase,
         notes: shape.notes,
         summary,
+        metrics,
         players,
       },
     ],

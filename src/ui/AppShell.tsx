@@ -5,6 +5,7 @@ import {
 } from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { type ChangeEvent, type ReactNode, useState } from "react";
+import { useEffect } from "react";
 
 type NavView =
   | "home"
@@ -25,30 +26,57 @@ type NavItem = {
 };
 
 const PRIMARY_NAV: NavItem[] = [
-  { view: "home", code: "HOME", label: "Inicio" },
-  { view: "viewer", code: "3D", label: "Visor tactico" },
+  { view: "home", code: "ROOM", label: "Sala del cuerpo tecnico" },
+  { view: "viewer", code: "OBS", label: "Observar en cancha" },
   { view: "team", code: "XI", label: "Equipo · Lineup" },
   {
     view: "ai",
-    code: "AI",
-    label: "Asistente tactico",
+    code: "DIAG",
+    label: "Diagnosticar",
     isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("coach"),
   },
-  { view: "video", code: "VID", label: "Video + tracking" },
+  { view: "video", code: "EVID", label: "Recolectar evidencia" },
   {
     view: "ai",
-    code: "PM",
-    label: "Post-partido",
+    code: "REV",
+    label: "Revisar post-partido",
     isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("postMatch"),
   },
 ];
 
 const SECONDARY_NAV: NavItem[] = [
+  { view: "sessions", code: "TRAIN", label: "Entrenar semana" },
+  { view: "library", code: "LIB", label: "Biblioteca curada" },
+  { view: "player", code: "BRIEF", label: "Briefing jugadores" },
+];
+
+const LOOP_NAV: NavItem[] = [
+  { view: "home", code: "01", label: "Sala" },
+  {
+    view: "ai",
+    code: "02",
+    label: "Diagnosticar",
+    isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
+    onSelect: () => useAppStore.getState().setAiMode("coach"),
+  },
+  { view: "sessions", code: "03", label: "Entrenar" },
+  {
+    view: "ai",
+    code: "04",
+    label: "Revisar",
+    isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
+    onSelect: () => useAppStore.getState().setAiMode("postMatch"),
+  },
+  { view: "team", code: "05", label: "Preparar" },
+];
+
+const TOOL_NAV: NavItem[] = [
+  { view: "viewer", code: "3D", label: "Visor" },
+  { view: "video", code: "VID", label: "Video" },
   { view: "library", code: "LIB", label: "Biblioteca" },
-  { view: "sessions", code: "MD", label: "Sesion" },
-  { view: "player", code: "PL", label: "Modo jugador" },
+  { view: "player", code: "PL", label: "Jugadores" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -57,8 +85,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const presentationMode = useAppStore((state) => state.presentationMode);
   const [navOpen, setNavOpen] = useState(false);
+  const [theme, setTheme] = useState<"cockpit" | "broadcast" | "pizarra">(
+    () =>
+      (localStorage.getItem("tactical-lab-theme") as
+        | "cockpit"
+        | "broadcast"
+        | "pizarra"
+        | null) ?? "cockpit",
+  );
   const selectedExercise = getExerciseById(selectedExerciseId);
   const exerciseLabel = selectedExercise?.title ?? selectedExerciseId ?? "-";
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("tactical-lab-theme", theme);
+  }, [theme]);
 
   return (
     <div
@@ -82,68 +123,68 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <nav className="nav">
-            {PRIMARY_NAV.map((item) => (
+            {LOOP_NAV.map((item) => (
               <NavButton
                 key={`${item.code}-${item.label}`}
                 item={item}
                 onNavigate={() => setNavOpen(false)}
               />
             ))}
-            <div className="nav-section-label">Herramientas</div>
-            {SECONDARY_NAV.map((item) => (
-              <NavButton
-                key={`${item.code}-${item.label}`}
-                item={item}
-                onNavigate={() => setNavOpen(false)}
-              />
-            ))}
+            <details className="nav-more">
+              <summary>Mas herramientas</summary>
+              {TOOL_NAV.map((item) => (
+                <NavButton
+                  key={`${item.code}-${item.label}`}
+                  item={item}
+                  onNavigate={() => setNavOpen(false)}
+                />
+              ))}
+            </details>
           </nav>
           <div className="side-foot">
-            <div className="status-card">
-              <span className="eyebrow">Estado de campo</span>
-              <div className="status-row">
-                <span>Vista</span>
-                <b>{view.toUpperCase()}</b>
-              </div>
-              <div className="status-row">
-                <span>Ejercicio</span>
-                <b>{exerciseLabel}</b>
-              </div>
-              <div className="status-row">
-                <span>Sesion</span>
-                <b>{session.blocks.length} bloques</b>
-              </div>
-            </div>
-            <div className="status-card project-actions">
-              <span className="eyebrow">Proyecto local</span>
-              <button type="button" className="btn ghost" onClick={() => void saveProject()}>
-                Guardar local
-              </button>
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => exportProject()}
-              >
-                Exportar JSON
-              </button>
-              <label className="file-label btn ghost">
-                Importar JSON
-                <input
-                  type="file"
-                  accept="application/json"
-                  onChange={importProject}
-                />
+            <div className="status-card project-actions compact-project-actions">
+              <label className="field">
+                Tema visual
+                <select
+                  value={theme}
+                  onChange={(event) =>
+                    setTheme(
+                      event.target.value as "cockpit" | "broadcast" | "pizarra",
+                    )
+                  }
+                >
+                  <option value="cockpit">Cockpit</option>
+                  <option value="broadcast">Broadcast</option>
+                  <option value="pizarra">Pizarra</option>
+                </select>
               </label>
-              <span className="live-pill">
-                <i />
-                Local / IndexedDB
-              </span>
+              <details className="project-more">
+                <summary>Proyecto local</summary>
+                <button type="button" className="btn ghost" onClick={() => void saveProject()}>
+                  Guardar local
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => exportProject()}
+                >
+                  Exportar JSON
+                </button>
+                <label className="file-label btn ghost">
+                  Importar JSON
+                  <input
+                    type="file"
+                    accept="application/json"
+                    onChange={importProject}
+                  />
+                </label>
+              </details>
             </div>
           </div>
         </aside>
       )}
       <main className="main">
-        {presentationMode ? null : (
+        {presentationMode || view === "home" ? null : (
           <header className="topbar">
             <div className="topbar-copy">
               <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
@@ -234,13 +275,13 @@ function metaFor(view: string) {
   return (
     {
       home: ["Matchday cockpit"],
-      library: ["Library"],
-      viewer: ["Field ready"],
+      library: ["Biblioteca"],
+      viewer: ["Cancha"],
       team: ["Sistema de equipo"],
       sessions: ["Microciclo"],
       video: ["Analisis"],
       ai: ["Asistente local"],
-      player: ["Player mode"],
+      player: ["Jugadores"],
     }[view] ?? ["Tactical Lab"]
   );
 }
@@ -250,12 +291,12 @@ function titleFor(view: string) {
     {
       home: "Centro de mando del cuerpo tecnico",
       library: "Biblioteca de ejercicios",
-      viewer: "Visor tactico 3D integrado",
+      viewer: "Visor tactico 3D",
       team: "Equipo · Lineup Lab",
       sessions: "Sesiones y microciclo",
       video: "Video + tracking asistido",
-      ai: "Asistente tactico local",
-      player: "Modo jugador",
+      ai: "Asistente tactico",
+      player: "Briefing para jugadores",
     }[view] ?? "Tactical Lab Pro 3D"
   );
 }
@@ -358,6 +399,8 @@ function snapshotFromState(state: ReturnType<typeof useAppStore.getState>) {
     personalSpace: state.personalSpace,
     layers: state.layers,
     team: state.team,
+    gameModel: state.gameModel,
+    opponentScout: state.opponentScout,
     session: state.session,
     microcycle: state.microcycle,
     lineupLab: state.lineupLab,

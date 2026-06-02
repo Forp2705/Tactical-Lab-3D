@@ -8,11 +8,13 @@ export const CoachActionSchema = z.object({
     "applyLineup",
     "applyShape",
     "createExerciseFromShape",
+    "createSessionFromDiagnosis",
   ]),
   label: z.string().optional(),
   exerciseId: z.string().optional(),
   lineupId: z.string().optional(),
   shapeId: z.string().optional(),
+  exerciseIds: z.array(z.string()).optional(),
   title: z.string().optional(),
   rationale: z.string().optional(),
 });
@@ -25,11 +27,33 @@ export const CoachEvidenceCitationSchema = z.object({
   relevance: z.number().min(0).max(1).optional(),
 });
 
+export const CoachProblemBreakdownSchema = z
+  .object({
+    zone: z.string().default("Zona a confirmar"),
+    moment: z.string().default("Momento a confirmar"),
+    trigger: z.string().default("Gatillo a confirmar"),
+    ownVsRival: z.string().default("Responsabilidad a confirmar"),
+  })
+  .default({
+    zone: "Zona a confirmar",
+    moment: "Momento a confirmar",
+    trigger: "Gatillo a confirmar",
+    ownVsRival: "Responsabilidad a confirmar",
+  });
+
+export const CoachAlternativeAdjustmentSchema = z.object({
+  adjustment: z.string().min(1),
+  whenToUse: z.string().min(1),
+  tradeoff: z.string().min(1),
+});
+
 export const CoachMatchAdviceSchema = z.object({
   tacticalReading: z.string(),
+  problemBreakdown: CoachProblemBreakdownSchema,
   probableCause: z.string(),
   mainAdjustment: z.string(),
   onFieldInstructions: z.array(z.string()),
+  alternativeAdjustments: z.array(CoachAlternativeAdjustmentSchema).default([]),
   wednesdayTest: z.string(),
   saturdayFocus: z.string(),
   adjustmentRisks: z.array(z.string()),
@@ -43,6 +67,18 @@ export const CoachMatchAdviceSchema = z.object({
   linkedExercises: z.array(z.string()).default([]),
   actions: z.array(CoachActionSchema).default([]),
   evidenceCitations: z.array(CoachEvidenceCitationSchema).default([]),
+  modelContrast: z
+    .object({
+      aligned: z.array(z.string()).default([]),
+      contradictions: z.array(z.string()).default([]),
+      insufficientEvidence: z.array(z.string()).default([]),
+    })
+    .default({
+      aligned: [],
+      contradictions: [],
+      insufficientEvidence: [],
+    }),
+  playerFitWarnings: z.array(z.string()).default([]),
 });
 
 export const TacticalDomainSchema = z.enum([
@@ -254,6 +290,10 @@ export const MatchObservationsSchema = z.array(MatchObservationSchema);
 export type MatchObservation = z.infer<typeof MatchObservationSchema>;
 export type CoachAction = z.infer<typeof CoachActionSchema>;
 export type CoachEvidenceCitation = z.infer<typeof CoachEvidenceCitationSchema>;
+export type CoachProblemBreakdown = z.infer<typeof CoachProblemBreakdownSchema>;
+export type CoachAlternativeAdjustment = z.infer<
+  typeof CoachAlternativeAdjustmentSchema
+>;
 export type CoachMatchAdvice = z.infer<typeof CoachMatchAdviceSchema>;
 export type TacticalDomain = z.infer<typeof TacticalDomainSchema>;
 export type EvidenceTarget = z.infer<typeof EvidenceTargetSchema>;

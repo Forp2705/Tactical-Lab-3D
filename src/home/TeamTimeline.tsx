@@ -1,5 +1,6 @@
 import { detectTeamPatterns, type TeamPattern } from "@/ai/patternDetection";
 import type { SavedPostMatchReport } from "@/ai/post-match/schemas";
+import { PatternCard } from "@/ui/tacticalPrimitives";
 
 export function TeamTimeline({ reports }: { reports: SavedPostMatchReport[] }) {
   const sortedReports = [...reports]
@@ -20,7 +21,13 @@ export function TeamTimeline({ reports }: { reports: SavedPostMatchReport[] }) {
       {patterns.length ? (
         <div className="list" style={{ marginBottom: 14 }}>
           {patterns.map((pattern) => (
-            <PatternTimelineRow key={pattern.id} pattern={pattern} />
+            <PatternCard
+              key={pattern.id}
+              kind={pattern.kind}
+              title={patternKindLabel(pattern.kind)}
+              body={pattern.statement}
+              meta={pattern.evidence.slice(0, 2).join(" / ")}
+            />
           ))}
         </div>
       ) : (
@@ -50,29 +57,11 @@ export function TeamTimeline({ reports }: { reports: SavedPostMatchReport[] }) {
   );
 }
 
-function PatternTimelineRow({ pattern }: { pattern: TeamPattern }) {
-  return (
-    <div className="list-row">
-      <div className="lr-icon">{patternKindShort(pattern.kind)}</div>
-      <div>
-        <b>{patternKindLabel(pattern.kind)}</b>
-        <small>{pattern.statement}</small>
-      </div>
-      <span className="tag-pill">{pattern.confidence}</span>
-    </div>
-  );
-}
-
-function patternKindShort(kind: TeamPattern["kind"]) {
-  if (kind === "repeatedProblem") return "REP";
-  if (kind === "newProblem") return "NEW";
-  if (kind === "improvement") return "UP";
-  return "DOWN";
-}
-
 function patternKindLabel(kind: TeamPattern["kind"]) {
   if (kind === "repeatedProblem") return "Problema recurrente";
   if (kind === "newProblem") return "Problema nuevo";
   if (kind === "improvement") return "Mejora posible";
-  return "Retroceso posible";
+  if (kind === "regression") return "Retroceso posible";
+  if (kind === "problemNotTrained") return "No entrenado";
+  return "Contradice el modelo";
 }

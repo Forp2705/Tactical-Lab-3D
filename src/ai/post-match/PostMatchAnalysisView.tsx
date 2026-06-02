@@ -1,4 +1,6 @@
 import { useAppStore } from "@/state/useAppStore";
+import { contrastTextWithGameModel } from "@/data/gameModel";
+import { ConfidenceMeter } from "@/ui/tacticalPrimitives";
 import {
   formatVideoEvidenceTime,
   getVideoEvidenceItems,
@@ -635,10 +637,28 @@ function ReportReview({
 }) {
   const ownTeamProblems = getOwnTeamProblems(report);
   const acceptanceCriteria = getAcceptanceCriteria(report);
+  const gameModel = useAppStore((state) => state.gameModel);
+  const modelContrast = contrastTextWithGameModel(
+    [
+      report.executiveSummary,
+      report.matchStory,
+      ...ownTeamProblems.map((item) => item.problem),
+      ...report.positives,
+      ...report.saturdayFocus,
+    ].join(" "),
+    gameModel,
+  );
 
   return (
     <>
       <TextCard title="Resumen ejecutivo" value={report.executiveSummary} />
+      <div className="ai-card">
+        <b>Confianza del reporte</b>
+        <ConfidenceMeter
+          value={report.reflection.confidence}
+          reason={report.reflection.mainUncertainty}
+        />
+      </div>
       {report.matchContext.interpretedResult ? (
         <TextCard
           title="Resultado interpretado"
@@ -664,10 +684,13 @@ function ReportReview({
         title="Prioridades de entrenamiento"
         tests={report.wednesdayTest}
       />
+      <ModelContrastCard contrast={modelContrast} />
       <ListCard
         title="Foco para el proximo partido"
         items={report.saturdayFocus}
       />
+      <details className="football-report-details">
+        <summary>Ver reporte avanzado completo</summary>
       <ListCard
         title="Riesgos de sobrerreaccionar"
         items={report.risksOfOvercorrection}
@@ -699,6 +722,7 @@ function ReportReview({
         <p>Confianza: {Math.round(report.reflection.confidence * 100)}%</p>
       </div>
       <ListCard title="Criterios de aceptacion" items={acceptanceCriteria} />
+      </details>
       <label className="stacked-field">
         Revision del staff
         <textarea
@@ -723,6 +747,25 @@ function ReportReview({
         </button>
       </div>
     </>
+  );
+}
+
+function ModelContrastCard({
+  contrast,
+}: {
+  contrast: ReturnType<typeof contrastTextWithGameModel>;
+}) {
+  const items = [
+    ...contrast.aligned.map((item) => `Confirma: ${item}`),
+    ...contrast.contradictions.map((item) => `Desvio: ${item}`),
+    ...contrast.insufficientEvidence.map((item) => `Sin evidencia: ${item}`),
+  ];
+
+  return (
+    <ListCard
+      title="Contraste contra modelo de juego"
+      items={items.length ? items : ["Sin evidencia suficiente para contrastar."]}
+    />
   );
 }
 

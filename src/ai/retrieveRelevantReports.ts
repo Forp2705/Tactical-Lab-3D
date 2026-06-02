@@ -1,10 +1,18 @@
 import { loadSavedPostMatchReports } from "./post-match/storage.js";
 import { rankDocuments } from "./retrievalScoring.js";
+import type { SavedPostMatchReport } from "./post-match/schemas.js";
 
 const MAX_REPORT_ITEMS = 3;
 
 export async function retrieveRelevantReports(userInput: string) {
   const reports = await loadSavedPostMatchReports();
+  return retrieveRelevantReportsFromSaved(userInput, reports);
+}
+
+export function retrieveRelevantReportsFromSaved(
+  userInput: string,
+  reports: SavedPostMatchReport[],
+) {
   const documents = reports.map((savedReport) => {
     const report = savedReport.report;
     const date = report.matchContext.date ?? savedReport.savedAt.slice(0, 10);

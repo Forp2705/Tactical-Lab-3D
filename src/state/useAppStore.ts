@@ -16,6 +16,20 @@ import type {
   Session,
   Vec2,
 } from "@/data";
+import {
+  DEFAULT_GAME_MODEL,
+  type GameModel,
+  normalizeGameModel,
+} from "@/data/gameModel";
+import {
+  DEFAULT_OPPONENT_SCOUT,
+  type OpponentScout,
+  normalizeOpponentScout,
+} from "@/scout/opponentScout";
+import {
+  buildSessionPlanFromDiagnosis,
+  materializeDiagnosisSession,
+} from "@/sessions/diagnosisSession";
 import { catalog, demoPlayers } from "@/data";
 import { create } from "zustand";
 
@@ -219,6 +233,8 @@ type AppState = {
   personalSpace: boolean;
   layers: Record<Layer, boolean>;
   team: TeamState;
+  gameModel: GameModel;
+  opponentScout: OpponentScout;
   session: Session;
   microcycle: Microcycle;
   lineupLab: LineupLabStoreState;
@@ -281,6 +297,9 @@ type AppState = {
   addPlayer: () => void;
   setSelectedPlayerId: (id: string) => void;
   updatePlayer: (id: string, patch: Partial<Player>) => void;
+  updateGameModel: (patch: Partial<GameModel>) => void;
+  updateOpponentScout: (patch: Partial<OpponentScout>) => void;
+  createSessionFromCoachAdvice: (response: CoachResponse) => boolean;
   loadSnapshot: (snapshot: Partial<AppState>) => void;
   markInitialized: () => void;
   setAiMode: (mode: AiMode) => void;
@@ -415,6 +434,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   personalSpace: false,
   layers: defaultLayers,
   team: initialTeam,
+  gameModel: DEFAULT_GAME_MODEL,
+  opponentScout: DEFAULT_OPPONENT_SCOUT,
   session: makeSession(),
   microcycle: makeMicrocycle(),
   lineupLab: initialLineupLab,
@@ -711,11 +732,46 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
       };
     }),
+  updateGameModel: (patch) =>
+    set((state) => ({
+      gameModel: normalizeGameModel({
+        ...state.gameModel,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      }),
+    })),
+  updateOpponentScout: (patch) =>
+    set((state) => ({
+      opponentScout: normalizeOpponentScout({
+        ...state.opponentScout,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      }),
+    })),
+  createSessionFromCoachAdvice: (response) => {
+    if (response.mode === "question") return false;
+    const state = get();
+    const nextSession = materializeDiagnosisSession(
+      state.session,
+      buildSessionPlanFromDiagnosis(response.advice, [
+        ...catalog,
+        ...state.exerciseVariants,
+      ]),
+      [...catalog, ...state.exerciseVariants],
+    );
+    if (!nextSession.blocks.length) return false;
+    set({ session: nextSession, view: "sessions" });
+    return true;
+  },
   loadSnapshot: (snapshot) =>
     set((current) => ({
       ...current,
       ...snapshot,
       layers: { ...defaultLayers, ...snapshot.layers },
+      gameModel: normalizeGameModel(snapshot.gameModel ?? current.gameModel),
+      opponentScout: normalizeOpponentScout(
+        snapshot.opponentScout ?? current.opponentScout,
+      ),
       coachInterview: initialCoachInterview,
       initialized: true,
     })),

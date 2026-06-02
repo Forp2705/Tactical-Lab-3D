@@ -6,6 +6,7 @@ import { useViewerKeyboard } from "@/viewer/useKeyboard";
 import { Suspense, lazy, useEffect } from "react";
 import "./theme.css";
 import "./tactical-ui.css";
+import "@/ui/tacticalPrimitives.css";
 
 // Code-splitting: cada vista y el visor 3D (Three.js) se cargan bajo demanda
 // para sacarlos del bundle inicial.
@@ -150,6 +151,8 @@ export function App() {
         personalSpace: state.personalSpace,
         layers: state.layers,
         team: state.team,
+        gameModel: state.gameModel,
+        opponentScout: state.opponentScout,
         session: state.session,
         microcycle: state.microcycle,
         lineupLab: state.lineupLab,

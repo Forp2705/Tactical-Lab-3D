@@ -53,4 +53,48 @@ describe("CoachResponse discriminated union", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("acepta diagnosis con desglose y alternativas", () => {
+    const result = CoachResponseSchema.safeParse({
+      mode: "diagnosis",
+      intent,
+      evidenceAudit,
+      advice: {
+        tacticalReading: "El equipo queda largo tras perdida.",
+        problemBreakdown: {
+          zone: "Carril central",
+          moment: "Tras perdida",
+          trigger: "Pase vertical rival",
+          ownVsRival: "Falla propia de distancia entre lineas",
+        },
+        probableCause: "El medio salta sin que la defensa achique.",
+        mainAdjustment: "Cerrar el bloque antes de presionar hacia delante.",
+        alternativeAdjustments: [
+          {
+            adjustment: "Bloque medio con gatillo de pase atras.",
+            whenToUse: "Si el rival sale limpio bajo presion.",
+            tradeoff: "Cede metros iniciales.",
+          },
+          {
+            adjustment: "Presion alta por ventanas cortas.",
+            whenToUse: "Si el rival tiene centrales imprecisos.",
+            tradeoff: "Expone espalda si el salto llega tarde.",
+          },
+        ],
+        onFieldInstructions: ["Achicar antes de saltar."],
+        wednesdayTest: "Tarea de perdida y reaccion.",
+        saturdayFocus: "No partirse tras perdida.",
+        adjustmentRisks: ["Quedar pasivos."],
+        successSignals: ["Menos recepciones entre lineas."],
+        reflection: {
+          mainUncertainty: "Faltan clips.",
+          missingInformation: "Falta zona exacta.",
+          alternativeInterpretation: "Puede ser cansancio.",
+          confidence: 0.7,
+        },
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

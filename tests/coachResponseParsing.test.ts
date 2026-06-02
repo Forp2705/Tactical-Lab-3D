@@ -47,9 +47,22 @@ describe("coach response parsing", () => {
   it("valida el schema final del coach", () => {
     expect(parseCoachAdvice(JSON.stringify(VALID_ADVICE))).toEqual({
       ...VALID_ADVICE,
+      problemBreakdown: {
+        zone: "Zona a confirmar",
+        moment: "Momento a confirmar",
+        trigger: "Gatillo a confirmar",
+        ownVsRival: "Responsabilidad a confirmar",
+      },
+      alternativeAdjustments: [],
       linkedExercises: [],
       actions: [],
       evidenceCitations: [],
+      modelContrast: {
+        aligned: [],
+        contradictions: [],
+        insufficientEvidence: [],
+      },
+      playerFitWarnings: [],
     });
   });
 

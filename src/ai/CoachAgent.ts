@@ -10,6 +10,12 @@ import {
 import { TEAM_CONTEXT } from "./TeamContext.js"
 import { COACH_RULES } from "./CoachRules.js"
 import { FOOTBALL_IDENTITY } from "./FootballIdentity.js"
+import {
+  contrastTextWithGameModel,
+  normalizeGameModel,
+  summarizeGameModel,
+} from "../data/gameModel.js"
+import { summarizeOpponentScout } from "../scout/opponentScout.js"
 import { MATCH_MEMORY } from "./MatchMemory.js"
 import { retrieveRelevantContext } from "./retrieveRelevantContext.js"
 import { retrieveRelevantKnowledge } from "./retrieveRelevantKnowledge.js"
@@ -25,7 +31,7 @@ import {
   detectTeamPatterns,
   formatPatternsForCoach,
 } from "./patternDetection.js"
-import { retrieveRelevantReports } from "./retrieveRelevantReports.js"
+import { retrieveRelevantReportsFromSaved } from "./retrieveRelevantReports.js"
 import { buildEvidenceCitation } from "./retrievalScoring.js"
 import { generateContextualQuestions } from "./contextualQuestionGenerator.js"
 import {
@@ -59,7 +65,7 @@ dotenv.config({
 const apiKey = process.env.OPENROUTER_API_KEY
 const modelName =
   process.env.OPENROUTER_MODEL ??
-  "deepseek/deepseek-chat-v3-0324:free"
+  "openai/gpt-4o-mini"
 
 function getClient() {
   if (!apiKey) {
@@ -104,6 +110,12 @@ export async function generateCoachResponse(
 
   const coachingStaffContext =
   formatCoachingStaffContext()
+  const structuredGameModel =
+  formatStructuredGameModel(coachContext)
+  const opponentScoutContext =
+  formatOpponentScoutContext(coachContext)
+  const playerFitContext =
+  formatPlayerFitRuntimeContext(coachContext, userInput)
 
   const catalogIndex =
   formatCatalogIndex()
@@ -116,8 +128,21 @@ Respond ONLY with valid JSON using this exact structure:
 
 {
   "tacticalReading": "string",
+  "problemBreakdown": {
+    "zone": "string",
+    "moment": "string",
+    "trigger": "string",
+    "ownVsRival": "string"
+  },
   "probableCause": "string",
   "mainAdjustment": "string",
+  "alternativeAdjustments": [
+    {
+      "adjustment": "string",
+      "whenToUse": "string",
+      "tradeoff": "string"
+    }
+  ],
   "onFieldInstructions": ["string", "string", "string"],
   "wednesdayTest": "string",
   "saturdayFocus": "string",
@@ -130,6 +155,12 @@ Respond ONLY with valid JSON using this exact structure:
     "confidence": 0.0
   },
   "linkedExercises": ["exercise-id"],
+  "modelContrast": {
+    "aligned": ["string"],
+    "contradictions": ["string"],
+    "insufficientEvidence": ["string"]
+  },
+  "playerFitWarnings": ["string"],
   "evidenceCitations": [
     {
       "sourceType": "knowledge|memory|observation|report",
@@ -160,6 +191,8 @@ Action rules:
 - Use createExerciseFromShape when the user asks to turn a tactical shape into a field task and a matching Lineup Lab shape id exists.
 - Do not invent exerciseId, lineupId or shapeId.
 - Max 3 linkedExercises and max 4 actions.
+- Always include 2-3 alternativeAdjustments. They must be real tactical paths, not repetitions of mainAdjustment.
+- problemBreakdown must separate: zone, moment, trigger, ownVsRival.
 
 Evidence citation rules:
 - evidenceCitations must cite only sourceId values listed in Evidence catalog.
@@ -167,8 +200,25 @@ Evidence citation rules:
 - If no evidence supports a claim, state the uncertainty in reflection instead of fabricating a citation.
 - Max 4 evidenceCitations.
 
+Game model and fit rules:
+- Explicitly contrast the diagnosis against Structured Game Model when evidence allows it.
+- Use modelContrast.aligned for things that confirm the user's model.
+- Use modelContrast.contradictions for tactical deviations from the user's model.
+- Use modelContrast.insufficientEvidence when the request lacks evidence to judge the model.
+- If Player fit context flags risk, include it in playerFitWarnings and adjustmentRisks.
+- Do not raise confidence only because the model says something; current evidence still governs confidence.
+
 Coaching staff context:
 ${coachingStaffContext}
+
+Structured Game Model:
+${structuredGameModel}
+
+Opponent Scout:
+${opponentScoutContext}
+
+Player fit context:
+${playerFitContext}
 
 Catalog index:
 ${catalogIndex}
@@ -233,16 +283,13 @@ ${userInput}
           useJsonMode,
         })
 
-        const rawText =
-          completion.choices[0]?.message?.content ?? ""
+        const rawText = extractCompletionText(completion)
 
-        return enrichAdviceWithExerciseMatches(
-          attachEvidenceCitations(
-            parseCoachAdvice(rawText),
-            evidenceCatalog,
-          ),
+        return finalizeCoachAdvice(parseCoachAdvice(rawText), {
+          evidenceCatalog,
           userInput,
-        )
+          coachContext,
+        })
       } catch (error) {
         lastError = error
         if (useJsonMode && isJsonModeUnsupportedError(error)) {
@@ -257,15 +304,12 @@ ${userInput}
               prompt,
               useJsonMode: false,
             })
-            const rawText =
-              completion.choices[0]?.message?.content ?? ""
-            return enrichAdviceWithExerciseMatches(
-              attachEvidenceCitations(
-                parseCoachAdvice(rawText),
-                evidenceCatalog,
-              ),
+            const rawText = extractCompletionText(completion)
+            return finalizeCoachAdvice(parseCoachAdvice(rawText), {
+              evidenceCatalog,
               userInput,
-            )
+              coachContext,
+            })
           } catch (fallbackError) {
             lastError = fallbackError
           }
@@ -378,7 +422,7 @@ export async function runCoachTurn({
           systemPrompt,
           userPrompt,
         })
-        return completion.choices[0]?.message?.content ?? ""
+        return extractCompletionText(completion)
       },
     )
   } catch (error) {
@@ -407,20 +451,20 @@ export async function runCoachTurn({
 }
 
 export async function retrieveCoachEvidence(userInput: string) {
-  const relevantContext =
-    await retrieveRelevantContext(userInput)
-
-  const relevantGeneratedMemory =
-    await retrieveRelevantGeneratedMemory(userInput)
-
-  const relevantKnowledge =
-    await retrieveRelevantKnowledge(userInput)
+  const [
+    relevantContext,
+    relevantGeneratedMemory,
+    relevantKnowledge,
+    recentReports,
+  ] = await Promise.all([
+    retrieveRelevantContext(userInput),
+    retrieveRelevantGeneratedMemory(userInput),
+    retrieveRelevantKnowledge(userInput),
+    loadSavedPostMatchReports(),
+  ])
 
   const relevantReports =
-    await retrieveRelevantReports(userInput)
-
-  const recentReports =
-    await loadSavedPostMatchReports()
+    retrieveRelevantReportsFromSaved(userInput, recentReports)
 
   const evidenceCatalog = [
     ...relevantGeneratedMemory,
@@ -437,6 +481,34 @@ export async function retrieveCoachEvidence(userInput: string) {
     recentReports,
     evidenceCatalog,
   }
+}
+
+/**
+ * Extrae el texto de la respuesta del modelo de forma segura.
+ *
+ * Por qué existe: OpenRouter a veces responde HTTP 200 con un payload de error
+ * (modelo :free caido, rate limit, model id invalido, sin credito) que NO trae
+ * `choices`. Acceder a `completion.choices[0]` en ese caso tira un TypeError
+ * critico ("Cannot read properties of undefined (reading '0')") que oculta el
+ * error real. Aca chequeamos primero y propagamos el mensaje verdadero, asi el
+ * retry/fallback funciona y el log muestra la causa.
+ */
+function extractCompletionText(completion: unknown): string {
+  const result = completion as {
+    choices?: Array<{ message?: { content?: string } }>
+    error?: { message?: string; code?: string | number }
+  }
+
+  if (!result?.choices?.length) {
+    const apiError = result?.error
+    throw new Error(
+      apiError?.message
+        ? `OpenRouter error: ${apiError.message}`
+        : "OpenRouter no devolvio choices (modelo no disponible, rate limit, sin credito o model id invalido)",
+    )
+  }
+
+  return result.choices[0]?.message?.content ?? ""
 }
 
 async function requestCoachCompletion({
@@ -581,6 +653,7 @@ function formatRuntimeCoachContext(coachContext: unknown) {
   const context = coachContext as Record<string, unknown>
   const lines = [
     formatTeamRuntimeContext(context),
+    formatStructuredRuntimeContext(context),
     formatShapeRuntimeContext(context.shapeContext),
     formatLineupLabRuntimeContext(context),
     formatInterviewRuntimeContext(context),
@@ -589,6 +662,16 @@ function formatRuntimeCoachContext(coachContext: unknown) {
   return lines.length
     ? lines.join("\n\n")
     : "Runtime UI context provided without relevant tactical fields."
+}
+
+function formatStructuredRuntimeContext(context: Record<string, unknown>) {
+  const gameModel = objectValue(context.gameModel)
+  const opponentScout = objectValue(context.opponentScout)
+  const lines = [
+    gameModel ? "GAME MODEL: structured model provided separately." : "",
+    opponentScout ? "OPPONENT SCOUT: active rival scout provided separately." : "",
+  ].filter(Boolean)
+  return lines.join("\n")
 }
 
 function formatTeamRuntimeContext(context: Record<string, unknown>) {
@@ -616,6 +699,79 @@ function formatTeamRuntimeContext(context: Record<string, unknown>) {
   ]
     .filter(Boolean)
     .join("\n")
+}
+
+function formatStructuredGameModel(coachContext: unknown) {
+  const context = objectValue(coachContext)
+  const raw = context?.gameModel
+  if (!raw) {
+    return "No editable Game Model provided. Use static identity only as fallback."
+  }
+  return summarizeGameModel(normalizeGameModel(raw))
+}
+
+function formatOpponentScoutContext(coachContext: unknown) {
+  const context = objectValue(coachContext)
+  const raw = context?.opponentScout
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return "No opponent scout loaded."
+  }
+  return summarizeOpponentScout(raw as Parameters<typeof summarizeOpponentScout>[0])
+}
+
+function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string) {
+  const context = objectValue(coachContext)
+  if (!context) return "No squad fit context."
+  const players = arrayValue(context.availableSquad)
+  if (!players.length) return "No available squad provided."
+  const normalized = normalizeForRules(userInput)
+  const lines: string[] = []
+  const centerBacks = players.filter((player) =>
+    runtimePlayerPositions(player).some((position) => position === "CB"),
+  )
+  const pivots = players.filter((player) =>
+    runtimePlayerPositions(player).some((position) => ["CDM", "CM"].includes(position)),
+  )
+  const attackers = players.filter((player) =>
+    runtimePlayerPositions(player).some((position) => ["LW", "RW", "ST", "CM", "CDM"].includes(position)),
+  )
+
+  const slowCenterBacks = centerBacks.filter((player) => runtimeAttr(player, "speed") < 58)
+  if (
+    slowCenterBacks.length &&
+    /subir|bloque alto|presion alta|presionar/i.test(normalized)
+  ) {
+    lines.push(
+      `- RIESGO FIT: bloque alto con centrales lentos (${slowCenterBacks.map(runtimePlayerLabel).join("; ")}).`,
+    )
+  }
+
+  const weakPivots = pivots.filter(
+    (player) => runtimeAttr(player, "pass") < 58 || runtimeAttr(player, "control") < 58,
+  )
+  if (weakPivots.length && /salida|pivote|5|progres/i.test(normalized)) {
+    lines.push(
+      `- RIESGO FIT: salida interior condicionada por pivote con pase/control bajo (${weakPivots.map(runtimePlayerLabel).join("; ")}).`,
+    )
+  }
+
+  const lowPress = attackers.filter((player) => runtimeAttr(player, "press") < 55)
+  if (lowPress.length >= 2 && /presion|tras perdida|apretar/i.test(normalized)) {
+    lines.push(
+      `- RIESGO FIT: presion alta con baja intensidad de presion en roles clave (${lowPress.map(runtimePlayerLabel).join("; ")}).`,
+    )
+  }
+
+  const organizer = pivots
+    .filter((player) => runtimeAttr(player, "tactical") >= 72)
+    .sort((a, b) => runtimeAttr(b, "tactical") - runtimeAttr(a, "tactical"))[0]
+  if (organizer) {
+    lines.push(`- FORTALEZA FIT: ${runtimePlayerLabel(organizer)} puede ordenar salida/presion.`)
+  }
+
+  return lines.length
+    ? lines.join("\n")
+    : "No deterministic fit warnings for this request."
 }
 
 function formatShapeRuntimeContext(shapeContext: unknown) {
@@ -746,6 +902,38 @@ function metricObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function runtimePlayerPositions(player: unknown) {
+  const entry = objectValue(player)
+  return arrayValue(entry?.positions).filter((item): item is string => typeof item === "string")
+}
+
+function runtimeAttr(player: unknown, key: string) {
+  const attributes = objectValue(objectValue(player)?.attributes)
+  const value = attributes?.[key]
+  return typeof value === "number" && Number.isFinite(value) ? value : 60
+}
+
+function runtimePlayerLabel(player: unknown) {
+  const entry = objectValue(player)
+  const num = numberValue(entry?.num) ?? "?"
+  const name = stringValue(entry?.name) ?? "Jugador"
+  return `#${num} ${name}`
+}
+
+function normalizeForRules(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
 }
 
 type EvidenceCatalogItem = RetrievedEvidence
@@ -908,6 +1096,74 @@ function attachEvidenceCitations(
   }
 }
 
+function finalizeCoachAdvice(
+  advice: CoachMatchAdvice,
+  {
+    evidenceCatalog,
+    userInput,
+    coachContext,
+  }: {
+    evidenceCatalog: EvidenceCatalogItem[]
+    userInput: string
+    coachContext: unknown
+  },
+): CoachMatchAdvice {
+  const withCitations = attachEvidenceCitations(advice, evidenceCatalog)
+  const withDepth = ensureAdviceDepth(withCitations, userInput)
+  const withExercises = enrichAdviceWithExerciseMatches(withDepth, userInput)
+  const gameModel = objectValue(coachContext)?.gameModel
+  const deterministicContrast = gameModel
+    ? contrastTextWithGameModel(
+        [
+          userInput,
+          withExercises.tacticalReading,
+          withExercises.problemBreakdown.zone,
+          withExercises.problemBreakdown.trigger,
+          withExercises.probableCause,
+          withExercises.mainAdjustment,
+          withExercises.wednesdayTest,
+          withExercises.saturdayFocus,
+        ].join(" "),
+        normalizeGameModel(gameModel),
+      )
+    : { aligned: [], contradictions: [], insufficientEvidence: [] }
+  const deterministicFit = formatPlayerFitRuntimeContext(coachContext, [
+    userInput,
+    withExercises.mainAdjustment,
+    withExercises.probableCause,
+  ].join(" "))
+    .split("\n")
+    .filter((line) => line.startsWith("- RIESGO FIT"))
+    .map((line) => line.replace(/^- RIESGO FIT:\s*/, ""))
+  const fitWarnings = [
+    ...withExercises.playerFitWarnings,
+    ...deterministicFit,
+  ].filter((item, index, list) => item.trim() && list.indexOf(item) === index)
+
+  return {
+    ...withExercises,
+    modelContrast: {
+      aligned: uniqueStrings([
+        ...withExercises.modelContrast.aligned,
+        ...deterministicContrast.aligned,
+      ]),
+      contradictions: uniqueStrings([
+        ...withExercises.modelContrast.contradictions,
+        ...deterministicContrast.contradictions,
+      ]),
+      insufficientEvidence: uniqueStrings([
+        ...withExercises.modelContrast.insufficientEvidence,
+        ...deterministicContrast.insufficientEvidence,
+      ]),
+    },
+    playerFitWarnings: fitWarnings,
+    adjustmentRisks: uniqueStrings([
+      ...withExercises.adjustmentRisks,
+      ...fitWarnings,
+    ]),
+  }
+}
+
 function enrichAdviceWithExerciseMatches(
   advice: CoachMatchAdvice,
   userInput: string,
@@ -959,10 +1215,163 @@ function enrichAdviceWithExerciseMatches(
     const key = `${action.type}:${exerciseId}`
     return existingActionKeys.has(key) ? [] : [action]
   })
+  const sessionAction = linkedExercises.length
+    ? [{
+        type: "createSessionFromDiagnosis" as const,
+        label: "Crear sesion desde este diagnostico",
+        exerciseIds: linkedExercises,
+        title: `Sesion desde diagnostico`,
+        rationale: advice.mainAdjustment,
+      }]
+    : []
 
   return {
     ...advice,
     linkedExercises,
-    actions: [...structuredActions, ...advice.actions].slice(0, 4),
+    actions: [...sessionAction, ...structuredActions, ...advice.actions].slice(0, 5),
   }
+}
+
+function ensureAdviceDepth(
+  advice: CoachMatchAdvice,
+  userInput: string,
+): CoachMatchAdvice {
+  const problemBreakdown = {
+    zone: usefulText(advice.problemBreakdown.zone)
+      ? advice.problemBreakdown.zone
+      : inferProblemZone(userInput, advice),
+    moment: usefulText(advice.problemBreakdown.moment)
+      ? advice.problemBreakdown.moment
+      : inferProblemMoment(userInput),
+    trigger: usefulText(advice.problemBreakdown.trigger)
+      ? advice.problemBreakdown.trigger
+      : inferProblemTrigger(userInput, advice),
+    ownVsRival: usefulText(advice.problemBreakdown.ownVsRival)
+      ? advice.problemBreakdown.ownVsRival
+      : "Responsabilidad a validar con evidencia del partido.",
+  }
+  const alternatives = uniqueAlternativeAdjustments([
+    ...advice.alternativeAdjustments,
+    ...fallbackAlternativeAdjustments(advice, userInput),
+  ]).slice(0, 3)
+
+  return {
+    ...advice,
+    problemBreakdown,
+    alternativeAdjustments: alternatives,
+    onFieldInstructions: advice.onFieldInstructions.slice(0, 5),
+  }
+}
+
+function fallbackAlternativeAdjustments(
+  advice: CoachMatchAdvice,
+  userInput: string,
+): CoachMatchAdvice["alternativeAdjustments"] {
+  const normalized = normalizeForRules(
+    [
+      userInput,
+      advice.tacticalReading,
+      advice.probableCause,
+      advice.mainAdjustment,
+    ].join(" "),
+  )
+  const alternatives: CoachMatchAdvice["alternativeAdjustments"] = []
+
+  if (/bloque|presion|presionar|subir|alto/.test(normalized)) {
+    alternatives.push({
+      adjustment: "Sostener bloque medio y presionar solo con gatillo claro.",
+      whenToUse: "Cuando el plantel no sostiene esfuerzos largos o hay dudas de velocidad a la espalda.",
+      tradeoff: "Cede metros iniciales y exige defender mejor la segunda jugada.",
+    })
+    alternatives.push({
+      adjustment: "Presionar alto durante ventanas cortas y replegar si el rival supera la primera linea.",
+      whenToUse: "Cuando queres incomodar salida rival sin exponer todo el partido.",
+      tradeoff: "Requiere coordinacion fina; si un jugador salta tarde, el equipo queda largo.",
+    })
+  } else if (/salida|progres|pivote|5/.test(normalized)) {
+    alternatives.push({
+      adjustment: "Usar salida mixta: atraer por dentro y activar tercer hombre por fuera.",
+      whenToUse: "Cuando el pivote esta tapado o no tiene perfil para recibir de espaldas.",
+      tradeoff: "Puede alejar apoyos del 9 si los interiores no acompanan.",
+    })
+    alternatives.push({
+      adjustment: "Saltar una linea con pase directo preparado y juntar segunda jugada.",
+      whenToUse: "Cuando el rival presiona alto y niega la salida corta.",
+      tradeoff: "Pierde control inicial de posesion y exige duelos ofensivos.",
+    })
+  } else if (/9|delanter|gener|atac/.test(normalized)) {
+    alternatives.push({
+      adjustment: "Acercar un interior al 9 para crear apoyo frontal antes de acelerar.",
+      whenToUse: "Cuando el delantero queda aislado y la segunda pelota cae lejos.",
+      tradeoff: "Puede dejar menos presencia en la base de la jugada.",
+    })
+    alternatives.push({
+      adjustment: "Liberar una banda para atacar con lateral y extremo escalonados.",
+      whenToUse: "Cuando el rival protege el carril central y concede lado debil.",
+      tradeoff: "Expone transicion defensiva si no hay cobertura del mediocentro.",
+    })
+  } else {
+    alternatives.push({
+      adjustment: "Reducir el riesgo inicial y validar la causa con una tarea corta de repeticion.",
+      whenToUse: "Cuando la evidencia todavia no separa sintoma de causa.",
+      tradeoff: "No corrige todo de inmediato, pero evita sobrerreaccionar.",
+    })
+    alternatives.push({
+      adjustment: "Probar una version mas agresiva del ajuste durante 10 minutos controlados.",
+      whenToUse: "Cuando necesitás cambiar el partido sin comprometer todo el plan.",
+      tradeoff: "Si falla el primer pase o salto, aumenta la exposicion.",
+    })
+  }
+
+  return alternatives
+}
+
+function inferProblemZone(userInput: string, advice: CoachMatchAdvice) {
+  const text = normalizeForRules(
+    `${userInput} ${advice.tacticalReading} ${advice.probableCause}`,
+  )
+  if (/banda|lateral|extremo/.test(text)) return "Banda o carril exterior."
+  if (/espalda|lineas|bloque/.test(text)) return "Espacio entre lineas o espalda del bloque."
+  if (/salida|pivote|5/.test(text)) return "Base de salida y carril central."
+  if (/9|delanter/.test(text)) return "Ultimo tercio y zona de apoyo al 9."
+  return "Zona a confirmar con evidencia del caso."
+}
+
+function inferProblemMoment(userInput: string) {
+  const text = normalizeForRules(userInput)
+  if (/segundo tiempo|60|70|cans/.test(text)) return "Tramo final o caida fisica."
+  if (/salida|inicio|primer pase/.test(text)) return "Inicio de la posesion."
+  if (/perdida|transicion/.test(text)) return "Tras perdida o cambio de posesion."
+  if (/sabado|partido/.test(text)) return "Contexto de partido a validar."
+  return "Momento a confirmar."
+}
+
+function inferProblemTrigger(userInput: string, advice: CoachMatchAdvice) {
+  const text = normalizeForRules(`${userInput} ${advice.mainAdjustment}`)
+  if (/pase atras|control malo|gatillo/.test(text)) return "Gatillo de presion o control rival."
+  if (/perdida/.test(text)) return "Perdida propia y reaccion posterior."
+  if (/centro|banda/.test(text)) return "Progresion rival hacia banda."
+  if (/salida/.test(text)) return "Primera recepcion bajo presion."
+  return "Gatillo a validar con notas o video."
+}
+
+function uniqueAlternativeAdjustments(
+  items: CoachMatchAdvice["alternativeAdjustments"],
+) {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const key = normalizeForRules(item.adjustment)
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function usefulText(value: string) {
+  const normalized = normalizeForRules(value)
+  return Boolean(normalized) && !/confirmar|s\/d|sin dato/.test(normalized)
+}
+
+function uniqueStrings(items: string[]) {
+  return [...new Set(items.map((item) => item.trim()).filter(Boolean))]
 }

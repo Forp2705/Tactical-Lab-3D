@@ -1,5 +1,6 @@
 import { catalog } from "@/data";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
+import { LoadMeter, PitchViz } from "@/ui/tacticalPrimitives";
 
 export function LibraryView() {
   const search = useAppStore((state) => state.search);
@@ -116,35 +117,21 @@ export function LibraryView() {
               className={`exercise-card ${exercise.id === selectedExerciseId ? "selected" : ""}`}
               onClick={() => selectExercise(exercise.id)}
             >
-              <canvas
-                width={320}
-                height={180}
-                ref={(canvas) => {
-                  if (!canvas) return;
-                  const context = canvas.getContext("2d");
-                  if (!context) return;
-                  context.clearRect(0, 0, canvas.width, canvas.height);
-                  const gradient = context.createLinearGradient(0, 0, 320, 180);
-                  gradient.addColorStop(0, "#0c2a31");
-                  gradient.addColorStop(1, "#122f1c");
-                  context.fillStyle = gradient;
-                  context.fillRect(0, 0, 320, 180);
-                  context.fillStyle = "rgba(255,255,255,0.86)";
-                  context.fillRect(24, 36, 272, 108);
-                  context.fillStyle = "#0e3823";
-                  context.fillRect(27, 39, 266, 102);
-                  context.strokeStyle = "#e6f5ef";
-                  context.lineWidth = 2;
-                  context.strokeRect(27, 39, 266, 102);
-                  context.fillStyle = "#e6f5ef";
-                  context.fillRect(156, 39, 2, 102);
-                  context.beginPath();
-                  context.arc(160, 90, 24, 0, Math.PI * 2);
-                  context.stroke();
-                  context.fillStyle = "#5eead4";
-                  context.fillRect(55, 77, 16, 16);
-                  context.fillRect(240, 88, 16, 16);
-                }}
+              <PitchViz
+                compact
+                title={exercise.phase}
+                subtitle={exercise.principle}
+                overlays={[
+                  {
+                    type: "zone",
+                    x: exercise.phase.includes("attack") ? 58 : 20,
+                    y: 18,
+                    w: 28,
+                    h: 28,
+                    tone: exercise.rpe >= 7 ? "warn" : "info",
+                    label: exercise.objective.primary.slice(0, 14),
+                  },
+                ]}
               />
               <div className="card-meta">
                 <h3>{exercise.title}</h3>
@@ -158,10 +145,10 @@ export function LibraryView() {
                   {exercise.players.min}-{exercise.players.max} jugadores
                 </span>
               </div>
-              <div className="card-load-row">
-                <span>RPE {exercise.rpe}</span>
-                <i style={{ width: `${exercise.rpe * 10}%` }} />
-              </div>
+              <LoadMeter
+                load={exercise.rpe >= 7 ? "high" : exercise.rpe >= 5 ? "med" : "low"}
+                label={`RPE ${exercise.rpe}`}
+              />
             </button>
           ))}
         </div>
