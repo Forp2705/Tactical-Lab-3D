@@ -33,6 +33,10 @@ export default defineConfig(() => ({
     react(),
     localApiRoute("/api/agent-status", () => import("./api/agent-status")),
     localApiRoute("/api/coach-agent", () => import("./api/coach-agent")),
+    localApiRoute("/api/coach-feedback", () => import("./api/coach-feedback")),
+    localApiRoute("/api/coach-observability", () =>
+      import("./api/coach-observability"),
+    ),
     localApiRoute("/api/ai/gemini", () => import("./api/ai/gemini")),
     localApiRoute("/api/post-match/generate", () =>
       import("./api/post-match/generate"),
