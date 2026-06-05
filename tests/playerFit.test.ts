@@ -4,11 +4,20 @@ import { analyzePlayerFit, inferAdjustmentsFromText } from "../src/ai/playerFit"
 
 describe("playerFit", () => {
   it("advierte centrales lentos en bloque alto", () => {
-    const findings = analyzePlayerFit([player("1", "Central", ["CB"], { speed: 45 })], [
-      "highBlock",
-    ]);
+    const findings = analyzePlayerFit(
+      [
+        player(
+          "1",
+          "Central",
+          ["CB"],
+          "Central fuerte en area, pero lento y sufre a la espalda.",
+        ),
+      ],
+      ["highBlock"],
+    );
 
     expect(findings.some((finding) => finding.id === "slow-cb-high-block")).toBe(true);
+    expect(findings[0]?.evidence[0]).toContain("perfil:");
   });
 
   it("infiere ajustes desde texto tactico", () => {
@@ -20,7 +29,7 @@ function player(
   id: string,
   name: string,
   positions: Player["positions"],
-  attrs: Partial<Player["attributes"]>,
+  profile: string,
 ): Player {
   return {
     id,
@@ -29,7 +38,7 @@ function player(
     positions,
     foot: "R",
     status: "available",
-    profile: "Test",
+    profile,
     attributes: {
       speed: 60,
       stamina: 60,
@@ -38,7 +47,6 @@ function player(
       press: 60,
       duel: 60,
       tactical: 60,
-      ...attrs,
     },
   };
 }

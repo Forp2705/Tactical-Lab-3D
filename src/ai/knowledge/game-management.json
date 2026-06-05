@@ -1,0 +1,44 @@
+[
+  {
+    "category": "game-management",
+    "principle": "Gestión del resultado yendo ganando: bajar el ritmo, alargar las jugadas, asegurar la pelota en zonas seguras y subir la línea de inicio del bloque para alejar el peligro.",
+    "context": "Últimos minutos con ventaja mínima.",
+    "risk": "Replegarse en exceso invita oleadas y nervios; especular demasiado temprano regala la iniciativa todo el partido.",
+    "tags": ["gestion", "resultado", "tempo", "cerrar-partido"]
+  },
+  {
+    "category": "game-management",
+    "principle": "Gestión yendo perdiendo: aumentar riesgo de forma ordenada (más hombres en ataque, salida más directa, laterales altos) sin desarmar del todo el resguardo.",
+    "context": "Cuando hay que ir a buscar el partido en el tramo final.",
+    "risk": "Tirar todos arriba sin equilibrio convierte una derrota ajustada en goleada por contras.",
+    "tags": ["gestion", "resultado", "riesgo", "remontada"]
+  },
+  {
+    "category": "game-management",
+    "principle": "Manejo del tempo: saber cuándo acelerar (rival desordenado, espacios) y cuándo pausar (rival ordenado, para descansar o calmar el partido). El ritmo es una decisión, no un accidente.",
+    "context": "A lo largo de todo el partido según el estado del rival y el propio.",
+    "risk": "Jugar siempre al mismo ritmo entrega la iniciativa de los tiempos al rival.",
+    "tags": ["gestion", "tempo", "ritmo", "control"]
+  },
+  {
+    "category": "game-management",
+    "principle": "Gestión de la energía en planteles cortos o amateur: elegir cuándo presionar fuerte y cuándo replegar para no fundirse antes del final; la intensidad se administra, no se gasta toda junta.",
+    "context": "Equipos sin recambios o con poca preparación física.",
+    "risk": "Presionar alto los 90 minutos sin piernas termina en bloque partido y goles en el cierre.",
+    "tags": ["gestion", "energia", "fisico", "presion", "amateur"]
+  },
+  {
+    "category": "game-management",
+    "principle": "Adaptación al contexto del partido (clima, cancha, arbitraje, importancia): ajustar el plan a condiciones reales, no solo a la pizarra.",
+    "context": "Partidos en condiciones adversas o de alta exigencia emocional.",
+    "risk": "Ignorar el contexto (jugar corto en un barrial, presión alta con calor extremo) hace fracasar un buen plan.",
+    "tags": ["gestion", "contexto", "clima", "cancha", "adaptacion"]
+  },
+  {
+    "category": "game-management",
+    "principle": "Cambios con criterio táctico: el banco se usa para resolver un problema concreto (sostener una banda, sumar un pivote, frescura en presión), no solo por nombres.",
+    "context": "Al leer un problema durante el partido.",
+    "risk": "Cambiar sin un porqué táctico claro desarma equilibrios que funcionaban.",
+    "tags": ["gestion", "cambios", "banco", "ajuste"]
+  }
+]

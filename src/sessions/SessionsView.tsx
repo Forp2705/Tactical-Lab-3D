@@ -13,14 +13,17 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { computeMicrocycleAlerts } from "./MicrocycleAlerts";
-import { LoadMeter, PitchViz } from "@/ui/tacticalPrimitives";
+import {
+  LoadMeter,
+  PitchViz,
+  type PitchOverlay,
+} from "@/ui/tacticalPrimitives";
 
 type DragMeta =
   | { type: "exercise"; exerciseId: string }
@@ -30,6 +33,7 @@ type DragMeta =
 export function SessionsView() {
   const session = useAppStore((state) => state.session);
   const microcycle = useAppStore((state) => state.microcycle);
+  const aiPrompt = useAppStore((state) => state.aiPrompt);
   const addToSession = useAppStore((state) => state.addToSession);
   const reorderSessionBlocks = useAppStore(
     (state) => state.reorderSessionBlocks,
@@ -74,22 +78,7 @@ export function SessionsView() {
           event.active.id !== overId
         ) {
           const activeId = String(event.active.id);
-          const oldIndex = session.blocks.findIndex(
-            (block) => block.id === activeId,
-          );
-          const newIndex = session.blocks.findIndex(
-            (block) => block.id === overId,
-          );
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const next = arrayMove(session.blocks, oldIndex, newIndex);
-            useAppStore.getState().loadSnapshot({
-              session: {
-                ...session,
-                blocks: next,
-                computed: recomputeFallback(next),
-              },
-            });
-          }
+          reorderSessionBlocks(activeId, overId);
         }
         setDragMeta(null);
       }}
@@ -98,8 +87,8 @@ export function SessionsView() {
         <div className="team-card">
           <div className="section-title">
             <div>
-              <span className="panel-eyebrow">Training day builder</span>
-              <h3>Planificador de sesión</h3>
+              <span className="panel-eyebrow">Diagnostico -&gt; campo</span>
+              <h3>Planificador de sesion</h3>
             </div>
             <button
               type="button"
@@ -108,6 +97,19 @@ export function SessionsView() {
               Exportar PDF
             </button>
           </div>
+          <div className="session-origin-card">
+            <span className="eyebrow">Diagnostico -&gt; sesion</span>
+            <h4>
+              {aiPrompt.trim()
+                ? shorten(aiPrompt, 110)
+                : "Todavia no hay un diagnostico activo enlazado a esta sesion."}
+            </h4>
+            <p>
+              {session.staffNotes?.trim()
+                ? shorten(session.staffNotes.split("\n")[0] ?? "", 138)
+                : "La sesion gana valor cuando el problema tactico y el trabajo de campo quedan unidos."}
+            </p>
+          </div>
           <div className="session-summary" style={{ marginTop: 12 }}>
             <div className="summary-tile">
               <b>{session.blocks.length}</b>
@@ -115,7 +117,7 @@ export function SessionsView() {
             </div>
             <div className="summary-tile">
               <b>{computed.totalDuration}'</b>
-              Duración
+              Duracion
             </div>
             <div className="summary-tile">
               <b>{computed.totalLoad}</b>
@@ -138,7 +140,8 @@ export function SessionsView() {
                   ))
                 ) : (
                   <p className="muted">
-                    Arrastrá ejercicios desde la biblioteca.
+                    Arrastra ejercicios desde Biblioteca para conectar la
+                    semana con el problema tactico.
                   </p>
                 )}
               </div>
@@ -147,10 +150,10 @@ export function SessionsView() {
         </div>
 
         <div className="team-card">
-          <span className="panel-eyebrow">Drag from catalog</span>
-          <h3>Catálogo para arrastrar</h3>
+          <span className="panel-eyebrow">Biblioteca conectada</span>
+          <h3>Catalogo para arrastrar</h3>
           <p className="muted-panel">
-            Soltá un ejercicio acá abajo para agregarlo a la sesión.
+            Suelta un ejercicio aqui para sumarlo a la sesion activa.
           </p>
           <div style={{ maxHeight: 680, overflow: "auto", paddingRight: 4 }}>
             {catalog.slice(0, 16).map((exercise) => (
@@ -208,7 +211,9 @@ export function SessionsView() {
   );
 }
 
-function ExerciseDraggable({ exerciseId }: { exerciseId: string }) {
+const ExerciseDraggable = memo(function ExerciseDraggable({
+  exerciseId,
+}: { exerciseId: string }) {
   const exercise = catalog.find((item) => item.id === exerciseId);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -236,17 +241,21 @@ function ExerciseDraggable({ exerciseId }: { exerciseId: string }) {
       <b>{exercise.title}</b>
       <br />
       <small>
-        {exercise.duration} min · {exercise.phase} · {exercise.principle}
+        {exercise.duration} min - {exercise.phase} - {exercise.principle}
       </small>
     </div>
   );
-}
+});
 
-function SessionBlockCard({ id, index }: { id: string; index: number }) {
-  const session = useAppStore((state) => state.session);
+const SessionBlockCard = memo(function SessionBlockCard({
+  id,
+  index,
+}: { id: string; index: number }) {
+  const block = useAppStore((state) =>
+    state.session.blocks.find((item) => item.id === id),
+  );
   const updateSessionBlock = useAppStore((state) => state.updateSessionBlock);
   const removeSessionBlock = useAppStore((state) => state.removeSessionBlock);
-  const block = session.blocks.find((item) => item.id === id);
   const exercise = catalog.find((item) => item.id === block?.exerciseId);
   const {
     attributes,
@@ -261,6 +270,21 @@ function SessionBlockCard({ id, index }: { id: string; index: number }) {
   });
 
   if (!block || !exercise) return null;
+
+  const previewOverlays: PitchOverlay[] = [
+    {
+      type: "zone",
+      x: exercise.phase.includes("attack") ? 58 : 24,
+      y: 18,
+      w: 28,
+      h: 28,
+      tone:
+        exercise.intensity === "high" || exercise.intensity === "veryHigh"
+          ? "warn"
+          : "info",
+      label: exercise.principle.slice(0, 12),
+    },
+  ];
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -289,7 +313,7 @@ function SessionBlockCard({ id, index }: { id: string; index: number }) {
           <b>{exercise.title}</b>
           <br />
           <small>
-            {exercise.phase} · {exercise.principle} · {exercise.intensity}
+            {exercise.phase} - {exercise.principle} - {exercise.intensity}
           </small>
         </div>
         <button
@@ -304,17 +328,7 @@ function SessionBlockCard({ id, index }: { id: string; index: number }) {
         compact
         title="Preview tactico"
         subtitle={`${exercise.phase} / ${exercise.principle}`}
-        overlays={[
-          {
-            type: "zone",
-            x: exercise.phase.includes("attack") ? 58 : 24,
-            y: 18,
-            w: 28,
-            h: 28,
-            tone: exercise.intensity === "high" || exercise.intensity === "veryHigh" ? "warn" : "info",
-            label: exercise.principle.slice(0, 12),
-          },
-        ]}
+        overlays={previewOverlays}
       />
       <div className="toolbar">
         <input
@@ -332,7 +346,7 @@ function SessionBlockCard({ id, index }: { id: string; index: number }) {
       </div>
     </div>
   );
-}
+});
 
 function DroppableSessionArea({
   id,
@@ -393,4 +407,9 @@ async function exportSessionPdf(
   // Diferimos @react-pdf/renderer: solo se carga al exportar.
   const { exportSessionPdf: runExport } = await import("./sessionPdf");
   await runExport(blocks, computed);
+}
+
+function shorten(text: string, max: number) {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trim()}...`;
 }

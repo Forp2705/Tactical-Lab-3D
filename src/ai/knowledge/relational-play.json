@@ -1,0 +1,51 @@
+[
+  {
+    "category": "relational-play",
+    "principle": "Juego relacional (escuela sudamericana, Diniz): priorizar la proximidad y la relación entre compañeros por encima de ocupar posiciones fijas; el equipo se acerca para combinar en sectores.",
+    "context": "Para equipos con buen pie y entendimiento, contra rivales que marcan por zonas y dejan combinar cerca.",
+    "risk": "Acercarse demasiado deja zonas enteras vacías y expone a la pérdida si la combinación falla; exige resguardo claro detrás.",
+    "tags": ["relacionismo", "ataque", "proximidad", "combinacion", "asociacion"]
+  },
+  {
+    "category": "relational-play",
+    "principle": "Tabela y escadinha: paredes rápidas (tabelas) y escaleras de apoyos escalonados (escadinha) para progresar por dentro con toques cortos en lugar de pases largos posicionales.",
+    "context": "En zonas de progresión congestionadas donde el pase largo no está disponible.",
+    "risk": "Si los apoyos no llegan a tiempo o el ritmo de pase baja, el rival roba en zona central y sale de contra.",
+    "tags": ["relacionismo", "ataque", "pared", "apoyos", "combinacion"]
+  },
+  {
+    "category": "relational-play",
+    "principle": "Rotaciones libres: los jugadores intercambian posiciones según el juego, no según un mapa fijo; el que queda libre asume la función, no el puesto.",
+    "context": "Contra marcas individuales o sistemas rígidos que siguen al puesto.",
+    "risk": "Sin disciplina de reequilibrio, las rotaciones dejan al equipo descompensado para la transición defensiva.",
+    "tags": ["relacionismo", "rotaciones", "movilidad", "ataque"]
+  },
+  {
+    "category": "relational-play",
+    "principle": "Ataque por sectores: cargar un sector del campo con varios jugadores para generar superioridad local y desbordar por acumulación, soltando luego al lado débil.",
+    "context": "Cuando el rival defiende compacto y conviene romperlo por saturación local antes de cambiar.",
+    "risk": "Saturar un sector sin salida al lado débil termina en embudo y pérdida; deja medio campo libre al rival.",
+    "tags": ["relacionismo", "ataque", "sobrecarga", "sector", "superioridad"]
+  },
+  {
+    "category": "relational-play",
+    "principle": "Posición vs relación: el juego de posición fija referencias y ocupa espacios; el relacional prioriza vínculos y movilidad. No son excluyentes: se puede tener estructura de base y soltar relaciones en zona de creación.",
+    "context": "Al decidir cómo querés que el equipo progrese y ataque.",
+    "risk": "Mezclar ambos sin criterio confunde a los jugadores sobre cuándo ocupar y cuándo acercarse.",
+    "tags": ["relacionismo", "juego-de-posicion", "modelo-de-juego", "contraste"]
+  },
+  {
+    "category": "relational-play",
+    "principle": "El balón como imán: en el relacionismo los compañeros gravitan hacia la pelota para ofrecer siempre 2-3 apoyos cercanos y mantener la cadena de pases viva.",
+    "context": "Zonas de combinación y salida bajo presión cercana.",
+    "risk": "Gravitar todos hacia la pelota anula la amplitud y la profundidad si no queda al menos una referencia abierta o en profundidad.",
+    "tags": ["relacionismo", "apoyos", "proximidad", "ataque"]
+  },
+  {
+    "category": "relational-play",
+    "principle": "Improvisación colectiva: la jugada no está guionada paso a paso; se construye sobre principios de proximidad y timing, dejando que la sociedad entre jugadores resuelva.",
+    "context": "Equipos con jugadores asociativos y buena lectura, en tres cuartos.",
+    "risk": "Sin principios claros, la improvisación se vuelve desorden; funciona solo si el resto defensivo está garantizado.",
+    "tags": ["relacionismo", "creatividad", "timing", "ataque"]
+  }
+]

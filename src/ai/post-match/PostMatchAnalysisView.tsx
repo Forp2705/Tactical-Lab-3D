@@ -13,7 +13,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   commitMemoryCandidates,
-  listPostMatchReports,
+  refreshPostMatchReports,
   requestPostMatchReport,
   savePostMatchReport,
 } from "./postMatchClient";
@@ -33,6 +33,7 @@ import type {
   PostMatchTag,
   SavedPostMatchReport,
 } from "./schemas";
+import { usePostMatchReports } from "./usePostMatchReports";
 
 type FormState = {
   opponent: string;
@@ -95,6 +96,7 @@ export function PostMatchAnalysisView() {
   const consumePendingPostMatchEvidenceText = useAppStore(
     (state) => state.consumePendingPostMatchEvidenceText,
   );
+  const { reports: history, reportsError: historyError } = usePostMatchReports();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [mode, setMode] = useState<PostMatchMode>("simple");
   const [simpleForm, setSimpleForm] =
@@ -107,10 +109,8 @@ export function PostMatchAnalysisView() {
   );
   const [staffReviewNotes, setStaffReviewNotes] = useState("");
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
-  const [history, setHistory] = useState<SavedPostMatchReport[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [historyError, setHistoryError] = useState<string | null>(null);
   const [loading, setLoading] = useState<"generate" | "save" | "memory" | null>(
     null,
   );
@@ -136,10 +136,6 @@ export function PostMatchAnalysisView() {
   );
 
   useEffect(() => {
-    void refreshHistory();
-  }, []);
-
-  useEffect(() => {
     if (!pendingVideoEvidenceText) return;
     const evidenceText = consumePendingPostMatchEvidenceText();
     if (!evidenceText) return;
@@ -149,20 +145,6 @@ export function PostMatchAnalysisView() {
     }));
     setStatus("Evidencia del video importada para revisar antes de generar.");
   }, [consumePendingPostMatchEvidenceText, pendingVideoEvidenceText]);
-
-  async function refreshHistory() {
-    try {
-      const nextHistory = await listPostMatchReports();
-      setHistory(nextHistory);
-      setHistoryError(null);
-    } catch (requestError) {
-      setHistoryError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No se pudo cargar el historial de reportes.",
-      );
-    }
-  }
 
   async function generateReport() {
     if (!canGenerate || loading) return;
@@ -208,10 +190,6 @@ export function PostMatchAnalysisView() {
       );
       setReport(saved.report);
       setSavedReportId(saved.id);
-      setHistory((current) => [
-        saved,
-        ...current.filter((item) => item.id !== saved.id),
-      ]);
       try {
         const { downloadPostMatchPdf } = await import("./PostMatchPdf");
         await downloadPostMatchPdf(saved.report, staffReviewNotes);
@@ -355,13 +333,13 @@ export function PostMatchAnalysisView() {
         <div className="ai-card" style={{ marginTop: 16 }}>
           <div className="section-title">
             <b>Historial de reportes</b>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => void refreshHistory()}
-            >
-              Refrescar
-            </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => void refreshPostMatchReports()}
+              >
+                Refrescar
+              </button>
           </div>
           {historyError ? <p className="muted-panel">{historyError}</p> : null}
           {history.length ? (
@@ -638,6 +616,9 @@ function ReportReview({
   const ownTeamProblems = getOwnTeamProblems(report);
   const acceptanceCriteria = getAcceptanceCriteria(report);
   const gameModel = useAppStore((state) => state.gameModel);
+  const setAiMode = useAppStore((state) => state.setAiMode);
+  const setView = useAppStore((state) => state.setView);
+  const setAiPrompt = useAppStore((state) => state.setAiPrompt);
   const modelContrast = contrastTextWithGameModel(
     [
       report.executiveSummary,
@@ -658,6 +639,42 @@ function ReportReview({
           value={report.reflection.confidence}
           reason={report.reflection.mainUncertainty}
         />
+      </div>
+      <div className="ai-card postmatch-handoff-card">
+        <div className="section-title">
+          <div>
+            <span className="panel-eyebrow">Revision -&gt; siguiente semana</span>
+            <h4>Que deberia pasar ahora</h4>
+          </div>
+        </div>
+        <p>
+          {ownTeamProblems[0]?.problem
+            ? `Problema a reabrir en Diagnostico: ${ownTeamProblems[0].problem}`
+            : "Todavia no hay un problema principal claro para reabrir en Diagnostico."}
+        </p>
+        <div className="toolbar compact">
+          <button
+            type="button"
+            onClick={() => {
+              setAiPrompt(
+                ownTeamProblems[0]?.problem
+                  ? `Reabrir diagnostico semanal: ${ownTeamProblems[0].problem}`
+                  : report.executiveSummary,
+              );
+              setAiMode("coach");
+              setView("ai");
+            }}
+          >
+            Llevar a diagnostico
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setView("team")}
+          >
+            Ver evolucion
+          </button>
+        </div>
       </div>
       {report.matchContext.interpretedResult ? (
         <TextCard

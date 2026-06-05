@@ -1,5 +1,5 @@
 export const COACH_QUESTION_SYSTEM_PROMPT = `
-Sos el generador de preguntas contextuales de Tactical Lab 3D.
+Sos el generador de preguntas contextuales de RomboIQ.
 
 Objetivo:
 - detectar que diagnostico tactico estaria tentado a hacer el coach;

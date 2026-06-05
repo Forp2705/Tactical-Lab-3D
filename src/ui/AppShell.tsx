@@ -5,7 +5,6 @@ import {
 } from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { type ChangeEvent, type ReactNode, useState } from "react";
-import { useEffect } from "react";
 
 type NavView =
   | "home"
@@ -25,58 +24,31 @@ type NavItem = {
   onSelect?: () => void;
 };
 
-const PRIMARY_NAV: NavItem[] = [
-  { view: "home", code: "ROOM", label: "Sala del cuerpo tecnico" },
-  { view: "viewer", code: "OBS", label: "Observar en cancha" },
-  { view: "team", code: "XI", label: "Equipo · Lineup" },
-  {
-    view: "ai",
-    code: "DIAG",
-    label: "Diagnosticar",
-    isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
-    onSelect: () => useAppStore.getState().setAiMode("coach"),
-  },
-  { view: "video", code: "EVID", label: "Recolectar evidencia" },
-  {
-    view: "ai",
-    code: "REV",
-    label: "Revisar post-partido",
-    isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
-    onSelect: () => useAppStore.getState().setAiMode("postMatch"),
-  },
-];
-
-const SECONDARY_NAV: NavItem[] = [
-  { view: "sessions", code: "TRAIN", label: "Entrenar semana" },
-  { view: "library", code: "LIB", label: "Biblioteca curada" },
-  { view: "player", code: "BRIEF", label: "Briefing jugadores" },
-];
-
 const LOOP_NAV: NavItem[] = [
   { view: "home", code: "01", label: "Sala" },
   {
     view: "ai",
     code: "02",
-    label: "Diagnosticar",
+    label: "Diagnostico",
     isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("coach"),
   },
-  { view: "sessions", code: "03", label: "Entrenar" },
+  { view: "sessions", code: "03", label: "Sesion" },
   {
     view: "ai",
     code: "04",
-    label: "Revisar",
+    label: "Post-partido",
     isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("postMatch"),
   },
-  { view: "team", code: "05", label: "Preparar" },
+  { view: "team", code: "05", label: "Equipo / evolucion" },
 ];
 
-const TOOL_NAV: NavItem[] = [
-  { view: "viewer", code: "3D", label: "Visor" },
+const ADVANCED_NAV: NavItem[] = [
+  { view: "viewer", code: "3D", label: "Cancha 3D" },
   { view: "video", code: "VID", label: "Video" },
   { view: "library", code: "LIB", label: "Biblioteca" },
-  { view: "player", code: "PL", label: "Jugadores" },
+  { view: "player", code: "PL", label: "Briefing" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -85,21 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const presentationMode = useAppStore((state) => state.presentationMode);
   const [navOpen, setNavOpen] = useState(false);
-  const [theme, setTheme] = useState<"cockpit" | "broadcast" | "pizarra">(
-    () =>
-      (localStorage.getItem("tactical-lab-theme") as
-        | "cockpit"
-        | "broadcast"
-        | "pizarra"
-        | null) ?? "cockpit",
-  );
   const selectedExercise = getExerciseById(selectedExerciseId);
-  const exerciseLabel = selectedExercise?.title ?? selectedExerciseId ?? "-";
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem("tactical-lab-theme", theme);
-  }, [theme]);
 
   return (
     <div
@@ -116,13 +74,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       {presentationMode ? null : (
         <aside className="sidebar">
           <div className="brand">
-            <div className="brand-mark">TL</div>
+            <img className="brand-mark" src="/romboiq-mark.svg" alt="RomboIQ" />
             <div>
-              <span className="eyebrow">Coach room / Pro 3D</span>
-              <h1>Tactical Lab Pro</h1>
+              <h1>RomboIQ</h1>
             </div>
           </div>
           <nav className="nav">
+            <span className="nav-section-label">Flujo semanal</span>
             {LOOP_NAV.map((item) => (
               <NavButton
                 key={`${item.code}-${item.label}`}
@@ -131,8 +89,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             ))}
             <details className="nav-more">
-              <summary>Mas herramientas</summary>
-              {TOOL_NAV.map((item) => (
+              <summary>Avanzado</summary>
+              <p className="nav-details-copy">
+                Superficies secundarias para preparar, mostrar o profundizar el
+                trabajo semanal.
+              </p>
+              {ADVANCED_NAV.map((item) => (
                 <NavButton
                   key={`${item.code}-${item.label}`}
                   item={item}
@@ -143,24 +105,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="side-foot">
             <div className="status-card project-actions compact-project-actions">
-              <label className="field">
-                Tema visual
-                <select
-                  value={theme}
-                  onChange={(event) =>
-                    setTheme(
-                      event.target.value as "cockpit" | "broadcast" | "pizarra",
-                    )
-                  }
-                >
-                  <option value="cockpit">Cockpit</option>
-                  <option value="broadcast">Broadcast</option>
-                  <option value="pizarra">Pizarra</option>
-                </select>
-              </label>
               <details className="project-more">
                 <summary>Proyecto local</summary>
-                <button type="button" className="btn ghost" onClick={() => void saveProject()}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => void saveProject()}
+                >
                   Guardar local
                 </button>
                 <button
@@ -193,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   className="icon-btn menu-toggle"
                   onClick={() => setNavOpen(true)}
                 >
-                  Menu
+                  Abrir menu
                 </button>
                 <span className="eyebrow">{metaFor(view)[0]}</span>
               </div>
@@ -217,7 +168,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="top-actions">
               <span className="chip">
                 <span className="status-dot available" />
-                Sesion guardada
+                Proyecto local
               </span>
               <button
                 type="button"
@@ -274,46 +225,45 @@ function NavButton({
 function metaFor(view: string) {
   return (
     {
-      home: ["Matchday cockpit"],
+      home: ["Sala"],
       library: ["Biblioteca"],
       viewer: ["Cancha"],
-      team: ["Sistema de equipo"],
-      sessions: ["Microciclo"],
-      video: ["Analisis"],
-      ai: ["Asistente local"],
-      player: ["Jugadores"],
-    }[view] ?? ["Tactical Lab"]
+      team: ["Equipo / evolucion"],
+      sessions: ["Sesion"],
+      video: ["Observacion"],
+      ai: ["Coach"],
+      player: ["Briefing"],
+    }[view] ?? ["RomboIQ"]
   );
 }
 
 function titleFor(view: string) {
   return (
     {
-      home: "Centro de mando del cuerpo tecnico",
+      home: "Sala de control tactico",
       library: "Biblioteca de ejercicios",
       viewer: "Visor tactico 3D",
-      team: "Equipo · Lineup Lab",
-      sessions: "Sesiones y microciclo",
-      video: "Video + tracking asistido",
-      ai: "Asistente tactico",
+      team: "Equipo / evolucion",
+      sessions: "Sesion semanal",
+      video: "Video y evidencia",
+      ai: "Coach y post-partido",
       player: "Briefing para jugadores",
-    }[view] ?? "Tactical Lab Pro 3D"
+    }[view] ?? "RomboIQ"
   );
 }
 
 function subtitleFor(view: string) {
   return (
     {
-      home: "Lo importante de la semana en un vistazo.",
+      home: "Todo lo importante de la semana en un solo lugar.",
       library:
-        "Catalogo curado, filtros simples y escenas entendibles en 5 segundos.",
-      viewer: "Reproduccion 3D con camaras, capas y fases.",
-      team: "Plantel, shapes y snapshot contextual para el asistente.",
-      sessions:
-        "Planificador practico con carga estimada y exportacion simple.",
-      video: "Tagging manual, marcadores y tracking asistido.",
-      ai: "Consulta tactica y analisis post-partido con salida estructurada.",
-      player: "Vista limpia para jugadores sin ruido del staff.",
+        "Catalogo curado para bajar el diagnostico al campo sin salir del flujo.",
+      viewer: "Reproduccion 3D con camaras, capas tacticas y fases.",
+      team: "Plantel, lineup y evolucion del comportamiento del equipo.",
+      sessions: "Plan semanal conectado al problema tactico que queres resolver.",
+      video: "Tagging manual y evidencia asistida para revisar partidos.",
+      ai: "Diagnostico y revision con confianza visible y lenguaje tactico.",
+      player: "Vista limpia para presentar ideas a jugadores y staff.",
     }[view] ?? ""
   );
 }
@@ -324,7 +274,7 @@ async function saveProject() {
 
 function exportProject() {
   const envelope = {
-    app: "tactical-lab-3d",
+    app: "romboiq",
     version: APP_SNAPSHOT_VERSION,
     exportedAt: new Date().toISOString(),
     snapshot: snapshotFromState(useAppStore.getState()),
@@ -335,7 +285,7 @@ function exportProject() {
   const stamp = envelope.exportedAt.slice(0, 10);
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `tactical-lab-3d-project-${stamp}.json`;
+  link.download = `romboiq-project-${stamp}.json`;
   link.click();
 }
 
@@ -345,9 +295,6 @@ async function importProject(event: ChangeEvent<HTMLInputElement>) {
   try {
     const text = await file.text();
     const parsed = JSON.parse(text) as unknown;
-    // Acepta el formato nuevo con envelope { snapshot } y tambien un snapshot
-    // plano exportado por versiones anteriores. En ambos casos se valida y
-    // migra igual que al abrir la app.
     const raw =
       parsed && typeof parsed === "object" && "snapshot" in parsed
         ? (parsed as { snapshot: unknown }).snapshot
@@ -361,7 +308,6 @@ async function importProject(event: ChangeEvent<HTMLInputElement>) {
   } catch {
     window.alert("No se pudo leer el archivo de proyecto.");
   } finally {
-    // Permite reimportar el mismo archivo dos veces seguidas.
     event.target.value = "";
   }
 }
@@ -373,7 +319,7 @@ function exportViewerPng() {
   if (!canvas) return;
   const link = document.createElement("a");
   link.href = canvas.toDataURL("image/png");
-  link.download = "tactical-lab-3d-scene.png";
+  link.download = "romboiq-scene.png";
   link.click();
 }
 

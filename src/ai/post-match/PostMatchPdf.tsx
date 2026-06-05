@@ -51,7 +51,7 @@ function PostMatchPdfDocument({ report, staffReviewNotes }: PdfProps) {
 
   return (
     <Document
-      author="Tactical Lab 3D"
+      author="RomboIQ"
       subject="Post-match tactical report"
       title={`Post-match report - ${report.matchContext.opponent}`}
     >

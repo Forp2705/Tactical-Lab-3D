@@ -67,6 +67,18 @@ type Interception = {
   progress: number;
 };
 
+type ActorOverlayActivity = {
+  press?: Overlay;
+  passFrom?: Overlay;
+  passTo?: Overlay;
+  dribble?: Overlay;
+  run?: Overlay;
+  cover?: Overlay;
+};
+
+const ballActionCache = new WeakMap<Exercise["scene"]["overlays"], Overlay[]>();
+const actorMapCache = new WeakMap<Exercise["scene"]["actors"], Map<string, Actor>>();
+
 export function getMatchFrame(
   exercise: Exercise,
   time: number,
@@ -78,13 +90,20 @@ export function getMatchFrame(
   const actors = options.personalSpace
     ? applyPersonalSpace(rawActors)
     : rawActors;
+  const activeOverlays = getActiveSceneOverlays(exercise.scene.overlays, time);
+  const activityByActor = buildActorOverlayActivity(activeOverlays);
   const ball = getEngineBallPose(exercise, actors, time);
 
   return {
     actors: actors.map((pose) => ({
       ...pose,
       hasBall: ball.carrier === pose.actor.id,
-      motion: classifyActorMotion(exercise, pose, time, ball),
+      motion: classifyActorMotionFromActivity(
+        activityByActor.get(pose.actor.id),
+        pose,
+        time,
+        ball,
+      ),
     })),
     ball,
     triggers: getActiveTriggers(exercise, time),
@@ -197,9 +216,12 @@ function getEngineBallPose(
   frameActors: EngineActorPose[],
   time: number,
 ): EngineBallPose {
-  const actions = exercise.scene.overlays
-    .filter((overlay) => overlay.type === "pass" || overlay.type === "dribble")
-    .sort((a, b) => a.start - b.start);
+  const actions = getBallActions(exercise.scene.overlays);
+  const actorById = getActorMap(exercise.scene.actors);
+  const frameActorById = new Map(
+    frameActors.map((pose) => [pose.actor.id, pose] as const),
+  );
+  const endpointCache = new Map<string, Endpoint | null>();
 
   if (actions.length === 0) return fallbackBallFromPath(exercise, time);
 
@@ -208,20 +230,66 @@ function getEngineBallPose(
   );
   if (active) {
     return active.type === "dribble"
-      ? dribbleBall(exercise, frameActors, active, time)
-      : passBall(exercise, frameActors, active, time);
+      ? dribbleBall(
+          exercise,
+          actorById,
+          frameActorById,
+          endpointCache,
+          frameActors,
+          active,
+          time,
+        )
+      : passBall(
+          exercise,
+          actorById,
+          frameActorById,
+          endpointCache,
+          frameActors,
+          active,
+          time,
+        );
   }
 
   const previous = actions.filter((overlay) => overlay.end < time).at(-1);
   if (previous) {
     const completed =
       previous.type === "pass"
-        ? passBall(exercise, frameActors, previous, previous.end)
-        : dribbleBall(exercise, frameActors, previous, previous.end);
+        ? passBall(
+            exercise,
+            actorById,
+            frameActorById,
+            endpointCache,
+            frameActors,
+            previous,
+            previous.end,
+          )
+        : dribbleBall(
+            exercise,
+            actorById,
+            frameActorById,
+            endpointCache,
+            frameActors,
+            previous,
+            previous.end,
+          );
     const carrier = completed.interceptedBy ?? completed.carrier;
     const endpoint = carrier
-      ? resolveEndpoint(exercise, carrier, time)
-      : resolveEndpoint(exercise, previous.to, time);
+      ? resolveEndpoint(
+          actorById,
+          frameActorById,
+          endpointCache,
+          carrier,
+          time,
+          time,
+        )
+      : resolveEndpoint(
+          actorById,
+          frameActorById,
+          endpointCache,
+          previous.to,
+          time,
+          time,
+        );
 
     if (endpoint) {
       return {
@@ -236,7 +304,14 @@ function getEngineBallPose(
 
   const next = actions.find((overlay) => time < overlay.start);
   if (next) {
-    const endpoint = resolveEndpoint(exercise, next.from, time);
+    const endpoint = resolveEndpoint(
+      actorById,
+      frameActorById,
+      endpointCache,
+      next.from,
+      time,
+      time,
+    );
     if (endpoint) {
       return {
         pos: { ...endpoint.pos, z: 0 },
@@ -250,14 +325,51 @@ function getEngineBallPose(
   return fallbackBallFromPath(exercise, time);
 }
 
+function getBallActions(overlays: Exercise["scene"]["overlays"]) {
+  const cached = ballActionCache.get(overlays);
+  if (cached) return cached;
+
+  const actions = overlays
+    .filter((overlay) => overlay.type === "pass" || overlay.type === "dribble")
+    .sort((a, b) => a.start - b.start);
+  ballActionCache.set(overlays, actions);
+  return actions;
+}
+
+function getActorMap(actors: Exercise["scene"]["actors"]) {
+  const cached = actorMapCache.get(actors);
+  if (cached) return cached;
+
+  const actorById = new Map(actors.map((actor) => [actor.id, actor] as const));
+  actorMapCache.set(actors, actorById);
+  return actorById;
+}
+
 function passBall(
   exercise: Exercise,
+  actorById: ReadonlyMap<string, Actor>,
+  frameActorById: ReadonlyMap<string, EngineActorPose>,
+  endpointCache: Map<string, Endpoint | null>,
   frameActors: EngineActorPose[],
   action: Overlay,
   time: number,
 ): EngineBallPose {
-  const from = resolveEndpoint(exercise, action.from, action.start);
-  const to = resolveEndpoint(exercise, action.to, action.end);
+  const from = resolveEndpoint(
+    actorById,
+    frameActorById,
+    endpointCache,
+    action.from,
+    action.start,
+    time,
+  );
+  const to = resolveEndpoint(
+    actorById,
+    frameActorById,
+    endpointCache,
+    action.to,
+    action.end,
+    time,
+  );
   if (!from || !to) return fallbackBallFromPath(exercise, time);
 
   const rawT = clamp01(
@@ -275,7 +387,14 @@ function passBall(
   const lift = ballLift(localT, distance);
 
   if (interception && rawT >= targetProgress) {
-    const carrier = resolveEndpoint(exercise, interception.actorId, time);
+    const carrier = resolveEndpoint(
+      actorById,
+      frameActorById,
+      endpointCache,
+      interception.actorId,
+      time,
+      time,
+    );
     return {
       pos: { ...(carrier?.pos ?? interception.pos), z: 0 },
       carrier: interception.actorId,
@@ -286,7 +405,14 @@ function passBall(
   }
 
   if (!interception && rawT > 0.88 && to.carrier) {
-    const carrier = resolveEndpoint(exercise, to.carrier, time);
+    const carrier = resolveEndpoint(
+      actorById,
+      frameActorById,
+      endpointCache,
+      to.carrier,
+      time,
+      time,
+    );
     return {
       pos: { ...(carrier?.pos ?? to.pos), z: 0 },
       carrier: to.carrier,
@@ -305,19 +431,43 @@ function passBall(
 
 function dribbleBall(
   exercise: Exercise,
+  actorById: ReadonlyMap<string, Actor>,
+  frameActorById: ReadonlyMap<string, EngineActorPose>,
+  endpointCache: Map<string, Endpoint | null>,
   _frameActors: EngineActorPose[],
   action: Overlay,
   time: number,
 ): EngineBallPose {
-  const from = resolveEndpoint(exercise, action.from, action.start);
-  const to = resolveEndpoint(exercise, action.to, action.end);
+  const from = resolveEndpoint(
+    actorById,
+    frameActorById,
+    endpointCache,
+    action.from,
+    action.start,
+    time,
+  );
+  const to = resolveEndpoint(
+    actorById,
+    frameActorById,
+    endpointCache,
+    action.to,
+    action.end,
+    time,
+  );
   if (!from || !to) return fallbackBallFromPath(exercise, time);
   const rawT = clamp01(
     (time - action.start) / Math.max(0.001, action.end - action.start),
   );
   const touchT = dribbleTouchT(rawT);
   const carrierEndpoint = from.carrier
-    ? resolveEndpoint(exercise, from.carrier, time)
+    ? resolveEndpoint(
+        actorById,
+        frameActorById,
+        endpointCache,
+        from.carrier,
+        time,
+        time,
+      )
     : null;
   const pos = carrierEndpoint?.pos ?? interpolateVec2(from.pos, to.pos, touchT);
 
@@ -330,18 +480,28 @@ function dribbleBall(
 }
 
 function resolveEndpoint(
-  exercise: Exercise,
+  actorById: ReadonlyMap<string, Actor>,
+  frameActorById: ReadonlyMap<string, EngineActorPose>,
+  endpointCache: Map<string, Endpoint | null>,
   endpoint: Overlay["from"],
   time: number,
+  frameTime: number,
 ): Endpoint | null {
   if (typeof endpoint !== "string") return { pos: endpoint };
+  const cacheKey = `${endpoint}:${time}`;
+  const cached = endpointCache.get(cacheKey);
+  if (cached !== undefined) return cached;
 
-  const actor = exercise.scene.actors.find((entry) => entry.id === endpoint);
-  if (!actor) return null;
-  const pose = actorPoseAt(actor, time);
+  const actor = actorById.get(endpoint);
+  if (!actor) {
+    endpointCache.set(cacheKey, null);
+    return null;
+  }
+  const framePose = time === frameTime ? frameActorById.get(endpoint) : undefined;
+  const pose = framePose ?? actorPoseAt(actor, time);
   const touchDistance = pose.moving ? 1.1 : 0.72;
 
-  return {
+  const resolved = {
     pos: clampPitchPoint({
       x: pose.pos.x + Math.cos(pose.direction) * touchDistance,
       y: pose.pos.y + Math.sin(pose.direction) * touchDistance,
@@ -349,6 +509,8 @@ function resolveEndpoint(
     carrier: endpoint,
     team: actor.team,
   };
+  endpointCache.set(cacheKey, resolved);
+  return resolved;
 }
 
 function findInterception(
@@ -468,24 +630,16 @@ function pairAngle(firstId: string, secondId: string) {
   return (hash / 0xffffffff) * Math.PI * 2;
 }
 
-export function classifyActorMotion(
-  exercise: Exercise,
+function classifyActorMotionFromActivity(
+  activity: ActorOverlayActivity | undefined,
   pose: EngineActorPose,
   time: number,
   ball: EngineBallPose,
 ): ActorMotion {
   const actorId = pose.actor.id;
-  const active = exercise.scene.overlays.filter(
-    (overlay) => time >= overlay.start && time <= overlay.end,
-  );
-  const activePress = active.find(
-    (overlay) => overlay.type === "press" && overlay.from === actorId,
-  );
-  if (activePress) return "Press";
+  if (activity?.press) return "Press";
 
-  const activePassFrom = active.find(
-    (overlay) => overlay.type === "pass" && overlay.from === actorId,
-  );
+  const activePassFrom = activity?.passFrom;
   if (activePassFrom) {
     const progress =
       (time - activePassFrom.start) /
@@ -493,34 +647,72 @@ export function classifyActorMotion(
     return progress < 0.48 ? "Pass" : pose.moving ? "Run" : "Idle";
   }
 
-  const activePassTo = active.find(
-    (overlay) => overlay.type === "pass" && overlay.to === actorId,
-  );
+  const activePassTo = activity?.passTo;
   if (activePassTo) {
     const remaining = activePassTo.end - time;
     return remaining < 0.45 ? "Receive" : pose.moving ? "Run" : "DefensiveIdle";
   }
 
-  const activeDribble = active.find(
-    (overlay) => overlay.type === "dribble" && overlay.from === actorId,
-  );
+  const activeDribble = activity?.dribble;
   if (activeDribble || ball.carrier === actorId) {
     return pose.moving ? "Run" : "Idle";
   }
 
-  const activeRun = active.find(
-    (overlay) => overlay.type === "run" && overlay.from === actorId,
-  );
+  const activeRun = activity?.run;
   if (activeRun) return "Sprint";
 
-  const activeCover = active.find(
-    (overlay) => overlay.type === "cover" && overlay.from === actorId,
-  );
+  const activeCover = activity?.cover;
   if (activeCover) return pose.moving ? "Walk" : "DefensiveIdle";
 
   // pose.motion ya viene clasificado por velocidad real (Idle/Walk/Run/Sprint),
   // asi que respetamos esa lectura para el caso general.
   return pose.motion;
+}
+
+export function classifyActorMotion(
+  exercise: Exercise,
+  pose: EngineActorPose,
+  time: number,
+  ball: EngineBallPose,
+): ActorMotion {
+  const activeOverlays = getActiveSceneOverlays(exercise.scene.overlays, time);
+  const activityByActor = buildActorOverlayActivity(activeOverlays);
+  return classifyActorMotionFromActivity(
+    activityByActor.get(pose.actor.id),
+    pose,
+    time,
+    ball,
+  );
+}
+
+function getActiveSceneOverlays(
+  overlays: Exercise["scene"]["overlays"],
+  time: number,
+) {
+  return overlays.filter((overlay) => time >= overlay.start && time <= overlay.end);
+}
+
+function buildActorOverlayActivity(overlays: Overlay[]) {
+  const activityByActor = new Map<string, ActorOverlayActivity>();
+
+  for (const overlay of overlays) {
+    if (typeof overlay.from === "string") {
+      const current = activityByActor.get(overlay.from) ?? {};
+      if (overlay.type === "press" && !current.press) current.press = overlay;
+      if (overlay.type === "pass" && !current.passFrom) current.passFrom = overlay;
+      if (overlay.type === "dribble" && !current.dribble) current.dribble = overlay;
+      if (overlay.type === "run" && !current.run) current.run = overlay;
+      if (overlay.type === "cover" && !current.cover) current.cover = overlay;
+      activityByActor.set(overlay.from, current);
+    }
+    if (overlay.type === "pass" && typeof overlay.to === "string") {
+      const current = activityByActor.get(overlay.to) ?? {};
+      if (!current.passTo) current.passTo = overlay;
+      activityByActor.set(overlay.to, current);
+    }
+  }
+
+  return activityByActor;
 }
 
 function fallbackBallFromPath(

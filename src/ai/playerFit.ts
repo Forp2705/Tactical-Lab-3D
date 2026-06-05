@@ -41,7 +41,16 @@ export function analyzePlayerFit(
   );
 
   if (adjustments.includes("highBlock") || adjustments.includes("highPress")) {
-    const slowCenterBacks = centerBacks.filter((player) => player.attributes.speed < 58);
+    const slowCenterBacks = centerBacks.filter((player) =>
+      profileHas(player, [
+        "lento",
+        "poca velocidad",
+        "sufre a la espalda",
+        "espalda",
+        "pesado",
+        "no corrige hacia atras",
+      ]),
+    );
     if (slowCenterBacks.length) {
       findings.push({
         id: "slow-cb-high-block",
@@ -50,14 +59,21 @@ export function analyzePlayerFit(
         statement:
           "Subir el bloque expone espalda de centrales con baja velocidad. Necesita presion real al poseedor o cobertura mas baja.",
         players: slowCenterBacks.map(labelPlayer),
-        evidence: slowCenterBacks.map((player) => `speed ${player.attributes.speed}`),
+        evidence: slowCenterBacks.map((player) => `perfil: ${player.profile}`),
       });
     }
   }
 
   if (adjustments.includes("pivotRoleChange") || adjustments.includes("highPress")) {
-    const lowPassPivots = pivots.filter(
-      (player) => player.attributes.pass < 58 || player.attributes.control < 58,
+    const lowPassPivots = pivots.filter((player) =>
+      profileHas(player, [
+        "sufre de espaldas",
+        "pase inseguro",
+        "poca recepcion",
+        "no gira",
+        "limitado con pelota",
+        "se complica bajo presion",
+      ]),
     );
     if (lowPassPivots.length) {
       findings.push({
@@ -67,16 +83,18 @@ export function analyzePlayerFit(
         statement:
           "Salida interior condicionada: el 5/pivote no sostiene recepcion y pase bajo presion sin apoyos cercanos.",
         players: lowPassPivots.map(labelPlayer),
-        evidence: lowPassPivots.map(
-          (player) => `pass ${player.attributes.pass}, control ${player.attributes.control}`,
-        ),
+        evidence: lowPassPivots.map((player) => `perfil: ${player.profile}`),
       });
     }
   }
 
   if (adjustments.includes("freeFullback")) {
-    const aggressiveFullbacks = fullbacks.filter((player) => player.attributes.stamina >= 68);
-    const lowPressWingers = wideAttackers.filter((player) => player.attributes.press < 55);
+    const aggressiveFullbacks = fullbacks.filter((player) =>
+      profileHas(player, ["lateral alto", "profundo", "ofensivo", "pasa mucho"]),
+    );
+    const lowPressWingers = wideAttackers.filter((player) =>
+      profileHas(player, ["no repliega", "no vuelve", "baja intensidad", "pierde marca"]),
+    );
     if (aggressiveFullbacks.length && lowPressWingers.length) {
       findings.push({
         id: "fullback-winger-2v1",
@@ -86,16 +104,20 @@ export function analyzePlayerFit(
           "Liberar lateral puede generar 2v1 en banda si el extremo no repliega o no tapa pase exterior.",
         players: [...aggressiveFullbacks, ...lowPressWingers].map(labelPlayer),
         evidence: [
-          ...aggressiveFullbacks.map((player) => `lateral stamina ${player.attributes.stamina}`),
-          ...lowPressWingers.map((player) => `extremo press ${player.attributes.press}`),
+          ...aggressiveFullbacks.map((player) => `perfil lateral: ${player.profile}`),
+          ...lowPressWingers.map((player) => `perfil extremo: ${player.profile}`),
         ],
       });
     }
   }
 
   if (adjustments.includes("supportNine")) {
-    const isolatedNines = nines.filter((player) => player.attributes.control >= 60);
-    const farInteriors = interiors.filter((player) => player.attributes.tactical < 58);
+    const isolatedNines = nines.filter((player) =>
+      profileHas(player, ["fija", "juega de espaldas", "descarga", "aguanta"]),
+    );
+    const farInteriors = interiors.filter((player) =>
+      profileHas(player, ["llega tarde", "queda lejos", "poco apoyo", "no acompana"]),
+    );
     if (isolatedNines.length && farInteriors.length) {
       findings.push({
         id: "nine-support-risk",
@@ -104,7 +126,7 @@ export function analyzePlayerFit(
         statement:
           "El 9 puede fijar, pero necesita interiores mas cercanos; si llegan tarde, vuelve a quedar aislado.",
         players: [...isolatedNines, ...farInteriors].map(labelPlayer),
-        evidence: farInteriors.map((player) => `tactical ${player.attributes.tactical}`),
+        evidence: farInteriors.map((player) => `perfil: ${player.profile}`),
       });
     }
   }
@@ -113,7 +135,13 @@ export function analyzePlayerFit(
     const lowPressCore = available.filter(
       (player) =>
         hasAnyPosition(player, ["CM", "CDM", "LW", "RW", "ST"]) &&
-        player.attributes.press < 55,
+        profileHas(player, [
+          "no presiona",
+          "baja intensidad",
+          "llega tarde",
+          "no sostiene presion",
+          "no repliega",
+        ]),
     );
     if (lowPressCore.length >= 2) {
       findings.push({
@@ -123,13 +151,15 @@ export function analyzePlayerFit(
         statement:
           "Presion alta con baja intensidad de presion en varios roles puede partir al equipo.",
         players: lowPressCore.map(labelPlayer),
-        evidence: lowPressCore.map((player) => `press ${player.attributes.press}`),
+        evidence: lowPressCore.map((player) => `perfil: ${player.profile}`),
       });
     }
   }
 
   const aerialCenterBacks = centerBacks.filter(
-    (player) => player.attributes.duel >= 70 || (player.height ?? 0) >= 185,
+    (player) =>
+      (player.height ?? 0) >= 185 ||
+      profileHas(player, ["duelo aereo", "juego aereo", "fuerte arriba", "gana centros"]),
   );
   if (adjustments.includes("lowBlock") && aerialCenterBacks.length >= 2) {
     findings.push({
@@ -139,22 +169,25 @@ export function analyzePlayerFit(
       statement:
         "Bloque medio/bajo puede ser fortaleza si se protege centro y se obliga al rival a centrar.",
       players: aerialCenterBacks.map(labelPlayer),
-      evidence: aerialCenterBacks.map((player) => `duel ${player.attributes.duel}`),
+      evidence: aerialCenterBacks.map((player) =>
+        player.height ? `altura ${player.height}cm` : `perfil: ${player.profile}`,
+      ),
     });
   }
 
   const organizer = pivots
-    .filter((player) => player.attributes.tactical >= 72)
-    .sort((a, b) => b.attributes.tactical - a.attributes.tactical)[0];
+    .filter((player) =>
+      profileHas(player, ["ordena", "lectura", "primer pase", "pausa", "lidera"]),
+    )[0];
   if (organizer) {
     findings.push({
       id: "tactical-pivot-strength",
       adjustment: "pivotRoleChange",
       level: "strength",
       statement:
-        "Hay un mediocentro con lectura tactica alta para ordenar salida, presion o reagrupamiento.",
+        "Hay un mediocentro cuyo perfil puede ordenar salida, presion o reagrupamiento.",
       players: [labelPlayer(organizer)],
-      evidence: [`tactical ${organizer.attributes.tactical}`],
+      evidence: [`perfil: ${organizer.profile}`],
     });
   }
 
@@ -213,6 +246,10 @@ function labelPlayer(player: Player) {
 
 function hasAny(text: string, terms: string[]) {
   return terms.some((term) => text.includes(normalize(term)));
+}
+
+function profileHas(player: Player, terms: string[]) {
+  return hasAny(normalize(player.profile), terms);
 }
 
 function normalize(value: string) {

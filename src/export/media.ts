@@ -25,7 +25,7 @@ export async function exportCanvasMedia(
     if (format === "mp4") {
       await (ffmpeg as any).exec(["-i", "input.webm", "-c:v", "libx264", "-pix_fmt", "yuv420p", "output.mp4"]);
       const data = (await (ffmpeg as any).readFile("output.mp4")) as Uint8Array;
-      downloadBlob(new Blob([toArrayBuffer(data)], { type: "video/mp4" }), "tactical-lab-3d-scene.mp4");
+      downloadBlob(new Blob([toArrayBuffer(data)], { type: "video/mp4" }), "romboiq-scene.mp4");
       return;
     }
 
@@ -37,9 +37,9 @@ export async function exportCanvasMedia(
       "output.gif",
     ]);
     const data = (await (ffmpeg as any).readFile("output.gif")) as Uint8Array;
-    downloadBlob(new Blob([toArrayBuffer(data)], { type: "image/gif" }), "tactical-lab-3d-scene.gif");
+    downloadBlob(new Blob([toArrayBuffer(data)], { type: "image/gif" }), "romboiq-scene.gif");
   } catch {
-    downloadBlob(webm, "tactical-lab-3d-scene.webm");
+    downloadBlob(webm, "romboiq-scene.webm");
   }
 }
 

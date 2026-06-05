@@ -1,6 +1,7 @@
 import { MATCH_OBSERVATIONS } from "./MatchObservations.js"
 import { loadSavedPostMatchReports } from "./post-match/storage.js"
-import { rankDocuments } from "./retrievalScoring.js"
+import type { SavedPostMatchReport } from "./post-match/schemas.js"
+import { rankDocumentsHybrid } from "./embeddingRetrieval.js"
 import { TACTICAL_KEYWORDS } from "./tacticalKeywords.js"
 
 type MatchObservation = {
@@ -11,9 +12,12 @@ type MatchObservation = {
   observation: string
 }
 
-export async function retrieveRelevantContext(userInput: string) {
+export async function retrieveRelevantContext(
+  userInput: string,
+  reports?: SavedPostMatchReport[],
+) {
   const runtimeObservations =
-    await loadRuntimeMatchObservations()
+    await loadRuntimeMatchObservations(reports)
   const observations = [
     ...runtimeObservations,
     ...MATCH_OBSERVATIONS,
@@ -34,15 +38,15 @@ export async function retrieveRelevantContext(userInput: string) {
     authorityScore: observation.match.startsWith("vs ") ? 0.75 : 0.45,
   }))
 
-  return rankDocuments(userInput, documents, {
+  return rankDocumentsHybrid(userInput, documents, {
     limit: 6,
   })
 }
 
-async function loadRuntimeMatchObservations() {
+async function loadRuntimeMatchObservations(reports?: SavedPostMatchReport[]) {
   try {
-    const reports = await loadSavedPostMatchReports()
-    return reports.flatMap((savedReport) => {
+    const sourceReports = reports ?? await loadSavedPostMatchReports()
+    return sourceReports.flatMap((savedReport) => {
       const opponent = savedReport.report.matchContext.opponent
       const result = savedReport.report.matchContext.result
       const staffNotes =

@@ -1,4 +1,4 @@
-import { listPostMatchReports } from "@/ai/post-match/postMatchClient";
+import { usePostMatchReports } from "@/ai/post-match/usePostMatchReports";
 import type { SavedPostMatchReport } from "@/ai/post-match/schemas";
 import { detectTeamPatterns, type TeamPattern } from "@/ai/patternDetection";
 import { catalog } from "@/data";
@@ -8,28 +8,38 @@ import {
   exportMatchPlanHtml,
   exportTrainingWeekHtml,
 } from "@/export/premiumExports";
-import { LoopProgress, PatternCard } from "@/ui/tacticalPrimitives";
+import {
+  EvidenceChip,
+  LoopProgress,
+  PatternCard,
+  PitchViz,
+} from "@/ui/tacticalPrimitives";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import { TeamTimeline } from "./TeamTimeline";
 
 export function HomeView() {
-  const team = useAppStore((state) => state.team);
+  const teamPlayers = useAppStore((state) => state.team.players);
   const gameModel = useAppStore((state) => state.gameModel);
   const opponentScout = useAppStore((state) => state.opponentScout);
   const session = useAppStore((state) => state.session);
   const microcycle = useAppStore((state) => state.microcycle);
+  const aiPrompt = useAppStore((state) => state.aiPrompt);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const tags = useAppStore((state) => state.tags);
   const tracks = useAppStore((state) => state.tracks);
-  const lineupLab = useAppStore((state) => state.lineupLab);
-  const [reports, setReports] = useState<SavedPostMatchReport[]>([]);
-  const [reportsError, setReportsError] = useState<string | null>(null);
+  const lineupLabShapeCount = useAppStore((state) => state.lineupLab.shapes.length);
+  const lineupLabTransitionCount = useAppStore(
+    (state) => state.lineupLab.savedTransitions.length,
+  );
+  const { reports, reportsError } = usePostMatchReports();
   const selectedExercise = getExerciseById(selectedExerciseId);
-  const availablePlayers = team.players.filter(
-    (player) => player.status === "available",
-  ).length;
+  const availablePlayers = useMemo(
+    () =>
+      teamPlayers.filter((player) => player.status === "available").length,
+    [teamPlayers],
+  );
   const evidence = useMemo(
     () => summarizeVideoEvidence(tags, tracks),
     [tags, tracks],
@@ -43,77 +53,134 @@ export function HomeView() {
       }),
     [gameModel, reports, session.computed?.primaryObjectives],
   );
+  const primaryPattern = patterns[0];
   const opponentPlan = useMemo(
     () => buildOpponentGamePlan(opponentScout, gameModel),
     [gameModel, opponentScout],
   );
   const activeDay = currentMicrocycleDay(microcycle.days);
 
-  useEffect(() => {
-    let mounted = true;
-    listPostMatchReports()
-      .then((items) => {
-        if (!mounted) return;
-        setReports(
-          [...items].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).slice(0, 3),
-        );
-        setReportsError(null);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setReportsError("No se pudo cargar el historial.");
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const recentReports = useMemo(
+    () =>
+      [...reports]
+        .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
+        .slice(0, 3),
+    [reports],
+  );
+  const latestReport = recentReports[0];
+  const nextAction = buildNextAction({
+    aiPrompt,
+    evidenceTotal: evidence.total,
+    latestReport,
+    patternsCount: patterns.length,
+    sessionBlocks: session.blocks.length,
+  });
+  const activeDiagnosis = aiPrompt.trim() || primaryPattern?.statement || "";
 
   return (
-    <div className="view-enter grid" style={{ gap: 16 }}>
-      <section className="hero calm-hero">
-        <span className="eyebrow">Matchday cockpit / {activeDay.label}</span>
-        <h2 className="home-title">Sala del cuerpo tecnico</h2>
-        <p className="home-subtitle">Prioridad semanal, evidencia disponible y proximo paso.</p>
-        <h2>¿Qué querés resolver hoy?</h2>
-        <p>
-          Arrancá por una observación, convertíla en diagnóstico con evidencia
-          y cerrá el ciclo con sesión, post-partido y memoria validada.
+    <div className="view-enter grid home-command-view" style={{ gap: 16 }}>
+      <section className="hero command-hero">
+        <div className="command-hero-copy">
+        <span className="eyebrow">RomboIQ / {activeDay.label}</span>
+        <h2 className="home-title">Centro de mando tactico</h2>
+        <p className="home-subtitle">
+          Un solo flujo semanal para observar, diagnosticar, entrenar,
+          revisar y evolucionar.
         </p>
-        <div className="hero-actions">
-          <button
-            type="button"
-            className="btn primary"
-            onClick={() => useAppStore.getState().setView("viewer")}
-          >
-            Abrir visor tactico
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => {
-              useAppStore.getState().setAiMode("coach");
-              useAppStore.getState().setView("ai");
-            }}
-          >
-            Consultar al asistente
-          </button>
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => useAppStore.getState().setView("team")}
-          >
-            Editar XI
-          </button>
+        <div className="home-next-action">
+          <span className="eyebrow">Siguiente paso</span>
+          <h3>{nextAction.title}</h3>
+          <p>{nextAction.body}</p>
         </div>
-        <div style={{ marginTop: 20 }}>
+        <p className="home-hero-intent">
+          Arranca por una observacion, conviertela en diagnostico con evidencia
+          y cierra el ciclo con sesion, post-partido y evolucion validada.
+        </p>
+        <div className="command-loop-row">
           <LoopProgress active={loopStage(session.blocks.length, reports.length, patterns.length)} />
         </div>
+        <div className="command-status-row">
+          <EvidenceChip
+            type="staff"
+            label={`${availablePlayers}/${teamPlayers.length} disponibles`}
+          />
+          <EvidenceChip
+            type="report"
+            label={`${recentReports.length} reportes recientes`}
+          />
+          <EvidenceChip
+            type="observation"
+            label={`${evidence.total} evidencias de video`}
+          />
+        </div>
+        </div>
+        <div className="command-hero-pitch">
+          <PitchViz
+            title="Cancha de estado"
+            subtitle={primaryPattern ? "patron activo" : "sin evidencia espacial"}
+            compact
+            state={primaryPattern ? "analysis" : "empty"}
+            emptyMessage="Sin patron confirmado"
+            overlays={
+              primaryPattern
+                ? [
+                    {
+                      type: "zone",
+                      x: 56,
+                      y: 12,
+                      w: 28,
+                      h: 40,
+                      tone: "warn",
+                    },
+                    { type: "blockHeight", x: 42, tone: "info" },
+                  ]
+                : []
+            }
+          />
+          <div className="command-pitch-summary">
+            <div>
+              <span>Lectura</span>
+              <b>
+                {primaryPattern
+                  ? shorten(primaryPattern.statement, 76)
+                  : "Todavia no hay un patron validado para ubicar en cancha."}
+              </b>
+            </div>
+            <div>
+              <span>Evidencia</span>
+              <b>{recentReports.length} reportes / {evidence.total} marcas de video</b>
+            </div>
+            <div>
+              <span>Siguiente paso</span>
+              <b>{nextAction.shortLabel}</b>
+            </div>
+          </div>
+        </div>
       </section>
+      <CommandSummaryPanel
+        activeDay={activeDay.label}
+        availablePlayers={availablePlayers}
+        totalPlayers={teamPlayers.length}
+        sessionBlocks={session.blocks.length}
+        sessionMinutes={session.computed?.totalDuration ?? 0}
+        evidenceTotal={evidence.total}
+        reportsCount={reports.length}
+        primaryPattern={primaryPattern}
+      />
 
-      <TesterOnboarding />
+      <WeeklyWorkflowPanel
+        activeDiagnosis={activeDiagnosis}
+        latestReport={latestReport}
+        nextAction={nextAction}
+        primaryPattern={primaryPattern}
+        session={session}
+      />
 
-      <TacticalHomeActions />
+      <TacticalHomeActions nextAction={nextAction} />
 
+      <details className="home-deep-dive">
+        <summary>Ver detalle operativo</summary>
+        <div className="home-deep-dive-body">
       <section className="home-grid">
         <div className="card">
           <div className="card-head">
@@ -193,10 +260,10 @@ export function HomeView() {
       </section>
 
       <section className="stat-row">
-        <Stat eyebrow="Plantel" big={`${availablePlayers}/${team.players.length}`} sub="jugadores disponibles" />
+        <Stat eyebrow="Plantel" big={`${availablePlayers}/${teamPlayers.length}`} sub="jugadores disponibles" />
         <Stat eyebrow="Sesion" big={session.blocks.length} sub={`${session.computed?.totalDuration ?? 0} min planificados`} />
         <Stat eyebrow="Evidencia video" big={evidence.total} sub={`${evidence.assistedTracks} asistidos / ${evidence.confirmedTracks} validados`} accent />
-        <Stat eyebrow="Shapes" big={lineupLab.shapes.length} sub={`${lineupLab.savedTransitions.length} transiciones guardadas`} />
+        <Stat eyebrow="Shapes" big={lineupLabShapeCount} sub={`${lineupLabTransitionCount} transiciones guardadas`} />
       </section>
 
       <section className="home-grid">
@@ -272,29 +339,139 @@ export function HomeView() {
           </div>
         </div>
       </section>
+        </div>
+      </details>
     </div>
   );
 }
 
-function TesterOnboarding() {
-  return (
-    <details className="tester-onboarding">
-      <summary>Recorrido de 5 minutos para tester</summary>
-      <div>
-        <span>1. Diagnosticar</span>
-        <span>2. Responder entrevista</span>
-        <span>3. Crear sesion</span>
-        <span>4. Cargar post-match</span>
-        <span>5. Revisar evolucion</span>
-      </div>
-    </details>
-  );
-}
+type NextAction = {
+  title: string;
+  body: string;
+  shortLabel: string;
+  cta: string;
+  onClick: () => void;
+};
 
-function TacticalHomeActions() {
+const WeeklyWorkflowPanel = memo(function WeeklyWorkflowPanel({
+  activeDiagnosis,
+  latestReport,
+  nextAction,
+  primaryPattern,
+  session,
+}: {
+  activeDiagnosis: string;
+  latestReport?: SavedPostMatchReport;
+  nextAction: NextAction;
+  primaryPattern?: TeamPattern;
+  session: ReturnType<typeof useAppStore.getState>["session"];
+}) {
+  return (
+    <section className="home-workflow-grid">
+      <article className="card workflow-card primary">
+        <span className="eyebrow">Diagnostico activo</span>
+        <h3>
+          {activeDiagnosis
+            ? shorten(activeDiagnosis, 94)
+            : "Todavia no hay un problema tactico formulado."}
+        </h3>
+        <p>
+          {activeDiagnosis
+            ? "Este es el problema que hoy conecta lectura, sesion y revision."
+            : "Carga una observacion concreta para convertir la semana en un flujo guiado."}
+        </p>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => {
+            useAppStore.getState().setAiMode("coach");
+            useAppStore.getState().setView("ai");
+          }}
+        >
+          Abrir diagnostico
+        </button>
+      </article>
+
+      <article className="card workflow-card">
+        <span className="eyebrow">Entrenamiento conectado</span>
+        <h3>{session.name}</h3>
+        <p>
+          {session.blocks.length
+            ? `${session.blocks.length} bloques / ${session.computed?.totalDuration ?? 0} minutos para trabajar el problema de la semana.`
+            : "Todavia no hay una sesion conectada al diagnostico."}
+        </p>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => useAppStore.getState().setView("sessions")}
+        >
+          Abrir sesion
+        </button>
+      </article>
+
+      <article className="card workflow-card">
+        <span className="eyebrow">Ultimo post-partido</span>
+        <h3>
+          {latestReport
+            ? `vs ${latestReport.report.matchContext.opponent}`
+            : "Sin revision reciente"}
+        </h3>
+        <p>
+          {latestReport
+            ? shorten(latestReport.report.executiveSummary, 130)
+            : "Todavia no hay reporte guardado para alimentar el siguiente diagnostico."}
+        </p>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => {
+            useAppStore.getState().setAiMode("postMatch");
+            useAppStore.getState().setView("ai");
+          }}
+        >
+          Revisar partido
+        </button>
+      </article>
+
+      <article className="card workflow-card">
+        <span className="eyebrow">Evolucion</span>
+        <h3>
+          {primaryPattern
+            ? shorten(primaryPattern.statement, 78)
+            : "Sin patron recurrente confirmado"}
+        </h3>
+        <p>
+          {primaryPattern
+            ? "El equipo ya tiene una historia tactica. Usa evolucion para decidir que repetir y que corregir."
+            : "La evolucion se activa cuando post-partido empieza a dejar un historial comparable."}
+        </p>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => useAppStore.getState().setView("team")}
+        >
+          Ver evolucion
+        </button>
+      </article>
+    </section>
+  );
+});
+
+const TacticalHomeActions = memo(function TacticalHomeActions({
+  nextAction,
+}: {
+  nextAction: NextAction;
+}) {
   const actions = [
     {
-      title: "Coach",
+      title: nextAction.cta,
+      eyebrow: "Siguiente paso recomendado",
+      body: nextAction.body,
+      code: "GO",
+      onClick: nextAction.onClick,
+    },
+    {
+      title: "Diagnosticar",
       eyebrow: "Observacion -> diagnostico",
       body: "Plantea un problema táctico. Si falta evidencia, el agente entrevista antes de diagnosticar.",
       code: "AI",
@@ -304,7 +481,7 @@ function TacticalHomeActions() {
       },
     },
     {
-      title: "Post-match",
+      title: "Revisar",
       eyebrow: "Partido -> reporte",
       body: "Resultado, rival y tres notas. Suficiente para generar un informe corto sin abrumar.",
       code: "PM",
@@ -314,42 +491,112 @@ function TacticalHomeActions() {
       },
     },
     {
-      title: "Armar sesión desde diagnóstico",
+      title: "Armar sesion",
       eyebrow: "Diagnostico -> entrenamiento",
-      body: "Revisá bloques, carga y ejercicios sugeridos para convertir ajustes en trabajo de cancha.",
+      body: "Revisa bloques, carga y ejercicios sugeridos para convertir ajustes en trabajo de cancha.",
       code: "MD",
       onClick: () => useAppStore.getState().setView("sessions"),
     },
     {
-      title: "XI",
+      title: "Preparar XI",
       eyebrow: "Lineup Lab -> evidencia objetiva",
-      body: "Ajustá el equipo, guardá shapes y usá métricas geométricas como contexto del Coach.",
+      body: "Ajusta el equipo, guarda shapes y usa metricas geometricas como contexto del Coach.",
       code: "XI",
       onClick: () => useAppStore.getState().setView("team"),
     },
   ];
 
   return (
-    <section className="home-action-strip">
-      {actions.map((action) => (
-        <button
-          type="button"
-          className="home-action"
-          key={action.title}
-          onClick={action.onClick}
-        >
-          <div className="lr-icon">{action.code}</div>
-          <div>
-            <b>{action.code === "MD" ? "Sesion" : action.title}</b>
-            <small>{action.eyebrow}</small>
-          </div>
-        </button>
-      ))}
+    <section className="home-action-block">
+      <div className="section-title home-action-head">
+        <div>
+          <span className="panel-eyebrow">Acciones principales</span>
+          <h3>Que hacer ahora</h3>
+        </div>
+      </div>
+      <div className="home-action-strip">
+        {actions.map((action) => (
+          <button
+            type="button"
+            className="home-action"
+            key={action.title}
+            onClick={action.onClick}
+          >
+            <div className="lr-icon">{action.code}</div>
+            <div>
+              <b>{action.title}</b>
+              <small>{action.eyebrow}</small>
+            </div>
+          </button>
+        ))}
+      </div>
     </section>
   );
-}
+});
 
-function Stat({
+const CommandSummaryPanel = memo(function CommandSummaryPanel({
+  activeDay,
+  availablePlayers,
+  totalPlayers,
+  sessionBlocks,
+  sessionMinutes,
+  evidenceTotal,
+  reportsCount,
+  primaryPattern,
+}: {
+  activeDay: string;
+  availablePlayers: number;
+  totalPlayers: number;
+  sessionBlocks: number;
+  sessionMinutes: number;
+  evidenceTotal: number;
+  reportsCount: number;
+  primaryPattern?: TeamPattern;
+}) {
+  return (
+    <section className="command-summary-grid">
+      <article className="command-summary-card primary">
+        <span className="eyebrow">Ahora / {activeDay}</span>
+        <h3>{primaryPattern ? "Resolver patron activo" : "Construir evidencia"}</h3>
+        <p>
+          {primaryPattern
+            ? shorten(primaryPattern.statement, 112)
+            : "La sala todavia no tiene un patron validado. El proximo paso es cargar un post-match o consultar al Coach con una observacion concreta."}
+        </p>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => {
+            useAppStore.getState().setAiMode("coach");
+            useAppStore.getState().setView("ai");
+          }}
+        >
+          Diagnosticar
+        </button>
+      </article>
+
+      <article className="command-summary-card">
+        <span className="eyebrow">Entrenamiento</span>
+        <h3>{sessionBlocks ? `${sessionBlocks} bloques listos` : "Sin sesion armada"}</h3>
+        <p>{sessionBlocks ? `${sessionMinutes} minutos planificados.` : "Converti el diagnostico en una sesion antes de sumar detalle."}</p>
+      </article>
+
+      <article className="command-summary-card">
+        <span className="eyebrow">Evidencia</span>
+        <h3>{evidenceTotal + reportsCount}</h3>
+        <p>{reportsCount} reportes y {evidenceTotal} marcas de video disponibles.</p>
+      </article>
+
+      <article className="command-summary-card">
+        <span className="eyebrow">Plantel</span>
+        <h3>{availablePlayers}/{totalPlayers}</h3>
+        <p>Jugadores disponibles para sostener el plan de partido.</p>
+      </article>
+    </section>
+  );
+});
+
+const Stat = memo(function Stat({
   eyebrow,
   big,
   sub,
@@ -367,9 +614,9 @@ function Stat({
       <small>{sub}</small>
     </div>
   );
-}
+});
 
-function MicrocycleCard() {
+const MicrocycleCard = memo(function MicrocycleCard() {
   const microcycle = useAppStore((state) => state.microcycle);
   const entries = Object.entries(microcycle.days);
   return (
@@ -433,10 +680,11 @@ function MicrocycleCard() {
       </div>
     </div>
   );
-}
+});
 
-function SessionCard() {
+const SessionCard = memo(function SessionCard() {
   const session = useAppStore((state) => state.session);
+  const aiPrompt = useAppStore((state) => state.aiPrompt);
   const blocks = session.blocks.slice(0, 4);
   return (
     <div className="card">
@@ -453,6 +701,11 @@ function SessionCard() {
           Abrir
         </button>
       </div>
+      <p className="session-source-note">
+        {aiPrompt.trim()
+          ? `Problema tactico que ataca: ${shorten(aiPrompt, 128)}`
+          : "Todavia no hay un diagnostico activo enlazado a esta sesion."}
+      </p>
       {blocks.length ? (
         <div className="list">
           {blocks.map((block, index) => {
@@ -476,9 +729,9 @@ function SessionCard() {
       )}
     </div>
   );
-}
+});
 
-function ReportsCard({
+const ReportsCard = memo(function ReportsCard({
   reports,
   error,
 }: {
@@ -490,7 +743,7 @@ function ReportsCard({
       <div className="card-head">
         <div>
           <span className="eyebrow">Post-partido</span>
-          <h3>Ultimos reports</h3>
+          <h3>Ultimos reportes</h3>
         </div>
         <button
           type="button"
@@ -504,6 +757,10 @@ function ReportsCard({
         </button>
       </div>
       {error ? <p style={{ color: "var(--muted)" }}>{error}</p> : null}
+      <p className="session-source-note">
+        Cada revision alimenta el siguiente diagnostico y la historia tactica
+        del equipo.
+      </p>
       {reports.length ? (
         <div className="list">
           {reports.map((report) => (
@@ -532,9 +789,11 @@ function ReportsCard({
       )}
     </div>
   );
-}
+});
 
-function PatternCommandCard({ patterns }: { patterns: TeamPattern[] }) {
+const PatternCommandCard = memo(function PatternCommandCard({
+  patterns,
+}: { patterns: TeamPattern[] }) {
   return (
     <div className="card">
       <div className="card-head">
@@ -564,7 +823,7 @@ function PatternCommandCard({ patterns }: { patterns: TeamPattern[] }) {
       )}
     </div>
   );
-}
+});
 
 function patternKindLabel(kind: TeamPattern["kind"]) {
   const labels: Record<TeamPattern["kind"], string> = {
@@ -576,6 +835,93 @@ function patternKindLabel(kind: TeamPattern["kind"]) {
     gameModelContradiction: "Contra modelo",
   };
   return labels[kind];
+}
+
+function buildNextAction({
+  aiPrompt,
+  evidenceTotal,
+  latestReport,
+  patternsCount,
+  sessionBlocks,
+}: {
+  aiPrompt: string;
+  evidenceTotal: number;
+  latestReport?: SavedPostMatchReport;
+  patternsCount: number;
+  sessionBlocks: number;
+}): NextAction {
+  if (patternsCount > 0) {
+    return {
+      title: "Cerra el loop con una decision de evolucion",
+      body:
+        "Ya hay un patron recurrente detectado. Usa Equipo / evolucion para decidir que corregir esta semana y que sostener.",
+      shortLabel: "Revisar evolucion y bajar una decision semanal.",
+      cta: "Ver evolucion",
+      onClick: () => useAppStore.getState().setView("team"),
+    };
+  }
+
+  if (!latestReport) {
+    return {
+      title: "Empeza por un post-partido corto",
+      body:
+        "Carga rival, resultado y tres notas. Ese reporte va a ordenar el siguiente diagnostico y evitar que el coach invente contexto.",
+      shortLabel: "Cargar post-partido para abrir la semana con evidencia.",
+      cta: "Cargar post-partido",
+      onClick: () => {
+        useAppStore.getState().setAiMode("postMatch");
+        useAppStore.getState().setView("ai");
+      },
+    };
+  }
+
+  if (!aiPrompt.trim()) {
+    return {
+      title: "Formula el problema tactico de la semana",
+      body:
+        "Ya hay evidencia reciente. Ahora converti esa evidencia en una pregunta tactica concreta para el coach.",
+      shortLabel: "Pasar de la evidencia al diagnostico.",
+      cta: "Abrir diagnostico",
+      onClick: () => {
+        useAppStore.getState().setAiMode("coach");
+        useAppStore.getState().setView("ai");
+      },
+    };
+  }
+
+  if (!sessionBlocks) {
+    return {
+      title: "Baja el diagnostico a cancha",
+      body:
+        "El problema ya esta formulado. Converti el ajuste principal en una sesion con bloques, carga y objetivos claros.",
+      shortLabel: "Convertir el diagnostico en sesion.",
+      cta: "Armar sesion",
+      onClick: () => useAppStore.getState().setView("sessions"),
+    };
+  }
+
+  if (!evidenceTotal) {
+    return {
+      title: "Completa la semana con evidencia observable",
+      body:
+        "La sesion ya existe. Marca video o eventos del partido para poder revisar si el ajuste realmente aparecio.",
+      shortLabel: "Cargar evidencia de video para la revision.",
+      cta: "Ir a video",
+      onClick: () => useAppStore.getState().setView("video"),
+    };
+  }
+
+  return {
+    title: "La semana ya tiene direccion clara",
+    body:
+      "Diagnostico, sesion y evidencia ya estan conectados. Lo que sigue es revisar el partido y consolidar lo que cambia en el equipo.",
+    shortLabel: "Revisar partido y consolidar aprendizaje.",
+    cta: "Revisar partido",
+    onClick: () => {
+      useAppStore.getState().setAiMode("postMatch");
+      useAppStore.getState().setView("ai");
+    },
+  };
 }
 
 function loopStage(
@@ -598,4 +944,9 @@ function loadPercent(load: string) {
   if (load === "high") return 92;
   if (load === "med") return 64;
   return 32;
+}
+
+function shorten(text: string, max: number) {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trim()}…`;
 }

@@ -1,5 +1,5 @@
 {
-  "name": "tactical-lab-3d",
+  "name": "romboiq",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,6 +10,8 @@
     "test": "vitest run",
     "tester:check": "npm run type-check && npm run build && npm test",
     "coach:test": "tsx src/ai/testCoachAgent.ts",
+    "coach:eval": "tsx scripts/runCoachEval.ts",
+    "rag:build": "tsx scripts/buildCoachRagIndex.ts",
     "type-check": "tsc --noEmit",
     "format": "biome format --write .",
     "lint": "biome check .",

@@ -1,12 +1,24 @@
+import { memo, useMemo } from "react";
 import { detectTeamPatterns, type TeamPattern } from "@/ai/patternDetection";
 import type { SavedPostMatchReport } from "@/ai/post-match/schemas";
 import { PatternCard } from "@/ui/tacticalPrimitives";
+import { useAppStore } from "@/state/useAppStore";
 
-export function TeamTimeline({ reports }: { reports: SavedPostMatchReport[] }) {
-  const sortedReports = [...reports]
-    .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
-    .slice(0, 5);
-  const patterns = detectTeamPatterns(reports, { limit: 5 });
+export const TeamTimeline = memo(function TeamTimeline({
+  reports,
+}: { reports: SavedPostMatchReport[] }) {
+  const sortedReports = useMemo(
+    () =>
+      [...reports].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).slice(0, 5),
+    [reports],
+  );
+  const patterns = useMemo(
+    () => detectTeamPatterns(reports, { limit: 5 }),
+    [reports],
+  );
+  const recurring = patterns.filter((pattern) => pattern.kind === "repeatedProblem");
+  const improvements = patterns.filter((pattern) => pattern.kind === "improvement");
+  const regressions = patterns.filter((pattern) => pattern.kind === "regression");
 
   return (
     <div className="card">
@@ -15,7 +27,22 @@ export function TeamTimeline({ reports }: { reports: SavedPostMatchReport[] }) {
           <span className="eyebrow">Evolucion del equipo</span>
           <h3>Timeline tactico</h3>
         </div>
-        <span className="tag-pill">{reports.length} reports</span>
+        <span className="tag-pill">{reports.length} reportes</span>
+      </div>
+
+      <div className="timeline-summary-strip">
+        <div className="timeline-summary-pill">
+          <span>Se repite</span>
+          <b>{recurring.length}</b>
+        </div>
+        <div className="timeline-summary-pill">
+          <span>Mejora</span>
+          <b>{improvements.length}</b>
+        </div>
+        <div className="timeline-summary-pill">
+          <span>Retroceso</span>
+          <b>{regressions.length}</b>
+        </div>
       </div>
 
       {patterns.length ? (
@@ -32,10 +59,31 @@ export function TeamTimeline({ reports }: { reports: SavedPostMatchReport[] }) {
         </div>
       ) : (
         <p style={{ color: "var(--muted)", lineHeight: 1.55, margin: "0 0 14px" }}>
-          Todavia no hay suficientes reportes para detectar tendencias. La app
-          no inventa evolución si no hay historial.
+          Todavia no hay suficientes reportes para detectar tendencias. RomboIQ
+          no inventa evolucion si no hay historial comparable.
         </p>
       )}
+
+      <div className="timeline-retention-card">
+        <div>
+          <span className="eyebrow">Volver despues del partido</span>
+          <h4>Que cambia semana a semana</h4>
+          <p>
+            Cada reporte valida si el problema sigue, mejora o cambia de forma.
+            Esta es la memoria operativa que vuelve vendible el producto.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => {
+            useAppStore.getState().setAiMode("postMatch");
+            useAppStore.getState().setView("ai");
+          }}
+        >
+          Cargar nuevo post-partido
+        </button>
+      </div>
 
       {sortedReports.length ? (
         <div className="list">
@@ -55,13 +103,13 @@ export function TeamTimeline({ reports }: { reports: SavedPostMatchReport[] }) {
       ) : null}
     </div>
   );
-}
+});
 
 function patternKindLabel(kind: TeamPattern["kind"]) {
   if (kind === "repeatedProblem") return "Problema recurrente";
   if (kind === "newProblem") return "Problema nuevo";
-  if (kind === "improvement") return "Mejora posible";
-  if (kind === "regression") return "Retroceso posible";
+  if (kind === "improvement") return "Mejora";
+  if (kind === "regression") return "Retroceso";
   if (kind === "problemNotTrained") return "No entrenado";
   return "Contradice el modelo";
 }

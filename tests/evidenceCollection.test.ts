@@ -73,4 +73,45 @@ describe("evidenceCollection", () => {
     expect(audit.evidenceStrength).toBe("none");
     expect(capConfidence(0.9, audit, false)).toBeLessThanOrEqual(0.45);
   });
+
+  it("no cuenta respuestas inciertas como evidencia cubierta", () => {
+    const signals = normalizeCollectedEvidence([
+      {
+        questionId: "q1",
+        evidenceTarget: "cause",
+        category: "defense",
+        answerKind: "singleChoice",
+        rawAnswer: "No estoy seguro",
+      },
+      {
+        questionId: "q2",
+        evidenceTarget: "zone",
+        category: "defense",
+        answerKind: "singleChoice",
+        rawAnswer: "Depende de la jugada",
+      },
+    ]);
+
+    expect(signals).toEqual([]);
+  });
+
+  it("no trata reportes historicos recuperados como causa confirmada", () => {
+    const audit = buildEvidenceAudit({
+      claims,
+      signals: [],
+      retrieved: [
+        {
+          id: "REP-1",
+          sourceType: "report",
+          title: "2026-05-20 vs Rival",
+          excerpt: "El equipo sufrio a la espalda del bloque.",
+          score: 0.2,
+        },
+      ],
+      intent,
+    });
+
+    expect(audit.evidenceStrength).not.toBe("sufficient");
+    expect(audit.missing.map((item) => item.target)).toContain("cause");
+  });
 });

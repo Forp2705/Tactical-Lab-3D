@@ -1,5 +1,7 @@
 import type { Keyframe, Vec2, Vec3 } from "@/data/schemas";
 
+const sortedPathCache = new WeakMap<Keyframe[], Keyframe[]>();
+
 export function clamp(value: number, min = 0, max = 1) {
   return Math.max(min, Math.min(max, value));
 }
@@ -44,16 +46,38 @@ export function interpolateVec3(a: Vec3, b: Vec3, t: number): Vec3 {
 }
 
 export function interpolatePath(start: Vec2, path: Keyframe[], time: number) {
-  const points = [{ t: 0, pos: start, ease: "smooth" as const }, ...path].sort(
-    (a, b) => a.t - b.t,
-  );
+  type PathPoint = {
+    t: number;
+    pos: Vec2;
+    ease?: Keyframe["ease"];
+  };
 
-  let prev = points[0];
-  let next = points[points.length - 1];
+  if (path.length === 0) {
+    return {
+      pos: start,
+      prev: start,
+      next: start,
+    };
+  }
 
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const a = points[index];
-    const b = points[index + 1];
+  const sortedPath = getSortedPath(path);
+  let prev: PathPoint = { t: 0, pos: start, ease: "smooth" };
+  let next: PathPoint = sortedPath.at(-1) ?? prev;
+
+  if (time <= sortedPath[0].t) {
+    next = sortedPath[0];
+    const span = Math.max(0.001, next.t);
+    const t = easeValue(time / span, next.ease);
+    return {
+      pos: interpolateVec2(start, next.pos, t),
+      prev: start,
+      next: next.pos,
+    };
+  }
+
+  for (let index = 0; index < sortedPath.length - 1; index += 1) {
+    const a = sortedPath[index];
+    const b = sortedPath[index + 1];
     if (time >= a.t && time <= b.t) {
       prev = a;
       next = b;
@@ -67,10 +91,26 @@ export function interpolatePath(start: Vec2, path: Keyframe[], time: number) {
     }
   }
 
-  const last = points.filter((point) => time >= point.t).at(-1) ?? points[0];
+  let last: PathPoint = prev;
+  for (let index = sortedPath.length - 1; index >= 0; index -= 1) {
+    const point = sortedPath[index];
+    if (time >= point.t) {
+      last = point;
+      break;
+    }
+  }
   return {
     pos: last.pos,
     prev: prev.pos,
     next: next.pos,
   };
+}
+
+function getSortedPath(path: Keyframe[]) {
+  const cached = sortedPathCache.get(path);
+  if (cached) return cached;
+
+  const sorted = [...path].sort((a, b) => a.t - b.t);
+  sortedPathCache.set(path, sorted);
+  return sorted;
 }

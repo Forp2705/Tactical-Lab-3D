@@ -1,0 +1,58 @@
+[
+  {
+    "category": "defensive-systems",
+    "principle": "Marca zonal pura (escuela de Sacchi): cada jugador defiende un espacio y reacciona al rival que entra en él; el bloque se mueve coordinado en relación a pelota, espacio y compañero.",
+    "context": "Equipos que quieren mantener forma y proteger zonas más que perseguir hombres.",
+    "risk": "La zona pura puede dejar libre a un rival que se mueve entre dos zonas si la comunicación falla.",
+    "tags": ["defensa", "zonal", "bloque", "sistema", "marca"]
+  },
+  {
+    "category": "defensive-systems",
+    "principle": "Marca al hombre integral (escuela Bielsa/Gasperini): cada jugador sigue a su par por todo el campo, buscando duelos individuales y presión constante.",
+    "context": "Planteles con energía y jugadores ganadores de duelos, contra rivales que dependen de hombres clave.",
+    "risk": "Un solo duelo perdido o una rotación rival rompe toda la estructura y deja superioridad al ataque contrario.",
+    "tags": ["defensa", "man-marking", "marca-hombre", "duelos", "sistema"]
+  },
+  {
+    "category": "defensive-systems",
+    "principle": "Marca mixta: línea defensiva en zona y mediocampo orientado al hombre (o viceversa), combinando forma y agresividad según la zona.",
+    "context": "Cuando se quiere proteger el área en zona pero incomodar la creación rival con marcas.",
+    "risk": "Si no está clara la frontera entre zona y hombre, aparecen dudas y hombres libres en la transición entre líneas.",
+    "tags": ["defensa", "mixta", "zonal", "man-oriented", "sistema"]
+  },
+  {
+    "category": "defensive-systems",
+    "principle": "Bloque bajo y pragmatismo (tradición italiana / equipo reactivo): renunciar a la pelota, juntar líneas cerca del área y apostar a la transición rápida.",
+    "context": "Contra rivales superiores, para sostener un resultado o cuando el plantel defiende mejor que lo que crea.",
+    "risk": "Ceder demasiado terreno invita oleadas; sin transición ofensiva real, el equipo solo aguanta hasta que cede.",
+    "tags": ["defensa", "low-block", "bloque-bajo", "pragmatismo", "transicion"]
+  },
+  {
+    "category": "defensive-systems",
+    "principle": "Defensa orientada a opciones (option-oriented, escuela alemana): los mediocampistas cubren líneas de pase y reaccionan a las opciones del rival más que a posiciones fijas.",
+    "context": "Bloques medios que quieren cortar circuitos de pase del rival.",
+    "risk": "Anticipar la opción equivocada deja una línea de pase abierta; requiere buena lectura colectiva.",
+    "tags": ["defensa", "option-oriented", "lineas-de-pase", "bloque", "sistema"]
+  },
+  {
+    "category": "defensive-systems",
+    "principle": "El líbero / central que sale: un central con permiso para salir a cortar adelante de la línea cuando lee el pase, aportando una cobertura extra.",
+    "context": "Defensas de tres o líneas con un central de buena lectura y salida.",
+    "risk": "Si sale y no llega, abre un hueco grande a la espalda; depende de la lectura y la velocidad del central.",
+    "tags": ["defensa", "libero", "central", "cobertura", "anticipacion"]
+  },
+  {
+    "category": "defensive-systems",
+    "principle": "Defensa de banda: decidir si el lateral salta al extremo (y el interior cubre su espalda) o si se espera con el extremo propio replegado para defender 2v2.",
+    "context": "Cuando el rival ataca por fuera con lateral más extremo.",
+    "risk": "Saltar sin cobertura genera 2v1; esperar pasivo cede el centro y permite el centro limpio.",
+    "tags": ["defensa", "banda", "wide-defense", "2v1", "cobertura"]
+  },
+  {
+    "category": "defensive-systems",
+    "principle": "Elegir el sistema según el rival y el plantel, no por identidad fija: un mismo equipo puede defender en zona el fin de semana y mixto el siguiente según a quién enfrenta.",
+    "context": "Preparación de partido y ajustes según scout del rival.",
+    "risk": "Cambiar de sistema sin entrenarlo confunde a los jugadores; mantener uno solo contra cualquier rival es predecible y explotable.",
+    "tags": ["defensa", "sistema", "rival", "adaptacion", "scout"]
+  }
+]

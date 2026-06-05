@@ -1,10 +1,12 @@
 import { TACTICAL_KEYWORDS } from "./tacticalKeywords.js";
+import type { EvidenceTarget } from "./CoachSchemas.js";
 
 export type RetrievalSourceType =
   | "knowledge"
   | "memory"
   | "observation"
-  | "report";
+  | "report"
+  | "video";
 
 export type RetrievalDocument<T> = {
   id: string;
@@ -12,6 +14,7 @@ export type RetrievalDocument<T> = {
   title: string;
   text: string;
   tags?: string[];
+  evidenceTargets?: EvidenceTarget[];
   payload: T;
   recencyScore?: number;
   authorityScore?: number;
@@ -19,6 +22,7 @@ export type RetrievalDocument<T> = {
 
 export type RankedRetrievalDocument<T> = RetrievalDocument<T> & {
   score: number;
+  evidenceTargets?: EvidenceTarget[];
   matchedTerms: string[];
   excerpt: string;
 };
@@ -88,6 +92,7 @@ export function buildEvidenceCitation(
     title: string;
     excerpt: string;
     score: number;
+    evidenceTargets?: EvidenceTarget[];
   },
 ) {
   return {
@@ -96,6 +101,7 @@ export function buildEvidenceCitation(
     title: document.title,
     excerpt: document.excerpt,
     relevance: Number(Math.min(1, Math.max(0, document.score)).toFixed(3)),
+    evidenceTargets: document.evidenceTargets ?? [],
   };
 }
 

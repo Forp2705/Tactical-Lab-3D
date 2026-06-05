@@ -10,6 +10,16 @@ import {
   summarizeVideoEvidence,
   videoEvidenceToTagsText,
 } from "@/video/videoEvidence";
+import {
+  VIDEO_PATTERN_DEFINITIONS,
+  consolidateVideoPatternScan,
+  type VideoPatternId,
+  type VideoPatternScanBatchResponse,
+  type VideoPatternScanFrame,
+  type VideoPatternScanResult,
+  videoPatternScanToEvidenceText,
+} from "@/video/videoPatternScan";
+import { requestVideoPatternScanBatch } from "@/video/videoPatternScanClient";
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type PixelPoint = { x: number; y: number };
@@ -34,12 +44,31 @@ type TrackerUiState = {
   message: string;
 };
 
+type VideoPatternScanUiConfig = {
+  sampleEverySeconds: number;
+  maxFrames: number;
+  ownColor: string;
+  rivalColor: string;
+  attackDirectionFirstHalf: "leftToRight" | "rightToLeft" | "unknown";
+  patterns: VideoPatternId[];
+};
+
+type VideoPatternScanUiState = {
+  running: boolean;
+  progress: string;
+  sampled: number;
+  analyzed: number;
+  error: string | null;
+  result: VideoPatternScanResult | null;
+};
+
 const TRACK_INTERVAL_SECONDS = 0.22;
 const TRACK_PATCH_SIZE = 28;
 const TRACK_DESCRIPTOR_SIZE = 12;
 const TRACK_SEARCH_RADIUS = 52;
 const TRACK_SEARCH_STEP = 4;
 const TRACK_MIN_CONFIDENCE = 0.58;
+const PATTERN_SCAN_BATCH_SIZE = 6;
 
 export function VideoView() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -64,6 +93,24 @@ export function VideoView() {
     confidence: null,
     added: 0,
     message: "Listo para tracking manual.",
+  });
+  const [scanConfig, setScanConfig] = useState<VideoPatternScanUiConfig>({
+    sampleEverySeconds: 10,
+    maxFrames: 180,
+    ownColor: "",
+    rivalColor: "",
+    attackDirectionFirstHalf: "unknown",
+    patterns: VIDEO_PATTERN_DEFINITIONS.map(
+      (definition) => definition.id,
+    ) as VideoPatternId[],
+  });
+  const [scanState, setScanState] = useState<VideoPatternScanUiState>({
+    running: false,
+    progress: "Listo para escanear patrones.",
+    sampled: 0,
+    analyzed: 0,
+    error: null,
+    result: null,
   });
   const selectedPlayer = useMemo(
     () => players.find((player) => player.id === playerId),
@@ -359,6 +406,127 @@ export function VideoView() {
     store.setView("ai");
   }
 
+  async function runPatternScan() {
+    const video = videoRef.current;
+    if (!video?.src || !Number.isFinite(video.duration) || !video.videoWidth) {
+      setScanState((current) => ({
+        ...current,
+        error: "Carga el video y espera a que tenga metadata antes de escanear.",
+      }));
+      return;
+    }
+    if (!scanConfig.patterns.length) {
+      setScanState((current) => ({
+        ...current,
+        error: "Elegi al menos un patron tactico para buscar.",
+      }));
+      return;
+    }
+
+    const previousTime = video.currentTime;
+    const wasPaused = video.paused;
+    const batches: VideoPatternScanBatchResponse[] = [];
+    setScanState({
+      running: true,
+      progress: "Muestreando frames del partido...",
+      sampled: 0,
+      analyzed: 0,
+      error: null,
+      result: null,
+    });
+
+    try {
+      video.pause();
+      const sampledFrames = await extractVideoPatternFrames(video, scanConfig);
+      if (!sampledFrames.length) {
+        throw new Error("No se pudieron extraer frames analizables del video.");
+      }
+      setScanState((current) => ({
+        ...current,
+        sampled: sampledFrames.length,
+        progress: `Frames muestreados: ${sampledFrames.length}. Enviando a IA visual...`,
+      }));
+
+      for (let index = 0; index < sampledFrames.length; index += PATTERN_SCAN_BATCH_SIZE) {
+        const batch = sampledFrames.slice(index, index + PATTERN_SCAN_BATCH_SIZE);
+        const batchResponse = await requestVideoPatternScanBatch({
+          matchId: currentMatchId,
+          ownColor: optionalText(scanConfig.ownColor),
+          rivalColor: optionalText(scanConfig.rivalColor),
+          attackDirectionFirstHalf: scanConfig.attackDirectionFirstHalf,
+          patterns: scanConfig.patterns,
+          frames: batch,
+        });
+        batches.push(batchResponse);
+        const analyzed = Math.min(index + batch.length, sampledFrames.length);
+        setScanState((current) => ({
+          ...current,
+          analyzed,
+          progress: `Analizados ${analyzed}/${sampledFrames.length} frames.`,
+        }));
+      }
+
+      const result = consolidateVideoPatternScan({
+        matchId: currentMatchId,
+        sampledFrames: sampledFrames.length,
+        batches,
+      });
+      setScanState({
+        running: false,
+        progress: "Scan terminado. Revisar patrones antes de enviarlos como evidencia.",
+        sampled: sampledFrames.length,
+        analyzed: sampledFrames.length,
+        error: null,
+        result,
+      });
+    } catch (error) {
+      setScanState((current) => ({
+        ...current,
+        running: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "No se pudo completar el scan visual.",
+      }));
+    } finally {
+      await seekVideo(video, previousTime).catch(() => undefined);
+      if (!wasPaused) void video.play().catch(() => undefined);
+    }
+  }
+
+  function toggleScanPattern(patternId: VideoPatternId) {
+    setScanConfig((current) => ({
+      ...current,
+      patterns: current.patterns.includes(patternId)
+        ? current.patterns.filter((id) => id !== patternId)
+        : [...current.patterns, patternId],
+    }));
+  }
+
+  function sendPatternScanToPostMatch() {
+    if (!scanState.result) return;
+    const store = useAppStore.getState();
+    store.setPendingPostMatchEvidenceText(
+      videoPatternScanToEvidenceText(scanState.result),
+    );
+    store.setAiMode("postMatch");
+    store.setView("ai");
+  }
+
+  function sendPatternScanToCoach() {
+    if (!scanState.result) return;
+    const store = useAppStore.getState();
+    store.setAiPrompt(
+      [
+        "Analiza este Video Pattern Scan como evidencia asistida.",
+        "No lo trates como tracking automatico perfecto: usa confianza, patrones repetidos y limitaciones.",
+        videoPatternScanToEvidenceText(scanState.result),
+      ].join("\n\n"),
+    );
+    store.setAiMode("coach");
+    store.setView("ai");
+  }
+
   return (
     <section className="video-layout">
       <div className="team-card">
@@ -472,6 +640,181 @@ export function VideoView() {
               Marca tags o puntos de tracking para armar evidencia del partido.
             </p>
           )}
+        </div>
+        <div className="video-scan-panel">
+          <div className="section-title">
+            <div>
+              <span className="panel-eyebrow">Avanzado / IA visual</span>
+              <h4>Escaneo avanzado de video</h4>
+            </div>
+            <button
+              type="button"
+              disabled={scanState.running}
+              onClick={runPatternScan}
+            >
+              {scanState.running ? "Escaneando..." : "Escanear patrones"}
+            </button>
+          </div>
+          <p className="muted-panel">
+            Muestrea frames del partido y busca patrones tacticos visibles. Es
+            una capa secundaria de evidencia asistida: no reemplaza la revision
+            del staff ni forma parte del loop principal.
+          </p>
+          <div className="form-grid video-scan-controls">
+            <label>
+              Cada
+              <select
+                value={scanConfig.sampleEverySeconds}
+                onChange={(event) =>
+                  setScanConfig((current) => ({
+                    ...current,
+                    sampleEverySeconds: Number(event.target.value),
+                  }))
+                }
+              >
+                <option value={5}>5 segundos</option>
+                <option value={10}>10 segundos</option>
+                <option value={15}>15 segundos</option>
+                <option value={30}>30 segundos</option>
+              </select>
+            </label>
+            <label>
+              Max frames
+              <input
+                type="number"
+                min={30}
+                max={600}
+                step={30}
+                value={scanConfig.maxFrames}
+                onChange={(event) =>
+                  setScanConfig((current) => ({
+                    ...current,
+                    maxFrames: clampNumber(Number(event.target.value), 30, 600),
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Tu color
+              <input
+                value={scanConfig.ownColor}
+                onChange={(event) =>
+                  setScanConfig((current) => ({
+                    ...current,
+                    ownColor: event.target.value,
+                  }))
+                }
+                placeholder="camiseta blanca"
+              />
+            </label>
+            <label>
+              Rival
+              <input
+                value={scanConfig.rivalColor}
+                onChange={(event) =>
+                  setScanConfig((current) => ({
+                    ...current,
+                    rivalColor: event.target.value,
+                  }))
+                }
+                placeholder="camiseta azul"
+              />
+            </label>
+          </div>
+          <label className="stacked-field">
+            Direccion de ataque 1T
+            <select
+              value={scanConfig.attackDirectionFirstHalf}
+              onChange={(event) =>
+                setScanConfig((current) => ({
+                  ...current,
+                  attackDirectionFirstHalf: event.target.value as
+                    | "leftToRight"
+                    | "rightToLeft"
+                    | "unknown",
+                }))
+              }
+            >
+              <option value="unknown">No lo se</option>
+              <option value="leftToRight">Izquierda a derecha</option>
+              <option value="rightToLeft">Derecha a izquierda</option>
+            </select>
+          </label>
+          <div className="video-scan-patterns">
+            {VIDEO_PATTERN_DEFINITIONS.map((definition) => (
+              <button
+                type="button"
+                key={definition.id}
+                className={
+                  scanConfig.patterns.includes(definition.id)
+                    ? "scan-pattern active"
+                    : "scan-pattern"
+                }
+                onClick={() => toggleScanPattern(definition.id)}
+              >
+                {definition.label}
+              </button>
+            ))}
+          </div>
+          <div className="tracking-status">
+            <b>{scanState.running ? "Analizando" : "Estado"}</b>
+            <span>{scanState.progress}</span>
+            {scanState.sampled ? <small>{scanState.sampled} frames</small> : null}
+            {scanState.result ? (
+              <small>Confianza {scanState.result.confidence}</small>
+            ) : null}
+          </div>
+          {scanState.error ? (
+            <p className="video-evidence-warning">{scanState.error}</p>
+          ) : null}
+          {scanState.result ? (
+            <div className="video-scan-results">
+              <div className="section-title compact-title">
+                <div>
+                  <span className="panel-eyebrow">Resultado</span>
+                  <h4>{scanState.result.summary}</h4>
+                </div>
+                <div className="toolbar compact-actions">
+                  <button type="button" onClick={sendPatternScanToCoach}>
+                    Consultar Coach
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={sendPatternScanToPostMatch}
+                  >
+                    Enviar a post-match
+                  </button>
+                </div>
+              </div>
+              {scanState.result.patterns.length ? (
+                <div className="video-scan-pattern-list">
+                  {scanState.result.patterns.slice(0, 5).map((pattern) => (
+                    <article className="video-scan-result" key={pattern.patternId}>
+                      <div>
+                        <b>{pattern.label}</b>
+                        <small>
+                          {pattern.count} apariciones - confianza{" "}
+                          {Math.round(pattern.avgConfidence * 100)}% -{" "}
+                          {pattern.severity}
+                        </small>
+                      </div>
+                      <span>
+                        {pattern.timestamps
+                          .map(formatVideoEvidenceTime)
+                          .join(", ")}
+                      </span>
+                      <p>{pattern.evidence[0]}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted-panel">
+                  No aparecieron patrones con evidencia suficiente en el muestreo.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
         <div className="tag-row">
           {[
@@ -647,6 +990,89 @@ function EvidenceCount({
       <b>{value}</b>
     </div>
   );
+}
+
+async function extractVideoPatternFrames(
+  video: HTMLVideoElement,
+  config: Pick<
+    VideoPatternScanUiConfig,
+    "sampleEverySeconds" | "maxFrames"
+  >,
+): Promise<VideoPatternScanFrame[]> {
+  const duration = Number.isFinite(video.duration) ? video.duration : 0;
+  if (!duration || !video.videoWidth || !video.videoHeight) return [];
+
+  const rawTimes: number[] = [];
+  const startAt = duration > 12 ? 5 : 0;
+  const endAt = Math.max(startAt, duration - 2);
+  for (
+    let time = startAt;
+    time <= endAt;
+    time += Math.max(5, config.sampleEverySeconds)
+  ) {
+    rawTimes.push(Math.round(time));
+  }
+
+  const times = downsampleTimes(rawTimes, config.maxFrames);
+  const canvas = document.createElement("canvas");
+  const scale = Math.min(1, 640 / video.videoWidth);
+  canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+  canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) return [];
+
+  const frames: VideoPatternScanFrame[] = [];
+  for (const timestampSec of times) {
+    await seekVideo(video, timestampSec);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    frames.push({
+      timestampSec,
+      imageDataUrl: canvas.toDataURL("image/jpeg", 0.62),
+    });
+  }
+
+  return frames;
+}
+
+function downsampleTimes(times: number[], maxFrames: number) {
+  const safeMax = clampNumber(maxFrames, 30, 600);
+  if (times.length <= safeMax) return times;
+  const step = times.length / safeMax;
+  const selected: number[] = [];
+  for (let index = 0; index < safeMax; index += 1) {
+    selected.push(times[Math.floor(index * step)] ?? times[times.length - 1] ?? 0);
+  }
+  return [...new Set(selected)];
+}
+
+function seekVideo(video: HTMLVideoElement, timestampSec: number) {
+  return new Promise<void>((resolve, reject) => {
+    const target = clampNumber(timestampSec, 0, video.duration || timestampSec);
+    if (Math.abs(video.currentTime - target) < 0.05) {
+      resolve();
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Timeout buscando frame del video."));
+    }, 3500);
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      video.removeEventListener("seeked", handleSeeked);
+      video.removeEventListener("error", handleError);
+    };
+    const handleSeeked = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error("No se pudo leer el frame del video."));
+    };
+    video.addEventListener("seeked", handleSeeked, { once: true });
+    video.addEventListener("error", handleError, { once: true });
+    video.currentTime = target;
+  });
 }
 
 function formatTime(sec: number) {
@@ -870,6 +1296,11 @@ function exportTracksCsv(tracks: VideoTrack[]) {
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, value));
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
 }
 
 function clamp01(value: number) {

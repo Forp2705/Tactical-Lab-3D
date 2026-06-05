@@ -18,10 +18,13 @@ export default async function handler(
 
   try {
     const body = await readJsonBody(req);
-    const { commitMemoryCandidates } = await import(
+    const { commitMemoryCandidates, revertCommittedMemory } = await import(
       "../../src/ai/post-match/storage.js"
     );
-    const result = await commitMemoryCandidates(body);
+    const result =
+      body?.action === "revert"
+        ? await revertCommittedMemory(body)
+        : await commitMemoryCandidates(body);
     sendJson(res, 200, result);
   } catch (error) {
     console.error("[post-match] memory commit failed", error);

@@ -1,5 +1,5 @@
 import { loadGeneratedMemory } from "./loadGeneratedMemory.js"
-import { rankDocuments } from "./retrievalScoring.js"
+import { rankDocumentsHybrid } from "./embeddingRetrieval.js"
 
 const MAX_MEMORY_ITEMS = 3
 
@@ -37,7 +37,7 @@ export async function retrieveRelevantGeneratedMemory(
       item.severityScore * 0.65,
   }))
 
-  return rankDocuments(userInput, documents, {
+  return rankDocumentsHybrid(userInput, documents, {
     limit: MAX_MEMORY_ITEMS,
   })
 }

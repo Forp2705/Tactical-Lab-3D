@@ -14,7 +14,7 @@ export async function exportSessionPdf(
       backgroundColor: "#071019",
       color: "#eff7fa",
     },
-    title: { fontSize: 20, marginBottom: 12, color: "#f5c66f" },
+    title: { fontSize: 20, marginBottom: 12, color: "#c7df5f" },
     block: {
       padding: 10,
       border: "1 solid #31525d",
@@ -28,7 +28,7 @@ export async function exportSessionPdf(
   const doc = (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>Sesión Tactical Lab 3D</Text>
+        <Text style={styles.title}>Sesion RomboIQ</Text>
         <Text>Duración total: {computed.totalDuration} min</Text>
         <Text>Carga estimada: {computed.totalLoad}</Text>
         <View style={styles.section}>
@@ -60,7 +60,7 @@ export async function exportSessionPdf(
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "sesion-tactical-lab-3d.pdf";
+  link.download = "sesion-romboiq.pdf";
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

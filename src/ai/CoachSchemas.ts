@@ -20,11 +20,28 @@ export const CoachActionSchema = z.object({
 });
 
 export const CoachEvidenceCitationSchema = z.object({
-  sourceType: z.enum(["knowledge", "memory", "observation", "report"]),
+  sourceType: z.enum(["knowledge", "memory", "observation", "report", "video"]),
   sourceId: z.string().min(1),
   title: z.string().min(1),
   excerpt: z.string().min(1),
   relevance: z.number().min(0).max(1).optional(),
+  evidenceTargets: z
+    .array(
+      z.enum([
+        "ownTeam",
+        "rival",
+        "phase",
+        "playerProfile",
+        "zone",
+        "trigger",
+        "frequency",
+        "moment",
+        "matchContext",
+        "cause",
+        "risk",
+      ]),
+    )
+    .default([]),
 });
 
 export const CoachProblemBreakdownSchema = z

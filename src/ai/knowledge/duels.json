@@ -1,0 +1,44 @@
+[
+  {
+    "category": "duels",
+    "principle": "En el 1v1 defensivo de banda, temporizar y orientar al rival hacia afuera o hacia la cobertura, sin tirarse al piso.",
+    "context": "Lateral o extremo defendiendo a un atacante que encara en banda.",
+    "risk": "Tirarse al suelo o saltar al duelo sin cobertura deja que lo superen y el equipo queda en inferioridad.",
+    "tags": ["duelo", "1v1", "banda", "temporizar", "cobertura"]
+  },
+  {
+    "category": "duels",
+    "principle": "Usar el cuerpo y el perfil: meter el cuerpo entre el rival y la pelota, ganar la posición antes que el balón.",
+    "context": "Duelos de espaldas y disputas de balón dividido.",
+    "risk": "Jugar solo a la pelota sin proteger con el cuerpo regala faltas o pérdidas en zonas peligrosas.",
+    "tags": ["duelo", "cuerpo", "perfil", "proteccion"]
+  },
+  {
+    "category": "duels",
+    "principle": "En el duelo aéreo, trabajar el timing del salto y fijar al rival para ganar la posición, no solo saltar.",
+    "context": "Centros, despejes y pelota parada.",
+    "risk": "Saltar sin fijar al rival le cede el cabezazo limpio.",
+    "tags": ["duelo", "aereo", "salto", "centro"]
+  },
+  {
+    "category": "duels",
+    "principle": "El 9 que recibe de espaldas debe proteger, aguantar y descargar de primera; no girar si no hay espacio.",
+    "context": "Salida y ataque con el 9 como referencia bajo marca cercana.",
+    "risk": "Girar bajo presión sin apoyos termina en pérdida en zona peligrosa.",
+    "tags": ["duelo", "9", "espaldas", "descarga"]
+  },
+  {
+    "category": "duels",
+    "principle": "En las segundas pelotas, anticipar la caída y atacar el rebote con decisión en vez de mirarlo.",
+    "context": "Tras juego directo, despejes o rechazos.",
+    "risk": "Quedarse mirando la segunda pelota cede el control del partido al rival.",
+    "tags": ["duelo", "segunda-pelota", "rebote", "anticipacion"]
+  },
+  {
+    "category": "duels",
+    "principle": "Defender al hombre que encara con paciencia: no comprometerse en el primer amague y retroceder con él.",
+    "context": "1v1 de central o lateral frente a un atacante que conduce.",
+    "risk": "Comprometerse temprano deja que el rival pase con un solo amague.",
+    "tags": ["duelo", "1v1", "paciencia", "marca"]
+  }
+]

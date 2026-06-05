@@ -1,0 +1,38 @@
+name: Coach Eval
+
+on:
+  pull_request:
+    paths:
+      - "api/coach-agent.ts"
+      - "src/ai/**"
+      - "src/video/**"
+      - "tests/**"
+      - "scripts/runCoachEval.ts"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches:
+      - main
+      - "codex/**"
+    paths:
+      - "api/coach-agent.ts"
+      - "src/ai/**"
+      - "src/video/**"
+      - "tests/**"
+      - "scripts/runCoachEval.ts"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  coach-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run coach:eval
+      - run: npm test -- --run tests/coachEvalScoring.test.ts tests/coachContinuousEval.test.ts tests/coachOutputGuard.test.ts tests/evidenceCollection.test.ts tests/evidenceTargets.test.ts tests/coachVideoEvidenceCatalog.test.ts

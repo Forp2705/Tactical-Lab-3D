@@ -1,4 +1,5 @@
 import { Line } from "@react-three/drei";
+import { useMemo } from "react";
 import type { Overlay } from "@/data";
 import { pitchPointToWorld } from "./lib/runtime";
 import type { PitchMode } from "./lib/coords";
@@ -20,11 +21,17 @@ const COLORS: Record<Overlay["type"], string> = {
 };
 
 export function OverlayLayer({ overlays, mode, frame }: OverlayProps) {
+  const actorPositions = useMemo(
+    () =>
+      new Map(frame.actors.map((pose) => [pose.actor.id, pose.pos] as const)),
+    [frame.actors],
+  );
+
   return (
     <group>
       {overlays.map((overlay) => {
-        const from = resolveOverlayPoint(overlay.from, frame);
-        const to = resolveOverlayPoint(overlay.to, frame);
+        const from = resolveOverlayPoint(overlay.from, actorPositions);
+        const to = resolveOverlayPoint(overlay.to, actorPositions);
         if (!from || !to) return null;
         const start = pitchPointToWorld(from, mode);
         const end = pitchPointToWorld(to, mode);
@@ -56,7 +63,10 @@ export function OverlayLayer({ overlays, mode, frame }: OverlayProps) {
   );
 }
 
-function resolveOverlayPoint(endpoint: Overlay["from"], frame: MatchFrame) {
+function resolveOverlayPoint(
+  endpoint: Overlay["from"],
+  actorPositions: ReadonlyMap<string, MatchFrame["actors"][number]["pos"]>,
+) {
   if (typeof endpoint !== "string") return endpoint;
-  return frame.actors.find((pose) => pose.actor.id === endpoint)?.pos ?? null;
+  return actorPositions.get(endpoint) ?? null;
 }

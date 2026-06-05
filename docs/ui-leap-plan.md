@@ -31,24 +31,41 @@ La app debería sentirse como el lugar donde un cuerpo técnico profesional prep
 
 ---
 
-## 3. Sistema de diseño e identidad
+## 3. Dirección visual: Bold como identidad única (TypeUI)
 
-### 3.1 Una sola fuente de verdad de tokens
-Consolidar `theme.css` + `tactical-ui.css` en un único sistema de tokens (recomiendo la arquitectura de `tactical-ui.css`: oklch, densidad, multi-tema). Migrar las reglas con color hardcodeado a tokens. **Es el desbloqueo de todo el resto** — sin esto, cada cambio visual es a ciegas.
+> Fuente: skills de TypeUI (`bergside/awesome-design-skills`). **Bold = identidad. Bento = layout. Perspective = cancha/overlays.**
+> Regla madre: **una sola identidad visual.** Bento y Perspective son *roles*, no estilos paralelos. Prohibido "pantalla Bold, pantalla Bento, pantalla Perspective". Una paleta, una tipografía, una jerarquía — en toda la app.
 
-### 3.2 Los 3 temas como feature, no peso muerto
-Cablear `data-theme` en `<html>` + selector visible:
-- **Cockpit** — el ADN actual, sala oscura, para trabajo diario.
-- **Broadcast** — premium cinematográfico (lime/cyan, viñeta), para modo presentación / mostrarle al plantel o a dirigencia.
-- **Pizarra** — editorial, data-dense, monoespaciado, para impресión/PDF y análisis frío.
+### 3.1 Bold = identidad (todo el producto)
+Fundaciones del skill Bold, ajustadas a la intención "fútbol premium, alto contraste, energía deportiva":
+- **Tipografía heavyweight:** display/titulares en una fuente *black* (Archivo Black o equivalente 800–900), cuerpo en Inter, datos/métricas en mono (JetBrains Mono). Escala expresiva desktop-first. Jerarquía **fuerte** — títulos grandes y pesados, no la jerarquía plana actual.
+- **Color de alto contraste, UNA paleta:** superficie casi negra (`surface #111111`, texto claro), un primary potente + verde de cancha/positivo, y semánticos (`success #16A34A`, `warning #D97706`, `danger #DC2626`). Siempre vía **tokens semánticos**, nunca hex crudo.
+- **Spacing:** escala 4/8/12/16/24/32 (coincide con la actual — se mantiene).
+- **Accesibilidad (no negociable en Bold):** WCAG 2.2 AA, focus visible, touch targets 44px+, contraste alto real, `prefers-reduced-motion`.
+- **Carácter:** layouts comandantes, presencia fuerte, bordes y contraste definidos. **Menos glassmorphism/gradiente decorativo** — Bold es peso y contraste, no vidrio.
 
-Esto convierte una decisión de skin en un argumento de venta ("se adapta a cómo trabajás").
+### 3.2 Bento = layout (solo composición)
+Para **organizar información**: home/command center, dashboards y grupos de cards van en grilla modular tipo bento (bloques de tamaño variado, jerarquía clara, escaneable). Bento aporta la **composición**; el color y la tipografía salen de Bold, no de Bento.
 
-### 3.3 Lenguaje visual
-- **Tipografía**: jerarquía real (display para titulares de pantalla, mono para datos/métricas — ya hay `Space Grotesk` + `Space Mono` definidas). Hoy la jerarquía es plana.
-- **Color con significado**: teal = alineado/positivo, ámbar = riesgo/desvío, rojo = contradicción/peligro, azul = información/evidencia. Consistente en todo el producto, no decorativo.
-- **Iconografía coherente** que reemplace o acompañe los code-chips crípticos (HOME/3D/XI/PM…).
-- **Motivos de cancha**: zonas, carriles, líneas entre líneas, altura de bloque — como componentes reutilizables, no dibujos ad-hoc.
+### 3.3 Perspective = cancha y overlays (solo tratamiento espacial)
+Para el **lenguaje de cancha**: `PitchViz`, el visor 3D, capas/overlays, profundidad, altura de bloque, zonas. Perspective aporta **profundidad y capas** (espacial, isométrico donde sume); el color y la tipografía siguen siendo Bold. No se usa fuera de la cancha/overlays.
+
+### 3.4 Auditoría de `theme.css` + `tactical-ui.css` contra Bold (paso 4)
+- **Conflicto de tokens (bloqueante #1):** `theme.css` (3053) y `tactical-ui.css` (861) redefinen `:root` (`--accent` hex vs `oklch`, fuentes y radios distintos). Con dos fuentes de verdad **es imposible una identidad única**. → consolidar en una.
+- **Tipografía:** hoy Space Grotesk/Avenir + Inter + Space Mono. Bold pide **display black** para titulares. → falta cargar/mapear una fuente display black; Inter sirve de cuerpo; el mono ya está.
+- **Color:** hoy teal/azul cockpit (oklch). Bold pide **alto contraste sobre near-black con UNA paleta**. El teal puede sobrevivir como el primary/energía, pero hay que **elegir uno y matar el resto** — no mezclar el teal de `theme.css` con otra paleta.
+- **Glassmorphism/gradientes:** presentes en ambos CSS. Bold privilegia contraste y peso. → reducir vidrio decorativo, subir contraste, bordes definidos.
+- **Los 3 temas (cockpit/broadcast/pizarra):** se conservan **solo como modos de la misma identidad Bold** (idéntico set de tokens, distinta luz/contraste), no como tres estilos distintos. Si fueran estilos separados, romperían la regla de "una identidad" → Frankenstein.
+
+### 3.5 Fase 0 segura — tokens + componentes base (paso 5, sin tocar lógica de negocio)
+Objetivo: **una sola capa de tokens Bold como fuente de verdad**, sin tocar TSX de negocio.
+1. Crear una única `:root` de tokens Bold (en `tactical-ui.css` o un `tokens.css` nuevo): familias tipográficas (`--font-display` black, `--font-body` Inter, `--font-mono`), escala + weights, **una** paleta semántica de alto contraste, spacing 4/8/12/16/24/32, radios, focus ring, touch 44px.
+2. `theme.css` deja de declarar `:root` propio: sus reglas pasan a **consumir** los tokens (reemplazo mecánico de hex → `var(--token)`). Sin tocar selectores ni markup → impacto cero en lógica.
+3. Cargar la fuente display black y mapearla a `--font-display`.
+4. Mapear los primitivos existentes (`src/ui/tacticalPrimitives.css`: `ConfidenceMeter`, `EvidenceChip`, `PitchViz`, `FitChip`, `PatternCard`, etc.) a los tokens Bold — son la base de componentes; **solo cambian valores por tokens, no su API**.
+5. Verificación: captura antes/después por vista + contraste AA en los 3 modos; `type-check`/`build` en copia estable.
+
+Riesgo: **bajo** — es CSS/tokens, no lógica. El único cuidado real es no degradar contraste al unificar la paleta (por eso la verificación de AA).
 
 ---
 

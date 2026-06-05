@@ -35,6 +35,14 @@ export type CoachAgentRuntimeContext = {
   teamModel?: string;
   gameModel?: GameModel;
   opponentScout?: OpponentScout;
+  videoEvidence?: {
+    total: number;
+    tags: number;
+    manualTracks: number;
+    confirmedTracks: number;
+    assistedTracks: number;
+    text: string;
+  };
   availableSquad: CoachAgentSquadPlayer[];
   unavailableSquad: CoachAgentSquadPlayer[];
   savedLineups?: Array<{

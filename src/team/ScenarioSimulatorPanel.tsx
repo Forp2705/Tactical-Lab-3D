@@ -5,33 +5,18 @@ import {
   type ScenarioId,
 } from "@/ai/scenarioSimulator";
 import { detectTeamPatterns } from "@/ai/patternDetection";
-import { listPostMatchReports } from "@/ai/post-match/postMatchClient";
-import type { SavedPostMatchReport } from "@/ai/post-match/schemas";
+import { usePostMatchReports } from "@/ai/post-match/usePostMatchReports";
 import { useAppStore } from "@/state/useAppStore";
 import { FitChip, PitchViz } from "@/ui/tacticalPrimitives";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export function ScenarioSimulatorPanel() {
   const gameModel = useAppStore((state) => state.gameModel);
   const team = useAppStore((state) => state.team);
   const coachShapeContext = useAppStore((state) => state.coachShapeContext);
+  const { reports } = usePostMatchReports();
   const [scenarioId, setScenarioId] = useState<ScenarioId>("raise-block");
   const [objective, setObjective] = useState("Queremos corregir el problema sin romper la identidad.");
-  const [reports, setReports] = useState<SavedPostMatchReport[]>([]);
-
-  useEffect(() => {
-    let mounted = true;
-    listPostMatchReports()
-      .then((items) => {
-        if (mounted) setReports(items);
-      })
-      .catch(() => {
-        if (mounted) setReports([]);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const patterns = useMemo(
     () => detectTeamPatterns(reports, { limit: 4 }).map((item) => item.statement),

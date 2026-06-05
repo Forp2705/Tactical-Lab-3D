@@ -72,15 +72,21 @@ export function PitchViz({
   overlays = [],
   players = [],
   compact = false,
+  state,
+  emptyMessage,
 }: {
   title?: string;
   subtitle?: string;
   overlays?: PitchOverlay[];
   players?: Array<{ id: string; x: number; y: number; label?: string; tone?: "own" | "rival" | "risk" }>;
   compact?: boolean;
+  state?: "empty" | "analysis" | "simulation";
+  emptyMessage?: string;
 }) {
+  const resolvedState =
+    state ?? (overlays.length || players.length ? "analysis" : "empty");
   return (
-    <div className={`tl-pitch-viz ${compact ? "compact" : ""}`}>
+    <div className={`tl-pitch-viz ${compact ? "compact" : ""} ${resolvedState}`}>
       {(title || subtitle) && (
         <div className="tl-pitch-viz-head">
           {title ? <b>{title}</b> : null}
@@ -106,6 +112,13 @@ export function PitchViz({
             ) : null}
           </g>
         ))}
+        {resolvedState === "empty" ? (
+          <g className="tl-pitch-empty">
+            <text x="50" y="32" textAnchor="middle">
+              {emptyMessage ?? "Sin lectura espacial"}
+            </text>
+          </g>
+        ) : null}
       </svg>
     </div>
   );
@@ -207,7 +220,11 @@ function renderOverlay(overlay: PitchOverlay, index: number) {
       <g key={`zone-${index}`} className={`tl-pitch-overlay ${tone}`}>
         <rect x={overlay.x} y={overlay.y} width={overlay.w} height={overlay.h} rx="2" />
         {overlay.label ? (
-          <text x={overlay.x + overlay.w / 2} y={overlay.y + overlay.h / 2} textAnchor="middle">
+          <text
+            className="tl-pitch-tag"
+            x={overlay.x + 2}
+            y={Math.max(overlay.y - 2, 5)}
+          >
             {overlay.label}
           </text>
         ) : null}
@@ -219,7 +236,7 @@ function renderOverlay(overlay: PitchOverlay, index: number) {
       <g key={`line-${index}`} className={`tl-pitch-measure ${tone}`}>
         <line x1={overlay.from.x} y1={overlay.from.y} x2={overlay.to.x} y2={overlay.to.y} />
         {overlay.label ? (
-          <text x={(overlay.from.x + overlay.to.x) / 2} y={(overlay.from.y + overlay.to.y) / 2 - 2} textAnchor="middle">
+        <text x={(overlay.from.x + overlay.to.x) / 2} y={(overlay.from.y + overlay.to.y) / 2 - 2} textAnchor="middle">
             {overlay.label}
           </text>
         ) : null}
@@ -230,7 +247,7 @@ function renderOverlay(overlay: PitchOverlay, index: number) {
     <g key={`height-${index}`} className={`tl-pitch-measure ${tone}`}>
       <line x1={overlay.x} y1="3" x2={overlay.x} y2="61" />
       {overlay.label ? (
-        <text x={overlay.x + 1.5} y="7">
+        <text className="tl-pitch-tag" x={overlay.x + 1.5} y="7">
           {overlay.label}
         </text>
       ) : null}

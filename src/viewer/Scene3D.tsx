@@ -16,7 +16,7 @@ import {
   SSAO,
   Vignette,
 } from "@react-three/postprocessing";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ACESFilmicToneMapping, SRGBColorSpace } from "three";
 import { Ball3D } from "./Ball3D";
 import { OverlayLayer } from "./Overlays";
@@ -89,7 +89,7 @@ export function Scene3D({
   return (
     <Canvas
       shadows="soft"
-      dpr={[1, 2]}
+      dpr={[1, renderSettings.dprMax]}
       camera={{ position: [0, 36, 46], fov: 30 }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
       onCreated={({ gl }) => {
@@ -102,7 +102,9 @@ export function Scene3D({
       <color attach="background" args={["#0a1924"]} />
       <fog attach="fog" args={["#0a1924", 100, 250]} />
       <SceneCamera cameraMode={cameraMode} mode={mode} topFocus={topFocus} />
-      <Environment preset="park" background={false} blur={0.4} />
+      {renderSettings.environment ? (
+        <Environment preset="park" background={false} blur={0.4} />
+      ) : null}
       <hemisphereLight intensity={0.78} groundColor="#3d7c42" />
       <ambientLight intensity={0.3} />
       <directionalLight
@@ -240,6 +242,8 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
       shadows: true,
       shadowMapSize: 4096,
       shadowRadius: 6,
+      dprMax: 2,
+      environment: true,
       contactShadows: true,
       contactShadowResolution: 1024,
       postprocessing: true,
@@ -255,6 +259,8 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
       shadows: false,
       shadowMapSize: 1024,
       shadowRadius: 2,
+      dprMax: 1.1,
+      environment: false,
       contactShadows: false,
       contactShadowResolution: 256,
       postprocessing: false,
@@ -269,6 +275,8 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
     shadows: true,
     shadowMapSize: 2048,
     shadowRadius: 4,
+    dprMax: 1.5,
+    environment: true,
     contactShadows: true,
     contactShadowResolution: 512,
     postprocessing: true,
@@ -345,7 +353,21 @@ function SceneCamera({
   topFocus: TopFocus;
 }) {
   const { camera } = useThree();
-  const preset = cameraPreset(mode, cameraMode);
+  const preset = useMemo(
+    () => cameraPreset(mode, cameraMode),
+    [cameraMode, mode],
+  );
+  useEffect(() => {
+    if (cameraMode === "top") return;
+
+    camera.position.set(
+      preset.position[0],
+      preset.position[1],
+      preset.position[2],
+    );
+    camera.lookAt(0, 0, 0);
+  }, [camera, cameraMode, preset]);
+
   useFrame(() => {
     if (cameraMode === "top") {
       camera.position.set(topFocus.x, preset.position[1], topFocus.z + 0.01);
@@ -354,20 +376,6 @@ function SceneCamera({
         camera.zoom = topFocus.zoom;
         camera.updateProjectionMatrix();
       }
-    } else if (cameraMode === "broadcast") {
-      camera.position.set(
-        preset.position[0],
-        preset.position[1],
-        preset.position[2],
-      );
-      camera.lookAt(0, 0, 0);
-    } else {
-      camera.position.set(
-        preset.position[0],
-        preset.position[1],
-        preset.position[2],
-      );
-      camera.lookAt(0, 0, 0);
     }
   });
 

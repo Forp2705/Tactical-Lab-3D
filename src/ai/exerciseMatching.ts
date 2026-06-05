@@ -109,16 +109,48 @@ export function inferDomainsFromText(text: string): TacticalDomain[] {
   const normalized = normalize(text);
   const domains: TacticalDomain[] = [];
 
-  if (hasAny(normalized, ["salida", "salir", "construir", "progresar"])) {
+  if (
+    hasAny(normalized, [
+      "salida",
+      "salir",
+      "construir",
+      "progresar",
+      "salir limpio",
+      "salida limpia",
+      "lo aprietan al 5",
+      "5 lo aprietan",
+      "cinco lo aprietan",
+      "recibe de espaldas",
+      "recibir de espaldas",
+    ])
+  ) {
     domains.push("buildUp");
   }
-  if (hasAny(normalized, ["presion", "presionar", "salto", "apretar"])) {
+  if (
+    hasAny(normalized, [
+      "presion",
+      "presionar",
+      "salto",
+      "apretar",
+      "subir el bloque",
+      "bloque alto",
+    ])
+  ) {
     domains.push("pressing");
   }
-  if (hasAny(normalized, ["bloque", "hund", "largo", "partido"])) {
+  if (hasAny(normalized, ["bloque", "hund", "largo", "partido", "linea alta"])) {
     domains.push("block");
   }
-  if (hasAny(normalized, ["perdida", "transicion defensiva", "retroceso"])) {
+  if (
+    hasAny(normalized, [
+      "perdida",
+      "perdemos",
+      "perdemos la pelota",
+      "transicion defensiva",
+      "retroceso",
+      "tras perder",
+    ])
+  ) {
     domains.push("defensiveTransition");
   }
   if (hasAny(normalized, ["contra", "transicion ofensiva", "atacar rapido"])) {
@@ -127,10 +159,21 @@ export function inferDomainsFromText(text: string): TacticalDomain[] {
   if (hasAny(normalized, ["corner", "abp", "pelota parada", "tiro libre"])) {
     domains.push("setPieces");
   }
-  if (hasAny(normalized, ["duelo", "1v1", "banda"])) {
+  if (
+    hasAny(normalized, [
+      "defender",
+      "nos ganan por banda",
+      "nos superan por fuera",
+      "costado",
+      "banda",
+    ])
+  ) {
+    domains.push("defense");
+  }
+  if (hasAny(normalized, ["duelo", "1v1", "banda", "2v1"])) {
     domains.push("duels");
   }
-  if (hasAny(normalized, ["atac", "gener", "9", "finaliz"])) {
+  if (hasAny(normalized, ["atac", "gener", "9", "finaliz", "aislado"])) {
     domains.push("attack");
   }
 

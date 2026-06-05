@@ -32,12 +32,28 @@ export default async function handler(
     const body = await readJsonBody(req);
     input = typeof body.input === "string" ? body.input.trim() : "";
     coachContext = body.coachContext ?? body.shapeContext;
+    const hasCollectedEvidence = Object.prototype.hasOwnProperty.call(
+      body,
+      "collectedEvidence",
+    );
+    const hasInterviewState = Object.prototype.hasOwnProperty.call(
+      body,
+      "interviewState",
+    );
     const collectedEvidenceResult = CollectedAnswerSchema.array().safeParse(
       body.collectedEvidence,
     );
     const interviewStateResult = CoachInterviewStateSchema.nullable().safeParse(
       body.interviewState ?? null,
     );
+    if (hasCollectedEvidence && !collectedEvidenceResult.success) {
+      badRequest(res, "Invalid collectedEvidence format");
+      return;
+    }
+    if (hasInterviewState && !interviewStateResult.success) {
+      badRequest(res, "Invalid interviewState format");
+      return;
+    }
     collectedEvidence = collectedEvidenceResult.success
       ? collectedEvidenceResult.data
       : [];

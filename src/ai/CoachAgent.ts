@@ -3,6 +3,11 @@ import OpenAI from "openai"
 
 import { COACH_AGENT_SYSTEM_PROMPT } from "./CoachAgentPrompt.js"
 import {
+  getCoachModeInstructions,
+  inferCoachPromptMode,
+  type CoachPromptMode,
+} from "./CoachModePrompts.js"
+import {
   isJsonModeUnsupportedError,
   parseCoachAdvice,
   resolveModelLadder,
@@ -33,7 +38,18 @@ import {
 } from "./patternDetection.js"
 import { retrieveRelevantReportsFromSaved } from "./retrieveRelevantReports.js"
 import { buildEvidenceCitation } from "./retrievalScoring.js"
+import { queryCoachRagIndex } from "./ragIndex.js"
+import {
+  assessCoachAdviceTrust,
+  guardCoachAdvice,
+} from "./coachOutputGuard.js"
+import { recordCoachObservabilityEvent } from "./coachObservability.js"
+import {
+  buildCoachPipelineTrace,
+  buildCoachRetrievalQuery,
+} from "./CoachPipeline.js"
 import { generateContextualQuestions } from "./contextualQuestionGenerator.js"
+import { inferEvidenceTargets } from "./evidenceTargets.js"
 import {
   buildEvidenceAudit,
   capConfidence,
@@ -44,18 +60,22 @@ import type {
   CoachMatchAdvice,
   CoachResponse,
   CollectedAnswer,
+  ContextualQuestion,
   EvidenceAudit,
+  EvidenceTarget,
   ImpliedClaim,
   TacticalIntent,
 } from "./CoachSchemas.js"
 import type { SavedPostMatchReport } from "./post-match/schemas.js"
+import { normalizeRuntimeVideoEvidenceText } from "../video/videoCoachEvidence.js"
 
 export type RetrievedEvidence = {
   id: string
-  sourceType: "knowledge" | "memory" | "observation" | "report"
+  sourceType: "knowledge" | "memory" | "observation" | "report" | "video"
   title: string
   excerpt: string
   score: number
+  evidenceTargets?: EvidenceTarget[]
 }
 
 dotenv.config({
@@ -66,6 +86,8 @@ const apiKey = process.env.OPENROUTER_API_KEY
 const modelName =
   process.env.OPENROUTER_MODEL ??
   "openai/gpt-4o-mini"
+const COACH_COMPLETION_TIMEOUT_MS =
+  Number(process.env.COACH_COMPLETION_TIMEOUT_MS) || 18000
 
 function getClient() {
   if (!apiKey) {
@@ -83,11 +105,13 @@ export async function generateCoachResponse(
   userInput: string,
   coachContext?: unknown,
   prefetched?: Awaited<ReturnType<typeof retrieveCoachEvidence>>,
+  promptMode: CoachPromptMode = inferCoachPromptMode(userInput),
 ) {
+  const startedAt = Date.now()
   if (!userInput.trim()) {
     throw new Error("User input cannot be empty")
   }
-  const evidence = prefetched ?? await retrieveCoachEvidence(userInput)
+  const evidence = prefetched ?? await retrieveCoachEvidence(userInput, coachContext)
   const {
     relevantContext,
     relevantGeneratedMemory,
@@ -122,6 +146,7 @@ export async function generateCoachResponse(
 
   const evidenceCatalogText =
   formatEvidenceCatalog(evidenceCatalog)
+  const modeInstructions = getCoachModeInstructions(promptMode)
 
   const prompt = `
 Respond ONLY with valid JSON using this exact structure:
@@ -163,7 +188,7 @@ Respond ONLY with valid JSON using this exact structure:
   "playerFitWarnings": ["string"],
   "evidenceCitations": [
     {
-      "sourceType": "knowledge|memory|observation|report",
+      "sourceType": "knowledge|memory|observation|report|video",
       "sourceId": "exact-source-id-from-evidence-catalog",
       "title": "string",
       "excerpt": "string",
@@ -196,9 +221,14 @@ Action rules:
 
 Evidence citation rules:
 - evidenceCitations must cite only sourceId values listed in Evidence catalog.
+- sourceType can be knowledge, memory, observation, report or video.
+- Prefer VID-* or OBS-* evidence for current case claims when available.
 - Prefer current match/report evidence over generic principles.
 - If no evidence supports a claim, state the uncertainty in reflection instead of fabricating a citation.
 - Max 4 evidenceCitations.
+
+Response mode:
+${modeInstructions}
 
 Game model and fit rules:
 - Explicitly contrast the diagnosis against Structured Game Model when evidence allows it.
@@ -268,6 +298,7 @@ ${userInput}
   )
 
   let lastError: unknown
+  let attemptCount = 0
 
   // Recorremos la escalera de modelos; por cada uno, hasta 2 intentos.
   // Importante: parseamos DENTRO del try, asi un JSON invalido tambien
@@ -275,6 +306,7 @@ ${userInput}
   for (const model of models) {
     let useJsonMode = true
     for (let attempt = 1; attempt <= 2; attempt++) {
+      attemptCount++
       try {
         const completion = await requestCoachCompletion({
           client,
@@ -284,6 +316,15 @@ ${userInput}
         })
 
         const rawText = extractCompletionText(completion)
+
+        logCoachCompletionTelemetry({
+          model,
+          configuredModel: modelName,
+          fallbackUsed: model !== models[0],
+          jsonMode: useJsonMode,
+          attempts: attemptCount,
+          durationMs: Date.now() - startedAt,
+        })
 
         return finalizeCoachAdvice(parseCoachAdvice(rawText), {
           evidenceCatalog,
@@ -305,6 +346,14 @@ ${userInput}
               useJsonMode: false,
             })
             const rawText = extractCompletionText(completion)
+            logCoachCompletionTelemetry({
+              model,
+              configuredModel: modelName,
+              fallbackUsed: model !== models[0] || useJsonMode,
+              jsonMode: false,
+              attempts: attemptCount,
+              durationMs: Date.now() - startedAt,
+            })
             return finalizeCoachAdvice(parseCoachAdvice(rawText), {
               evidenceCatalog,
               userInput,
@@ -329,6 +378,26 @@ ${userInput}
     : new Error("OpenRouter did not return a valid response")
 }
 
+/**
+ * Arma la query de retrieval combinando la pregunta original con las respuestas
+ * de la entrevista. Asi el ranking de evidencia/knowledge reconoce el problema
+ * REAL (p. ej. "se corta en el 5, recibe de espaldas") y no solo la frase vaga
+ * inicial. La query enriquecida se usa SOLO para rankear; el prompt sigue
+ * recibiendo el input original como pedido del usuario.
+ */
+function buildRetrievalQuery(
+  input: string,
+  collectedEvidence: CollectedAnswer[],
+): string {
+  if (!collectedEvidence.length) return input
+
+  const answers = collectedEvidence
+    .map((answer) => answer.rawAnswer?.trim())
+    .filter((text): text is string => Boolean(text))
+
+  return answers.length ? [input, ...answers].join(". ") : input
+}
+
 export async function runCoachTurn({
   input,
   coachContext,
@@ -342,7 +411,122 @@ export async function runCoachTurn({
   interviewState?: CoachInterviewState | null
   skipInterview?: boolean
 }): Promise<CoachResponse> {
-  const prefetched = await retrieveCoachEvidence(input)
+  const turnStartedAt = Date.now()
+  const retrievalQuery = buildCoachRetrievalQuery(input, collectedEvidence)
+  const questionOnlyFlow =
+    !skipInterview &&
+    !interviewState &&
+    collectedEvidence.length === 0
+
+  if (questionOnlyFlow) {
+    const questionContext = await retrieveCoachQuestionContext(retrievalQuery)
+
+    let questionResult: Awaited<ReturnType<typeof generateContextualQuestions>>
+    try {
+      const client = getClient()
+      questionResult = await generateContextualQuestions(
+        {
+          userInput: input,
+          evidenceCatalog: questionContext.evidenceCatalog,
+          collectedEvidence,
+          priorIntent: null,
+          priorClaims: [],
+        },
+        async ({ systemPrompt, userPrompt }) => {
+          const completion = await requestQuestionCompletion({
+            client,
+            model: modelName,
+            systemPrompt,
+            userPrompt,
+          })
+          return extractCompletionText(completion)
+        },
+      )
+    } catch (error) {
+      questionResult = await generateContextualQuestions(
+        {
+          userInput: input,
+          evidenceCatalog: questionContext.evidenceCatalog,
+          collectedEvidence,
+          priorIntent: null,
+          priorClaims: [],
+        },
+        async () => {
+          throw error
+        },
+      )
+    }
+
+    if (
+      questionResult.recommendedResponseMode !== "question" ||
+      !questionResult.selectedQuestions.length
+    ) {
+      const fullEvidence = await retrieveCoachEvidence(retrievalQuery, coachContext)
+      const advice = await generateCoachResponse(
+        input,
+        withInterviewEvidence(
+          coachContext,
+          collectedEvidence,
+          questionResult.evidenceAudit,
+        ),
+        fullEvidence,
+        promptModeForQuestionResult(input, questionResult.recommendedResponseMode),
+      )
+      const requiresCap =
+        questionResult.recommendedResponseMode !== "diagnosis" ||
+        questionResult.evidenceAudit.evidenceStrength !== "sufficient"
+      const cappedAdvice = withCappedAdvice(
+        advice,
+        questionResult.evidenceAudit,
+        requiresCap,
+      )
+      logCoachPipelineTrace(buildCoachPipelineTrace({
+        input,
+        collectedEvidence,
+        retrieved: fullEvidence.evidenceCatalog,
+        audit: questionResult.evidenceAudit,
+        advice: cappedAdvice,
+        skipInterview,
+      }))
+
+      const response = buildCoachResponseFromAdvice({
+        preferredMode:
+          questionResult.recommendedResponseMode === "diagnosis"
+            ? "diagnosis"
+            : "hypothesis",
+        advice:
+          questionResult.recommendedResponseMode === "diagnosis"
+            ? cappedAdvice
+            : withCappedAdvice(
+                advice,
+                questionResult.evidenceAudit,
+                true,
+              ),
+        intent: questionResult.intent,
+        evidenceAudit: questionResult.evidenceAudit,
+        userInput: input,
+        evidenceCatalog: fullEvidence.evidenceCatalog,
+        followUpQuestions:
+          questionResult.recommendedResponseMode !== "question"
+            ? questionResult.selectedQuestions
+            : [],
+        downgradeFollowUpQuestions: [],
+      })
+
+      return withCoachTurnTelemetry(response, turnStartedAt)
+    }
+
+    return withCoachTurnTelemetry({
+      mode: "question",
+      intent: questionResult.intent,
+      selectedQuestions: questionResult.selectedQuestions,
+      blockedClaims: questionResult.temptingClaims,
+      evidenceAudit: questionResult.evidenceAudit,
+      confidenceCap: questionResult.confidenceCap,
+    }, turnStartedAt)
+  }
+
+  const prefetched = await retrieveCoachEvidence(retrievalQuery, coachContext)
   const intent = interviewState?.intent ?? fallbackIntent(input)
   const temptingClaims = interviewState?.temptingClaims.length
     ? interviewState.temptingClaims
@@ -364,44 +548,74 @@ export async function runCoachTurn({
     interviewState &&
     (evidenceAudit.evidenceStrength === "sufficient" || collectedEvidence.length)
   ) {
-    const advice = await generateCoachResponse(input, enrichedCoachContext, prefetched)
+    const advice = await generateCoachResponse(
+      input,
+      enrichedCoachContext,
+      prefetched,
+      evidenceAudit.evidenceStrength === "sufficient" && !skipInterview
+        ? promptModeForQuestionResult(input, "diagnosis")
+        : "hypothesis",
+    )
     const cappedAdvice = withCappedAdvice(
       advice,
       evidenceAudit,
       skipInterview || evidenceAudit.evidenceStrength !== "sufficient",
     )
+    logCoachPipelineTrace(buildCoachPipelineTrace({
+      input,
+      collectedEvidence,
+      retrieved: prefetched.evidenceCatalog,
+      audit: evidenceAudit,
+      advice: cappedAdvice,
+      skipInterview,
+    }))
 
-    return evidenceAudit.evidenceStrength === "sufficient" && !skipInterview
-      ? {
-          mode: "diagnosis",
-          advice: cappedAdvice,
-          intent,
-          evidenceAudit,
-        }
-      : {
-          mode: "hypothesis",
-          advice: cappedAdvice,
-          confidenceCap: capConfidence(
-            advice.reflection.confidence,
-            evidenceAudit,
-            true,
-          ),
-          intent,
-          evidenceAudit,
-          followUpQuestions: [],
-        }
+    const response = buildCoachResponseFromAdvice({
+      preferredMode:
+        evidenceAudit.evidenceStrength === "sufficient" && !skipInterview
+          ? "diagnosis"
+          : "hypothesis",
+      advice: cappedAdvice,
+      intent,
+      evidenceAudit,
+      userInput: input,
+      evidenceCatalog: prefetched.evidenceCatalog,
+      followUpQuestions: [],
+      downgradeFollowUpQuestions: [],
+    })
+
+    return withCoachTurnTelemetry(response, turnStartedAt)
   }
 
   if (skipInterview) {
-    const advice = await generateCoachResponse(input, enrichedCoachContext, prefetched)
-    return {
-      mode: "hypothesis",
-      advice: withCappedAdvice(advice, evidenceAudit, true),
-      confidenceCap: capConfidence(advice.reflection.confidence, evidenceAudit, true),
-      intent,
-      evidenceAudit,
-      followUpQuestions: [],
-    }
+    const advice = await generateCoachResponse(
+      input,
+      enrichedCoachContext,
+      prefetched,
+      "hypothesis",
+    )
+    const cappedAdvice = withCappedAdvice(advice, evidenceAudit, true)
+    logCoachPipelineTrace(buildCoachPipelineTrace({
+      input,
+      collectedEvidence,
+      retrieved: prefetched.evidenceCatalog,
+      audit: evidenceAudit,
+      advice: cappedAdvice,
+      skipInterview,
+    }))
+    return withCoachTurnTelemetry(
+      buildCoachResponseFromAdvice({
+        preferredMode: "hypothesis",
+        advice: cappedAdvice,
+        intent,
+        evidenceAudit,
+        userInput: input,
+        evidenceCatalog: prefetched.evidenceCatalog,
+        followUpQuestions: [],
+        downgradeFollowUpQuestions: [],
+      }),
+      turnStartedAt,
+    )
   }
 
   let questionResult: Awaited<ReturnType<typeof generateContextualQuestions>>
@@ -440,46 +654,250 @@ export async function runCoachTurn({
     )
   }
 
-  return {
+  if (questionResult.recommendedResponseMode !== "question") {
+    const advice = await generateCoachResponse(
+      input,
+      withInterviewEvidence(
+        coachContext,
+        collectedEvidence,
+        questionResult.evidenceAudit,
+      ),
+      prefetched,
+      promptModeForQuestionResult(input, questionResult.recommendedResponseMode),
+    )
+    const requiresCap =
+      questionResult.recommendedResponseMode !== "diagnosis" ||
+      questionResult.evidenceAudit.evidenceStrength !== "sufficient"
+    const cappedAdvice = withCappedAdvice(
+      advice,
+      questionResult.evidenceAudit,
+      requiresCap,
+    )
+    logCoachPipelineTrace(buildCoachPipelineTrace({
+      input,
+      collectedEvidence,
+      retrieved: prefetched.evidenceCatalog,
+      audit: questionResult.evidenceAudit,
+      advice: cappedAdvice,
+      skipInterview,
+    }))
+
+    const response = buildCoachResponseFromAdvice({
+      preferredMode:
+        questionResult.recommendedResponseMode === "diagnosis"
+          ? "diagnosis"
+          : "hypothesis",
+      advice: cappedAdvice,
+      intent: questionResult.intent,
+      evidenceAudit: questionResult.evidenceAudit,
+      userInput: input,
+      evidenceCatalog: prefetched.evidenceCatalog,
+      followUpQuestions: questionResult.selectedQuestions,
+      downgradeFollowUpQuestions: [],
+    })
+
+    return withCoachTurnTelemetry(response, turnStartedAt)
+  }
+
+  if (!questionResult.selectedQuestions.length) {
+    const advice = await generateCoachResponse(
+      input,
+      withInterviewEvidence(
+        coachContext,
+        collectedEvidence,
+        questionResult.evidenceAudit,
+      ),
+      prefetched,
+      "hypothesis",
+    )
+    const cappedAdvice = withCappedAdvice(advice, questionResult.evidenceAudit, true)
+    logCoachPipelineTrace(buildCoachPipelineTrace({
+      input,
+      collectedEvidence,
+      retrieved: prefetched.evidenceCatalog,
+      audit: questionResult.evidenceAudit,
+      advice: cappedAdvice,
+      skipInterview,
+    }))
+
+    return withCoachTurnTelemetry(
+      buildCoachResponseFromAdvice({
+        preferredMode: "hypothesis",
+        advice: cappedAdvice,
+        intent: questionResult.intent,
+        evidenceAudit: questionResult.evidenceAudit,
+        userInput: input,
+        evidenceCatalog: prefetched.evidenceCatalog,
+        followUpQuestions: [],
+        downgradeFollowUpQuestions: [],
+      }),
+      turnStartedAt,
+    )
+  }
+
+  return withCoachTurnTelemetry({
     mode: "question",
     intent: questionResult.intent,
     selectedQuestions: questionResult.selectedQuestions,
     blockedClaims: questionResult.temptingClaims,
     evidenceAudit: questionResult.evidenceAudit,
     confidenceCap: questionResult.confidenceCap,
-  }
+  }, turnStartedAt)
 }
 
-export async function retrieveCoachEvidence(userInput: string) {
+function withCoachTurnTelemetry<T extends CoachResponse>(
+  response: T,
+  startedAt: number,
+): T {
+  const advice = response.mode === "question" ? null : response.advice
+  const payload = {
+    mode: response.mode,
+    evidenceStrength: response.evidenceAudit.evidenceStrength,
+    confidence:
+      advice?.reflection.confidence ??
+      ("confidenceCap" in response ? response.confidenceCap : null),
+    citationCount: advice?.evidenceCitations.length ?? 0,
+    followUpQuestionCount:
+      response.mode === "question"
+        ? response.selectedQuestions.length
+        : response.mode === "hypothesis"
+          ? response.followUpQuestions.length
+          : 0,
+    configuredModel: modelName,
+    durationMs: Date.now() - startedAt,
+  }
+  console.info(
+    "[coach-agent:turn]",
+    JSON.stringify(payload),
+  )
+  void recordCoachObservabilityEvent({
+    event: "turn",
+    ...payload,
+  })
+
+  return response
+}
+
+function logCoachPipelineTrace(
+  trace: ReturnType<typeof buildCoachPipelineTrace>,
+) {
+  console.info(
+    "[coach-agent:pipeline]",
+    JSON.stringify({
+      domains: trace.intent.domains,
+      promptMode: trace.promptMode,
+      evidenceSignalCount: trace.evidenceSignalCount,
+      retrievedEvidenceCount: trace.retrievedEvidenceCount,
+      selfCheck: trace.selfCheck,
+    }),
+  )
+}
+
+function logCoachCompletionTelemetry({
+  model,
+  configuredModel,
+  fallbackUsed,
+  jsonMode,
+  attempts,
+  durationMs,
+}: {
+  model: string
+  configuredModel: string
+  fallbackUsed: boolean
+  jsonMode: boolean
+  attempts: number
+  durationMs: number
+}) {
+  const payload = {
+    model,
+    configuredModel,
+    fallbackUsed,
+    jsonMode,
+    attempts,
+    durationMs,
+  }
+  console.info(
+    "[coach-agent:completion]",
+    JSON.stringify(payload),
+  )
+  void recordCoachObservabilityEvent({
+    event: "completion",
+    ...payload,
+  })
+}
+
+function promptModeForQuestionResult(
+  input: string,
+  recommendedMode: "question" | "hypothesis" | "diagnosis",
+): CoachPromptMode {
+  const inferred = inferCoachPromptMode(input)
+  if (inferred === "generalExplanation" || inferred === "sessionPlan") {
+    return inferred
+  }
+  if (recommendedMode === "diagnosis") return "diagnosis"
+  return "hypothesis"
+}
+
+export async function retrieveCoachEvidence(userInput: string, coachContext?: unknown) {
+  // Reconocemos el dominio del problema desde el texto (input + respuestas de
+  // entrevista) para priorizar el knowledge de esa fase y no traer conceptos de
+  // otra fase por simple coincidencia de keyword.
+  const knowledgeDomains = inferDomainsFromText(userInput)
+
   const [
-    relevantContext,
+    recentReports,
     relevantGeneratedMemory,
     relevantKnowledge,
-    recentReports,
+    persistentRagEvidence,
   ] = await Promise.all([
-    retrieveRelevantContext(userInput),
-    retrieveRelevantGeneratedMemory(userInput),
-    retrieveRelevantKnowledge(userInput),
     loadSavedPostMatchReports(),
+    retrieveRelevantGeneratedMemory(userInput),
+    retrieveRelevantKnowledge(userInput, knowledgeDomains),
+    queryCoachRagIndex(userInput, {
+      limit: 8,
+      minScore: 0.2,
+    }).catch(() => []),
   ])
+  const contextWithReports =
+    await retrieveRelevantContext(userInput, recentReports)
 
   const relevantReports =
-    retrieveRelevantReportsFromSaved(userInput, recentReports)
+    await retrieveRelevantReportsFromSaved(userInput, recentReports)
 
   const evidenceCatalog = [
+    ...persistentRagEvidence,
     ...relevantGeneratedMemory,
-    ...relevantContext,
+    ...contextWithReports,
     ...relevantKnowledge,
     ...relevantReports,
   ].map(toRetrievedEvidence)
+  const runtimeEvidence = buildRuntimeVideoEvidenceCatalog(coachContext)
+  const dedupedEvidence = dedupeEvidenceById([
+    ...runtimeEvidence,
+    ...evidenceCatalog,
+  ])
 
   return {
-    relevantContext,
+    relevantContext: contextWithReports,
     relevantGeneratedMemory,
     relevantKnowledge,
     relevantReports,
     recentReports,
-    evidenceCatalog,
+    evidenceCatalog: dedupedEvidence,
+  }
+}
+
+async function retrieveCoachQuestionContext(userInput: string) {
+  const recentReports = await loadSavedPostMatchReports()
+  const relevantReports = await retrieveRelevantReportsFromSaved(
+    userInput,
+    recentReports,
+  )
+
+  return {
+    recentReports,
+    relevantReports,
+    evidenceCatalog: relevantReports.map(toRetrievedEvidence),
   }
 }
 
@@ -522,23 +940,26 @@ async function requestCoachCompletion({
   prompt: string
   useJsonMode: boolean
 }) {
-  return client.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: "system",
-        content: COACH_AGENT_SYSTEM_PROMPT,
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-    temperature: 0.4,
-    ...(useJsonMode
-      ? { response_format: { type: "json_object" as const } }
-      : {}),
-  })
+  return client.chat.completions.create(
+    {
+      model,
+      messages: [
+        {
+          role: "system",
+          content: COACH_AGENT_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.4,
+      ...(useJsonMode
+        ? { response_format: { type: "json_object" as const } }
+        : {}),
+    },
+    { timeout: COACH_COMPLETION_TIMEOUT_MS },
+  )
 }
 
 async function requestQuestionCompletion({
@@ -552,21 +973,24 @@ async function requestQuestionCompletion({
   systemPrompt: string
   userPrompt: string
 }) {
-  return client.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: userPrompt,
-      },
-    ],
-    temperature: 0.2,
-    response_format: { type: "json_object" as const },
-  })
+  return client.chat.completions.create(
+    {
+      model,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_object" as const },
+    },
+    { timeout: COACH_COMPLETION_TIMEOUT_MS },
+  )
 }
 
 function formatCoachingStaffContext() {
@@ -656,6 +1080,7 @@ function formatRuntimeCoachContext(coachContext: unknown) {
     formatStructuredRuntimeContext(context),
     formatShapeRuntimeContext(context.shapeContext),
     formatLineupLabRuntimeContext(context),
+    formatVideoEvidenceRuntimeContext(context),
     formatInterviewRuntimeContext(context),
   ].filter(Boolean)
 
@@ -701,6 +1126,33 @@ function formatTeamRuntimeContext(context: Record<string, unknown>) {
     .join("\n")
 }
 
+function formatVideoEvidenceRuntimeContext(context: Record<string, unknown>) {
+  const videoEvidence = objectValue(context.videoEvidence)
+  if (!videoEvidence) return ""
+
+  const total = numberValue(videoEvidence.total) ?? 0
+  const text = stringValue(videoEvidence.text)
+  if (!total && !text) return ""
+
+  const lines = text
+    ? text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 12)
+    : []
+
+  return [
+    "VIDEO EVIDENCE (current UI marks)",
+    `- total=${total}; tags=${numberValue(videoEvidence.tags) ?? 0}; manualTracks=${numberValue(videoEvidence.manualTracks) ?? 0}; confirmedTracks=${numberValue(videoEvidence.confirmedTracks) ?? 0}; assistedTracks=${numberValue(videoEvidence.assistedTracks) ?? 0}`,
+    lines.length
+      ? `- items:\n${lines.map((line) => `  - ${line}`).join("\n")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
 function formatStructuredGameModel(coachContext: unknown) {
   const context = objectValue(coachContext)
   const raw = context?.gameModel
@@ -736,7 +1188,16 @@ function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string)
     runtimePlayerPositions(player).some((position) => ["LW", "RW", "ST", "CM", "CDM"].includes(position)),
   )
 
-  const slowCenterBacks = centerBacks.filter((player) => runtimeAttr(player, "speed") < 58)
+  const slowCenterBacks = centerBacks.filter((player) =>
+    runtimeProfileHas(player, [
+      "lento",
+      "poca velocidad",
+      "sufre a la espalda",
+      "espalda",
+      "pesado",
+      "no corrige hacia atras",
+    ]),
+  )
   if (
     slowCenterBacks.length &&
     /subir|bloque alto|presion alta|presionar/i.test(normalized)
@@ -746,8 +1207,15 @@ function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string)
     )
   }
 
-  const weakPivots = pivots.filter(
-    (player) => runtimeAttr(player, "pass") < 58 || runtimeAttr(player, "control") < 58,
+  const weakPivots = pivots.filter((player) =>
+    runtimeProfileHas(player, [
+      "sufre de espaldas",
+      "pase inseguro",
+      "poca recepcion",
+      "no gira",
+      "limitado con pelota",
+      "se complica bajo presion",
+    ]),
   )
   if (weakPivots.length && /salida|pivote|5|progres/i.test(normalized)) {
     lines.push(
@@ -755,16 +1223,24 @@ function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string)
     )
   }
 
-  const lowPress = attackers.filter((player) => runtimeAttr(player, "press") < 55)
+  const lowPress = attackers.filter((player) =>
+    runtimeProfileHas(player, [
+      "no presiona",
+      "baja intensidad",
+      "llega tarde",
+      "no sostiene presion",
+      "no repliega",
+    ]),
+  )
   if (lowPress.length >= 2 && /presion|tras perdida|apretar/i.test(normalized)) {
     lines.push(
       `- RIESGO FIT: presion alta con baja intensidad de presion en roles clave (${lowPress.map(runtimePlayerLabel).join("; ")}).`,
     )
   }
 
-  const organizer = pivots
-    .filter((player) => runtimeAttr(player, "tactical") >= 72)
-    .sort((a, b) => runtimeAttr(b, "tactical") - runtimeAttr(a, "tactical"))[0]
+  const organizer = pivots.find((player) =>
+    runtimeProfileHas(player, ["ordena", "lectura", "primer pase", "pausa", "lidera"]),
+  )
   if (organizer) {
     lines.push(`- FORTALEZA FIT: ${runtimePlayerLabel(organizer)} puede ordenar salida/presion.`)
   }
@@ -915,17 +1391,16 @@ function runtimePlayerPositions(player: unknown) {
   return arrayValue(entry?.positions).filter((item): item is string => typeof item === "string")
 }
 
-function runtimeAttr(player: unknown, key: string) {
-  const attributes = objectValue(objectValue(player)?.attributes)
-  const value = attributes?.[key]
-  return typeof value === "number" && Number.isFinite(value) ? value : 60
-}
-
 function runtimePlayerLabel(player: unknown) {
   const entry = objectValue(player)
   const num = numberValue(entry?.num) ?? "?"
   const name = stringValue(entry?.name) ?? "Jugador"
   return `#${num} ${name}`
+}
+
+function runtimeProfileHas(player: unknown, terms: string[]) {
+  const profile = stringValue(objectValue(player)?.profile) ?? ""
+  return terms.some((term) => normalizeForRules(profile).includes(normalizeForRules(term)))
 }
 
 function normalizeForRules(value: string) {
@@ -939,13 +1414,53 @@ function normalizeForRules(value: string) {
 type EvidenceCatalogItem = RetrievedEvidence
 
 function toRetrievedEvidence(item: EvidenceCatalogItem): RetrievedEvidence {
+  const text = `${item.title} ${item.excerpt}`
   return {
     id: item.id,
     sourceType: item.sourceType,
     title: item.title,
     excerpt: item.excerpt,
     score: item.score,
+    evidenceTargets: item.evidenceTargets?.length
+      ? item.evidenceTargets
+      : inferEvidenceTargets(text),
   }
+}
+
+function buildRuntimeVideoEvidenceCatalog(coachContext: unknown): RetrievedEvidence[] {
+  const context = objectValue(coachContext)
+  const videoEvidence = objectValue(context?.videoEvidence)
+  const text = stringValue(videoEvidence?.text)
+  if (!text) return []
+
+  return normalizeRuntimeVideoEvidenceText(text)
+    .slice(0, 12)
+    .map((observation) => ({
+      id: observation.id,
+      sourceType: "video" as const,
+      title: observation.title,
+      excerpt: observation.text,
+      score:
+        observation.confidence === "high"
+          ? 0.94
+          : observation.confidence === "medium"
+            ? 0.76
+            : 0.48,
+      evidenceTargets: inferEvidenceTargets(
+        [observation.title, observation.text, observation.zone ?? ""].join(" "),
+      ),
+    }))
+}
+
+function dedupeEvidenceById(items: RetrievedEvidence[]) {
+  const byId = new Map<string, RetrievedEvidence>()
+  for (const item of items) {
+    const current = byId.get(item.id)
+    if (!current || item.score > current.score) {
+      byId.set(item.id, item)
+    }
+  }
+  return [...byId.values()].sort((a, b) => b.score - a.score)
 }
 
 function fallbackIntent(userInput: string): TacticalIntent {
@@ -1023,6 +1538,60 @@ function withCappedAdvice(
   }
 }
 
+function buildCoachResponseFromAdvice({
+  preferredMode,
+  advice,
+  intent,
+  evidenceAudit,
+  userInput,
+  evidenceCatalog,
+  followUpQuestions,
+  downgradeFollowUpQuestions,
+}: {
+  preferredMode: "hypothesis" | "diagnosis"
+  advice: CoachMatchAdvice
+  intent: TacticalIntent
+  evidenceAudit: EvidenceAudit
+  userInput: string
+  evidenceCatalog: EvidenceCatalogItem[]
+  followUpQuestions: ContextualQuestion[]
+  downgradeFollowUpQuestions: ContextualQuestion[]
+}): CoachResponse {
+  const trust = assessCoachAdviceTrust(advice, {
+    userInput,
+    evidenceCatalog,
+  })
+
+  if (preferredMode === "diagnosis" && trust.requiresHypothesisMode) {
+    return {
+      mode: "hypothesis",
+      advice,
+      confidenceCap: advice.reflection.confidence,
+      intent,
+      evidenceAudit,
+      followUpQuestions: downgradeFollowUpQuestions,
+    }
+  }
+
+  if (preferredMode === "diagnosis") {
+    return {
+      mode: "diagnosis",
+      advice,
+      intent,
+      evidenceAudit,
+    }
+  }
+
+  return {
+    mode: "hypothesis",
+    advice,
+    confidenceCap: advice.reflection.confidence,
+    intent,
+    evidenceAudit,
+    followUpQuestions,
+  }
+}
+
 function withInterviewEvidence(
   coachContext: unknown,
   collectedEvidence: CollectedAnswer[],
@@ -1068,6 +1637,7 @@ function formatEvidenceCatalog(evidenceCatalog: EvidenceCatalogItem[]) {
         `- sourceId=${item.id}`,
         `type=${item.sourceType}`,
         `score=${Math.min(1, Math.max(0, item.score)).toFixed(3)}`,
+        `targets=${(item.evidenceTargets ?? []).join(",") || "none"}`,
         `title=${item.title}`,
         `excerpt=${item.excerpt}`,
       ].join(" | ")
@@ -1140,7 +1710,7 @@ function finalizeCoachAdvice(
     ...deterministicFit,
   ].filter((item, index, list) => item.trim() && list.indexOf(item) === index)
 
-  return {
+  return guardCoachAdvice({
     ...withExercises,
     modelContrast: {
       aligned: uniqueStrings([
@@ -1161,7 +1731,10 @@ function finalizeCoachAdvice(
       ...withExercises.adjustmentRisks,
       ...fitWarnings,
     ]),
-  }
+  }, {
+    userInput,
+    evidenceCatalog,
+  })
 }
 
 function enrichAdviceWithExerciseMatches(

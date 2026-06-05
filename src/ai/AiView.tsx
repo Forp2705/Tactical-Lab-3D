@@ -12,7 +12,7 @@ import {
   type CoachAgentRuntimeContext,
 } from "@/ai/coachAgentClient";
 import { PostMatchAnalysisView } from "@/ai/post-match/PostMatchAnalysisView";
-import { listPostMatchReports } from "@/ai/post-match/postMatchClient";
+import { usePostMatchReports } from "@/ai/post-match/usePostMatchReports";
 import {
   detectTeamPatterns,
   type TeamPattern,
@@ -21,7 +21,7 @@ import type {
   MemoryCandidate,
   SavedPostMatchReport,
 } from "@/ai/post-match/schemas";
-import type { Exercise, Player } from "@/data";
+import { catalog, type Exercise, type Player } from "@/data";
 import { buildSessionPlanFromDiagnosis } from "@/sessions/diagnosisSession";
 import { exportCoachDiagnosisHtml } from "@/export/premiumExports";
 import {
@@ -32,10 +32,17 @@ import {
   PitchViz,
 } from "@/ui/tacticalPrimitives";
 import {
-  getAllExercises,
   getExerciseById,
   useAppStore,
 } from "@/state/useAppStore";
+import {
+  summarizeVideoEvidence,
+  videoEvidenceToTagsText,
+} from "@/video/videoEvidence";
+import {
+  saveCoachFeedback,
+  type CoachFeedbackRating,
+} from "@/ai/coachFeedback";
 import { useEffect, useMemo, useState } from "react";
 
 type AgentStatus = {
@@ -90,13 +97,15 @@ type EvidenceViewModel = {
 export function AiView() {
   const prompt = useAppStore((state) => state.aiPrompt);
   const coachShapeContext = useAppStore((state) => state.coachShapeContext);
-  const team = useAppStore((state) => state.team);
-  const gameModel = useAppStore((state) => state.gameModel);
-  const opponentScout = useAppStore((state) => state.opponentScout);
-  const lineupLab = useAppStore((state) => state.lineupLab);
-  const tags = useAppStore((state) => state.tags);
-  const tracks = useAppStore((state) => state.tracks);
-  const session = useAppStore((state) => state.session);
+  const teamPlayers = useAppStore((state) => state.team.players);
+  const teamModel = useAppStore((state) => state.team.model);
+  const lineupLabShapes = useAppStore((state) => state.lineupLab.shapes);
+  const lineupLabTransitions = useAppStore(
+    (state) => state.lineupLab.savedTransitions,
+  );
+  const tagsCount = useAppStore((state) => state.tags.length);
+  const tracksCount = useAppStore((state) => state.tracks.length);
+  const sessionBlockCount = useAppStore((state) => state.session.blocks.length);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const mode = useAppStore((state) => state.aiMode);
   const setMode = useAppStore((state) => state.setAiMode);
@@ -114,59 +123,96 @@ export function AiView() {
   const [loading, setLoading] = useState(false);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [agentStatusError, setAgentStatusError] = useState<string | null>(null);
-  const [reports, setReports] = useState<SavedPostMatchReport[]>([]);
-  const [reportsError, setReportsError] = useState<string | null>(null);
+  const { reports, reportsError } = usePostMatchReports();
   const [lastRun, setLastRun] = useState<LastRunState>({ state: "idle" });
 
   const input = prompt.trim();
   const selectedExercise = getExerciseById(selectedExerciseId);
-  const cockpitContext = useMemo(
+  const recentReports = useMemo(
     () =>
-      buildCockpitContext({
-        team,
-        lineupLab,
-        coachShapeContext,
-        reports,
-        tagsCount: tags.length,
-        tracksCount: tracks.length,
-        sessionBlocks: session.blocks.length,
-        selectedExerciseTitle: selectedExercise?.title ?? "Sin ejercicio",
-      }),
+      [...reports].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).slice(0, 3),
+    [reports],
+  );
+  const acceptedMemory = useMemo(
+    () =>
+      reports
+        .flatMap((savedReport) =>
+          savedReport.report.memoryCandidates
+            .filter(
+              (candidate) =>
+                candidate.selectedByStaff ||
+                savedReport.staffReview.acceptedMemoryCandidateIds.includes(
+                  candidate.id,
+                ),
+            )
+            .map((candidate) => ({
+              reportId: savedReport.id,
+              opponent: savedReport.report.matchContext.opponent,
+              candidate,
+            })),
+        )
+        .slice(0, 5),
+    [reports],
+  );
+  const teamPatterns = useMemo(
+    () => detectTeamPatterns(reports, { limit: 4 }),
+    [reports],
+  );
+  const availablePlayers = useMemo(
+    () =>
+      teamPlayers.filter((player) => player.status === "available").length,
+    [teamPlayers],
+  );
+  const unavailablePlayers = teamPlayers.length - availablePlayers;
+  const cockpitContext = useMemo(
+    () => ({
+      availablePlayers,
+      unavailablePlayers,
+      teamModel: teamModel || "Modelo de equipo no definido",
+      shapes: lineupLabShapes.length,
+      transitions: lineupLabTransitions.length,
+      activeShape:
+        coachShapeContext?.selectedShapeName ??
+        lineupLabShapes[0]?.name ??
+        "Sin shape activo",
+      currentExercise: selectedExercise?.title ?? "Sin ejercicio",
+      sessionBlocks: sessionBlockCount,
+      videoTags: tagsCount,
+      videoTracks: tracksCount,
+      recentReports,
+      acceptedMemory,
+      teamPatterns,
+    }),
     [
+      acceptedMemory,
+      availablePlayers,
       coachShapeContext,
-      lineupLab,
-      reports,
+      lineupLabShapes,
+      lineupLabTransitions.length,
+      recentReports,
       selectedExercise?.title,
-      session.blocks.length,
-      tags.length,
-      team,
-      tracks.length,
+      sessionBlockCount,
+      tagsCount,
+      teamModel,
+      teamPatterns,
+      tracksCount,
+      unavailablePlayers,
     ],
   );
 
   useEffect(() => {
-    void refreshCockpitData();
+    void refreshAgentStatus();
   }, []);
 
-  async function refreshCockpitData() {
-    const [statusResult, reportsResult] = await Promise.allSettled([
-      requestAgentStatus(),
-      listPostMatchReports(),
-    ]);
+  async function refreshAgentStatus() {
+    const statusResult = await Promise.allSettled([requestAgentStatus()]);
 
-    if (statusResult.status === "fulfilled") {
-      setAgentStatus(statusResult.value);
+    if (statusResult[0].status === "fulfilled") {
+      setAgentStatus(statusResult[0].value);
       setAgentStatusError(null);
     } else {
       setAgentStatus(null);
       setAgentStatusError("No se pudo leer el estado del agente.");
-    }
-
-    if (reportsResult.status === "fulfilled") {
-      setReports(reportsResult.value);
-      setReportsError(null);
-    } else {
-      setReportsError("No se pudo cargar historial/memoria.");
     }
   }
 
@@ -175,11 +221,12 @@ export function AiView() {
     skipInterview?: boolean;
   }) {
     if (!input || loading) return;
+    const runtimeState = useAppStore.getState();
     const coachContext = buildCoachRuntimeContext(
-      team,
-      coachShapeContext,
-      gameModel,
-      opponentScout,
+      runtimeState.team,
+      runtimeState.coachShapeContext,
+      runtimeState.gameModel,
+      runtimeState.opponentScout,
     );
     const runtimeInterview = useAppStore.getState().coachInterview;
     const collectedEvidence =
@@ -208,7 +255,7 @@ export function AiView() {
         at: new Date().toISOString(),
         model: agentStatus?.openRouterModel,
       });
-      void refreshCockpitData();
+      void refreshAgentStatus();
     } catch (requestError) {
       const message =
         requestError instanceof Error
@@ -276,17 +323,17 @@ export function AiView() {
       <section className="ai-cockpit">
         <header className="ai-cockpit-hero team-card">
           <div>
-            <span className="panel-eyebrow">Coach / informe tactico</span>
-            <h3>Asistente tactico con contexto del club</h3>
+            <span className="panel-eyebrow">Coach / informe semanal</span>
+            <h3>Diagnostico tactico con contexto real del equipo</h3>
             <p>
-              Consulta el problema, revisa que evidencia usa y ejecuta acciones
-              sobre visor, sesion o Lineup Lab sin salir del flujo.
+              Formula el problema, revisa que evidencia sostiene la lectura y
+              baja una decision concreta a la semana.
             </p>
           </div>
           <div className="ai-hero-metrics" aria-label="Resumen del agente">
             <MetricPill
               label="Plantel"
-              value={`${cockpitContext.availablePlayers}/${team.players.length}`}
+              value={`${cockpitContext.availablePlayers}/${teamPlayers.length}`}
             />
             <MetricPill label="Shapes" value={cockpitContext.shapes} />
             <MetricPill
@@ -307,7 +354,7 @@ export function AiView() {
               statusError={agentStatusError}
               lastRun={lastRun}
               loading={loading}
-              onRefresh={() => void refreshCockpitData()}
+              onRefresh={() => void refreshAgentStatus()}
             />
             <ActiveContextPanel context={cockpitContext} />
             <RecentReportsPanel
@@ -339,16 +386,31 @@ export function AiView() {
               <div className="ai-command-footer">
                 <button
                   type="button"
-                  disabled={!input || loading}
+                  className="btn primary"
+                  disabled={!input || loading || agentStatus?.openRouterConfigured === false}
                   onClick={() => void runCoachAgent()}
                 >
-                  {loading ? "Analizando..." : "Consultar Coach"}
+                  {loading
+                    ? "Analizando..."
+                    : agentStatus?.openRouterConfigured === false
+                      ? "IA no disponible en este entorno"
+                      : "Consultar Coach"}
                 </button>
                 <span>
-                  Usa plantel, Lineup Lab, reportes, memoria y evidencia de
-                  video disponible.
+                  Usa plantel, shapes publicados, reportes, memoria y evidencia
+                  disponible para sostener la lectura.
                 </span>
               </div>
+              {agentStatus?.openRouterConfigured === false ? (
+                <div className="tester-edge-state">
+                  <b>Diagnostico en vivo no disponible</b>
+                  <small>
+                    La IA de Coach no esta configurada en este entorno. El
+                    resto del flujo sigue disponible para demo, revision y
+                    preparacion semanal.
+                  </small>
+                </div>
+              ) : null}
               {error ? (
                 <div className="ai-card ai-error-card" role="alert">
                   <b>Error del agente</b>
@@ -376,7 +438,11 @@ export function AiView() {
             ) : null}
 
             {advice ? (
-              <AdviceResult advice={advice} responseMode={responseMode} />
+              <AdviceResult
+                advice={advice}
+                prompt={input}
+                responseMode={responseMode}
+              />
             ) : !coachInterview.active || !coachInterview.questions.length ? (
               <EmptyState context={cockpitContext} />
             ) : null}
@@ -445,6 +511,9 @@ function buildCoachRuntimeContext(
 ): CoachAgentRuntimeContext {
   const lineupLab = useAppStore.getState().lineupLab;
   const playerById = new Map(team.players.map((player) => [player.id, player]));
+  const { tags, tracks } = useAppStore.getState();
+  const videoEvidenceSummary = summarizeVideoEvidence(tags, tracks);
+  const videoEvidenceText = videoEvidenceToTagsText(tags, tracks).trim();
   const toPlayer = (player: Player) => ({
     name: player.name,
     num: player.num,
@@ -467,6 +536,12 @@ function buildCoachRuntimeContext(
     teamModel: team.model,
     gameModel,
     opponentScout,
+    videoEvidence: videoEvidenceText
+      ? {
+          ...videoEvidenceSummary,
+          text: videoEvidenceText,
+        }
+      : undefined,
     savedLineups: team.lineups.map((lineup) => ({
       id: lineup.id,
       name: lineup.name,
@@ -517,70 +592,6 @@ function buildCoachRuntimeContext(
   };
 }
 
-function buildCockpitContext({
-  team,
-  lineupLab,
-  coachShapeContext,
-  reports,
-  tagsCount,
-  tracksCount,
-  sessionBlocks,
-  selectedExerciseTitle,
-}: {
-  team: ReturnType<typeof useAppStore.getState>["team"];
-  lineupLab: ReturnType<typeof useAppStore.getState>["lineupLab"];
-  coachShapeContext: ReturnType<
-    typeof useAppStore.getState
-  >["coachShapeContext"];
-  reports: SavedPostMatchReport[];
-  tagsCount: number;
-  tracksCount: number;
-  sessionBlocks: number;
-  selectedExerciseTitle: string;
-}): CockpitContext {
-  const recentReports = [...reports]
-    .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
-    .slice(0, 3);
-  const acceptedMemory = reports.flatMap((savedReport) =>
-    savedReport.report.memoryCandidates
-      .filter(
-        (candidate) =>
-          candidate.selectedByStaff ||
-          savedReport.staffReview.acceptedMemoryCandidateIds.includes(
-            candidate.id,
-          ),
-      )
-      .map((candidate) => ({
-        reportId: savedReport.id,
-        opponent: savedReport.report.matchContext.opponent,
-        candidate,
-      })),
-  );
-
-  return {
-    availablePlayers: team.players.filter(
-      (player) => player.status === "available",
-    ).length,
-    unavailablePlayers: team.players.filter(
-      (player) => player.status !== "available",
-    ).length,
-    teamModel: team.model || "Modelo de equipo no definido",
-    shapes: lineupLab.shapes.length,
-    transitions: lineupLab.savedTransitions.length,
-    activeShape:
-      coachShapeContext?.selectedShapeName ??
-      lineupLab.shapes[0]?.name ??
-      "Sin shape activo",
-    currentExercise: selectedExerciseTitle,
-    sessionBlocks,
-    videoTags: tagsCount,
-    videoTracks: tracksCount,
-    recentReports,
-    acceptedMemory: acceptedMemory.slice(0, 5),
-    teamPatterns: detectTeamPatterns(reports, { limit: 4 }),
-  };
-}
-
 function AiModeTabs({
   mode,
   setMode,
@@ -626,7 +637,7 @@ function AgentStatusPanel({
       <div className="section-title">
         <div>
           <span className="panel-eyebrow">Estado del agente</span>
-          <h4>Conexion IA</h4>
+          <h4>Motor IA</h4>
         </div>
         <button type="button" className="secondary" onClick={onRefresh}>
           Refrescar
@@ -635,7 +646,11 @@ function AgentStatusPanel({
       <div className="ai-status-grid">
         <StatusLine
           label="OpenRouter"
-          value={status?.openRouterConfigured ? "Configurado" : "Sin key"}
+          value={
+            status?.openRouterConfigured
+              ? "Disponible"
+              : "No configurado para este entorno"
+          }
           tone={status?.openRouterConfigured ? "ok" : "warn"}
         />
         <StatusLine
@@ -659,10 +674,11 @@ function AgentStatusPanel({
       {statusError ? <p className="muted-panel">{statusError}</p> : null}
       {status && !status.openRouterConfigured ? (
         <div className="tester-edge-state">
-          <b>Falta configurar IA</b>
+          <b>Coach IA no disponible</b>
           <small>
-            Agrega OPENROUTER_API_KEY en el entorno server-side antes de pasar
-            el link a testers.
+            Configura la clave server-side antes de un piloto con diagnostico en
+            vivo. Mientras tanto, usa Sala, Sesion, Post-partido y Evolucion
+            para mostrar el flujo completo sin mensajes rotos.
           </small>
         </div>
       ) : null}
@@ -695,7 +711,7 @@ function ActiveContextPanel({ context }: { context: CockpitContext }) {
   return (
     <section className="ai-rail-card">
       <span className="panel-eyebrow">Contexto activo</span>
-      <h4>Que va a leer el agente</h4>
+      <h4>Contexto cargado</h4>
       <div className="ai-context-list">
         <ContextRow label="Modelo" value={context.teamModel} />
         <ContextRow
@@ -731,7 +747,7 @@ function RecentReportsPanel({
   return (
     <section className="ai-rail-card">
       <span className="panel-eyebrow">Reportes</span>
-      <h4>Ultimos partidos</h4>
+      <h4>Ultimos reportes</h4>
       {error ? <p className="muted-panel">{error}</p> : null}
       {reports.length ? (
         <div className="ai-mini-list">
@@ -764,7 +780,7 @@ function MemoryPanel({
   return (
     <section className="ai-rail-card">
       <span className="panel-eyebrow">Memoria validada</span>
-      <h4>Aprendizajes del staff</h4>
+      <h4>Memoria aceptada</h4>
       {acceptedMemory.length ? (
         <div className="ai-mini-list">
           {acceptedMemory.map(({ reportId, opponent, candidate }) => (
@@ -789,7 +805,7 @@ function PatternsPanel({ patterns }: { patterns: TeamPattern[] }) {
   return (
     <section className="ai-rail-card">
       <span className="panel-eyebrow">Patrones</span>
-      <h4>Historia del equipo</h4>
+      <h4>Patrones detectados</h4>
       {patterns.length ? (
         <div className="ai-mini-list">
           {patterns.map((pattern) => (
@@ -885,12 +901,17 @@ function InterviewPanel({
       </div>
 
       <div className="ai-command-footer interview-actions">
-        <button type="button" disabled={loading} onClick={onSubmit}>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={loading}
+          onClick={onSubmit}
+        >
           {loading ? "Analizando..." : "Responder y continuar analisis"}
         </button>
         <button
           type="button"
-          className="secondary"
+          className="btn ghost"
           disabled={loading}
           onClick={onSkip}
         >
@@ -948,38 +969,71 @@ function QuestionCard({
 
 function AdviceResult({
   advice,
+  prompt,
   responseMode,
 }: {
   advice: CoachMatchAdvice;
+  prompt: string;
   responseMode: CoachResponse["mode"] | null;
 }) {
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const lineups = useAppStore((state) => state.team.lineups);
   const shapes = useAppStore((state) => state.lineupLab.shapes);
-  const actionGroups = buildAdviceActionGroups(advice);
-  const diagnosisSessionPlan = buildSessionPlanFromDiagnosis(
-    advice,
-    getAllExercises(),
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
+  const allExercises = useMemo(
+    () => [...catalog, ...exerciseVariants],
+    [exerciseVariants],
   );
-  const evidenceItems = buildEvidenceViewModel(advice.evidenceCitations);
-  const currentEvidence = evidenceItems.filter((item) => item.bucket === "current").length;
-  const modelWarningCount =
-    advice.modelContrast.contradictions.length +
-    advice.modelContrast.insufficientEvidence.length;
-  const pitchOverlays = buildDiagnosisPitchOverlays(advice);
-  const directActions = advice.actions.filter((action) => {
-    if (action.type === "createSessionFromDiagnosis") return true;
-    if (action.type === "applyLineup") {
-      return lineups.some((lineup) => lineup.id === action.lineupId);
-    }
-    if (action.type === "applyShape") {
-      return shapes.some((shape) => shape.id === action.shapeId);
-    }
-    if (action.type === "createExerciseFromShape") {
-      return shapes.some((shape) => shape.id === action.shapeId);
-    }
-    return false;
-  });
+  const actionGroups = useMemo(
+    () => buildAdviceActionGroups(advice, allExercises),
+    [advice, allExercises],
+  );
+  const diagnosisSessionPlan = useMemo(
+    () => buildSessionPlanFromDiagnosis(advice, allExercises),
+    [advice, allExercises],
+  );
+  const evidenceItems = useMemo(
+    () => buildEvidenceViewModel(advice.evidenceCitations),
+    [advice.evidenceCitations],
+  );
+  const currentEvidence = useMemo(
+    () => evidenceItems.filter((item) => item.bucket === "current").length,
+    [evidenceItems],
+  );
+  const modelWarningCount = useMemo(
+    () =>
+      advice.modelContrast.contradictions.length +
+      advice.modelContrast.insufficientEvidence.length,
+    [advice.modelContrast.contradictions.length, advice.modelContrast.insufficientEvidence.length],
+  );
+  const modeSupport = useMemo(
+    () =>
+      buildModeSupportState({
+        advice,
+        responseMode,
+        currentEvidence,
+        totalEvidence: evidenceItems.length,
+      }),
+    [advice, currentEvidence, evidenceItems.length, responseMode],
+  );
+  const pitchOverlays = useMemo(() => buildDiagnosisPitchOverlays(advice), [advice]);
+  const directActions = useMemo(
+    () =>
+      advice.actions.filter((action) => {
+        if (action.type === "createSessionFromDiagnosis") return true;
+        if (action.type === "applyLineup") {
+          return lineups.some((lineup) => lineup.id === action.lineupId);
+        }
+        if (action.type === "applyShape") {
+          return shapes.some((shape) => shape.id === action.shapeId);
+        }
+        if (action.type === "createExerciseFromShape") {
+          return shapes.some((shape) => shape.id === action.shapeId);
+        }
+        return false;
+      }),
+    [advice.actions, lineups, shapes],
+  );
 
   function runAction(action: CoachAction, exercise?: Exercise) {
     const store = useAppStore.getState();
@@ -1069,13 +1123,19 @@ function AdviceResult({
               type="shape"
               label={`${modelWarningCount} alertas modelo`}
             />
+            {modeSupport.pill ? (
+              <EvidenceChip type="inference" label={modeSupport.pill} />
+            ) : null}
           </div>
           <h3>
             {responseMode === "hypothesis"
-              ? "Hipotesis del Coach"
+              ? "Hipotesis operativa"
               : "Lectura del Coach"}
           </h3>
           <p>{advice.tacticalReading}</p>
+          {modeSupport.note ? (
+            <p className="mode-support-note">{modeSupport.note}</p>
+          ) : null}
         </div>
         <ConfidenceMeter
           value={advice.reflection.confidence}
@@ -1083,12 +1143,50 @@ function AdviceResult({
         />
       </header>
 
+      <section className="coach-report-card decision-summary-card">
+        <div className="section-title">
+          <div>
+            <span className="panel-eyebrow">Decision product</span>
+            <h4>Lectura principal y siguiente accion</h4>
+          </div>
+          <ConfidenceBadge confidence={advice.reflection.confidence} compact />
+        </div>
+        <div className="problem-breakdown-grid">
+          <div className="problem-breakdown-item">
+            <span>Lectura principal</span>
+            <b>{advice.probableCause}</b>
+          </div>
+          <div className="problem-breakdown-item">
+            <span>Ajuste recomendado</span>
+            <b>{advice.mainAdjustment}</b>
+          </div>
+          <div className="problem-breakdown-item">
+            <span>Que sabe</span>
+            <b>
+              {currentEvidence
+                ? `${currentEvidence} evidencia(s) del caso actual`
+                : "Sin evidencia actual confirmada"}
+            </b>
+          </div>
+          <div className="problem-breakdown-item">
+            <span>Que falta validar</span>
+            <b>{advice.reflection.missingInformation}</b>
+          </div>
+        </div>
+      </section>
+
       <div className="coach-report-grid">
         <ReportBlock title="Causa probable" value={advice.probableCause} />
         <ReportBlock title="Ajuste principal" value={advice.mainAdjustment} />
       </div>
 
       <ProblemBreakdownPanel advice={advice} />
+
+      <ModelContrastPanel advice={advice} />
+
+      <KnowledgeGapPanel advice={advice} evidenceItems={evidenceItems} />
+
+      <EvidencePanel evidenceItems={evidenceItems} />
 
       <AlternativeAdjustmentsPanel advice={advice} />
 
@@ -1104,6 +1202,7 @@ function AdviceResult({
           <div className="toolbar compact" style={{ marginTop: 12 }}>
             <button
               type="button"
+              className="btn primary"
               onClick={() =>
                 runAction({
                   type: "createSessionFromDiagnosis",
@@ -1115,15 +1214,18 @@ function AdviceResult({
             </button>
             <button
               type="button"
-              className="secondary"
-              onClick={() => useAppStore.getState().setView("team")}
+              className="btn ghost"
+              onClick={() => {
+                useAppStore.getState().setAiMode("postMatch");
+                useAppStore.getState().setView("ai");
+              }}
             >
-              Simular ajuste
+              Revisar en post-partido
             </button>
             <button
               type="button"
-              className="secondary"
-              onClick={() => exportCoachDiagnosisHtml(advice)}
+              className="btn ghost"
+              onClick={() => exportCoachDiagnosisHtml(advice, { prompt })}
             >
               Exportar diagnostico
             </button>
@@ -1131,16 +1233,19 @@ function AdviceResult({
         </section>
       </div>
 
-      <KnowledgeGapPanel advice={advice} evidenceItems={evidenceItems} />
-
-      <ModelContrastPanel advice={advice} />
-
       <ReportList
         title="Instrucciones de campo"
         items={advice.onFieldInstructions}
       />
 
       <DiagnosisSessionPanel plan={diagnosisSessionPlan} />
+
+      <ActionPanel
+        actionGroups={actionGroups}
+        directActions={directActions}
+        actionStatus={actionStatus}
+        runAction={runAction}
+      />
 
       <details className="football-report-details">
         <summary>Ver riesgos, evidencia y reflexion completa</summary>
@@ -1167,13 +1272,10 @@ function AdviceResult({
         </section>
       ) : null}
 
-      <EvidencePanel evidenceItems={evidenceItems} />
-
-      <ActionPanel
-        actionGroups={actionGroups}
-        directActions={directActions}
-        actionStatus={actionStatus}
-        runAction={runAction}
+      <CoachFeedbackPanel
+        advice={advice}
+        prompt={prompt}
+        responseMode={responseMode}
       />
 
       <section className="coach-report-card">
@@ -1233,7 +1335,7 @@ function KnowledgeGapPanel({
       <div className="section-title">
         <div>
           <span className="panel-eyebrow">Confianza operativa</span>
-          <h4>Que sabe / que no sabe</h4>
+          <h4>Que sostiene la lectura y que falta validar</h4>
         </div>
         <ConfidenceBadge confidence={advice.reflection.confidence} compact />
       </div>
@@ -1345,6 +1447,13 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
   const currentEvidence = evidenceItems.filter((item) => item.bucket === "current");
   const previousMemory = evidenceItems.filter((item) => item.bucket === "memory");
   const contextSources = evidenceItems.filter((item) => item.bucket === "context");
+  const supportLabel = currentEvidence.length
+    ? "Con evidencia del caso"
+    : previousMemory.length
+      ? "Sin evidencia actual: usa antecedentes"
+      : contextSources.length
+        ? "Solo contexto tactico"
+        : "Sin citas";
 
   return (
     <section className="coach-report-card evidence-panel">
@@ -1353,13 +1462,25 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
           <span className="panel-eyebrow">Evidencia y trazabilidad</span>
           <h4>Apoyado en</h4>
         </div>
-        <span className="ai-context-chip">{evidenceItems.length} fuentes</span>
+        <span className="ai-context-chip">{supportLabel}</span>
+      </div>
+      <div className="evidence-summary-row" aria-label="Resumen de fuentes">
+        <span>Actual: {currentEvidence.length}</span>
+        <span>Memoria/reportes: {previousMemory.length}</span>
+        <span>Knowledge: {contextSources.length}</span>
+        <span>Total: {evidenceItems.length}</span>
       </div>
       <EvidenceBar
         current={currentEvidence.length}
         memory={previousMemory.length}
         context={contextSources.length}
       />
+      {!currentEvidence.length && evidenceItems.length ? (
+        <div className="ai-evidence-empty small">
+          No hay citas de observaciones actuales. La respuesta debe leerse como
+          hipotesis apoyada en memoria, reportes previos o conocimiento tactico.
+        </div>
+      ) : null}
       {evidenceItems.length ? (
         <div className="evidence-groups">
           <EvidenceGroup
@@ -1475,6 +1596,62 @@ function confidenceLabel(tone: "ok" | "medium" | "warn") {
   return "limitada";
 }
 
+function buildModeSupportState({
+  advice,
+  responseMode,
+  currentEvidence,
+  totalEvidence,
+}: {
+  advice: CoachMatchAdvice;
+  responseMode: CoachResponse["mode"] | null;
+  currentEvidence: number;
+  totalEvidence: number;
+}) {
+  const uncertainty = advice.reflection.mainUncertainty.toLowerCase();
+
+  if (responseMode !== "hypothesis") {
+    return { pill: null, note: null };
+  }
+
+  if (uncertainty.includes("derivando de fase")) {
+    return {
+      pill: "degradado por fase",
+      note:
+        "Se muestra como hipotesis porque la lectura puede estar yendose de fase respecto del problema pedido.",
+    };
+  }
+
+  if (uncertainty.includes("sin evidencia actual") || uncertainty.includes("usar como hipotesis")) {
+    return {
+      pill: "sin evidencia actual",
+      note:
+        "Se muestra como hipotesis porque hoy se apoya mas en contexto, memoria o conocimiento que en evidencia actual del caso.",
+    };
+  }
+
+  if (uncertainty.includes("no hay citas validas") || totalEvidence === 0) {
+    return {
+      pill: "sin citas validas",
+      note:
+        "Se muestra como hipotesis porque no hay citas validas suficientes para sostener un diagnostico cerrado.",
+    };
+  }
+
+  if (currentEvidence === 0) {
+    return {
+      pill: "evidencia limitada",
+      note:
+        "Se mantiene en hipotesis porque la evidencia actual del caso todavia es limitada.",
+    };
+  }
+
+  return {
+    pill: "lectura provisional",
+    note:
+      "La salida queda en hipotesis hasta que la evidencia del caso permita sostener un diagnostico mas firme.",
+  };
+}
+
 function EvidenceGroup({
   title,
   description,
@@ -1530,6 +1707,61 @@ function EvidenceCard({ item }: { item: EvidenceViewModel }) {
         <span style={{ width: `${Math.round(item.relevance * 100)}%` }} />
       </div>
     </article>
+  );
+}
+
+function CoachFeedbackPanel({
+  advice,
+  prompt,
+  responseMode,
+}: {
+  advice: CoachMatchAdvice;
+  prompt: string;
+  responseMode: CoachResponse["mode"] | null;
+}) {
+  const [savedRating, setSavedRating] = useState<CoachFeedbackRating | null>(null);
+  const ratings: Array<{ rating: CoachFeedbackRating; label: string }> = [
+    { rating: "useful", label: "Util" },
+    { rating: "weak", label: "Flojo" },
+    { rating: "invented", label: "Invento" },
+    { rating: "missingEvidence", label: "Falta evidencia" },
+    { rating: "goodExercise", label: "Buen ejercicio" },
+  ];
+
+  function submit(rating: CoachFeedbackRating) {
+    const saved = saveCoachFeedback({
+      rating,
+      prompt,
+      responseMode,
+      evidenceStrength: undefined,
+      confidence: advice.reflection.confidence,
+      citationCount: advice.evidenceCitations.length,
+    });
+    if (saved) setSavedRating(rating);
+  }
+
+  return (
+    <section className="coach-report-card coach-feedback-panel">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Feedback del staff</span>
+          <h4>Calificar respuesta</h4>
+        </div>
+        {savedRating ? <span className="ai-context-chip">Guardado</span> : null}
+      </div>
+      <div className="toolbar compact">
+        {ratings.map((item) => (
+          <button
+            type="button"
+            className={savedRating === item.rating ? "primary" : "secondary"}
+            key={item.rating}
+            onClick={() => submit(item.rating)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1603,8 +1835,10 @@ function ActionPanel({
   );
 }
 
-function buildAdviceActionGroups(advice: CoachMatchAdvice) {
-  const exercises = getAllExercises();
+function buildAdviceActionGroups(
+  advice: CoachMatchAdvice,
+  exercises: Exercise[],
+) {
   const linked = [
     ...advice.linkedExercises,
     ...advice.actions
@@ -1899,6 +2133,7 @@ function labelForSourceType(
     memory: "Memoria",
     observation: "Observacion",
     report: "Reporte",
+    video: "Video",
   };
   return labels[sourceType];
 }
@@ -1924,7 +2159,9 @@ function buildEvidenceViewModel(
 }
 
 function bucketForCitation(citation: CoachEvidenceCitation): EvidenceBucket {
-  if (citation.sourceType === "observation") return "current";
+  if (citation.sourceType === "observation" || citation.sourceType === "video") {
+    return "current";
+  }
   if (citation.sourceType === "memory" || citation.sourceType === "report") {
     return "memory";
   }
@@ -1934,6 +2171,7 @@ function bucketForCitation(citation: CoachEvidenceCitation): EvidenceBucket {
 function modeLabelForCitation(citation: CoachEvidenceCitation) {
   const labels: Record<CoachEvidenceCitation["sourceType"], string> = {
     observation: "Confirmado por evidencia actual",
+    video: "Confirmado por video/timestamp",
     memory: "Usado como memoria previa",
     report: "Usado como reporte previo",
     knowledge: "Usado como contexto tactico",

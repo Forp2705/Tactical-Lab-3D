@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { TacticalMemorySchema } from "../CoachSchemas.js";
 import { writableDataPath } from "../serverDataPaths.js";
+import { z } from "zod";
 import {
   CommitMemoryCandidatesRequestSchema,
   SavePostMatchReportRequestSchema,
@@ -9,9 +10,20 @@ import {
   type MemoryCandidate,
   type SavedPostMatchReport,
 } from "./schemas.js";
+import {
+  appendVersionedMemoryEntries,
+  revertVersionedMemoryEntry,
+  seedVersionedMemoryLedger,
+} from "../versionedMemory.js";
 
 const REPORTS_PATH = "src/ai/post-match/reports.json";
 const GENERATED_MEMORY_PATH = "src/ai/generated/tactical-memory.json";
+
+let reportsCache: SavedPostMatchReport[] | null = null;
+let reportsCachePromise: Promise<SavedPostMatchReport[]> | null = null;
+let generatedMemoryCache: z.infer<typeof TacticalMemorySchema> | null = null;
+let generatedMemoryPromise: Promise<z.infer<typeof TacticalMemorySchema>> | null =
+  null;
 
 export async function savePostMatchReport(payload: unknown) {
   const request = SavePostMatchReportRequestSchema.parse(payload);
@@ -35,6 +47,8 @@ export async function savePostMatchReport(payload: unknown) {
   ];
 
   await writeJson(REPORTS_PATH, nextReports);
+  reportsCache = nextReports;
+  reportsCachePromise = Promise.resolve(nextReports);
   return savedReport;
 }
 
@@ -56,7 +70,17 @@ export async function commitMemoryCandidates(payload: unknown) {
     );
 
   if (committed.length) {
-    await writeJson(GENERATED_MEMORY_PATH, [...memory, ...committed]);
+    await seedVersionedMemoryLedger(memory);
+    await appendVersionedMemoryEntries({
+      reportId: request.reportId,
+      candidates: request.candidates,
+      memoryItems: committed,
+      createdAt: new Date(`${today}T00:00:00.000Z`).toISOString(),
+    });
+    const nextMemory = [...memory, ...committed];
+    await writeJson(GENERATED_MEMORY_PATH, nextMemory);
+    generatedMemoryCache = nextMemory;
+    generatedMemoryPromise = Promise.resolve(nextMemory);
   }
 
   await markCommittedCandidates(
@@ -70,28 +94,64 @@ export async function commitMemoryCandidates(payload: unknown) {
   };
 }
 
-async function loadReports() {
-  const reportsPath = writableDataPath(REPORTS_PATH);
+export async function revertCommittedMemory(payload: unknown) {
+  const request = z
+    .object({
+      id: z.string().min(1),
+      reason: z.string().min(1),
+      revertedBy: z.string().min(1).default("staff"),
+    })
+    .parse(payload);
+  const entry = await revertVersionedMemoryEntry(request);
+  generatedMemoryCache = null;
+  generatedMemoryPromise = null;
+  return { reverted: Boolean(entry), entry };
+}
 
-  try {
-    const raw = await fs.readFile(reportsPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    return SavedPostMatchReportSchema.array().parse(parsed);
-  } catch {
-    return [];
-  }
+async function loadReports() {
+  if (reportsCache) return reportsCache;
+  if (reportsCachePromise) return reportsCachePromise;
+
+  const reportsPath = writableDataPath(REPORTS_PATH);
+  reportsCachePromise = (async () => {
+    try {
+      const raw = await fs.readFile(reportsPath, "utf-8");
+      const parsed = JSON.parse(raw);
+      const reports = SavedPostMatchReportSchema.array().parse(parsed);
+      reportsCache = reports;
+      return reports;
+    } catch {
+      reportsCache = [];
+      return [];
+    } finally {
+      reportsCachePromise = null;
+    }
+  })();
+
+  return reportsCachePromise;
 }
 
 async function loadGeneratedMemory() {
-  const runtimePath = writableDataPath(GENERATED_MEMORY_PATH);
+  if (generatedMemoryCache) return generatedMemoryCache;
+  if (generatedMemoryPromise) return generatedMemoryPromise;
 
-  try {
-    const raw = await fs.readFile(runtimePath, "utf-8");
-    const parsed = JSON.parse(raw);
-    return TacticalMemorySchema.parse(parsed);
-  } catch {
-    return [];
-  }
+  const runtimePath = writableDataPath(GENERATED_MEMORY_PATH);
+  generatedMemoryPromise = (async () => {
+    try {
+      const raw = await fs.readFile(runtimePath, "utf-8");
+      const parsed = JSON.parse(raw);
+      const memory = TacticalMemorySchema.parse(parsed);
+      generatedMemoryCache = memory;
+      return memory;
+    } catch {
+      generatedMemoryCache = [];
+      return [];
+    } finally {
+      generatedMemoryPromise = null;
+    }
+  })();
+
+  return generatedMemoryPromise;
 }
 
 async function markCommittedCandidates(reportId: string, candidateIds: string[]) {
@@ -125,6 +185,8 @@ async function markCommittedCandidates(reportId: string, candidateIds: string[])
   });
 
   await writeJson(REPORTS_PATH, nextReports);
+  reportsCache = nextReports;
+  reportsCachePromise = Promise.resolve(nextReports);
 }
 
 function memoryItemFromCandidate(

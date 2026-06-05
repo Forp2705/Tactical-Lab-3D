@@ -272,12 +272,17 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         : defaultTransitions(shapes);
     },
   );
+  const undoRef = useRef<() => void>(() => {});
   const slots = FORMATIONS[formation];
+  const playerById = useMemo(
+    () => new Map(players.map((player) => [player.id, player])),
+    [players],
+  );
   const ownChips = useMemo(
     () =>
       assignments
         .map((playerId, index) => {
-          const player = players.find((item) => item.id === playerId);
+          const player = playerById.get(playerId);
           if (!player) return null;
           return {
             player,
@@ -289,7 +294,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         .filter((chip): chip is { player: Player; role: string; pos: Vec2 } =>
           Boolean(chip),
         ),
-    [assignments, ownPositions, players, slots],
+    [assignments, ownPositions, playerById, slots],
   );
   const rivalChips = useMemo(
     () =>
@@ -361,7 +366,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
-        undo();
+        undoRef.current();
         return;
       }
 
@@ -385,7 +390,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  });
+  }, []);
 
   useEffect(() => {
     setLineupLabShapes(shapes);
@@ -417,10 +422,6 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         rivalChips: showRival ? rivalChips : [],
       }),
     );
-
-    return () => {
-      useAppStore.getState().setCoachShapeContext(null);
-    };
   }, [
     formation,
     fromShapeId,
@@ -434,6 +435,13 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     showRival,
     toShapeId,
   ]);
+
+  useEffect(
+    () => () => {
+      useAppStore.getState().setCoachShapeContext(null);
+    },
+    [],
+  );
 
   function pushHistory() {
     const snapshot: LabSnapshot = {
@@ -464,6 +472,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     setRivals(snapshot.rivals.map((rival) => ({ ...rival })));
     setHistory((current) => current.slice(0, -1));
   }
+  undoRef.current = undo;
 
   function beginDrag(target: DragTarget) {
     pushHistory();
@@ -1158,7 +1167,7 @@ function HeatmapLayer({ cells }: { cells: HeatmapCell[] }) {
         >
           <planeGeometry args={[8.5, 6.8]} />
           <meshBasicMaterial
-            color={cell.value > 0.72 ? "#facc15" : "#38bdf8"}
+            color={cell.value > 0.72 ? "#c7df5f" : "#38bdf8"}
             transparent
             opacity={0.08 + cell.value * 0.18}
             depthWrite={false}
@@ -1200,7 +1209,7 @@ function TransitionTrails({
                 [a.x, 0.72, a.z],
                 [b.x, 0.72, b.z],
               ]}
-              color="#facc15"
+              color="#c7df5f"
               lineWidth={1.8}
               transparent
               opacity={0.62}
@@ -1212,7 +1221,7 @@ function TransitionTrails({
               </mesh>
               <Text
                 fontSize={0.17}
-                color="#facc15"
+                color="#c7df5f"
                 anchorX="center"
                 anchorY="middle"
               >
@@ -1244,12 +1253,12 @@ function ComparisonGhosts({
           <group key={`ghost-${playerId}`} position={[world.x, 0.2, world.z]}>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <ringGeometry args={[1.8, 2.18, 48]} />
-              <meshBasicMaterial color="#facc15" transparent opacity={0.55} />
+              <meshBasicMaterial color="#c7df5f" transparent opacity={0.55} />
             </mesh>
             <Billboard position={[0, 1.0, 0]}>
               <Text
                 fontSize={0.18}
-                color="#facc15"
+                color="#c7df5f"
                 anchorX="center"
                 anchorY="middle"
               >
@@ -1322,7 +1331,7 @@ function TacticalChip({
       <mesh position={[0, 0.215, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[1.62, selected ? 2.05 : 1.84, 52]} />
         <meshBasicMaterial
-          color={selected ? "#facc15" : color}
+          color={selected ? "#c7df5f" : color}
           transparent
           opacity={selected ? 0.62 : 0.28}
         />
@@ -1387,7 +1396,7 @@ function TacticalLines({
             })}
             color={
               name === "attack"
-                ? "#facc15"
+                ? "#c7df5f"
                 : name === "mid"
                   ? "#5eead4"
                   : "#93c5fd"
@@ -1403,7 +1412,7 @@ function TacticalLines({
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <ringGeometry args={[1.0, 1.34, 48]} />
-        <meshBasicMaterial color="#facc15" transparent opacity={0.7} />
+        <meshBasicMaterial color="#c7df5f" transparent opacity={0.7} />
       </mesh>
     </group>
   );

@@ -1,4 +1,3 @@
-# Tactical Lab Pro 3D
+# RomboIQ
 
-Nueva app local para Tactical Lab Pro construida con Vite, React, TypeScript y React Three Fiber.
-
+Sala tactica local para cuerpos tecnicos, construida con Vite, React, TypeScript y React Three Fiber.

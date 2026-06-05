@@ -1,0 +1,72 @@
+[
+  {
+    "category": "principles-of-play",
+    "principle": "Penetración: buscar progresar y romper líneas hacia la portería rival en cuanto aparece la opción, antes que circular de más. Es el primer principio ofensivo en casi todas las escuelas formativas (FA, RFEF, conmebol).",
+    "context": "Siempre que el equipo tiene la pelota y existe una línea de pase o conducción que gana metros con sentido.",
+    "risk": "Penetrar sin apoyos ni resguardo expone a la pérdida y a la contra; pero no penetrar nunca convierte la posesión en estéril.",
+    "tags": ["principios", "ataque", "penetracion", "progresion", "verticalidad"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Apoyo y profundidad: el poseedor siempre necesita una opción corta de apoyo y una larga de profundidad para tener salida hacia atrás y amenaza hacia adelante.",
+    "context": "En cualquier fase con pelota, especialmente bajo presión.",
+    "risk": "Solo apoyos cortos vuelve al equipo plano y fácil de presionar; solo profundidad lo parte y aísla al poseedor.",
+    "tags": ["principios", "ataque", "apoyo", "profundidad", "soporte"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Amplitud y movilidad: usar todo el ancho para estirar al rival y mover a los jugadores para desordenar marcas; ambos principios son universales más allá de la escuela.",
+    "context": "Ataque contra bloques ordenados que defienden el centro.",
+    "risk": "Amplitud sin movilidad es predecible; movilidad sin estructura deja zonas vacías y pérdida de equilibrio.",
+    "tags": ["principios", "ataque", "amplitud", "movilidad"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Improvisación y creatividad: dentro de una estructura, dejar margen para la solución individual (gambeta, pase entre líneas inesperado). Las escuelas sudamericanas la valoran tanto como la estructura.",
+    "context": "En zonas de tres cuartos y de finalización, donde el guion no alcanza.",
+    "risk": "Improvisar en zona de salida o sin equilibrio detrás regala pérdidas peligrosas.",
+    "tags": ["principios", "ataque", "creatividad", "improvisacion", "individual"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Demora (delay): el primer defensor no se tira, frena al poseedor y da tiempo a que el equipo se ordene. Principio defensivo número uno en la formación clásica.",
+    "context": "Defensa individual y colectiva apenas el rival recibe de cara.",
+    "risk": "Comprometerse temprano deja al rival pasar; demorar de más sin presión cede metros y tiro.",
+    "tags": ["principios", "defensa", "demora", "primer-defensor", "1v1"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Cobertura y equilibrio: detrás del que presiona siempre hay un segundo defensor que cubre, y el resto del equipo se reequilibra hacia el lado contrario.",
+    "context": "Defensa en bloque y en duelos individuales.",
+    "risk": "Presionar sin cobertura deja un pase a la espalda; cubrir sin equilibrar abre el lado débil al cambio de orientación.",
+    "tags": ["principios", "defensa", "cobertura", "equilibrio", "permuta"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Concentración y control: cerca del propio arco, juntar el bloque y defender con paciencia, sin saltar a cada amague. Sintetiza la tradición defensiva italiana y el bloque reactivo.",
+    "context": "Defendiendo en campo propio o protegiendo un resultado.",
+    "risk": "Saltos individuales rompen la concentración del bloque; control excesivo invita al rival a acercarse sin riesgo.",
+    "tags": ["principios", "defensa", "concentracion", "control", "bloque"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Las cuatro fases del juego (ataque, defensa y las dos transiciones) son un ciclo continuo: cada decisión con pelota debe contemplar cómo quedo si la pierdo, y cada acción defensiva, cómo ataco si la recupero.",
+    "context": "Marco general para leer cualquier problema táctico.",
+    "risk": "Pensar una fase aislada del resto genera ajustes que arreglan un momento y rompen otro.",
+    "tags": ["principios", "fases", "transiciones", "ciclo"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Superioridades (numérica, posicional, cualitativa, socioafectiva): generar ventaja por cantidad, por ubicación, por duelo individual o por entendimiento entre compañeros. Concepto transversal a posición y relacionismo.",
+    "context": "Para decidir por dónde atacar o cómo salir de la presión.",
+    "risk": "Buscar una superioridad que el plantel no tiene (p. ej. cualitativa en banda sin un desequilibrante) fuerza una vía que no existe.",
+    "tags": ["principios", "superioridad", "ventaja", "ataque", "salida"]
+  },
+  {
+    "category": "principles-of-play",
+    "principle": "Adaptar la idea al material: la mejor escuela es la que el plantel puede ejecutar; los principios se eligen según perfiles, no por dogma.",
+    "context": "Al decidir modelo de juego o un ajuste concreto.",
+    "risk": "Imponer una idea que los jugadores no sostienen (presión alta sin piernas, salida corta sin perfiles) empeora el rendimiento.",
+    "tags": ["principios", "plantel", "perfiles", "pragmatismo", "modelo-de-juego"]
+  }
+]

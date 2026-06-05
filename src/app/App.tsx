@@ -8,8 +8,6 @@ import "./theme.css";
 import "./tactical-ui.css";
 import "@/ui/tacticalPrimitives.css";
 
-// Code-splitting: cada vista y el visor 3D (Three.js) se cargan bajo demanda
-// para sacarlos del bundle inicial.
 const Scene3D = lazy(() =>
   import("@/viewer/Scene3D").then((m) => ({ default: m.Scene3D })),
 );
@@ -46,16 +44,13 @@ async function exportCurrentCanvas(format: "mp4" | "gif") {
   if (!canvas) return;
 
   const store = useAppStore.getState();
-  if (store.exportStatus) return; // ya hay una exportacion en curso
+  if (store.exportStatus) return;
 
   const exercise =
     store.viewerExerciseOverride ??
     getExerciseById(store.selectedExerciseId) ??
     catalog[0];
-  // Grabamos la jugada completa: desde t=0 hasta el final de la escena.
   const duration = Math.max(1, Math.ceil(exercise.scene.duration));
-
-  // Estado de reproduccion previo, para restaurarlo al terminar.
   const previous = {
     time: store.time,
     playing: store.playing,
@@ -63,7 +58,6 @@ async function exportCurrentCanvas(format: "mp4" | "gif") {
   };
 
   try {
-    // Reproducimos la escena desde el inicio, a 1x, mientras se graba.
     store.setTime(0);
     store.setSpeed(1);
     if (!useAppStore.getState().playing) store.togglePlaying();
@@ -95,39 +89,34 @@ const TACTICAL_LAYERS: { id: Layer; label: string }[] = [
 
 export function App() {
   useViewerKeyboard();
+  const initialized = useAppStore((state) => state.initialized);
   const view = useAppStore((state) => state.view);
-  const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
-  const viewerExerciseOverride = useAppStore(
-    (state) => state.viewerExerciseOverride,
-  );
-  const presentationMode = useAppStore((state) => state.presentationMode);
-  const selectedExercise =
-    viewerExerciseOverride ?? getExerciseById(selectedExerciseId) ?? catalog[0];
-  const camera = useAppStore((state) => state.camera);
-  const viewerQuality = useAppStore((state) => state.viewerQuality);
-  const time = useAppStore((state) => state.time);
-  const playing = useAppStore((state) => state.playing);
-  const speed = useAppStore((state) => state.speed);
-  const showZones = useAppStore((state) => state.showZones);
-  const showRuns = useAppStore((state) => state.showRuns);
-  const showPasses = useAppStore((state) => state.showPasses);
-  const showPress = useAppStore((state) => state.showPress);
-  const personalSpace = useAppStore((state) => state.personalSpace);
-  const layers = useAppStore((state) => state.layers);
-  const exportStatus = useAppStore((state) => state.exportStatus);
 
   useEffect(() => {
     let mounted = true;
-    loadSnapshot().then((snapshot) => {
-      if (!mounted || !snapshot) return;
-      useAppStore.getState().loadSnapshot(snapshot);
-    });
+
+    loadSnapshot()
+      .then((snapshot) => {
+        if (!mounted) return;
+        if (snapshot) {
+          useAppStore.getState().loadSnapshot(snapshot);
+          return;
+        }
+        useAppStore.getState().markInitialized();
+      })
+      .catch(() => {
+        if (!mounted) return;
+        useAppStore.getState().markInitialized();
+      });
+
     return () => {
       mounted = false;
     };
   }, []);
 
   useEffect(() => {
+    if (!initialized) return;
+
     const handleSave = () => {
       const state = useAppStore.getState();
       void saveSnapshot({
@@ -161,252 +150,264 @@ export function App() {
         aiPrompt: state.aiPrompt,
       });
     };
+
     const id = window.setInterval(handleSave, 8000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [initialized]);
+
+  if (!initialized) {
+    return (
+      <AppShell>
+        <ViewFallback />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
       <Suspense fallback={<ViewFallback />}>
         {view === "home" ? <HomeView /> : null}
         {view === "library" ? <LibraryView /> : null}
-      {view === "viewer" ? (
-        <section className="viewer-layout">
-          <div className="stage-card">
-            <div className="stage-header">
-              <div>
-                <h3>{selectedExercise.title}</h3>
-                <p>
-                  {selectedExercise.phase} · {selectedExercise.principle} ·{" "}
-                  {selectedExercise.players.min}-{selectedExercise.players.max}{" "}
-                  jugadores
-                </p>
-              </div>
-              <div className="segmented">
-                {(["top", "iso", "broadcast"] as const).map((item) => (
-                  <button
-                    type="button"
-                    key={item}
-                    className={camera === item ? "active" : ""}
-                    onClick={() => useAppStore.getState().setCamera(item)}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-              {presentationMode ? (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() =>
-                    useAppStore.getState().setPresentationMode(false)
-                  }
-                >
-                  Salir
-                </button>
-              ) : null}
-            </div>
-            <div className="canvas-wrap">
-              <div className="phase-badge">
-                {phaseLabel(selectedExercise, time)}
-              </div>
-              {exportStatus ? (
-                <div className="export-overlay">
-                  <span className="export-spinner" />
-                  {exportStatus.phase === "recording"
-                    ? `Grabando escena (${exportStatus.format.toUpperCase()})...`
-                    : "Procesando video..."}
-                </div>
-              ) : null}
-              <Scene3D
-                exercise={selectedExercise}
-                time={time}
-                cameraMode={camera}
-                quality={viewerQuality}
-                showZones={showZones}
-                showRuns={showRuns}
-                showPasses={showPasses}
-                showPress={showPress}
-                layers={layers}
-                personalSpace={personalSpace}
-              />
-            </div>
-            <div className="timeline">
-              <button
-                type="button"
-                onClick={() => useAppStore.getState().togglePlaying()}
-              >
-                {playing ? "Pause" : "Play"}
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => useAppStore.getState().setTime(0)}
-              >
-                Reiniciar
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={selectedExercise.scene.duration}
-                step={0.01}
-                value={time}
-                onChange={(event) =>
-                  useAppStore.getState().setTime(Number(event.target.value))
-                }
-              />
-              <span>{time.toFixed(1)}s</span>
-              <label>
-                Velocidad
-                <select
-                  value={speed}
-                  onChange={(event) =>
-                    useAppStore.getState().setSpeed(Number(event.target.value))
-                  }
-                >
-                  <option value={0.5}>0.5x</option>
-                  <option value={1}>1x</option>
-                  <option value={1.5}>1.5x</option>
-                  <option value={2}>2x</option>
-                </select>
-              </label>
-            </div>
-          </div>
-          {presentationMode ? null : (
-            <aside className="team-card viewer-side">
-              <h3>Lectura del ejercicio</h3>
-              <p>
-                <b>Objetivo:</b> {selectedExercise.objective.primary}
-              </p>
-              <p>
-                <b>Éxito:</b> {selectedExercise.success}
-              </p>
-              <div className="layer-grid">
-                <label>
-                  Calidad
-                  <select
-                    value={viewerQuality}
-                    onChange={(event) =>
-                      useAppStore
-                        .getState()
-                        .setViewerQuality(
-                          event.target.value as typeof viewerQuality,
-                        )
-                    }
-                  >
-                    <option value="high">Alta</option>
-                    <option value="medium">Media</option>
-                    <option value="low">Baja</option>
-                  </select>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showZones}
-                    onChange={() =>
-                      useAppStore.getState().toggleLayer("showZones")
-                    }
-                  />{" "}
-                  Zonas
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showRuns}
-                    onChange={() =>
-                      useAppStore.getState().toggleLayer("showRuns")
-                    }
-                  />{" "}
-                  Carreras
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showPasses}
-                    onChange={() =>
-                      useAppStore.getState().toggleLayer("showPasses")
-                    }
-                  />{" "}
-                  Pases
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showPress}
-                    onChange={() =>
-                      useAppStore.getState().toggleLayer("showPress")
-                    }
-                  />{" "}
-                  Presión
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={personalSpace}
-                    onChange={() =>
-                      useAppStore.getState().togglePersonalSpace()
-                    }
-                  />{" "}
-                  Separación auto
-                </label>
-              </div>
-              <div className="layer-grid" style={{ marginTop: 12 }}>
-                {TACTICAL_LAYERS.map((layer) => (
-                  <label key={layer.id}>
-                    <input
-                      type="checkbox"
-                      checked={layers[layer.id]}
-                      onChange={() =>
-                        useAppStore.getState().toggleTacticalLayer(layer.id)
-                      }
-                    />{" "}
-                    {layer.label}
-                  </label>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  useAppStore.getState().addToSession(selectedExercise.id)
-                }
-              >
-                Agregar a sesión
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() =>
-                  useAppStore.getState().duplicateSelectedExercise()
-                }
-              >
-                Duplicar como variante
-              </button>
-              <button
-                type="button"
-                disabled={!!exportStatus}
-                onClick={() => void exportCurrentCanvas("mp4")}
-              >
-                {exportStatus?.format === "mp4" ? "Exportando..." : "Exportar MP4"}
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                disabled={!!exportStatus}
-                onClick={() => void exportCurrentCanvas("gif")}
-              >
-                {exportStatus?.format === "gif" ? "Exportando..." : "Exportar GIF"}
-              </button>
-            </aside>
-          )}
-        </section>
-      ) : null}
-      {view === "team" ? <TeamView /> : null}
-      {view === "sessions" ? <SessionsView /> : null}
-      {view === "video" ? <VideoView /> : null}
-      {view === "ai" ? <AiView /> : null}
+        {view === "viewer" ? <ViewerWorkspace /> : null}
+        {view === "team" ? <TeamView /> : null}
+        {view === "sessions" ? <SessionsView /> : null}
+        {view === "video" ? <VideoView /> : null}
+        {view === "ai" ? <AiView /> : null}
         {view === "player" ? <PlayerView /> : null}
       </Suspense>
     </AppShell>
+  );
+}
+
+function ViewerWorkspace() {
+  const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
+  const viewerExerciseOverride = useAppStore(
+    (state) => state.viewerExerciseOverride,
+  );
+  const presentationMode = useAppStore((state) => state.presentationMode);
+  const selectedExercise =
+    viewerExerciseOverride ?? getExerciseById(selectedExerciseId) ?? catalog[0];
+  const camera = useAppStore((state) => state.camera);
+  const viewerQuality = useAppStore((state) => state.viewerQuality);
+  const time = useAppStore((state) => state.time);
+  const playing = useAppStore((state) => state.playing);
+  const speed = useAppStore((state) => state.speed);
+  const showZones = useAppStore((state) => state.showZones);
+  const showRuns = useAppStore((state) => state.showRuns);
+  const showPasses = useAppStore((state) => state.showPasses);
+  const showPress = useAppStore((state) => state.showPress);
+  const personalSpace = useAppStore((state) => state.personalSpace);
+  const layers = useAppStore((state) => state.layers);
+  const exportStatus = useAppStore((state) => state.exportStatus);
+
+  return (
+    <section className="viewer-layout">
+      <div className="stage-card">
+        <div className="stage-header">
+          <div>
+            <h3>{selectedExercise.title}</h3>
+            <p>
+              {selectedExercise.phase} - {selectedExercise.principle} -{" "}
+              {selectedExercise.players.min}-{selectedExercise.players.max} jugadores
+            </p>
+          </div>
+          <div className="segmented">
+            {(["top", "iso", "broadcast"] as const).map((item) => (
+              <button
+                type="button"
+                key={item}
+                className={camera === item ? "active" : ""}
+                onClick={() => useAppStore.getState().setCamera(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          {presentationMode ? (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => useAppStore.getState().setPresentationMode(false)}
+            >
+              Salir
+            </button>
+          ) : null}
+        </div>
+        <div className="canvas-wrap">
+          <div className="phase-badge">{phaseLabel(selectedExercise, time)}</div>
+          {exportStatus ? (
+            <div className="export-overlay">
+              <span className="export-spinner" />
+              {exportStatus.phase === "recording"
+                ? `Grabando escena (${exportStatus.format.toUpperCase()})...`
+                : "Procesando video..."}
+            </div>
+          ) : null}
+          <Scene3D
+            exercise={selectedExercise}
+            time={time}
+            cameraMode={camera}
+            quality={viewerQuality}
+            showZones={showZones}
+            showRuns={showRuns}
+            showPasses={showPasses}
+            showPress={showPress}
+            layers={layers}
+            personalSpace={personalSpace}
+          />
+        </div>
+        <div className="timeline">
+          <button
+            type="button"
+            onClick={() => useAppStore.getState().togglePlaying()}
+          >
+            {playing ? "Pause" : "Play"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => useAppStore.getState().setTime(0)}
+          >
+            Reiniciar
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={selectedExercise.scene.duration}
+            step={0.01}
+            value={time}
+            onChange={(event) =>
+              useAppStore.getState().setTime(Number(event.target.value))
+            }
+          />
+          <span>{time.toFixed(1)}s</span>
+          <label>
+            Velocidad
+            <select
+              value={speed}
+              onChange={(event) =>
+                useAppStore.getState().setSpeed(Number(event.target.value))
+              }
+            >
+              <option value={0.5}>0.5x</option>
+              <option value={1}>1x</option>
+              <option value={1.5}>1.5x</option>
+              <option value={2}>2x</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      {presentationMode ? null : (
+        <aside className="team-card viewer-side">
+          <h3>Lectura del ejercicio</h3>
+          <p>
+            <b>Objetivo:</b> {selectedExercise.objective.primary}
+          </p>
+          <p>
+            <b>Exito:</b> {selectedExercise.success}
+          </p>
+          <div className="layer-grid">
+            <label>
+              Calidad
+              <select
+                value={viewerQuality}
+                onChange={(event) =>
+                  useAppStore
+                    .getState()
+                    .setViewerQuality(event.target.value as typeof viewerQuality)
+                }
+              >
+                <option value="high">Alta</option>
+                <option value="medium">Media</option>
+                <option value="low">Baja</option>
+              </select>
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showZones}
+                onChange={() => useAppStore.getState().toggleLayer("showZones")}
+              />{" "}
+              Zonas
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showRuns}
+                onChange={() => useAppStore.getState().toggleLayer("showRuns")}
+              />{" "}
+              Carreras
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showPasses}
+                onChange={() => useAppStore.getState().toggleLayer("showPasses")}
+              />{" "}
+              Pases
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showPress}
+                onChange={() => useAppStore.getState().toggleLayer("showPress")}
+              />{" "}
+              Presion
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={personalSpace}
+                onChange={() => useAppStore.getState().togglePersonalSpace()}
+              />{" "}
+              Separacion auto
+            </label>
+          </div>
+          <div className="layer-grid" style={{ marginTop: 12 }}>
+            {TACTICAL_LAYERS.map((layer) => (
+              <label key={layer.id}>
+                <input
+                  type="checkbox"
+                  checked={layers[layer.id]}
+                  onChange={() =>
+                    useAppStore.getState().toggleTacticalLayer(layer.id)
+                  }
+                />{" "}
+                {layer.label}
+              </label>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => useAppStore.getState().addToSession(selectedExercise.id)}
+          >
+            Agregar a sesion
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => useAppStore.getState().duplicateSelectedExercise()}
+          >
+            Duplicar como variante
+          </button>
+          <button
+            type="button"
+            disabled={!!exportStatus}
+            onClick={() => void exportCurrentCanvas("mp4")}
+          >
+            {exportStatus?.format === "mp4" ? "Exportando..." : "Exportar MP4"}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={!!exportStatus}
+            onClick={() => void exportCurrentCanvas("gif")}
+          >
+            {exportStatus?.format === "gif" ? "Exportando..." : "Exportar GIF"}
+          </button>
+        </aside>
+      )}
+    </section>
   );
 }
 

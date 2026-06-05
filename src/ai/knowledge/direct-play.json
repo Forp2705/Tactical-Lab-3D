@@ -1,0 +1,44 @@
+[
+  {
+    "category": "direct-play",
+    "principle": "Juego directo: cuando la salida corta es de alto riesgo (rival que presiona fuerte o cancha mala), jugar largo a una referencia o al espacio es una decisión válida, no una rendición.",
+    "context": "Contra presión alta intensa, en campos en mal estado, o con centrales sin perfil de salida.",
+    "risk": "Jugar largo sin preparar la segunda pelota regala la posesión; exige acompañamiento para disputar el rechazo.",
+    "tags": ["juego-directo", "salida", "verticalidad", "pase-largo", "segunda-pelota"]
+  },
+  {
+    "category": "direct-play",
+    "principle": "Disputar y ganar la segunda pelota: tras el envío largo, tener 2-3 jugadores cerca de la caída para atacar el rebote es lo que convierte el juego directo en arma.",
+    "context": "Después de un pase largo al 9 o al espacio.",
+    "risk": "Si el equipo queda largo y nadie acompaña, cada envío es una pérdida y una transición para el rival.",
+    "tags": ["juego-directo", "segunda-pelota", "rebote", "acompanamiento"]
+  },
+  {
+    "category": "direct-play",
+    "principle": "Referencia de área (target man): un delantero que fija, aguanta y baja la pelota permite progresar sin construir, y sostiene al equipo cuando hay que aliviar presión.",
+    "context": "Cuando hay un 9 fuerte de espaldas y conviene saltar líneas.",
+    "risk": "Depender solo del target sin movilidad alrededor lo deja aislado y previsible.",
+    "tags": ["juego-directo", "9", "target", "fijar", "descarga"]
+  },
+  {
+    "category": "direct-play",
+    "principle": "Verticalidad: priorizar el pase que más avanza apenas es razonable, buscando llegar rápido a zona de finalización (modelo reactivo tipo Simeone/contraataque).",
+    "context": "Contra rivales que dejan espacios a la espalda o se vuelcan al ataque.",
+    "risk": "Verticalidad forzada sin espacios reales = pelotazos sin sentido y pérdida de tenencia.",
+    "tags": ["juego-directo", "verticalidad", "transicion-ofensiva", "profundidad"]
+  },
+  {
+    "category": "direct-play",
+    "principle": "Equipo corto detrás del envío: al jugar largo, el bloque debe subir unos metros para achicar el espacio donde se disputa la segunda pelota y no quedar partido.",
+    "context": "En el momento del envío largo desde el fondo o el mediocampo.",
+    "risk": "No subir tras el envío deja 40 metros entre líneas y convierte cada disputa perdida en peligro.",
+    "tags": ["juego-directo", "compactness", "bloque", "segunda-pelota"]
+  },
+  {
+    "category": "direct-play",
+    "principle": "Directo como variante, no como única vía: alternar salida corta y largo según cómo presiona el rival mantiene impredecible al equipo.",
+    "context": "Contra rivales que ajustan su presión a la salida propia.",
+    "risk": "Jugar siempre largo regala la pelota; jugar siempre corto contra presión feroz regala pérdidas en salida.",
+    "tags": ["juego-directo", "salida", "variantes", "decision"]
+  }
+]

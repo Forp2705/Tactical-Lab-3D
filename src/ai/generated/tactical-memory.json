@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "category": "staffIdentity",
+    "pattern": "El cuerpo tecnico quiere defender hacia adelante.",
+    "impact": "Memoria base declarada por staff. Sirve para contrastar diagnosticos contra identidad, no como evidencia de partido.",
+    "frequency": 1,
+    "severityScore": 0.35,
+    "lastSeen": "2026-06-02"
+  },
+  {
+    "category": "staffIdentity",
+    "pattern": "El equipo busca orientar al rival hacia banda.",
+    "impact": "Memoria base declarada por staff. Sirve para evaluar si un problema o ajuste respeta el plan defensivo.",
+    "frequency": 1,
+    "severityScore": 0.35,
+    "lastSeen": "2026-06-02"
+  },
+  {
+    "category": "staffIdentity",
+    "pattern": "Mantener el equipo corto y coordinar lineas es un principio estable.",
+    "impact": "Memoria base declarada por staff. Si el equipo se parte, debe tratarse como posible desvio del modelo.",
+    "frequency": 1,
+    "severityScore": 0.45,
+    "lastSeen": "2026-06-02"
+  }
+]

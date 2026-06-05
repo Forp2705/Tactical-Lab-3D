@@ -1,5 +1,5 @@
 import { loadSavedPostMatchReports } from "./post-match/storage.js";
-import { rankDocuments } from "./retrievalScoring.js";
+import { rankDocumentsHybrid } from "./embeddingRetrieval.js";
 import type { SavedPostMatchReport } from "./post-match/schemas.js";
 
 const MAX_REPORT_ITEMS = 3;
@@ -9,7 +9,7 @@ export async function retrieveRelevantReports(userInput: string) {
   return retrieveRelevantReportsFromSaved(userInput, reports);
 }
 
-export function retrieveRelevantReportsFromSaved(
+export async function retrieveRelevantReportsFromSaved(
   userInput: string,
   reports: SavedPostMatchReport[],
 ) {
@@ -54,7 +54,7 @@ export function retrieveRelevantReportsFromSaved(
     };
   });
 
-  return rankDocuments(userInput, documents, {
+  return rankDocumentsHybrid(userInput, documents, {
     limit: MAX_REPORT_ITEMS,
     minScore: 0.06,
   });

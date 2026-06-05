@@ -1,0 +1,13 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RomboIQ">
+  <rect width="128" height="128" rx="30" fill="#04090D"/>
+  <path d="M64 14L114 64L64 114L14 64L64 14Z" fill="#071016" stroke="#5EEAD4" stroke-width="5"/>
+  <path d="M64 27L101 64L64 101L27 64L64 27Z" fill="#0B5A39" fill-opacity="0.46" stroke="#C7DF5F" stroke-width="2"/>
+  <path d="M36 64H92" stroke="#EFF7FA" stroke-opacity="0.48" stroke-width="2"/>
+  <path d="M64 36V92" stroke="#EFF7FA" stroke-opacity="0.48" stroke-width="2"/>
+  <circle cx="64" cy="64" r="13" stroke="#EFF7FA" stroke-opacity="0.56" stroke-width="2"/>
+  <circle cx="64" cy="64" r="4" fill="#5EEAD4"/>
+  <circle cx="44" cy="44" r="5" fill="#C7DF5F"/>
+  <circle cx="84" cy="44" r="5" fill="#5EEAD4"/>
+  <circle cx="84" cy="84" r="5" fill="#8ECAD2"/>
+  <circle cx="44" cy="84" r="5" fill="#EFF7FA"/>
+</svg>

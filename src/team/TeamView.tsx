@@ -3,16 +3,24 @@ import type {
   CoachShapePlayer,
   LineupLabShape,
 } from "@/state/useAppStore";
+import { usePostMatchReports } from "@/ai/post-match/usePostMatchReports";
 import type { Player, Vec2 } from "@/data";
 import { useAppStore } from "@/state/useAppStore";
 import { OpponentScoutPanel } from "@/scout/OpponentScoutPanel";
-import { type PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { GameModelBuilder } from "./GameModelBuilder";
 import { ScenarioSimulatorPanel } from "./ScenarioSimulatorPanel";
 import { explainShapeMetrics } from "./metricExplanations";
 import { computeMetrics } from "./lib/shapeMetrics";
 import { analyzePlayerFit } from "@/ai/playerFit";
 import { FitChip, PitchViz } from "@/ui/tacticalPrimitives";
+import { TeamTimeline } from "@/home/TeamTimeline";
 
 type LineupSlot = {
   playerId: string;
@@ -88,10 +96,31 @@ const STATUS_LABEL: Record<Player["status"], string> = {
   suspended: "Suspendido",
 };
 
+const POSITION_OPTIONS: Player["positions"][number][] = [
+  "GK",
+  "CB",
+  "LB",
+  "RB",
+  "WB",
+  "CDM",
+  "CM",
+  "CAM",
+  "AM",
+  "LW",
+  "RW",
+  "ST",
+];
+
 export function TeamView() {
   const team = useAppStore((state) => state.team);
   const coachShapeContext = useAppStore((state) => state.coachShapeContext);
+  const addPlayer = useAppStore((state) => state.addPlayer);
+  const removePlayer = useAppStore((state) => state.removePlayer);
+  const setSelectedPlayerId = useAppStore((state) => state.setSelectedPlayerId);
+  const updatePlayer = useAppStore((state) => state.updatePlayer);
+  const { reports } = usePostMatchReports();
   const [activeTab, setActiveTab] = useState<"lineup" | "model" | "simulator" | "scout">("lineup");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [formation, setFormation] = useState("4-3-3");
   const [lineup, setLineup] = useState<LineupSlot[]>(() =>
     buildLineup(team.players, "4-3-3"),
@@ -106,12 +135,27 @@ export function TeamView() {
   );
   const selectedPlayer = lineup[selectedIdx]
     ? playersById[lineup[selectedIdx].playerId]
-    : null;
+    : undefined;
+  const focusedPlayer =
+    team.players.find((player) => player.id === team.selectedPlayerId) ??
+    selectedPlayer ??
+    team.players[0];
   const onPitch = useMemo(
     () => new Set(lineup.map((item) => item.playerId)),
     [lineup],
   );
   const bench = team.players.filter((player) => !onPitch.has(player.id));
+
+  useEffect(() => {
+    setLineup((current) => reconcileLineup(current, team.players, formation));
+    setSelectedIdx((index) =>
+      Math.min(
+        index,
+        Math.max(0, (FORMATIONS[formation] ?? FORMATIONS["4-3-3"]).length - 1),
+      ),
+    );
+    setPublished(false);
+  }, [team.players, formation]);
 
   function changeFormation(nextFormation: string) {
     setFormation(nextFormation);
@@ -138,46 +182,100 @@ export function TeamView() {
     setPublished(true);
   }
 
+  function addRosterPlayer() {
+    addPlayer();
+    setPublished(false);
+  }
+
+  function removeRosterPlayer(playerId: string) {
+    removePlayer(playerId);
+    setPublished(false);
+  }
+
+  function assignPlayerToSelectedSlot(playerId: string) {
+    setLineup((current) => {
+      const selectedSlot = current[selectedIdx];
+      if (!selectedSlot) return current;
+      return current.map((item, index) => {
+        if (index === selectedIdx) return { ...item, playerId };
+        if (item.playerId === playerId) {
+          return { ...item, playerId: selectedSlot.playerId };
+        }
+        return item;
+      });
+    });
+    setSelectedPlayerId(playerId);
+    setPublished(false);
+  }
+
   return (
     <div className="view-enter team-mock-view">
       <div className="team-mock-toolbar">
-        <div className="segmented">
-          <button
-            type="button"
-            className={activeTab === "lineup" ? "active" : ""}
-            onClick={() => setActiveTab("lineup")}
-          >
-            Lineup
-          </button>
-          <button
-            type="button"
-            className={activeTab === "model" ? "active" : ""}
-            onClick={() => setActiveTab("model")}
-          >
-            Modelo
-          </button>
-          <button
-            type="button"
-            className={activeTab === "simulator" ? "active" : ""}
-            onClick={() => setActiveTab("simulator")}
-          >
-            Simulador
-          </button>
-          <button
-            type="button"
-            className={activeTab === "scout" ? "active" : ""}
-            onClick={() => setActiveTab("scout")}
-          >
-            Scout
-          </button>
+        <div>
+          <span className="panel-eyebrow">Equipo / evolucion</span>
+          <h3 style={{ margin: "4px 0 0" }}>
+            Base semanal del equipo y lectura de patrones
+          </h3>
         </div>
+        <div className="team-mock-spacer" />
+        <button
+          type="button"
+          className={`btn ghost ${showAdvanced ? "active" : ""}`}
+          onClick={() => setShowAdvanced((value) => !value)}
+        >
+          {showAdvanced ? "Ocultar avanzado" : "Mostrar avanzado"}
+        </button>
       </div>
 
-      {activeTab === "model" ? <GameModelBuilder /> : null}
-      {activeTab === "simulator" ? <ScenarioSimulatorPanel /> : null}
-      {activeTab === "scout" ? <OpponentScoutPanel /> : null}
+      {showAdvanced ? (
+        <section className="card team-advanced-card">
+          <div className="section-title">
+            <div>
+              <span className="panel-eyebrow">Capa avanzada</span>
+              <h4>Herramientas secundarias</h4>
+            </div>
+          </div>
+          <div className="segmented">
+            <button
+              type="button"
+              className={activeTab === "lineup" ? "active" : ""}
+              onClick={() => setActiveTab("lineup")}
+            >
+              Lineup
+            </button>
+            <button
+              type="button"
+              className={activeTab === "model" ? "active" : ""}
+              onClick={() => setActiveTab("model")}
+            >
+              Modelo
+            </button>
+            <button
+              type="button"
+              className={activeTab === "simulator" ? "active" : ""}
+              onClick={() => setActiveTab("simulator")}
+            >
+              Simulador
+            </button>
+            <button
+              type="button"
+              className={activeTab === "scout" ? "active" : ""}
+              onClick={() => setActiveTab("scout")}
+            >
+              Scout
+            </button>
+          </div>
+          <p className="muted-panel" style={{ marginTop: 12 }}>
+            Estas superficies quedan fuera del loop comercial por defecto.
+            Usalas solo para profundizar una decision ya tomada.
+          </p>
+          {activeTab === "model" ? <GameModelBuilder /> : null}
+          {activeTab === "simulator" ? <ScenarioSimulatorPanel /> : null}
+          {activeTab === "scout" ? <OpponentScoutPanel /> : null}
+        </section>
+      ) : null}
 
-      {activeTab === "lineup" ? (
+      {activeTab === "lineup" || !showAdvanced ? (
         <>
       <div className="team-mock-toolbar">
         <div className="segmented">
@@ -200,6 +298,9 @@ export function TeamView() {
           Overlay rival {showRival ? "on" : "off"}
         </button>
         <div className="team-mock-spacer" />
+        <button type="button" className="btn ghost" onClick={addRosterPlayer}>
+          Agregar jugador
+        </button>
         <button
           type="button"
           className={`btn ${published ? "ghost" : "primary"}`}
@@ -230,7 +331,7 @@ export function TeamView() {
               setSelectedIdx(index);
               const playerId = lineup[index]?.playerId;
               if (playerId) {
-                useAppStore.getState().setSelectedPlayerId(playerId);
+                setSelectedPlayerId(playerId);
               }
             }}
           />
@@ -244,50 +345,17 @@ export function TeamView() {
         </div>
 
         <aside className="grid team-mock-side">
-          {selectedPlayer ? (
-            <div className="card team-player-detail-card">
-              <div className="card-head">
-                <div className="team-selected-head">
-                  <div
-                    className={`num ${selectedPlayer.positions[0] === "GK" ? "gk" : ""}`}
-                  >
-                    {selectedPlayer.num}
-                  </div>
-                  <div>
-                    <h3>{selectedPlayer.name}</h3>
-                    <span className="mono">
-                      {selectedPlayer.positions.join(" · ")} · pie{" "}
-                      {selectedPlayer.foot}
-                    </span>
-                  </div>
-                </div>
-                <span className="team-status-mini">
-                  <span className={`status-dot ${selectedPlayer.status}`} />
-                  <span className="mono">
-                    {STATUS_LABEL[selectedPlayer.status]}
-                  </span>
-                </span>
-              </div>
-              <p className="team-profile-copy">{selectedPlayer.profile}</p>
-              <div className="team-qual-list">
-                <div>
-                  <span className="eyebrow">Rol natural</span>
-                  <b>{selectedPlayer.positions.join(" / ")}</b>
-                </div>
-                <div>
-                  <span className="eyebrow">Perfil de uso</span>
-                  <b>{selectedPlayer.profile}</b>
-                </div>
-                <div>
-                  <span className="eyebrow">Disponibilidad</span>
-                  <b>{STATUS_LABEL[selectedPlayer.status]}</b>
-                </div>
-                <div>
-                  <span className="eyebrow">Pie</span>
-                  <b>{footLabel(selectedPlayer.foot)}</b>
-                </div>
-              </div>
-            </div>
+          {focusedPlayer ? (
+            <PlayerEditorCard
+              key={focusedPlayer.id}
+              player={focusedPlayer}
+              selectedSlot={lineup[selectedIdx]?.slot ?? "slot"}
+              totalPlayers={team.players.length}
+              isOnPitch={onPitch.has(focusedPlayer.id)}
+              onAssign={assignPlayerToSelectedSlot}
+              onRemove={removeRosterPlayer}
+              onUpdate={updatePlayer}
+            />
           ) : null}
 
           <div className="card team-bench-card">
@@ -302,8 +370,16 @@ export function TeamView() {
                 <button
                   type="button"
                   key={player.id}
-                  className="player-row"
-                  onClick={() => useAppStore.getState().setSelectedPlayerId(player.id)}
+                  className={`player-row ${
+                    focusedPlayer?.id === player.id ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setSelectedPlayerId(player.id);
+                    const pitchIndex = lineup.findIndex(
+                      (item) => item.playerId === player.id,
+                    );
+                    if (pitchIndex >= 0) setSelectedIdx(pitchIndex);
+                  }}
                 >
                   <div
                     className={`num ${player.positions[0] === "GK" ? "gk" : ""}`}
@@ -328,8 +404,174 @@ export function TeamView() {
           </div>
         </aside>
       </div>
+      <TeamTimeline reports={reports} />
         </>
       ) : null}
+    </div>
+  );
+}
+
+function PlayerEditorCard({
+  player,
+  selectedSlot,
+  totalPlayers,
+  isOnPitch,
+  onAssign,
+  onRemove,
+  onUpdate,
+}: {
+  player: Player;
+  selectedSlot: string;
+  totalPlayers: number;
+  isOnPitch: boolean;
+  onAssign: (playerId: string) => void;
+  onRemove: (playerId: string) => void;
+  onUpdate: (id: string, patch: Partial<Player>) => void;
+}) {
+  function togglePosition(position: Player["positions"][number]) {
+    const hasPosition = player.positions.includes(position);
+    const nextPositions = hasPosition
+      ? player.positions.filter((item) => item !== position)
+      : [...player.positions, position];
+    if (!nextPositions.length) return;
+    onUpdate(player.id, { positions: nextPositions });
+  }
+
+  return (
+    <div className="card team-player-detail-card player-editor-card">
+      <div className="card-head">
+        <div className="team-selected-head">
+          <div className={`num ${player.positions[0] === "GK" ? "gk" : ""}`}>
+            {player.num}
+          </div>
+          <div>
+            <span className="eyebrow">Jugador seleccionado</span>
+            <h3>{player.name}</h3>
+            <span className="mono">
+              {player.positions.join(" · ")} · {footLabel(player.foot)}
+            </span>
+          </div>
+        </div>
+        <span className="team-status-mini">
+          <span className={`status-dot ${player.status}`} />
+          <span className="mono">{STATUS_LABEL[player.status]}</span>
+        </span>
+      </div>
+
+      <div className="player-editor-form">
+        <div className="player-editor-grid">
+          <label className="field">
+            Nombre
+            <input
+              type="text"
+              defaultValue={player.name}
+              onBlur={(event) =>
+                onUpdate(player.id, {
+                  name: event.currentTarget.value.trim() || "Jugador sin nombre",
+                })
+              }
+            />
+          </label>
+          <label className="field">
+            Dorsal
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={player.num}
+              onChange={(event) =>
+                onUpdate(player.id, {
+                  num: clampInt(Number(event.currentTarget.value), 1, 99),
+                })
+              }
+            />
+          </label>
+          <label className="field">
+            Estado
+            <select
+              value={player.status}
+              onChange={(event) =>
+                onUpdate(player.id, {
+                  status: event.currentTarget.value as Player["status"],
+                })
+              }
+            >
+              {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Pie
+            <select
+              value={player.foot}
+              onChange={(event) =>
+                onUpdate(player.id, {
+                  foot: event.currentTarget.value as Player["foot"],
+                })
+              }
+            >
+              <option value="R">Derecho</option>
+              <option value="L">Zurdo</option>
+              <option value="Both">Ambos</option>
+            </select>
+          </label>
+        </div>
+
+        <label className="field">
+          Perfil
+          <textarea
+            rows={5}
+            defaultValue={player.profile}
+            onBlur={(event) =>
+              onUpdate(player.id, {
+                profile: event.currentTarget.value.trim() || "Perfil a definir",
+              })
+            }
+          />
+          <small className="field-hint">
+            Describí cómo juega, qué sostiene, qué le cuesta y en qué contexto rinde mejor.
+          </small>
+        </label>
+
+        <div className="player-editor-section">
+          <span className="eyebrow">Posiciones</span>
+          <div className="position-chip-grid">
+            {POSITION_OPTIONS.map((position) => (
+              <button
+                type="button"
+                key={position}
+                className={`position-chip ${
+                  player.positions.includes(position) ? "active" : ""
+                }`}
+                onClick={() => togglePosition(position)}
+              >
+                {position}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="player-editor-actions">
+          <button
+            type="button"
+            className={isOnPitch ? "btn ghost" : "btn primary"}
+            onClick={() => onAssign(player.id)}
+          >
+            {isOnPitch ? "Mover a slot seleccionado" : `Poner en ${selectedSlot}`}
+          </button>
+          <button
+            type="button"
+            className="btn danger"
+            disabled={totalPlayers <= 1}
+            onClick={() => onRemove(player.id)}
+          >
+            Eliminar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -563,6 +805,41 @@ function buildLineup(players: Player[], formation: string): LineupSlot[] {
   });
 }
 
+function reconcileLineup(
+  current: LineupSlot[],
+  players: Player[],
+  formation: string,
+): LineupSlot[] {
+  const slots = FORMATIONS[formation] ?? FORMATIONS["4-3-3"];
+  if (current.length !== slots.length) {
+    return buildLineup(players, formation);
+  }
+
+  const playerIds = new Set(players.map((player) => player.id));
+  const used = new Set<string>();
+  return current.map((item, index) => {
+    const formationSlot = slots[index] ?? item;
+    const canKeep =
+      item.playerId && playerIds.has(item.playerId) && !used.has(item.playerId);
+    if (canKeep) {
+      used.add(item.playerId);
+      return { ...item, slot: formationSlot.slot };
+    }
+
+    const exact = players.find(
+      (player) => !used.has(player.id) && compatibleRole(player, formationSlot.slot),
+    );
+    const fallback = players.find((player) => !used.has(player.id));
+    const selected = exact ?? fallback;
+    if (selected) used.add(selected.id);
+    return {
+      ...item,
+      slot: formationSlot.slot,
+      playerId: selected?.id ?? "",
+    };
+  });
+}
+
 function shapeFromLineup(
   formation: string,
   lineup: LineupSlot[],
@@ -683,4 +960,9 @@ function footLabel(foot: Player["foot"]) {
   if (foot === "L") return "Zurdo";
   if (foot === "R") return "Derecho";
   return "Ambos perfiles";
+}
+
+function clampInt(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, Math.round(value)));
 }

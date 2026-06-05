@@ -1,0 +1,17 @@
+<svg width="420" height="120" viewBox="0 0 420 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RomboIQ">
+  <g>
+    <path d="M60 12L108 60L60 108L12 60L60 12Z" fill="#071016" stroke="#5EEAD4" stroke-width="4"/>
+    <path d="M60 25L95 60L60 95L25 60L60 25Z" fill="#0B5A39" fill-opacity="0.5" stroke="#C7DF5F" stroke-width="2"/>
+    <path d="M35 60H85" stroke="#EFF7FA" stroke-opacity="0.48" stroke-width="2"/>
+    <path d="M60 35V85" stroke="#EFF7FA" stroke-opacity="0.48" stroke-width="2"/>
+    <circle cx="60" cy="60" r="11" stroke="#EFF7FA" stroke-opacity="0.56" stroke-width="2"/>
+    <circle cx="60" cy="60" r="4" fill="#5EEAD4"/>
+    <circle cx="43" cy="43" r="4.5" fill="#C7DF5F"/>
+    <circle cx="77" cy="43" r="4.5" fill="#5EEAD4"/>
+    <circle cx="77" cy="77" r="4.5" fill="#8ECAD2"/>
+    <circle cx="43" cy="77" r="4.5" fill="#EFF7FA"/>
+  </g>
+  <text x="138" y="62" fill="#EFF7FA" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="42" font-weight="850" letter-spacing="-1">Rombo</text>
+  <text x="288" y="62" fill="#5EEAD4" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="42" font-weight="900" letter-spacing="-1">IQ</text>
+  <text x="140" y="88" fill="#9FB4BD" font-family="Space Mono, Consolas, monospace" font-size="11" font-weight="700" letter-spacing="2.2">SALA TACTICA DEL CUERPO TECNICO</text>
+</svg>

@@ -26,11 +26,17 @@ import {
   type OpponentScout,
   normalizeOpponentScout,
 } from "@/scout/opponentScout";
+import { APP_SNAPSHOT_VERSION } from "./db";
 import {
   buildSessionPlanFromDiagnosis,
   materializeDiagnosisSession,
 } from "@/sessions/diagnosisSession";
 import { catalog, demoPlayers } from "@/data";
+import {
+  PILOT_DIAGNOSIS_PROMPT,
+  PILOT_SESSION_BLOCKS,
+  PILOT_SESSION_NOTES,
+} from "@/demo/pilotState";
 import { create } from "zustand";
 
 export type ViewId =
@@ -295,6 +301,7 @@ type AppState = {
   requestApplyShape: (shapeId: string) => void;
   consumePendingShape: () => void;
   addPlayer: () => void;
+  removePlayer: (id: string) => void;
   setSelectedPlayerId: (id: string) => void;
   updatePlayer: (id: string, patch: Partial<Player>) => void;
   updateGameModel: (patch: Partial<GameModel>) => void;
@@ -413,8 +420,34 @@ function recomputeSession(
   };
 }
 
+const seededSession: Session = {
+  ...makeSession(),
+  name: "Semana piloto - compactar tras perdida",
+  blocks: PILOT_SESSION_BLOCKS,
+  computed: recomputeSession(PILOT_SESSION_BLOCKS),
+  staffNotes: PILOT_SESSION_NOTES,
+};
+
+const seededMicrocycle: Microcycle = {
+  ...makeMicrocycle(),
+  days: {
+    "MD+1": { objective: "Recuperacion", targetLoad: "low" },
+    "MD+2": { objective: "Base aerobica", targetLoad: "low" },
+    "MD-4": { objective: "Principio principal", targetLoad: "high" },
+    "MD-3": { objective: "Intensidad", targetLoad: "high" },
+    "MD-2": { objective: "ABP + ajustes", targetLoad: "med" },
+    "MD-1": { objective: "Activacion", targetLoad: "low" },
+    MD: { objective: "Partido", targetLoad: "med" },
+  },
+};
+
+const seededTeam: TeamState = {
+  ...initialTeam,
+  model: "4-3-3 agresivo, presion tras perdida y ataques por banda",
+};
+
 export const useAppStore = create<AppState>((set, get) => ({
-  version: 1,
+  version: APP_SNAPSHOT_VERSION,
   selectedExerciseId: catalog[0]?.id ?? "",
   view: "home",
   camera: "iso",
@@ -433,16 +466,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   showPress: true,
   personalSpace: false,
   layers: defaultLayers,
-  team: initialTeam,
+  team: seededTeam,
   gameModel: DEFAULT_GAME_MODEL,
   opponentScout: DEFAULT_OPPONENT_SCOUT,
-  session: makeSession(),
-  microcycle: makeMicrocycle(),
+  session: seededSession,
+  microcycle: seededMicrocycle,
   lineupLab: initialLineupLab,
   tags: [],
   tracks: [],
   aiMode: "coach",
-  aiPrompt: "",
+  aiPrompt: PILOT_DIAGNOSIS_PROMPT,
   coachInterview: initialCoachInterview,
   pendingPostMatchEvidenceText: null,
   coachShapeContext: null,
@@ -712,6 +745,41 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
     });
   },
+  removePlayer: (id) =>
+    set((state) => {
+      if (state.team.players.length <= 1) return {};
+      const players = state.team.players.filter((player) => player.id !== id);
+      const selectedPlayerId =
+        state.team.selectedPlayerId === id
+          ? players[0]?.id ?? ""
+          : state.team.selectedPlayerId;
+      return {
+        team: {
+          ...state.team,
+          players,
+          selectedPlayerId,
+          lineups: state.team.lineups.map((lineup) => ({
+            ...lineup,
+            ownPositions: lineup.ownPositions.filter(
+              (position) => position.playerId !== id,
+            ),
+          })),
+        },
+        lineupLab: {
+          ...state.lineupLab,
+          shapes: state.lineupLab.shapes.map((shape) => ({
+            ...shape,
+            positions: Object.fromEntries(
+              Object.entries(shape.positions).filter(
+                ([playerId]) => playerId !== id,
+              ),
+            ),
+          })),
+          pendingShapeId: null,
+        },
+        coachShapeContext: null,
+      };
+    }),
   setSelectedPlayerId: (id) =>
     set({ team: { ...get().team, selectedPlayerId: id } }),
   updatePlayer: (id, patch) =>

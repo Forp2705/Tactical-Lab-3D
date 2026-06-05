@@ -42,6 +42,7 @@ export function safeErrorStatus(error: unknown) {
 
 export function publicServerError(error: unknown, fallbackMessage: string) {
   const message = error instanceof Error ? error.message : "";
+  const normalized = message.toLowerCase();
 
   if (message.includes("Missing OPENROUTER_API_KEY")) {
     return {
@@ -54,7 +55,44 @@ export function publicServerError(error: unknown, fallbackMessage: string) {
     };
   }
 
-  if (message.includes("Unexpected token") || error instanceof SyntaxError) {
+  if (
+    normalized.includes("rate limit") ||
+    normalized.includes("429") ||
+    normalized.includes("too many requests")
+  ) {
+    return {
+      status: 429,
+      payload: {
+        code: "openrouter_rate_limited",
+        error:
+          "OpenRouter rate-limited the request. Wait a moment or use a fallback model.",
+      },
+    };
+  }
+
+  if (
+    normalized.includes("quota") ||
+    normalized.includes("credit") ||
+    normalized.includes("insufficient")
+  ) {
+    return {
+      status: 402,
+      payload: {
+        code: "openrouter_quota_exhausted",
+        error:
+          "OpenRouter has no available quota or credits for this request.",
+      },
+    };
+  }
+
+  if (
+    message.includes("Unexpected token") ||
+    error instanceof SyntaxError ||
+    error instanceof ZodError ||
+    normalized.includes("coach response is empty") ||
+    normalized.includes("no json object") ||
+    normalized.includes("invalid json")
+  ) {
     return {
       status: 502,
       payload: {
@@ -65,7 +103,11 @@ export function publicServerError(error: unknown, fallbackMessage: string) {
     };
   }
 
-  if (message.includes("401") || message.includes("Unauthorized")) {
+  if (
+    message.includes("401") ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("invalid api key")
+  ) {
     return {
       status: 502,
       payload: {
@@ -76,7 +118,36 @@ export function publicServerError(error: unknown, fallbackMessage: string) {
     };
   }
 
-  if (message.includes("model") || message.includes("404")) {
+  if (
+    normalized.includes("no devolvio choices") ||
+    normalized.includes("did not return choices")
+  ) {
+    return {
+      status: 502,
+      payload: {
+        code: "openrouter_empty_choices",
+        error:
+          "OpenRouter returned no completion choices. Retry or switch model.",
+      },
+    };
+  }
+
+  if (
+    normalized.includes("response_format") ||
+    normalized.includes("json_object") ||
+    normalized.includes("json mode")
+  ) {
+    return {
+      status: 502,
+      payload: {
+        code: "openrouter_json_mode_unsupported",
+        error:
+          "The configured model does not support JSON mode. Use another model or disable JSON mode fallback.",
+      },
+    };
+  }
+
+  if (normalized.includes("model") || message.includes("404")) {
     return {
       status: 502,
       payload: {
