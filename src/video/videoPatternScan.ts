@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatVideoEvidenceTime } from "./videoEvidence";
+import { formatVideoEvidenceTime } from "./videoEvidence.js";
 
 export const VIDEO_PATTERN_DEFINITIONS = [
   {

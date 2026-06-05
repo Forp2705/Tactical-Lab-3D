@@ -65,3 +65,14 @@
 {"event":"completion","model":"openrouter/free","configuredModel":"openrouter/free","fallbackUsed":false,"jsonMode":true,"attempts":1,"durationMs":0,"createdAt":"2026-06-05T00:03:27.031Z"}
 {"event":"completion","model":"openrouter/free","configuredModel":"openrouter/free","fallbackUsed":false,"jsonMode":true,"attempts":1,"durationMs":0,"createdAt":"2026-06-05T00:03:27.228Z"}
 {"event":"turn","mode":"hypothesis","evidenceStrength":"sufficient","confidence":0.5,"citationCount":0,"followUpQuestionCount":0,"configuredModel":"openrouter/free","durationMs":389,"createdAt":"2026-06-05T00:03:27.228Z"}
+{"event":"turn","mode":"question","evidenceStrength":"none","confidence":0.45,"citationCount":0,"followUpQuestionCount":3,"configuredModel":"openrouter/free","durationMs":5,"createdAt":"2026-06-05T20:34:42.159Z"}
+{"event":"completion","model":"openrouter/free","configuredModel":"openrouter/free","fallbackUsed":false,"jsonMode":true,"attempts":1,"durationMs":2,"createdAt":"2026-06-05T20:34:42.728Z"}
+{"event":"turn","mode":"hypothesis","evidenceStrength":"none","confidence":0.5,"citationCount":0,"followUpQuestionCount":0,"configuredModel":"openrouter/free","durationMs":400,"createdAt":"2026-06-05T20:34:42.728Z"}
+{"event":"turn","mode":"hypothesis","evidenceStrength":"sufficient","confidence":0.5,"citationCount":0,"followUpQuestionCount":0,"configuredModel":"openrouter/free","durationMs":330,"createdAt":"2026-06-05T20:34:43.021Z"}
+{"event":"completion","model":"openrouter/free","configuredModel":"openrouter/free","fallbackUsed":false,"jsonMode":true,"attempts":1,"durationMs":1,"createdAt":"2026-06-05T20:34:43.021Z"}
+{"event":"completion","model":"openrouter/free","configuredModel":"openrouter/free","fallbackUsed":false,"jsonMode":true,"attempts":1,"durationMs":0,"createdAt":"2026-06-05T20:34:43.290Z"}
+{"event":"turn","mode":"hypothesis","evidenceStrength":"partial","confidence":0.5,"citationCount":0,"followUpQuestionCount":0,"configuredModel":"openrouter/free","durationMs":271,"createdAt":"2026-06-05T20:34:43.290Z"}
+{"event":"turn","mode":"hypothesis","evidenceStrength":"sufficient","confidence":0.5,"citationCount":0,"followUpQuestionCount":0,"configuredModel":"openrouter/free","durationMs":252,"createdAt":"2026-06-05T20:34:43.537Z"}
+{"event":"completion","model":"openrouter/free","configuredModel":"openrouter/free","fallbackUsed":false,"jsonMode":true,"attempts":1,"durationMs":0,"createdAt":"2026-06-05T20:34:43.537Z"}
+{"event":"completion","model":"openrouter/free","configuredModel":"openrouter/free","fallbackUsed":false,"jsonMode":true,"attempts":1,"durationMs":0,"createdAt":"2026-06-05T20:34:43.666Z"}
+{"event":"turn","mode":"hypothesis","evidenceStrength":"sufficient","confidence":0.5,"citationCount":0,"followUpQuestionCount":0,"configuredModel":"openrouter/free","durationMs":248,"createdAt":"2026-06-05T20:34:43.666Z"}

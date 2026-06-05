@@ -1,8 +1,8 @@
-import { formatVideoEvidenceTime } from "./videoEvidence";
+import { formatVideoEvidenceTime } from "./videoEvidence.js";
 import type {
   ConsolidatedVideoPattern,
   VideoPatternScanResult,
-} from "./videoPatternScan";
+} from "./videoPatternScan.js";
 
 export type VideoCoachObservation = {
   id: string;
