@@ -37,7 +37,11 @@ import {
   formatPatternsForCoach,
 } from "./patternDetection.js"
 import { retrieveRelevantReportsFromSaved } from "./retrieveRelevantReports.js"
-import { buildEvidenceCitation } from "./retrievalScoring.js"
+import {
+  buildEvidenceCitation,
+  rankDocuments,
+  type RetrievalDocument,
+} from "./retrievalScoring.js"
 import { queryCoachRagIndex } from "./ragIndex.js"
 import {
   assessCoachAdviceTrust,
@@ -131,6 +135,8 @@ export async function generateCoachResponse(
 
   const runtimeCoachContext =
   formatRuntimeCoachContext(coachContext)
+  const runtimeManualObservations =
+  formatRuntimeManualObservations(coachContext)
 
   const coachingStaffContext =
   formatCoachingStaffContext()
@@ -282,6 +288,9 @@ ${teamPatternsContext}
 
 Runtime coaching context:
 ${runtimeCoachContext}
+
+Current manual observations:
+${runtimeManualObservations}
 
 Coach rules:
 ${COACH_RULES}
@@ -871,8 +880,11 @@ export async function retrieveCoachEvidence(userInput: string, coachContext?: un
     ...relevantKnowledge,
     ...relevantReports,
   ].map(toRetrievedEvidence)
+  const runtimeManualObservationEvidence =
+    buildRuntimeManualObservationEvidenceCatalog(userInput, coachContext)
   const runtimeEvidence = buildRuntimeVideoEvidenceCatalog(coachContext)
   const dedupedEvidence = dedupeEvidenceById([
+    ...runtimeManualObservationEvidence,
     ...runtimeEvidence,
     ...evidenceCatalog,
   ])
@@ -1452,6 +1464,80 @@ function buildRuntimeVideoEvidenceCatalog(coachContext: unknown): RetrievedEvide
     }))
 }
 
+function buildRuntimeManualObservationEvidenceCatalog(
+  userInput: string,
+  coachContext: unknown,
+): RetrievedEvidence[] {
+  const context = objectValue(coachContext)
+  const manualObservations = arrayValue(context?.manualObservations)
+    .map((entry) => normalizeManualObservationEntry(entry))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+
+  if (!manualObservations.length) return []
+
+  const ranked = rankDocuments(
+    userInput,
+    manualObservations.map(
+      (observation): RetrievalDocument<typeof observation> => ({
+        id: observation.id,
+        sourceType: "observation",
+        title: "Observacion manual del staff",
+        text: observation.text,
+        tags: [observation.source, "manual", "staff"],
+        payload: observation,
+        recencyScore: 0.92,
+        authorityScore: 0.54,
+        evidenceTargets: inferEvidenceTargets(observation.text),
+      }),
+    ),
+    { limit: 6, minScore: 0.14 },
+  )
+
+  return ranked.map((item) => ({
+    id: item.id,
+    sourceType: item.sourceType,
+    title: item.title,
+    excerpt: `${item.text} | observacion manual | ${item.payload.createdAt.slice(0, 10)}`,
+    score: item.score,
+    evidenceTargets: item.evidenceTargets,
+  }))
+}
+
+function normalizeManualObservationEntry(entry: unknown) {
+  const item = objectValue(entry)
+  const id = stringValue(item?.id)
+  const text = stringValue(item?.text)
+  const createdAt = stringValue(item?.createdAt)
+  const source = stringValue(item?.source)
+  if (!id || !text) return null
+
+  return {
+    id,
+    text,
+    createdAt: createdAt ?? new Date().toISOString(),
+    source: source === "postMatch" ? "postMatch" : "home",
+  }
+}
+
+function formatRuntimeManualObservations(coachContext: unknown) {
+  const context = objectValue(coachContext)
+  const manualObservations = arrayValue(context?.manualObservations)
+    .map((entry) => normalizeManualObservationEntry(entry))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .slice(0, 6)
+
+  if (!manualObservations.length) {
+    return "No current manual observations captured."
+  }
+
+  return manualObservations
+    .map(
+      (observation) =>
+        `- ${observation.id} | ${observation.source} | ${observation.createdAt.slice(0, 10)} | ${observation.text}`,
+    )
+    .join("\n")
+}
+
 function dedupeEvidenceById(items: RetrievedEvidence[]) {
   const byId = new Map<string, RetrievedEvidence>()
   for (const item of items) {
@@ -1561,8 +1647,13 @@ function buildCoachResponseFromAdvice({
     userInput,
     evidenceCatalog,
   })
+  const lacksRequiredEvidence =
+    evidenceAudit.criticalMissingCount > 0 ||
+    evidenceAudit.evidenceStrength !== "sufficient"
+  const requiresHypothesisMode =
+    trust.requiresHypothesisMode || lacksRequiredEvidence
 
-  if (preferredMode === "diagnosis" && trust.requiresHypothesisMode) {
+  if (preferredMode === "diagnosis" && requiresHypothesisMode) {
     return {
       mode: "hypothesis",
       advice,

@@ -1,6 +1,10 @@
 import { usePostMatchReports } from "@/ai/post-match/usePostMatchReports";
 import type { SavedPostMatchReport } from "@/ai/post-match/schemas";
-import { detectTeamPatterns, type TeamPattern } from "@/ai/patternDetection";
+import {
+  buildWeeklyDecisionSummary,
+  detectTeamPatterns,
+  type TeamPattern,
+} from "@/ai/patternDetection";
 import { catalog } from "@/data";
 import { buildOpponentGamePlan, hasOpponentScoutData } from "@/scout/opponentScout";
 import {
@@ -16,7 +20,7 @@ import {
 } from "@/ui/tacticalPrimitives";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { TeamTimeline } from "./TeamTimeline";
 
 export function HomeView() {
@@ -29,12 +33,15 @@ export function HomeView() {
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const tags = useAppStore((state) => state.tags);
   const tracks = useAppStore((state) => state.tracks);
+  const manualObservations = useAppStore((state) => state.manualObservations);
+  const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const lineupLabShapeCount = useAppStore((state) => state.lineupLab.shapes.length);
   const lineupLabTransitionCount = useAppStore(
     (state) => state.lineupLab.savedTransitions.length,
   );
   const { reports, reportsError } = usePostMatchReports();
   const selectedExercise = getExerciseById(selectedExerciseId);
+  const [quickObservation, setQuickObservation] = useState("");
   const availablePlayers = useMemo(
     () =>
       teamPlayers.filter((player) => player.status === "available").length,
@@ -52,6 +59,10 @@ export function HomeView() {
         sessionObjectives: session.computed?.primaryObjectives ?? [],
       }),
     [gameModel, reports, session.computed?.primaryObjectives],
+  );
+  const weeklyDecision = useMemo(
+    () => buildWeeklyDecisionSummary(patterns),
+    [patterns],
   );
   const primaryPattern = patterns[0];
   const opponentPlan = useMemo(
@@ -72,10 +83,12 @@ export function HomeView() {
     aiPrompt,
     evidenceTotal: evidence.total,
     latestReport,
-    patternsCount: patterns.length,
+    manualObservationCount: manualObservations.length,
+    recommendedWeeklyFocus: weeklyDecision.recommendedFocus?.title,
     sessionBlocks: session.blocks.length,
   });
-  const activeDiagnosis = aiPrompt.trim() || primaryPattern?.statement || "";
+  const activeDiagnosis =
+    weeklyDecisionThread?.problem || aiPrompt.trim() || primaryPattern?.statement || "";
 
   return (
     <div className="view-enter grid home-command-view" style={{ gap: 16 }}>
@@ -111,6 +124,10 @@ export function HomeView() {
           <EvidenceChip
             type="observation"
             label={`${evidence.total} evidencias de video`}
+          />
+          <EvidenceChip
+            type="staff"
+            label={`${manualObservations.length} observaciones manuales`}
           />
         </div>
         </div>
@@ -148,7 +165,10 @@ export function HomeView() {
             </div>
             <div>
               <span>Evidencia</span>
-              <b>{recentReports.length} reportes / {evidence.total} marcas de video</b>
+              <b>
+                {recentReports.length} reportes / {evidence.total} video /{" "}
+                {manualObservations.length} manuales
+              </b>
             </div>
             <div>
               <span>Siguiente paso</span>
@@ -164,6 +184,7 @@ export function HomeView() {
         sessionBlocks={session.blocks.length}
         sessionMinutes={session.computed?.totalDuration ?? 0}
         evidenceTotal={evidence.total}
+        manualObservationCount={manualObservations.length}
         reportsCount={reports.length}
         primaryPattern={primaryPattern}
       />
@@ -174,6 +195,15 @@ export function HomeView() {
         nextAction={nextAction}
         primaryPattern={primaryPattern}
         session={session}
+        weeklyDecision={weeklyDecision}
+        weeklyDecisionThread={weeklyDecisionThread}
+      />
+
+      <QuickObservationPanel
+        draft={quickObservation}
+        observations={manualObservations}
+        weeklyDecisionThread={weeklyDecisionThread}
+        setDraft={setQuickObservation}
       />
 
       <TacticalHomeActions nextAction={nextAction} />
@@ -359,12 +389,16 @@ const WeeklyWorkflowPanel = memo(function WeeklyWorkflowPanel({
   nextAction,
   primaryPattern,
   session,
+  weeklyDecision,
+  weeklyDecisionThread,
 }: {
   activeDiagnosis: string;
   latestReport?: SavedPostMatchReport;
   nextAction: NextAction;
   primaryPattern?: TeamPattern;
   session: ReturnType<typeof useAppStore.getState>["session"];
+  weeklyDecision: ReturnType<typeof buildWeeklyDecisionSummary>;
+  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
 }) {
   return (
     <section className="home-workflow-grid">
@@ -403,7 +437,11 @@ const WeeklyWorkflowPanel = memo(function WeeklyWorkflowPanel({
         <button
           type="button"
           className="btn ghost"
-          onClick={() => useAppStore.getState().setView("sessions")}
+          onClick={() => {
+            if (!useAppStore.getState().createSessionFromWeeklyThread()) {
+              useAppStore.getState().setView("sessions");
+            }
+          }}
         >
           Abrir sesion
         </button>
@@ -436,13 +474,17 @@ const WeeklyWorkflowPanel = memo(function WeeklyWorkflowPanel({
       <article className="card workflow-card">
         <span className="eyebrow">Evolucion</span>
         <h3>
-          {primaryPattern
-            ? shorten(primaryPattern.statement, 78)
+          {weeklyDecision.recommendedFocus
+            ? shorten(weeklyDecision.recommendedFocus.title, 78)
+            : primaryPattern
+              ? shorten(primaryPattern.statement, 78)
             : "Sin patron recurrente confirmado"}
         </h3>
         <p>
-          {primaryPattern
-            ? "El equipo ya tiene una historia tactica. Usa evolucion para decidir que repetir y que corregir."
+          {weeklyDecision.recommendedFocus
+            ? shorten(weeklyDecision.recommendedFocus.reason, 132)
+            : primaryPattern
+              ? "El equipo ya tiene una historia tactica. Usa evolucion para decidir que repetir y que corregir."
             : "La evolucion se activa cuando post-partido empieza a dejar un historial comparable."}
         </p>
         <button
@@ -453,6 +495,159 @@ const WeeklyWorkflowPanel = memo(function WeeklyWorkflowPanel({
           Ver evolucion
         </button>
       </article>
+    </section>
+  );
+});
+
+const QuickObservationPanel = memo(function QuickObservationPanel({
+  draft,
+  observations,
+  weeklyDecisionThread,
+  setDraft,
+}: {
+  draft: string;
+  observations: ReturnType<typeof useAppStore.getState>["manualObservations"];
+  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
+  setDraft: (value: string) => void;
+}) {
+  const trimmedDraft = draft.trim();
+
+  function storeObservation(source: "home" | "postMatch") {
+    if (!trimmedDraft) return null;
+    return useAppStore.getState().addManualObservation({
+      text: trimmedDraft,
+      source,
+    });
+  }
+
+  function openCoachFromObservation() {
+    const nextId = storeObservation("home");
+    if (!nextId) return;
+    useAppStore.getState().activateWeeklyThreadFromObservation(nextId);
+    useAppStore.getState().setAiPrompt(trimmedDraft);
+    useAppStore.getState().setAiMode("coach");
+    useAppStore.getState().setView("ai");
+    setDraft("");
+  }
+
+  function sendObservationToPostMatch() {
+    const nextId = storeObservation("home");
+    if (!nextId) return;
+    useAppStore.getState().activateWeeklyThreadFromObservation(nextId);
+    useAppStore.getState().queuePostMatchManualObservations([nextId]);
+    useAppStore.getState().setAiMode("postMatch");
+    useAppStore.getState().setView("ai");
+    setDraft("");
+  }
+
+  return (
+    <section className="quick-observation-card card">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Observacion rapida</span>
+          <h3>Captura tactica liviana</h3>
+        </div>
+        <span className="ai-context-chip">{observations.length} guardadas</span>
+      </div>
+      <p className="muted-panel">
+        Guarda una lectura corta del staff. Se usa como evidencia actual, pero
+        siempre marcada como observacion manual y no como hecho confirmado por video.
+      </p>
+      <textarea
+        className="quick-observation-input"
+        placeholder='Ej: "El 5 queda tapado en salida" o "Perdemos y saltan descoordinados".'
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <div className="toolbar compact">
+        <button
+          type="button"
+          className="secondary"
+          disabled={!trimmedDraft}
+          onClick={() => {
+            if (!storeObservation("home")) return;
+            setDraft("");
+          }}
+        >
+          Guardar observacion
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!trimmedDraft}
+          onClick={openCoachFromObservation}
+        >
+          Diagnosticar desde esta observacion
+        </button>
+        <button
+          type="button"
+          className="btn ghost"
+          disabled={!trimmedDraft}
+          onClick={sendObservationToPostMatch}
+        >
+          Mandar a post-partido
+        </button>
+      </div>
+      {observations.length ? (
+        <div className="quick-observation-list">
+          {observations.slice(0, 4).map((observation) => (
+            <article className="quick-observation-item" key={observation.id}>
+              <div>
+                <b>{observation.text}</b>
+                <small>
+                  Manual {observation.source === "postMatch" ? "post-partido" : "staff"} ·{" "}
+                  {formatObservationDate(observation.createdAt)}
+                </small>
+              </div>
+              <div className="toolbar compact">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    useAppStore.getState().activateWeeklyThreadFromObservation(
+                      observation.id,
+                    );
+                    useAppStore.getState().setAiPrompt(observation.text);
+                    useAppStore.getState().setAiMode("coach");
+                    useAppStore.getState().setView("ai");
+                  }}
+                >
+                  Diagnosticar
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    useAppStore.getState().activateWeeklyThreadFromObservation(
+                      observation.id,
+                    );
+                    useAppStore.getState().queuePostMatchManualObservations([
+                      observation.id,
+                    ]);
+                    useAppStore.getState().setAiMode("postMatch");
+                    useAppStore.getState().setView("ai");
+                  }}
+                >
+                  Post-partido
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
+                    useAppStore.getState().removeManualObservation(observation.id)
+                  }
+                >
+                  Quitar
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="muted-panel">
+          Sin observaciones manuales todavia. Usa esta captura cuando no quieras entrar a Video.
+        </p>
+      )}
     </section>
   );
 });
@@ -495,7 +690,11 @@ const TacticalHomeActions = memo(function TacticalHomeActions({
       eyebrow: "Diagnostico -> entrenamiento",
       body: "Revisa bloques, carga y ejercicios sugeridos para convertir ajustes en trabajo de cancha.",
       code: "MD",
-      onClick: () => useAppStore.getState().setView("sessions"),
+      onClick: () => {
+        if (!useAppStore.getState().createSessionFromWeeklyThread()) {
+          useAppStore.getState().setView("sessions");
+        }
+      },
     },
     {
       title: "Preparar XI",
@@ -541,6 +740,7 @@ const CommandSummaryPanel = memo(function CommandSummaryPanel({
   sessionBlocks,
   sessionMinutes,
   evidenceTotal,
+  manualObservationCount,
   reportsCount,
   primaryPattern,
 }: {
@@ -550,6 +750,7 @@ const CommandSummaryPanel = memo(function CommandSummaryPanel({
   sessionBlocks: number;
   sessionMinutes: number;
   evidenceTotal: number;
+  manualObservationCount: number;
   reportsCount: number;
   primaryPattern?: TeamPattern;
 }) {
@@ -583,8 +784,11 @@ const CommandSummaryPanel = memo(function CommandSummaryPanel({
 
       <article className="command-summary-card">
         <span className="eyebrow">Evidencia</span>
-        <h3>{evidenceTotal + reportsCount}</h3>
-        <p>{reportsCount} reportes y {evidenceTotal} marcas de video disponibles.</p>
+        <h3>{evidenceTotal + reportsCount + manualObservationCount}</h3>
+        <p>
+          {reportsCount} reportes, {evidenceTotal} marcas de video y{" "}
+          {manualObservationCount} observaciones manuales.
+        </p>
       </article>
 
       <article className="command-summary-card">
@@ -841,20 +1045,22 @@ function buildNextAction({
   aiPrompt,
   evidenceTotal,
   latestReport,
-  patternsCount,
+  manualObservationCount,
+  recommendedWeeklyFocus,
   sessionBlocks,
 }: {
   aiPrompt: string;
   evidenceTotal: number;
   latestReport?: SavedPostMatchReport;
-  patternsCount: number;
+  manualObservationCount: number;
+  recommendedWeeklyFocus?: string;
   sessionBlocks: number;
 }): NextAction {
-  if (patternsCount > 0) {
+  if (recommendedWeeklyFocus) {
     return {
       title: "Cerra el loop con una decision de evolucion",
       body:
-        "Ya hay un patron recurrente detectado. Usa Equipo / evolucion para decidir que corregir esta semana y que sostener.",
+        `${recommendedWeeklyFocus} Usa Equipo / evolucion para decidir que corregir esta semana y que sostener.`,
       shortLabel: "Revisar evolucion y bajar una decision semanal.",
       cta: "Ver evolucion",
       onClick: () => useAppStore.getState().setView("team"),
@@ -870,6 +1076,20 @@ function buildNextAction({
       cta: "Cargar post-partido",
       onClick: () => {
         useAppStore.getState().setAiMode("postMatch");
+        useAppStore.getState().setView("ai");
+      },
+    };
+  }
+
+  if (!aiPrompt.trim() && manualObservationCount > 0) {
+    return {
+      title: "Convierte una observacion del staff en decision",
+      body:
+        "Ya hay observaciones manuales guardadas. Llevalas al Coach para separar hipotesis, evidencia actual y siguiente accion.",
+      shortLabel: "Pasar de observacion manual a diagnostico.",
+      cta: "Abrir diagnostico",
+      onClick: () => {
+        useAppStore.getState().setAiMode("coach");
         useAppStore.getState().setView("ai");
       },
     };
@@ -949,4 +1169,25 @@ function loadPercent(load: string) {
 function shorten(text: string, max: number) {
   if (text.length <= max) return text;
   return `${text.slice(0, max - 1).trim()}…`;
+}
+
+function manualObservationsToEvidenceText(
+  observations: ReturnType<typeof useAppStore.getState>["manualObservations"],
+) {
+  return observations
+    .map((observation) =>
+      [
+        "Observacion manual",
+        observation.text,
+        "no confirmada por video",
+      ].join(" | "),
+    )
+    .join("\n");
+}
+
+function formatObservationDate(value: string) {
+  return new Intl.DateTimeFormat("es-AR", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
 }

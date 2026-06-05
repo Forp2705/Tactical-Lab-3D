@@ -70,6 +70,7 @@ type CockpitContext = {
   sessionBlocks: number;
   videoTags: number;
   videoTracks: number;
+  manualObservations: number;
   recentReports: SavedPostMatchReport[];
   acceptedMemory: Array<{
     reportId: string;
@@ -106,6 +107,8 @@ export function AiView() {
   const tagsCount = useAppStore((state) => state.tags.length);
   const tracksCount = useAppStore((state) => state.tracks.length);
   const sessionBlockCount = useAppStore((state) => state.session.blocks.length);
+  const manualObservations = useAppStore((state) => state.manualObservations);
+  const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const mode = useAppStore((state) => state.aiMode);
   const setMode = useAppStore((state) => state.setAiMode);
@@ -179,6 +182,7 @@ export function AiView() {
       sessionBlocks: sessionBlockCount,
       videoTags: tagsCount,
       videoTracks: tracksCount,
+      manualObservations: manualObservations.length,
       recentReports,
       acceptedMemory,
       teamPatterns,
@@ -192,6 +196,7 @@ export function AiView() {
       recentReports,
       selectedExercise?.title,
       sessionBlockCount,
+      manualObservations.length,
       tagsCount,
       teamModel,
       teamPatterns,
@@ -337,8 +342,16 @@ export function AiView() {
             />
             <MetricPill label="Shapes" value={cockpitContext.shapes} />
             <MetricPill
-              label="Evidencia"
-              value={cockpitContext.videoTags + cockpitContext.videoTracks}
+              label="Evid actual"
+              value={
+                cockpitContext.videoTags +
+                cockpitContext.videoTracks +
+                cockpitContext.manualObservations
+              }
+            />
+            <MetricPill
+              label="Manual"
+              value={cockpitContext.manualObservations}
             />
             <MetricPill
               label="Memoria"
@@ -444,7 +457,10 @@ export function AiView() {
                 responseMode={responseMode}
               />
             ) : !coachInterview.active || !coachInterview.questions.length ? (
-              <EmptyState context={cockpitContext} />
+              <EmptyState
+                context={cockpitContext}
+                weeklyDecisionThread={weeklyDecisionThread}
+              />
             ) : null}
           </main>
         </div>
@@ -509,9 +525,10 @@ function buildCoachRuntimeContext(
   gameModel: ReturnType<typeof useAppStore.getState>["gameModel"],
   opponentScout: ReturnType<typeof useAppStore.getState>["opponentScout"],
 ): CoachAgentRuntimeContext {
-  const lineupLab = useAppStore.getState().lineupLab;
+  const runtimeState = useAppStore.getState();
+  const lineupLab = runtimeState.lineupLab;
   const playerById = new Map(team.players.map((player) => [player.id, player]));
-  const { tags, tracks } = useAppStore.getState();
+  const { tags, tracks, manualObservations } = runtimeState;
   const videoEvidenceSummary = summarizeVideoEvidence(tags, tracks);
   const videoEvidenceText = videoEvidenceToTagsText(tags, tracks).trim();
   const toPlayer = (player: Player) => ({
@@ -542,6 +559,7 @@ function buildCoachRuntimeContext(
           text: videoEvidenceText,
         }
       : undefined,
+    manualObservations,
     savedLineups: team.lineups.map((lineup) => ({
       id: lineup.id,
       name: lineup.name,
@@ -731,6 +749,10 @@ function ActiveContextPanel({ context }: { context: CockpitContext }) {
         <ContextRow
           label="Video"
           value={`${context.videoTags} tags / ${context.videoTracks} tracks`}
+        />
+        <ContextRow
+          label="Obs manuales"
+          value={`${context.manualObservations} capturas del staff`}
         />
       </div>
     </section>
@@ -1034,6 +1056,19 @@ function AdviceResult({
       }),
     [advice.actions, lineups, shapes],
   );
+  const summaryModeLabel =
+    responseMode === "diagnosis" && currentEvidence > 0
+      ? "Diagnostico"
+      : "Hipotesis";
+  const supportSummary = currentEvidence
+    ? `${currentEvidence} evidencia(s) actual(es) citada(s) y ${Math.max(0, evidenceItems.length - currentEvidence)} apoyo(s) extra.`
+    : evidenceItems.length
+      ? "No hay evidencia actual citada; la lectura se apoya en memoria, reportes previos o principios."
+      : "No hay citas validas para sostener un diagnostico cerrado.";
+  const nextStepSummary =
+    currentEvidence > 0
+      ? "Convierte esta lectura en sesion y revisala en el proximo partido."
+      : "Carga mas observacion actual o valida esta hipotesis en post-partido antes de cerrarla.";
 
   function runAction(action: CoachAction, exercise?: Exercise) {
     const store = useAppStore.getState();
@@ -1111,6 +1146,19 @@ function AdviceResult({
 
   return (
     <section className="coach-report football-report">
+      <ShortCoachSummary
+        modeLabel={summaryModeLabel}
+        hypothesis={advice.tacticalReading}
+        supportingEvidence={supportSummary}
+        missingValidation={advice.reflection.missingInformation}
+        primaryAction={advice.wednesdayTest}
+        nextStep={nextStepSummary}
+        confidence={advice.reflection.confidence}
+      />
+
+      <details className="football-report-details coach-analysis-details">
+        <summary>Ver analisis completo</summary>
+
       <header className="football-report-hero">
         <div>
           <div className="football-report-kicker">
@@ -1128,7 +1176,7 @@ function AdviceResult({
             ) : null}
           </div>
           <h3>
-            {responseMode === "hypothesis"
+            {summaryModeLabel === "Hipotesis"
               ? "Hipotesis operativa"
               : "Lectura del Coach"}
           </h3>
@@ -1174,11 +1222,6 @@ function AdviceResult({
           </div>
         </div>
       </section>
-
-      <div className="coach-report-grid">
-        <ReportBlock title="Causa probable" value={advice.probableCause} />
-        <ReportBlock title="Ajuste principal" value={advice.mainAdjustment} />
-      </div>
 
       <ProblemBreakdownPanel advice={advice} />
 
@@ -1247,10 +1290,7 @@ function AdviceResult({
         runAction={runAction}
       />
 
-      <details className="football-report-details">
-        <summary>Ver riesgos, evidencia y reflexion completa</summary>
       <div className="coach-report-grid">
-        <ReportBlock title="Test de mitad de semana" value={advice.wednesdayTest} />
         <ReportBlock title="Foco de partido" value={advice.saturdayFocus} />
       </div>
 
@@ -1297,6 +1337,60 @@ function AdviceResult({
       </section>
       </details>
     </section>
+  );
+}
+
+function ShortCoachSummary({
+  modeLabel,
+  hypothesis,
+  supportingEvidence,
+  missingValidation,
+  primaryAction,
+  nextStep,
+  confidence,
+}: {
+  modeLabel: string;
+  hypothesis: string;
+  supportingEvidence: string;
+  missingValidation: string;
+  primaryAction: string;
+  nextStep: string;
+  confidence: number;
+}) {
+  return (
+    <section className="coach-report-card coach-short-summary">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Respuesta corta</span>
+          <h3>{modeLabel}</h3>
+        </div>
+        <ConfidenceBadge confidence={confidence} compact />
+      </div>
+      <div className="short-summary-grid">
+        <SummaryItem label={modeLabel} value={hypothesis} strong />
+        <SummaryItem label="Que lo sostiene" value={supportingEvidence} />
+        <SummaryItem label="Que falta validar" value={missingValidation} />
+        <SummaryItem label="Accion primaria" value={primaryAction} />
+        <SummaryItem label="Siguiente paso" value={nextStep} />
+      </div>
+    </section>
+  );
+}
+
+function SummaryItem({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <article className={`short-summary-item ${strong ? "strong" : ""}`}>
+      <span>{label}</span>
+      <b>{value}</b>
+    </article>
   );
 }
 
@@ -1347,8 +1441,7 @@ function KnowledgeGapPanel({
           <span>Que sabe</span>
           <ul>
             <li>
-              {currentEvidence.length} fuente(s) confirmadas por evidencia
-              actual.
+              {currentEvidence.length} fuente(s) actuales del caso citadas.
             </li>
             <li>{previousMemory.length} antecedente(s) de memoria/reporte.</li>
             <li>{contextSources.length} principio(s) tacticos como contexto.</li>
@@ -1484,8 +1577,8 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
       {evidenceItems.length ? (
         <div className="evidence-groups">
           <EvidenceGroup
-            title="Confirmado por evidencia actual"
-            description="Observaciones o datos del caso actual."
+            title="Evidencia actual del caso"
+            description="Observaciones manuales o datos actuales citados por el Coach."
             items={currentEvidence}
           />
           <EvidenceGroup
@@ -1626,6 +1719,14 @@ function buildModeSupportState({
       pill: "sin evidencia actual",
       note:
         "Se muestra como hipotesis porque hoy se apoya mas en contexto, memoria o conocimiento que en evidencia actual del caso.",
+    };
+  }
+
+  if (uncertainty.includes("memoria o principios tacticos")) {
+    return {
+      pill: "apoyo historico",
+      note:
+        "Se mantiene en hipotesis porque la salida descansa sobre todo en memoria o principios tacticos, no en evidencia actual del caso.",
     };
   }
 
@@ -1960,18 +2061,29 @@ function ReportBlock({ title, value }: { title: string; value: string }) {
 }
 
 function ReportList({ title, items }: { title: string; items: string[] }) {
-  if (!items.length) return null;
+  const uniqueItems = uniqueDisplayItems(items);
+  if (!uniqueItems.length) return null;
 
   return (
     <section className="coach-report-card">
       <span className="panel-eyebrow">{title}</span>
       <ul>
-        {items.map((item, index) => (
+        {uniqueItems.map((item, index) => (
           <li key={`${title}-${index}-${item}`}>{item}</li>
         ))}
       </ul>
     </section>
   );
+}
+
+function uniqueDisplayItems(items: string[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const normalized = normalizeText(item);
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
 }
 
 function ProblemBreakdownPanel({ advice }: { advice: CoachMatchAdvice }) {
@@ -2084,7 +2196,13 @@ function DiagnosisSessionPanel({ plan }: { plan: ReturnType<typeof buildSessionP
   );
 }
 
-function EmptyState({ context }: { context: CockpitContext }) {
+function EmptyState({
+  context,
+  weeklyDecisionThread,
+}: {
+  context: CockpitContext;
+  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
+}) {
   return (
     <section className="coach-report empty-coach-state">
       <span className="panel-eyebrow">Sin consulta activa</span>
@@ -2105,6 +2223,31 @@ function EmptyState({ context }: { context: CockpitContext }) {
           value={String(context.acceptedMemory.length)}
         />
       </div>
+      {weeklyDecisionThread ? (
+        <div className="ai-card" style={{ marginTop: 14 }}>
+          <b>Hilo semanal activo</b>
+          <p>{weeklyDecisionThread.problem}</p>
+          <div className="ai-empty-grid">
+            <ContextRow
+              label="Modo"
+              value={
+                weeklyDecisionThread.mode === "diagnosis"
+                  ? "Diagnostico"
+                  : "Hipotesis"
+              }
+            />
+            <ContextRow
+              label="Evidencia actual"
+              value={String(weeklyDecisionThread.evidenceIds.length)}
+            />
+            <ContextRow
+              label="Revision"
+              value={weeklyDecisionThread.nextReviewCriteria[0] ?? "A definir"}
+            />
+            <ContextRow label="Estado" value={weeklyDecisionThread.status} />
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -2138,6 +2281,15 @@ function labelForSourceType(
   return labels[sourceType];
 }
 
+function isManualObservationCitation(citation: CoachEvidenceCitation) {
+  return (
+    citation.sourceType === "observation" &&
+    (citation.sourceId.startsWith("manual-observation") ||
+      normalizeText(citation.title).includes("observacion manual") ||
+      normalizeText(citation.excerpt).includes("observacion manual"))
+  );
+}
+
 function buildEvidenceViewModel(
   citations: CoachEvidenceCitation[],
 ): EvidenceViewModel[] {
@@ -2169,6 +2321,9 @@ function bucketForCitation(citation: CoachEvidenceCitation): EvidenceBucket {
 }
 
 function modeLabelForCitation(citation: CoachEvidenceCitation) {
+  if (isManualObservationCitation(citation)) {
+    return "Observacion manual del staff"
+  }
   const labels: Record<CoachEvidenceCitation["sourceType"], string> = {
     observation: "Confirmado por evidencia actual",
     video: "Confirmado por video/timestamp",

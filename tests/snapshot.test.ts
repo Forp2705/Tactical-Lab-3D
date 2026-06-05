@@ -35,11 +35,15 @@ function snapshotFromDefaults(): AppSnapshot {
     personalSpace: s.personalSpace,
     layers: s.layers,
     team: s.team,
+    gameModel: s.gameModel,
+    opponentScout: s.opponentScout,
     session: s.session,
     microcycle: s.microcycle,
     lineupLab: s.lineupLab,
     tags: s.tags,
     tracks: s.tracks,
+    manualObservations: s.manualObservations,
+    weeklyDecisionThread: s.weeklyDecisionThread,
     aiPrompt: s.aiPrompt,
   } as AppSnapshot;
 }
@@ -73,6 +77,13 @@ describe("parseSnapshot", () => {
     expect(Array.isArray(parsed?.exerciseVariants)).toBe(true);
     expect(parsed?.personalSpace).toBe(false);
     expect(parsed?.viewerQuality).toBe("medium");
+  });
+
+  it("preserva el hilo semanal y observaciones manuales", () => {
+    const base = snapshotFromDefaults();
+    const parsed = parseSnapshot(base);
+    expect(parsed?.manualObservations).toEqual(base.manualObservations);
+    expect(parsed?.weeklyDecisionThread).toEqual(base.weeklyDecisionThread);
   });
 
   it("preserva campos de dominio (team, session, microcycle)", () => {

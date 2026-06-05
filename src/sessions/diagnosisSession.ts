@@ -1,10 +1,13 @@
 import type { CoachMatchAdvice } from "@/ai/CoachSchemas";
 import { inferDomainsFromText, matchExercisesForDiagnosis } from "@/ai/exerciseMatching";
 import type { Exercise, Session } from "@/data";
+import type { WeeklyDecisionThread } from "@/state/weeklyDecisionThread";
 
 export type DiagnosisSessionPlan = {
   title: string;
+  problemStatement: string;
   tacticalObjective: string;
+  reviewFocus: string;
   exerciseIds: string[];
   estimatedDuration: number;
   estimatedLoad: number;
@@ -53,7 +56,9 @@ export function buildSessionPlanFromDiagnosis(
 
   return {
     title: `Sesion desde diagnostico - ${shortTitle(advice.mainAdjustment)}`,
+    problemStatement: advice.tacticalReading,
     tacticalObjective: advice.mainAdjustment,
+    reviewFocus: advice.saturdayFocus,
     exerciseIds,
     estimatedDuration,
     estimatedLoad,
@@ -79,6 +84,73 @@ export function buildSessionPlanFromDiagnosis(
   };
 }
 
+export function buildSessionPlanFromWeeklyThread(
+  thread: WeeklyDecisionThread,
+  exercises: Exercise[],
+): DiagnosisSessionPlan {
+  const intent = thread.sessionIntent;
+  const text = [
+    thread.problem,
+    intent?.objective ?? "",
+    ...(thread.nextReviewCriteria ?? []),
+  ].join(" ");
+  const exerciseIds = matchExercisesForDiagnosis({
+    domains: inferDomainsFromText(text),
+    query: text,
+    exercises,
+    limit: 4,
+  }).map((match) => match.exercise.id);
+  const selected = exerciseIds.flatMap((id) => {
+    const exercise = exercises.find((item) => item.id === id);
+    return exercise ? [exercise] : [];
+  });
+  const estimatedDuration = selected.reduce(
+    (sum, exercise) => sum + exercise.duration,
+    0,
+  );
+  const estimatedLoad = selected.reduce(
+    (sum, exercise) => sum + exercise.duration * exercise.rpe,
+    0,
+  );
+  const successSignal =
+    intent?.successSignal ||
+    thread.nextReviewCriteria[0] ||
+    "Validar una mejor ejecucion del ajuste.";
+  const reviewFocus =
+    intent?.reviewCriteria ||
+    thread.nextReviewCriteria[0] ||
+    "Revisar si el problema mejora en el proximo partido.";
+
+  return {
+    title: `Sesion semanal - ${shortTitle(thread.problem)}`,
+    problemStatement: thread.problem,
+    tacticalObjective:
+      intent?.objective || `Ajustar el comportamiento asociado a: ${thread.problem}`,
+    reviewFocus,
+    exerciseIds,
+    estimatedDuration,
+    estimatedLoad,
+    coachingPoints: unique([
+      intent?.objective ?? "",
+      ...selected.flatMap((exercise) => exercise.coaching.slice(0, 2)),
+    ]).slice(0, 8),
+    errorsToCorrect: unique([
+      ...selected.flatMap((exercise) => exercise.errors.slice(0, 2)),
+    ]).slice(0, 8),
+    saturdaySignals: unique([
+      successSignal,
+      reviewFocus,
+      ...selected.map((exercise) => exercise.success),
+    ]).slice(0, 6),
+    staffNotes: [
+      `Problema semanal: ${thread.problem}`,
+      `Objetivo tactico: ${intent?.objective || `Ajustar el comportamiento asociado a: ${thread.problem}`}`,
+      `Senales del sabado: ${successSignal}`,
+      `Test de miercoles: ${reviewFocus}`,
+    ].join("\n"),
+  };
+}
+
 export function materializeDiagnosisSession(
   current: Session,
   plan: DiagnosisSessionPlan,
@@ -93,11 +165,14 @@ export function materializeDiagnosisSession(
         exerciseId,
         durationMin: exercise.duration,
         swappable: true,
-        notes: [
-          `Objetivo: ${plan.tacticalObjective}`,
-          `Coaching: ${exercise.coaching.slice(0, 2).join("; ")}`,
-          `Errores: ${exercise.errors.slice(0, 2).join("; ")}`,
-        ].join("\n"),
+        notes: formatDiagnosisBlockNotes({
+          problem: plan.problemStatement,
+          objective: plan.tacticalObjective,
+          successSignal: exercise.success || plan.saturdaySignals[0] || "Validar una mejor ejecucion del ajuste.",
+          nextMatchReview: plan.reviewFocus,
+          coaching: exercise.coaching.slice(0, 2).join("; "),
+          errors: exercise.errors.slice(0, 2).join("; "),
+        }),
       },
     ];
   });
@@ -147,6 +222,33 @@ function unique(items: string[]) {
 
 function shortTitle(value: string) {
   return value.replace(/\s+/g, " ").trim().slice(0, 42) || "plan tactico";
+}
+
+function formatDiagnosisBlockNotes({
+  problem,
+  objective,
+  successSignal,
+  nextMatchReview,
+  coaching,
+  errors,
+}: {
+  problem: string;
+  objective: string;
+  successSignal: string;
+  nextMatchReview: string;
+  coaching: string;
+  errors: string;
+}) {
+  return [
+    `Problema: ${problem}`,
+    `Objetivo: ${objective}`,
+    `Senal de exito: ${successSignal}`,
+    `Revision proximo partido: ${nextMatchReview}`,
+    coaching ? `Coaching: ${coaching}` : "",
+    errors ? `Errores: ${errors}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function makeId(prefix: string) {

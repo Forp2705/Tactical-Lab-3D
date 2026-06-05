@@ -34,6 +34,7 @@ import type {
   SavedPostMatchReport,
 } from "./schemas";
 import { usePostMatchReports } from "./usePostMatchReports";
+import { manualObservationsToEvidenceText } from "@/state/weeklyDecisionThread";
 
 type FormState = {
   opponent: string;
@@ -90,11 +91,13 @@ const INITIAL_SIMPLE_FORM: SimpleFormState = {
 export function PostMatchAnalysisView() {
   const videoTags = useAppStore((state) => state.tags);
   const videoTracks = useAppStore((state) => state.tracks);
-  const pendingVideoEvidenceText = useAppStore(
-    (state) => state.pendingPostMatchEvidenceText,
+  const manualObservations = useAppStore((state) => state.manualObservations);
+  const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
+  const pendingPostMatchImport = useAppStore(
+    (state) => state.pendingPostMatchImport,
   );
-  const consumePendingPostMatchEvidenceText = useAppStore(
-    (state) => state.consumePendingPostMatchEvidenceText,
+  const consumePendingPostMatchImport = useAppStore(
+    (state) => state.consumePendingPostMatchImport,
   );
   const { reports: history, reportsError: historyError } = usePostMatchReports();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
@@ -136,15 +139,22 @@ export function PostMatchAnalysisView() {
   );
 
   useEffect(() => {
-    if (!pendingVideoEvidenceText) return;
-    const evidenceText = consumePendingPostMatchEvidenceText();
-    if (!evidenceText) return;
+    if (!pendingPostMatchImport) return;
+    const nextImport = consumePendingPostMatchImport();
+    if (!nextImport) return;
+    setMode("advanced");
     setForm((current) => ({
       ...current,
-      tagsText: mergeEvidenceText(current.tagsText, evidenceText),
+      tagsText: mergeEvidenceText(current.tagsText, nextImport.evidenceText),
     }));
-    setStatus("Evidencia del video importada para revisar antes de generar.");
-  }, [consumePendingPostMatchEvidenceText, pendingVideoEvidenceText]);
+    setStatus(
+      nextImport.source === "videoEvidence"
+        ? "Evidencia de video importada para revisar antes de generar."
+        : nextImport.observationIds.length === 1
+          ? "Observacion manual importada para revisar antes de generar."
+          : "Observaciones manuales importadas para revisar antes de generar.",
+    );
+  }, [consumePendingPostMatchImport, pendingPostMatchImport]);
 
   async function generateReport() {
     if (!canGenerate || loading) return;
@@ -190,6 +200,7 @@ export function PostMatchAnalysisView() {
       );
       setReport(saved.report);
       setSavedReportId(saved.id);
+      useAppStore.getState().syncWeeklyThreadFromPostMatchReport(saved);
       try {
         const { downloadPostMatchPdf } = await import("./PostMatchPdf");
         await downloadPostMatchPdf(saved.report, staffReviewNotes);
@@ -282,6 +293,8 @@ export function PostMatchAnalysisView() {
           <AdvancedPostMatchForm
             form={form}
             setForm={setForm}
+            weeklyDecisionThread={weeklyDecisionThread}
+            manualObservations={manualObservations}
             videoEvidenceItems={videoEvidenceItems}
             videoEvidenceSummary={videoEvidenceSummary}
             onImportVideoEvidence={() =>
@@ -291,6 +304,16 @@ export function PostMatchAnalysisView() {
                 mergeEvidenceText(
                   form.tagsText,
                   videoEvidenceToTagsText(videoTags, videoTracks),
+                ),
+              )
+            }
+            onImportManualObservations={() =>
+              updateField(
+                setForm,
+                "tagsText",
+                mergeEvidenceText(
+                  form.tagsText,
+                  manualObservationsToEvidenceText(manualObservations),
                 ),
               )
             }
@@ -323,6 +346,25 @@ export function PostMatchAnalysisView() {
               }
             >
               Importar evidencia del video
+            </button>
+          ) : null}
+          {mode === "advanced" ? (
+            <button
+              type="button"
+              className="secondary"
+              disabled={!manualObservations.length || Boolean(loading)}
+              onClick={() =>
+                updateField(
+                  setForm,
+                  "tagsText",
+                  mergeEvidenceText(
+                    form.tagsText,
+                    manualObservationsToEvidenceText(manualObservations),
+                  ),
+                )
+              }
+            >
+              Importar observaciones manuales
             </button>
           ) : null}
         </div>
@@ -497,18 +539,59 @@ function SimplePostMatchForm({
 function AdvancedPostMatchForm({
   form,
   setForm,
+  weeklyDecisionThread,
+  manualObservations,
   videoEvidenceItems,
   videoEvidenceSummary,
   onImportVideoEvidence,
+  onImportManualObservations,
 }: {
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
+  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
+  manualObservations: ReturnType<typeof useAppStore.getState>["manualObservations"];
   videoEvidenceItems: VideoEvidenceItem[];
   videoEvidenceSummary: VideoEvidenceSummary;
   onImportVideoEvidence: () => void;
+  onImportManualObservations: () => void;
 }) {
   return (
     <>
+      {weeklyDecisionThread ? (
+        <div className="ai-card postmatch-handoff-card" style={{ marginBottom: 14 }}>
+          <div className="section-title">
+            <div>
+              <span className="panel-eyebrow">Sesion -&gt; revision</span>
+              <h4>Que deberia revisarse en este partido</h4>
+            </div>
+          </div>
+          <p>{weeklyDecisionThread.problem}</p>
+          <div className="session-intent-grid compact">
+            <div className="session-intent-item">
+              <span>Objetivo</span>
+              <b>
+                {weeklyDecisionThread.sessionIntent?.objective ??
+                  "Objetivo tactico a confirmar."}
+              </b>
+            </div>
+            <div className="session-intent-item">
+              <span>Senal</span>
+              <b>
+                {weeklyDecisionThread.sessionIntent?.successSignal ??
+                  "Senal de exito a confirmar."}
+              </b>
+            </div>
+            <div className="session-intent-item">
+              <span>Revision</span>
+              <b>
+                {weeklyDecisionThread.sessionIntent?.reviewCriteria ??
+                  weeklyDecisionThread.nextReviewCriteria[0] ??
+                  "Revision a confirmar."}
+              </b>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="form-grid">
         <Field
           label="Rival"
@@ -584,6 +667,10 @@ function AdvancedPostMatchForm({
         summary={videoEvidenceSummary}
         onImport={onImportVideoEvidence}
       />
+      <ManualObservationImportPanel
+        observations={manualObservations}
+        onImport={onImportManualObservations}
+      />
       <p className="muted-panel" style={{ marginTop: 8 }}>
         Formato recomendado: <code>12&apos; label | zone | note</code>. El
         minuto es opcional, pero ayuda a ordenar la evidencia.
@@ -656,6 +743,12 @@ function ReportReview({
           <button
             type="button"
             onClick={() => {
+              if (savedReportId) {
+                useAppStore.getState().syncWeeklyThreadFromPostMatchReport({
+                  id: savedReportId,
+                  report,
+                });
+              }
               setAiPrompt(
                 ownTeamProblems[0]?.problem
                   ? `Reabrir diagnostico semanal: ${ownTeamProblems[0].problem}`
@@ -875,6 +968,43 @@ function VideoEvidencePreviewItem({ item }: { item: VideoEvidenceItem }) {
       </small>
       {item.note ? <small>{item.note}</small> : null}
     </article>
+  );
+}
+
+function ManualObservationImportPanel({
+  observations,
+  onImport,
+}: {
+  observations: ReturnType<typeof useAppStore.getState>["manualObservations"];
+  onImport: () => void;
+}) {
+  return (
+    <div className="video-evidence-panel post-match-evidence-panel manual-observation-panel">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Observaciones manuales</span>
+          <h4>Captura del staff</h4>
+        </div>
+        <button type="button" disabled={!observations.length} onClick={onImport}>
+          Importar al informe
+        </button>
+      </div>
+      {observations.length ? (
+        <div className="video-evidence-preview">
+          {observations.slice(0, 6).map((observation) => (
+            <article className="video-evidence-item note medium" key={observation.id}>
+              <span>manual</span>
+              <b>{observation.text}</b>
+              <small>No confirmada por video · {observation.source}</small>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="muted-panel">
+          No hay observaciones manuales guardadas desde la Sala.
+        </p>
+      )}
+    </div>
   );
 }
 

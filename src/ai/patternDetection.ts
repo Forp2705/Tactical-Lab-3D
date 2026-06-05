@@ -20,6 +20,18 @@ export type TeamPattern = {
   confidence: "low" | "medium" | "high";
 };
 
+export type WeeklyDecisionSummary = {
+  openProblems: TeamPattern[];
+  recurringProblems: TeamPattern[];
+  improvedProblems: TeamPattern[];
+  returnedProblems: TeamPattern[];
+  recommendedFocus: {
+    title: string;
+    reason: string;
+    pattern: TeamPattern;
+  } | null;
+};
+
 type ProblemRecord = {
   reportId: string;
   date: string;
@@ -66,6 +78,42 @@ export function formatPatternsForCoach(patterns: TeamPattern[]) {
         `- ${labelForKind(pattern.kind)} / ${pattern.domain} / ${pattern.confidence}: ${pattern.statement} | evidencia: ${pattern.evidence.join("; ")}`,
     )
     .join("\n");
+}
+
+export function buildWeeklyDecisionSummary(patterns: TeamPattern[]): WeeklyDecisionSummary {
+  const recurringProblems = patterns.filter((pattern) => pattern.kind === "repeatedProblem");
+  const improvedProblems = patterns.filter((pattern) => pattern.kind === "improvement");
+  const returnedProblems = patterns.filter((pattern) => pattern.kind === "regression");
+  const openProblems = patterns.filter((pattern) =>
+    [
+      "repeatedProblem",
+      "regression",
+      "problemNotTrained",
+      "gameModelContradiction",
+      "newProblem",
+    ].includes(pattern.kind),
+  );
+
+  const recommendedPattern =
+    pickPriorityPattern(returnedProblems) ??
+    pickPriorityPattern(recurringProblems) ??
+    pickPriorityPattern(openProblems) ??
+    pickPriorityPattern(improvedProblems) ??
+    null;
+
+  return {
+    openProblems,
+    recurringProblems,
+    improvedProblems,
+    returnedProblems,
+    recommendedFocus: recommendedPattern
+      ? {
+          title: recommendedFocusTitle(recommendedPattern),
+          reason: recommendedFocusReason(recommendedPattern),
+          pattern: recommendedPattern,
+        }
+      : null,
+  };
 }
 
 function detectRepeatedProblems(records: ProblemRecord[]): TeamPattern[] {
@@ -317,12 +365,73 @@ function dedupePatterns(patterns: TeamPattern[]) {
   return [...new Map(patterns.map((pattern) => [pattern.id, pattern])).values()];
 }
 
+function pickPriorityPattern(patterns: TeamPattern[]) {
+  return [...patterns].sort((a, b) =>
+    priorityForPattern(b.kind) - priorityForPattern(a.kind) ||
+    confidenceWeight(b.confidence) - confidenceWeight(a.confidence),
+  )[0];
+}
+
 function getReportDate(savedReport: SavedPostMatchReport) {
   return savedReport.report.matchContext.date ?? savedReport.savedAt.slice(0, 10);
 }
 
 function severityScore(severity: "low" | "medium" | "high") {
   return severity === "high" ? 3 : severity === "medium" ? 2 : 1;
+}
+
+function priorityForPattern(kind: TeamPatternKind) {
+  if (kind === "regression") return 5;
+  if (kind === "repeatedProblem") return 4;
+  if (kind === "problemNotTrained") return 3;
+  if (kind === "gameModelContradiction") return 3;
+  if (kind === "newProblem") return 2;
+  if (kind === "improvement") return 1;
+  return 0;
+}
+
+function confidenceWeight(confidence: TeamPattern["confidence"]) {
+  if (confidence === "high") return 3;
+  if (confidence === "medium") return 2;
+  return 1;
+}
+
+function recommendedFocusTitle(pattern: TeamPattern) {
+  if (pattern.kind === "regression") {
+    return "Volvio o empeoro un problema que ya estaba en la historia del equipo."
+  }
+  if (pattern.kind === "repeatedProblem") {
+    return "Se repite un problema que merece foco semanal explicito."
+  }
+  if (pattern.kind === "problemNotTrained") {
+    return "Sigue apareciendo un problema sin traduccion clara a la sesion."
+  }
+  if (pattern.kind === "gameModelContradiction") {
+    return "La evolucion esta contradiciendo el modelo de juego declarado."
+  }
+  if (pattern.kind === "newProblem") {
+    return "Aparecio un problema nuevo que conviene validar cuanto antes."
+  }
+  return "Hay una mejora para sostener en la proxima semana."
+}
+
+function recommendedFocusReason(pattern: TeamPattern) {
+  if (pattern.kind === "regression") {
+    return "El ultimo reporte sugiere que el problema regreso o subio de severidad."
+  }
+  if (pattern.kind === "repeatedProblem") {
+    return "Aparece en mas de un reporte y ya no deberia tratarse como evento aislado."
+  }
+  if (pattern.kind === "problemNotTrained") {
+    return "La sesion activa no parece atacar este problema con suficiente claridad."
+  }
+  if (pattern.kind === "gameModelContradiction") {
+    return "La secuencia reciente choca con principios que el equipo declara como no negociables."
+  }
+  if (pattern.kind === "newProblem") {
+    return "Todavia no hay suficiente historia para llamarlo patron, pero ya merece observacion."
+  }
+  return "Conviene sostener la mejora para confirmar que no fue un partido aislado."
 }
 
 function labelForKind(kind: TeamPatternKind) {

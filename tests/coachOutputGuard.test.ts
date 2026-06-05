@@ -12,7 +12,7 @@ describe("coachOutputGuard", () => {
       evidenceCatalog: [],
     });
 
-    expect(guarded.reflection.confidence).toBeLessThanOrEqual(0.5);
+    expect(guarded.reflection.confidence).toBeLessThanOrEqual(0.45);
     expect(guarded.reflection.mainUncertainty).toContain("no hay citas validas");
   });
 
@@ -81,10 +81,8 @@ describe("coachOutputGuard", () => {
       },
     );
 
-    expect(guarded.reflection.confidence).toBeLessThanOrEqual(0.62);
-    expect(guarded.reflection.mainUncertainty).toContain(
-      "sin evidencia actual",
-    );
+    expect(guarded.reflection.confidence).toBeLessThanOrEqual(0.5);
+    expect(guarded.reflection.mainUncertainty).toContain("memoria o principios tacticos");
   });
 
   it("marca downgrade a hipotesis si no hay citas validas", () => {
@@ -95,7 +93,7 @@ describe("coachOutputGuard", () => {
 
     expect(assessment.requiresHypothesisMode).toBe(true);
     expect(assessment.hasCitation).toBe(false);
-    expect(assessment.confidenceCap).toBeLessThanOrEqual(0.5);
+    expect(assessment.confidenceCap).toBeLessThanOrEqual(0.45);
   });
 
   it("marca downgrade a hipotesis cuando deriva de fase", () => {
@@ -155,6 +153,69 @@ describe("coachOutputGuard", () => {
 
     expect(assessment.requiresHypothesisMode).toBe(false);
     expect(assessment.hasCaseEvidence).toBe(true);
+    expect(assessment.currentEvidenceCount).toBe(1);
+  });
+
+  it("degrada a hipotesis cuando la evidencia citada es solo historica", () => {
+    const assessment = assessCoachAdviceTrust(
+      advice({
+        evidenceCitations: [
+          {
+            sourceType: "memory",
+            sourceId: "MEM-1",
+            title: "Memoria estable",
+            excerpt: "El equipo suele quedar largo tras perdida.",
+            relevance: 0.74,
+            evidenceTargets: ["frequency"],
+          },
+        ],
+      }),
+      {
+        userInput: "Nos quedan metros entre lineas tras perdida",
+        evidenceCatalog: [{ id: "MEM-1", sourceType: "memory" }],
+      },
+    );
+
+    expect(assessment.requiresHypothesisMode).toBe(true);
+    expect(assessment.currentEvidenceCount).toBe(0);
+    expect(assessment.reliesMostlyOnMemoryOrPrinciples).toBe(true);
+    expect(assessment.confidenceCap).toBeLessThanOrEqual(0.5);
+  });
+
+  it("acepta observacion manual actual como evidencia valida pero no la confunde con certeza alta", () => {
+    const assessment = assessCoachAdviceTrust(
+      advice({
+        tacticalReading: "En salida el 9 queda lejos del bloque y no ofrece apoyo cercano.",
+        probableCause: "La salida arranca sin una distancia corta entre el 9 y los interiores.",
+        mainAdjustment: "Acercar el 9 a la salida para crear apoyo frontal antes del primer pase.",
+        wednesdayTest: "Tarea de salida con 9 apoyando corto y tercer hombre.",
+        saturdayFocus: "Sostener un 9 mas conectado durante la salida.",
+        reflection: {
+          mainUncertainty: "Falta repetirlo en partido.",
+          missingInformation: "Falta frecuencia.",
+          alternativeInterpretation: "Puede ser una recepcion aislada.",
+          confidence: 0.66,
+        },
+        evidenceCitations: [
+          {
+            sourceType: "observation",
+            sourceId: "manual-observation-1",
+            title: "Observacion manual del staff",
+            excerpt: "El 9 queda lejos del bloque en salida.",
+            relevance: 0.77,
+            evidenceTargets: ["zone", "cause"],
+          },
+        ],
+      }),
+      {
+        userInput: "El 9 queda lejos en salida",
+        evidenceCatalog: [{ id: "manual-observation-1", sourceType: "observation" }],
+      },
+    );
+
+    expect(assessment.requiresHypothesisMode).toBe(false);
+    expect(assessment.currentEvidenceCount).toBe(1);
+    expect(assessment.confidenceCap).toBeGreaterThan(0.6);
   });
 });
 

@@ -401,7 +401,12 @@ export function VideoView() {
   function sendEvidenceToPostMatch() {
     const evidenceText = videoEvidenceToTagsText(tags, tracks, currentMatchId);
     const store = useAppStore.getState();
-    store.setPendingPostMatchEvidenceText(evidenceText);
+    store.setPendingPostMatchImport({
+      threadId: store.weeklyDecisionThread?.id ?? null,
+      source: "videoEvidence",
+      observationIds: [],
+      evidenceText,
+    });
     store.setAiMode("postMatch");
     store.setView("ai");
   }
@@ -506,9 +511,12 @@ export function VideoView() {
   function sendPatternScanToPostMatch() {
     if (!scanState.result) return;
     const store = useAppStore.getState();
-    store.setPendingPostMatchEvidenceText(
-      videoPatternScanToEvidenceText(scanState.result),
-    );
+    store.setPendingPostMatchImport({
+      threadId: store.weeklyDecisionThread?.id ?? null,
+      source: "videoEvidence",
+      observationIds: [],
+      evidenceText: videoPatternScanToEvidenceText(scanState.result),
+    });
     store.setAiMode("postMatch");
     store.setView("ai");
   }

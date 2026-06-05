@@ -352,6 +352,8 @@ function snapshotFromState(state: ReturnType<typeof useAppStore.getState>) {
     lineupLab: state.lineupLab,
     tags: state.tags,
     tracks: state.tracks,
+    manualObservations: state.manualObservations,
+    weeklyDecisionThread: state.weeklyDecisionThread,
     aiPrompt: state.aiPrompt,
   };
 }

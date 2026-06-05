@@ -195,6 +195,92 @@ describe("runCoachTurn", () => {
         : "",
     ).toContain("derivando de fase");
   });
+
+  it("mantiene hipotesis si la salida se apoya solo en memoria historica", async () => {
+    mockState.advice = advice({
+      evidenceCitations: [
+        {
+          sourceType: "memory",
+          sourceId: "MEM-1",
+          title: "Memoria estable",
+          excerpt: "El equipo suele quedar largo entre lineas.",
+          relevance: 0.76,
+          evidenceTargets: ["frequency"],
+        },
+      ],
+    });
+
+    const { runCoachTurn } = await import("../src/ai/CoachAgent");
+
+    const response = await runCoachTurn({
+      input: "Nos quedan metros entre lineas tras perdida",
+      coachContext: emptyCoachContext(),
+      interviewState: interviewState(),
+      collectedEvidence: [
+        collected("q_cause", "cause", "El medio salta antes de que achique la defensa"),
+        collected("q_zone", "zone", "Carril central"),
+        collected("q_own", "ownTeam", "Es un problema propio de distancias"),
+      ],
+    });
+
+    expect(response.mode).toBe("hypothesis");
+    expect(
+      response.mode === "hypothesis"
+        ? response.advice.reflection.mainUncertainty
+        : "",
+    ).toContain("no hay citas validas");
+  });
+
+  it("puede cerrar diagnostico cuando hay evidencia actual manual valida y citada", async () => {
+    mockState.advice = advice({
+      tacticalReading: "En salida el 9 queda lejos del bloque y la progresion arranca sin apoyo frontal.",
+      probableCause: "El 9 inicia demasiado alto y no da una linea de apoyo corta en salida.",
+      mainAdjustment: "Acercar el 9 a la salida para conectar primer pase, apoyo y tercer hombre.",
+      wednesdayTest: "Tarea de salida con 9 apoyando corto antes de atacar profundidad.",
+      saturdayFocus: "Revisar si el 9 vuelve a quedar aislado durante la salida.",
+      reflection: {
+        mainUncertainty: "Falta ver si se repite en mas partidos.",
+        missingInformation: "Falta frecuencia.",
+        alternativeInterpretation: "Puede ser un problema de tiempos, no solo de distancia.",
+        confidence: 0.66,
+      },
+      evidenceCitations: [
+        {
+          sourceType: "observation",
+          sourceId: "manual-observation-1",
+          title: "Observacion manual del staff",
+          excerpt: "El 9 queda lejos del bloque.",
+          relevance: 0.81,
+          evidenceTargets: ["cause", "zone"],
+        },
+      ],
+    });
+
+    const { runCoachTurn } = await import("../src/ai/CoachAgent");
+
+    const response = await runCoachTurn({
+      input: "El 9 queda lejos del bloque cuando salimos",
+      coachContext: {
+        ...emptyCoachContext(),
+        manualObservations: [
+          {
+            id: "manual-observation-1",
+            text: "En salida el 9 queda lejos del bloque y no ofrece apoyo corto.",
+            createdAt: "2026-06-05T12:00:00.000Z",
+            source: "home",
+          },
+        ],
+      },
+      interviewState: interviewState(),
+      collectedEvidence: [
+        collected("q_cause", "cause", "El 9 no tiene apoyo cercano"),
+        collected("q_zone", "zone", "Carril central"),
+        collected("q_own", "ownTeam", "Es un problema propio de distancias"),
+      ],
+    });
+
+    expect(response.mode).toBe("diagnosis");
+  });
 });
 
 function emptyCoachContext() {

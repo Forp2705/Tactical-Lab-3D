@@ -11,8 +11,12 @@ export type CoachTrustAssessment = {
   confidenceCap: number;
   missingPrimaryDomain: boolean;
   hasCitation: boolean;
+  citationCount: number;
+  currentEvidenceCount: number;
   hasCaseEvidence: boolean;
-  hasOnlyContextEvidence: boolean;
+  hasOnlyHistoricalOrContextEvidence: boolean;
+  missingCitationRisk: boolean;
+  reliesMostlyOnMemoryOrPrinciples: boolean;
   makesStrongClaim: boolean;
   requiresHypothesisMode: boolean;
 };
@@ -85,11 +89,20 @@ export function assessCoachAdviceTrust(
   );
   const citedIds = new Set(advice.evidenceCitations.map((citation) => citation.sourceId));
   const citedEvidence = evidenceCatalog.filter((item) => citedIds.has(item.id));
-  const hasCitation = citedEvidence.length > 0;
-  const hasCaseEvidence = citedEvidence.some((item) =>
-    ["report", "observation", "video"].includes(item.sourceType),
+  const citationCount = citedEvidence.length;
+  const hasCitation = citationCount > 0;
+  const currentEvidenceCount = citedEvidence.filter((item) =>
+    ["observation", "video"].includes(item.sourceType),
+  ).length;
+  const hasCaseEvidence = currentEvidenceCount > 0;
+  const hasOnlyHistoricalOrContextEvidence = hasCitation && currentEvidenceCount === 0;
+  const reliesMostlyOnMemoryOrPrinciples =
+    hasCitation &&
+    citedEvidence.every((item) => ["knowledge", "memory"].includes(item.sourceType));
+  const missingCitationRisk = citationCount === 0;
+  const hasHistoricalEvidence = citedEvidence.some((item) =>
+    ["report", "memory"].includes(item.sourceType),
   );
-  const hasOnlyContextEvidence = hasCitation && !hasCaseEvidence;
   const makesStrongClaim = advice.reflection.confidence >= 0.68 || [
     advice.probableCause,
     advice.mainAdjustment,
@@ -108,19 +121,37 @@ export function assessCoachAdviceTrust(
         .map((domain) => DOMAIN_LABELS[domain])
         .join(", ")}.`,
     );
-    confidenceCap = Math.min(confidenceCap, 0.55);
+    confidenceCap = Math.min(confidenceCap, 0.52);
   }
 
-  if (!hasCitation) {
+  if (missingCitationRisk) {
     uncertaintyNotes.push(
       "Guard: no hay citas validas de evidencia/knowledge en la salida; no elevar confianza.",
     );
-    confidenceCap = Math.min(confidenceCap, 0.5);
-  } else if (hasOnlyContextEvidence && makesStrongClaim) {
+    confidenceCap = Math.min(confidenceCap, 0.45);
+  }
+
+  if (!currentEvidenceCount) {
     uncertaintyNotes.push(
-      "Guard: la respuesta hace afirmaciones fuertes sin evidencia actual/reportes del caso; usar como hipotesis.",
+      hasHistoricalEvidence
+        ? "Guard: no hay evidencia actual citada; la lectura depende de memoria o reportes previos."
+        : "Guard: no hay evidencia actual citada; mantener como hipotesis.",
     );
-    confidenceCap = Math.min(confidenceCap, 0.62);
+    confidenceCap = Math.min(confidenceCap, 0.55);
+  }
+
+  if (reliesMostlyOnMemoryOrPrinciples) {
+    uncertaintyNotes.push(
+      "Guard: la salida se apoya sobre todo en memoria o principios tacticos; no tratarla como diagnostico cerrado.",
+    );
+    confidenceCap = Math.min(confidenceCap, 0.5);
+  }
+
+  if (hasOnlyHistoricalOrContextEvidence && makesStrongClaim) {
+    uncertaintyNotes.push(
+      "Guard: la respuesta hace afirmaciones fuertes sin evidencia actual del caso; usar como hipotesis.",
+    );
+    confidenceCap = Math.min(confidenceCap, 0.48);
   }
 
   return {
@@ -128,13 +159,19 @@ export function assessCoachAdviceTrust(
     confidenceCap,
     missingPrimaryDomain,
     hasCitation,
+    citationCount,
+    currentEvidenceCount,
     hasCaseEvidence,
-    hasOnlyContextEvidence,
+    hasOnlyHistoricalOrContextEvidence,
+    missingCitationRisk,
+    reliesMostlyOnMemoryOrPrinciples,
     makesStrongClaim,
     requiresHypothesisMode:
       missingPrimaryDomain ||
-      !hasCitation ||
-      (hasOnlyContextEvidence && makesStrongClaim),
+      missingCitationRisk ||
+      currentEvidenceCount === 0 ||
+      reliesMostlyOnMemoryOrPrinciples ||
+      (hasOnlyHistoricalOrContextEvidence && makesStrongClaim),
   };
 }
 

@@ -147,6 +147,8 @@ export function App() {
         lineupLab: state.lineupLab,
         tags: state.tags,
         tracks: state.tracks,
+        manualObservations: state.manualObservations,
+        weeklyDecisionThread: state.weeklyDecisionThread,
         aiPrompt: state.aiPrompt,
       });
     };

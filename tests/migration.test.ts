@@ -36,11 +36,15 @@ function snapshotFromDefaults(): AppSnapshot {
     personalSpace: s.personalSpace,
     layers: s.layers,
     team: s.team,
+    gameModel: s.gameModel,
+    opponentScout: s.opponentScout,
     session: s.session,
     microcycle: s.microcycle,
     lineupLab: s.lineupLab,
     tags: s.tags,
     tracks: s.tracks,
+    manualObservations: s.manualObservations,
+    weeklyDecisionThread: s.weeklyDecisionThread,
     aiPrompt: s.aiPrompt,
   } as AppSnapshot;
 }
@@ -82,6 +86,17 @@ describe("parseSnapshot — recuperación tolerante", () => {
     expect(parsed).not.toBeNull();
     expect(parsed?.version).toBe(APP_SNAPSHOT_VERSION);
     expect(parsed?.camera).toBeUndefined();
+  });
+
+  it("migra snapshots v2 agregando weeklyDecisionThread nulo", () => {
+    const base = snapshotFromDefaults() as unknown as Record<string, unknown>;
+    base.version = 2;
+    delete base.weeklyDecisionThread;
+
+    const parsed = parseSnapshot(base);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.version).toBe(APP_SNAPSHOT_VERSION);
+    expect(parsed?.weeklyDecisionThread ?? null).toBeNull();
   });
 
   it("devuelve null cuando no hay ningún campo reconocible", () => {

@@ -14,7 +14,7 @@ import {
 import Dexie, { type Table } from "dexie";
 import { z } from "zod";
 
-export const APP_SNAPSHOT_VERSION = 2;
+export const APP_SNAPSHOT_VERSION = 3;
 
 const VideoMomentSchema = z.enum([
   "firstHalf",
@@ -91,6 +91,45 @@ const LineupLabSnapshotSchema = z.object({
   pendingShapeId: z.string().nullable().default(null),
 });
 
+const ManualObservationSnapshotSchema = z.object({
+  id: z.string().optional(),
+  text: z.string().min(1),
+  createdAt: z.string().optional(),
+  source: z.enum(["home", "postMatch"]).default("home"),
+}).transform((observation) => ({
+  ...observation,
+  id:
+    observation.id ||
+    makeStableEventId("manual-observation", Date.parse(observation.createdAt ?? "") || Date.now(), observation.text),
+  createdAt: observation.createdAt ?? new Date().toISOString(),
+}));
+
+const WeeklyDecisionSessionIntentSnapshotSchema = z.object({
+  problem: z.string(),
+  objective: z.string(),
+  successSignal: z.string(),
+  reviewCriteria: z.string(),
+});
+
+const WeeklyDecisionThreadSnapshotSchema = z
+  .object({
+    id: z.string(),
+    problem: z.string().min(1),
+    origin: z.enum(["manualObservation", "coach", "postMatch", "evolution"]),
+    evidenceIds: z.array(z.string()).default([]),
+    mode: z.enum(["hypothesis", "diagnosis"]),
+    confidence: z.number().min(0).max(1),
+    sessionIntent: WeeklyDecisionSessionIntentSnapshotSchema.nullable().default(null),
+    nextReviewCriteria: z.array(z.string()).default([]),
+    status: z.enum(["open", "trained", "reviewed", "evolved"]),
+    progress: z.enum(["open", "improved", "returned", "recurring", "evolved"]).default("open"),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    lastReportId: z.string().optional(),
+  })
+  .nullable()
+  .default(null);
+
 // Forma del snapshot definida campo por campo. Mantener el shape separado del
 // schema permite validar cada campo de forma aislada para la recuperacion
 // tolerante (rescatar lo que se pueda en vez de descartar todo).
@@ -149,6 +188,8 @@ const snapshotShape = {
   lineupLab: LineupLabSnapshotSchema.optional(),
   tags: z.array(VideoTagSnapshotSchema),
   tracks: z.array(VideoTrackSnapshotSchema),
+  manualObservations: z.array(ManualObservationSnapshotSchema).default([]),
+  weeklyDecisionThread: WeeklyDecisionThreadSnapshotSchema.default(null),
   aiPrompt: z.string(),
 } as const;
 
@@ -185,6 +226,11 @@ const MIGRATIONS: Record<
     version: 2,
     gameModel: snap.gameModel ?? DEFAULT_GAME_MODEL,
     opponentScout: snap.opponentScout ?? DEFAULT_OPPONENT_SCOUT,
+  }),
+  2: (snap) => ({
+    ...snap,
+    version: 3,
+    weeklyDecisionThread: snap.weeklyDecisionThread ?? null,
   }),
 };
 
@@ -276,6 +322,10 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
     },
     tags: (migrated.tags ?? []).map(normalizeVideoTag),
     tracks: (migrated.tracks ?? []).map(normalizeVideoTrack),
+    manualObservations: (migrated.manualObservations ?? []).map(
+      normalizeManualObservation,
+    ),
+    weeklyDecisionThread: migrated.weeklyDecisionThread ?? null,
   };
 }
 
@@ -327,6 +377,23 @@ function normalizeVideoTrack(
     id: track.id ?? makeStableEventId("track", track.time, track.label),
     matchId: track.matchId ?? "current-match",
     moment: track.moment ?? videoMomentFromTime(track.time),
+  };
+}
+
+function normalizeManualObservation(
+  observation: z.infer<typeof ManualObservationSnapshotSchema>,
+): z.infer<typeof ManualObservationSnapshotSchema> {
+  return {
+    ...observation,
+    id:
+      observation.id ||
+      makeStableEventId(
+        "manual-observation",
+        Date.parse(observation.createdAt ?? "") || Date.now(),
+        observation.text,
+      ),
+    createdAt: observation.createdAt ?? new Date().toISOString(),
+    source: observation.source ?? "home",
   };
 }
 

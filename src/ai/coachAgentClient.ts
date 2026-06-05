@@ -5,7 +5,7 @@ import {
   type CoachResponse,
   type CollectedAnswer,
 } from "./CoachSchemas";
-import type { CoachShapeContext } from "@/state/useAppStore";
+import type { CoachShapeContext, ManualObservation } from "@/state/useAppStore";
 import type { GameModel } from "@/data/gameModel";
 import type { OpponentScout } from "@/scout/opponentScout";
 
@@ -43,6 +43,7 @@ export type CoachAgentRuntimeContext = {
     assistedTracks: number;
     text: string;
   };
+  manualObservations?: ManualObservation[];
   availableSquad: CoachAgentSquadPlayer[];
   unavailableSquad: CoachAgentSquadPlayer[];
   savedLineups?: Array<{

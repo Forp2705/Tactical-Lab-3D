@@ -2163,6 +2163,222 @@ body .app-shell .brand-mark {
   border-color: var(--line) !important;
 }
 
+.coach-short-summary {
+  display: grid;
+  gap: 14px;
+  border-left: 4px solid var(--accent) !important;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--accent) 7%, var(--panel)), var(--panel-2)) !important;
+}
+
+.coach-short-summary .section-title h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 860;
+  letter-spacing: 0;
+}
+
+.short-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.short-summary-item {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 118px;
+  border: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
+  border-radius: 10px;
+  background: rgba(3, 8, 11, 0.32);
+  padding: 12px;
+}
+
+.short-summary-item.strong {
+  grid-row: span 2;
+}
+
+.short-summary-item span {
+  color: var(--muted-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.short-summary-item b {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.short-summary-item.strong b {
+  font-size: 16px;
+}
+
+.short-summary-item small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.short-summary-item.exercise .secondary {
+  justify-self: start;
+  margin-top: 2px;
+}
+
+.coach-analysis-details {
+  padding: 0 !important;
+}
+
+.coach-analysis-details > summary {
+  cursor: pointer;
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 760;
+  list-style: none;
+  padding: 14px 16px;
+}
+
+.coach-analysis-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.coach-analysis-details > summary::after {
+  content: "+";
+  float: right;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+.coach-analysis-details[open] > summary::after {
+  content: "-";
+}
+
+.coach-analysis-details > :not(summary) {
+  margin: 0 16px 14px;
+}
+
+.quick-observation-card,
+.timeline-weekly-decision {
+  display: grid;
+  gap: 12px;
+}
+
+.quick-observation-input {
+  min-height: 110px;
+}
+
+.quick-observation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.quick-observation-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  border-radius: 10px;
+  background: rgba(3, 8, 11, 0.28);
+}
+
+.quick-observation-item small {
+  display: block;
+  margin-top: 4px;
+}
+
+.timeline-weekly-decision {
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid color-mix(in oklch, var(--accent) 26%, var(--line));
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--accent) 9%, var(--panel)), var(--panel-2));
+}
+
+.timeline-weekly-decision h4 {
+  margin: 0;
+  color: var(--text);
+}
+
+.timeline-weekly-decision p,
+.timeline-weekly-decision small {
+  margin: 0;
+}
+
+.timeline-decision-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.timeline-pattern-group {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-pattern-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeline-pattern-head span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.timeline-history-details > summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.session-intent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.session-intent-grid.compact {
+  margin-top: 10px;
+}
+
+.session-intent-item {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  border-radius: 10px;
+  background: rgba(3, 8, 11, 0.24);
+}
+
+.session-intent-item span {
+  color: var(--muted-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-intent-item b {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .evidence-group-head strong,
 .ai-evidence-item strong,
 .ai-action-group strong {
@@ -2204,8 +2420,15 @@ body .app-shell .brand-mark {
   .ai-hero-metrics,
   .trust-columns,
   .football-report-grid,
-  .coach-report-grid {
+  .coach-report-grid,
+  .short-summary-grid,
+  .timeline-decision-grid,
+  .session-intent-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .short-summary-item.strong {
+    grid-row: auto;
   }
 }
 

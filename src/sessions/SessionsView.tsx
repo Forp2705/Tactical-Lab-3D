@@ -34,6 +34,7 @@ export function SessionsView() {
   const session = useAppStore((state) => state.session);
   const microcycle = useAppStore((state) => state.microcycle);
   const aiPrompt = useAppStore((state) => state.aiPrompt);
+  const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const addToSession = useAppStore((state) => state.addToSession);
   const reorderSessionBlocks = useAppStore(
     (state) => state.reorderSessionBlocks,
@@ -43,6 +44,10 @@ export function SessionsView() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
   const computed = session.computed ?? recomputeFallback(session.blocks);
+  const sessionIntent = useMemo(
+    () => readSessionIntent(session.staffNotes, aiPrompt, weeklyDecisionThread),
+    [aiPrompt, session.staffNotes, weeklyDecisionThread],
+  );
   const alerts = useMemo(
     () =>
       computeMicrocycleAlerts(microcycle, { ...session, computed }, catalog),
@@ -99,16 +104,21 @@ export function SessionsView() {
           </div>
           <div className="session-origin-card">
             <span className="eyebrow">Diagnostico -&gt; sesion</span>
-            <h4>
-              {aiPrompt.trim()
-                ? shorten(aiPrompt, 110)
-                : "Todavia no hay un diagnostico activo enlazado a esta sesion."}
-            </h4>
-            <p>
-              {session.staffNotes?.trim()
-                ? shorten(session.staffNotes.split("\n")[0] ?? "", 138)
-                : "La sesion gana valor cuando el problema tactico y el trabajo de campo quedan unidos."}
-            </p>
+            <h4>{shorten(sessionIntent.problem, 110)}</h4>
+            <div className="session-intent-grid compact">
+              <div className="session-intent-item">
+                <span>Objetivo</span>
+                <b>{sessionIntent.objective}</b>
+              </div>
+              <div className="session-intent-item">
+                <span>Senal de exito</span>
+                <b>{sessionIntent.successSignal}</b>
+              </div>
+              <div className="session-intent-item">
+                <span>Revision partido</span>
+                <b>{sessionIntent.nextReview}</b>
+              </div>
+            </div>
           </div>
           <div className="session-summary" style={{ marginTop: 12 }}>
             <div className="summary-tile">
@@ -254,6 +264,8 @@ const SessionBlockCard = memo(function SessionBlockCard({
   const block = useAppStore((state) =>
     state.session.blocks.find((item) => item.id === id),
   );
+  const diagnosisPrompt = useAppStore((state) => state.aiPrompt);
+  const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const updateSessionBlock = useAppStore((state) => state.updateSessionBlock);
   const removeSessionBlock = useAppStore((state) => state.removeSessionBlock);
   const exercise = catalog.find((item) => item.id === block?.exerciseId);
@@ -291,6 +303,12 @@ const SessionBlockCard = memo(function SessionBlockCard({
     transition,
     opacity: isDragging ? 0.5 : 1,
   } as const;
+  const blockIntent = readSessionBlockIntent(
+    block.notes,
+    exercise,
+    diagnosisPrompt,
+    weeklyDecisionThread,
+  );
 
   return (
     <div
@@ -330,6 +348,24 @@ const SessionBlockCard = memo(function SessionBlockCard({
         subtitle={`${exercise.phase} / ${exercise.principle}`}
         overlays={previewOverlays}
       />
+      <div className="session-intent-grid">
+        <div className="session-intent-item">
+          <span>Problema</span>
+          <b>{blockIntent.problem}</b>
+        </div>
+        <div className="session-intent-item">
+          <span>Objetivo</span>
+          <b>{blockIntent.objective}</b>
+        </div>
+        <div className="session-intent-item">
+          <span>Senal</span>
+          <b>{blockIntent.successSignal}</b>
+        </div>
+        <div className="session-intent-item">
+          <span>Revision</span>
+          <b>{blockIntent.nextReview}</b>
+        </div>
+      </div>
       <div className="toolbar">
         <input
           type="number"
@@ -412,4 +448,70 @@ async function exportSessionPdf(
 function shorten(text: string, max: number) {
   if (text.length <= max) return text;
   return `${text.slice(0, max - 1).trim()}...`;
+}
+
+function readSessionIntent(
+  staffNotes: string | undefined,
+  aiPrompt: string,
+  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"],
+) {
+  const threadIntent = weeklyDecisionThread?.sessionIntent;
+  return {
+    problem:
+      threadIntent?.problem ||
+      weeklyDecisionThread?.problem ||
+      extractTaggedNote(staffNotes, "Problema semanal") ||
+      extractTaggedNote(staffNotes, "Causa probable") ||
+      aiPrompt.trim() ||
+      "Todavia no hay un diagnostico activo enlazado a esta sesion.",
+    objective:
+      threadIntent?.objective ||
+      extractTaggedNote(staffNotes, "Objetivo tactico") ||
+      "Transformar el problema tactico en una respuesta entrenable.",
+    successSignal:
+      threadIntent?.successSignal ||
+      extractTaggedNote(staffNotes, "Senales del sabado") ||
+      "Definir que comportamiento debe aparecer en el siguiente partido.",
+    nextReview:
+      threadIntent?.reviewCriteria ||
+      extractTaggedNote(staffNotes, "Test de miercoles") ||
+      "Revisar el ajuste en el siguiente partido.",
+  };
+}
+
+function readSessionBlockIntent(
+  notes: string | undefined,
+  exercise: (typeof catalog)[number],
+  aiPrompt: string,
+  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"],
+) {
+  const threadIntent = weeklyDecisionThread?.sessionIntent;
+  return {
+    problem:
+      extractTaggedNote(notes, "Problema") ||
+      threadIntent?.problem ||
+      weeklyDecisionThread?.problem ||
+      aiPrompt.trim() ||
+      "Problema a validar.",
+    objective:
+      extractTaggedNote(notes, "Objetivo") ||
+      threadIntent?.objective ||
+      exercise.objective.primary,
+    successSignal:
+      extractTaggedNote(notes, "Senal de exito") ||
+      threadIntent?.successSignal ||
+      exercise.success,
+    nextReview:
+      extractTaggedNote(notes, "Revision proximo partido") ||
+      threadIntent?.reviewCriteria ||
+      "Comparar si el patron mejora en el proximo partido.",
+  };
+}
+
+function extractTaggedNote(notes: string | undefined, label: string) {
+  if (!notes?.trim()) return "";
+  const line = notes
+    .split(/\r?\n/)
+    .find((entry) => entry.toLowerCase().startsWith(`${label.toLowerCase()}:`));
+  return line?.split(":").slice(1).join(":").trim() ?? "";
 }

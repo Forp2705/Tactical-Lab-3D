@@ -29,6 +29,7 @@ import {
 import { APP_SNAPSHOT_VERSION } from "./db";
 import {
   buildSessionPlanFromDiagnosis,
+  buildSessionPlanFromWeeklyThread,
   materializeDiagnosisSession,
 } from "@/sessions/diagnosisSession";
 import { catalog, demoPlayers } from "@/data";
@@ -37,6 +38,19 @@ import {
   PILOT_SESSION_BLOCKS,
   PILOT_SESSION_NOTES,
 } from "@/demo/pilotState";
+import {
+  buildPendingPostMatchImport,
+  buildThreadFromCoachResponse,
+  buildThreadFromObservation,
+  buildThreadFromPostMatchReport,
+  buildSessionIntentFromProblem,
+  evolveThreadStatus,
+  type PendingPostMatchImport,
+  type WeeklyDecisionSessionIntent,
+  type WeeklyDecisionThread,
+  type WeeklyDecisionThreadProgress,
+  type WeeklyDecisionThreadReportInput,
+} from "@/state/weeklyDecisionThread";
 import { create } from "zustand";
 
 export type ViewId =
@@ -88,6 +102,15 @@ export type VideoTrack = {
   note?: string;
 };
 
+export type ManualObservationSource = "home" | "postMatch";
+
+export type ManualObservation = {
+  id: string;
+  text: string;
+  createdAt: string;
+  source: ManualObservationSource;
+};
+
 type VideoTagInput = Omit<VideoTag, "id" | "moment" | "severity"> & {
   id?: string;
   moment?: VideoMoment;
@@ -97,6 +120,11 @@ type VideoTagInput = Omit<VideoTag, "id" | "moment" | "severity"> & {
 type VideoTrackInput = Omit<VideoTrack, "id" | "moment"> & {
   id?: string;
   moment?: VideoMoment;
+};
+
+type ManualObservationInput = Omit<ManualObservation, "id" | "createdAt"> & {
+  id?: string;
+  createdAt?: string;
 };
 
 export type CoachShapePlayer = {
@@ -246,10 +274,12 @@ type AppState = {
   lineupLab: LineupLabStoreState;
   tags: VideoTag[];
   tracks: VideoTrack[];
+  manualObservations: ManualObservation[];
+  weeklyDecisionThread: WeeklyDecisionThread | null;
   aiMode: AiMode;
   aiPrompt: string;
   coachInterview: CoachInterviewRuntimeState;
-  pendingPostMatchEvidenceText: string | null;
+  pendingPostMatchImport: PendingPostMatchImport | null;
   coachShapeContext: CoachShapeContext | null;
   initialized: boolean;
   viewerExerciseOverride: Exercise | null;
@@ -285,6 +315,10 @@ type AppState = {
   updateTrack: (id: string, patch: Partial<Omit<VideoTrack, "id">>) => void;
   removeTrack: (id: string) => void;
   clearAssistedTracks: (matchId?: string) => void;
+  addManualObservation: (observation: ManualObservationInput) => string | null;
+  removeManualObservation: (id: string) => void;
+  clearManualObservations: () => void;
+  activateWeeklyThreadFromObservation: (observationId: string) => void;
   addToSession: (exerciseId: string) => void;
   updateSessionBlock: (
     id: string,
@@ -306,7 +340,15 @@ type AppState = {
   updatePlayer: (id: string, patch: Partial<Player>) => void;
   updateGameModel: (patch: Partial<GameModel>) => void;
   updateOpponentScout: (patch: Partial<OpponentScout>) => void;
+  createSessionFromWeeklyThread: () => boolean;
   createSessionFromCoachAdvice: (response: CoachResponse) => boolean;
+  syncWeeklyThreadFromPostMatchReport: (
+    report: WeeklyDecisionThreadReportInput,
+  ) => void;
+  syncWeeklyThreadProgress: (
+    progress: WeeklyDecisionThreadProgress,
+    reportId?: string,
+  ) => void;
   loadSnapshot: (snapshot: Partial<AppState>) => void;
   markInitialized: () => void;
   setAiMode: (mode: AiMode) => void;
@@ -316,8 +358,9 @@ type AppState = {
   applyCoachTurnResult: (response: CoachResponse) => void;
   skipCoachInterview: () => void;
   resetCoachInterview: () => void;
-  setPendingPostMatchEvidenceText: (text: string | null) => void;
-  consumePendingPostMatchEvidenceText: () => string | null;
+  queuePostMatchManualObservations: (observationIds: string[]) => void;
+  setPendingPostMatchImport: (value: PendingPostMatchImport | null) => void;
+  consumePendingPostMatchImport: () => PendingPostMatchImport | null;
   setCoachShapeContext: (context: CoachShapeContext | null) => void;
 };
 
@@ -373,6 +416,72 @@ const initialCoachInterview: CoachInterviewRuntimeState = {
   collectedEvidence: [],
   turn: 0,
   skipped: false,
+};
+
+function buildThreadSessionIntentFromSession(session: Session, problem: string) {
+  return buildSessionIntentFromProblem(problem, {
+    objective:
+      extractTaggedValue(session.staffNotes, "Objetivo tactico") ||
+      "Transformar el problema tactico en una respuesta entrenable.",
+    successSignal:
+      extractTaggedValue(session.staffNotes, "Senales del sabado") ||
+      "Definir que comportamiento debe aparecer en el siguiente partido.",
+    reviewCriteria:
+      extractTaggedValue(session.staffNotes, "Test de miercoles") ||
+      "Revisar el ajuste en el siguiente partido.",
+  });
+}
+
+function isSessionLinkedToThread(session: Session, thread: WeeklyDecisionThread) {
+  const text = normalizeObservationText(
+    [
+      session.staffNotes,
+      ...session.blocks.map((block) => block.notes ?? ""),
+    ].join("\n"),
+  );
+  return (
+    text.includes(normalizeObservationText(thread.problem)) ||
+    text.includes(normalizeObservationText(thread.sessionIntent?.objective ?? ""))
+  );
+}
+
+function syncThreadWithSessionPlan(
+  thread: WeeklyDecisionThread,
+  plan: DiagnosisSessionPlanLike,
+): WeeklyDecisionThread {
+  const sessionIntent: WeeklyDecisionSessionIntent = {
+    problem: plan.problemStatement,
+    objective: plan.tacticalObjective,
+    successSignal:
+      plan.saturdaySignals[0] ||
+      thread.sessionIntent?.successSignal ||
+      "Validar una mejor ejecucion del ajuste.",
+    reviewCriteria:
+      plan.reviewFocus ||
+      thread.sessionIntent?.reviewCriteria ||
+      "Revisar el ajuste en el siguiente partido.",
+  };
+
+  return {
+    ...thread,
+    problem: plan.problemStatement,
+    confidence: thread.confidence,
+    sessionIntent,
+    nextReviewCriteria: [
+      sessionIntent.reviewCriteria,
+      ...plan.saturdaySignals,
+    ].filter(Boolean),
+    status: "trained",
+    progress: thread.progress === "evolved" ? "open" : thread.progress,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+type DiagnosisSessionPlanLike = {
+  problemStatement: string;
+  tacticalObjective: string;
+  reviewFocus: string;
+  saturdaySignals: string[];
 };
 
 const defaultLayers: Record<Layer, boolean> = {
@@ -446,6 +555,27 @@ const seededTeam: TeamState = {
   model: "4-3-3 agresivo, presion tras perdida y ataques por banda",
 };
 
+const seededWeeklyDecisionThread: WeeklyDecisionThread = {
+  id: "weekly-thread-seed",
+  problem: PILOT_DIAGNOSIS_PROMPT,
+  origin: "coach",
+  evidenceIds: [],
+  mode: "hypothesis",
+  confidence: 0.56,
+  sessionIntent: buildThreadSessionIntentFromSession(
+    seededSession,
+    PILOT_DIAGNOSIS_PROMPT,
+  ),
+  nextReviewCriteria: [
+    extractTaggedValue(seededSession.staffNotes, "Test de miercoles") ||
+      "Revisar el ajuste en el siguiente partido.",
+  ],
+  status: seededSession.blocks.length ? "trained" : "open",
+  progress: "open",
+  createdAt: "2026-06-01T12:00:00.000Z",
+  updatedAt: "2026-06-01T12:00:00.000Z",
+};
+
 export const useAppStore = create<AppState>((set, get) => ({
   version: APP_SNAPSHOT_VERSION,
   selectedExerciseId: catalog[0]?.id ?? "",
@@ -474,10 +604,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   lineupLab: initialLineupLab,
   tags: [],
   tracks: [],
+  manualObservations: [],
+  weeklyDecisionThread: seededWeeklyDecisionThread,
   aiMode: "coach",
   aiPrompt: PILOT_DIAGNOSIS_PROMPT,
   coachInterview: initialCoachInterview,
-  pendingPostMatchEvidenceText: null,
+  pendingPostMatchImport: null,
   coachShapeContext: null,
   initialized: false,
   viewerExerciseOverride: null,
@@ -603,6 +735,57 @@ export const useAppStore = create<AppState>((set, get) => ({
         return !(isAssisted && isSameMatch);
       }),
     })),
+  addManualObservation: (observation) => {
+    const text = observation.text.trim();
+    if (!text) return null;
+
+    const nextId = observation.id ?? makeEntityId("manual-observation");
+    set((state) => ({
+      manualObservations: [
+        {
+          id: nextId,
+          text,
+          createdAt: observation.createdAt ?? new Date().toISOString(),
+          source: observation.source,
+        },
+        ...state.manualObservations.filter(
+          (item) => normalizeObservationText(item.text) !== normalizeObservationText(text),
+        ),
+      ].slice(0, 12),
+    }));
+    return nextId;
+  },
+  removeManualObservation: (id) =>
+    set((state) => ({
+      manualObservations: state.manualObservations.filter(
+        (observation) => observation.id !== id,
+      ),
+      weeklyDecisionThread:
+        state.weeklyDecisionThread &&
+        state.weeklyDecisionThread.evidenceIds.includes(id)
+          ? {
+              ...state.weeklyDecisionThread,
+              evidenceIds: state.weeklyDecisionThread.evidenceIds.filter(
+                (evidenceId) => evidenceId !== id,
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : state.weeklyDecisionThread,
+    })),
+  clearManualObservations: () => set({ manualObservations: [] }),
+  activateWeeklyThreadFromObservation: (observationId) =>
+    set((state) => {
+      const observation = state.manualObservations.find(
+        (item) => item.id === observationId,
+      );
+      if (!observation) return state;
+      return {
+        weeklyDecisionThread: buildThreadFromObservation(
+          observation,
+          state.weeklyDecisionThread,
+        ),
+      };
+    }),
   addToSession: (exerciseId) => {
     const exercise = findExercise(exerciseId, get().exerciseVariants);
     if (!exercise) return;
@@ -614,12 +797,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     const session = get().session;
     const blocks = [...session.blocks, nextBlock];
+    const thread = get().weeklyDecisionThread;
     set({
       session: {
         ...session,
         blocks,
         computed: recomputeSession(blocks, get().exerciseVariants),
       },
+      weeklyDecisionThread: thread
+        ? {
+            ...thread,
+            sessionIntent:
+              thread.sessionIntent ??
+              buildSessionIntentFromProblem(thread.problem),
+            status: "trained",
+            updatedAt: new Date().toISOString(),
+          }
+        : thread,
     });
   },
   updateSessionBlock: (id, patch) =>
@@ -816,19 +1010,62 @@ export const useAppStore = create<AppState>((set, get) => ({
         updatedAt: new Date().toISOString(),
       }),
     })),
+  createSessionFromWeeklyThread: () => {
+    const state = get();
+    const thread = state.weeklyDecisionThread;
+    if (!thread) return false;
+
+    if (isSessionLinkedToThread(state.session, thread) && state.session.blocks.length) {
+      set({
+        view: "sessions",
+        weeklyDecisionThread: {
+          ...thread,
+          status: "trained",
+          updatedAt: new Date().toISOString(),
+        },
+      });
+      return true;
+    }
+
+    const plan = buildSessionPlanFromWeeklyThread(thread, [
+      ...catalog,
+      ...state.exerciseVariants,
+    ]);
+    const nextSession = materializeDiagnosisSession(
+      state.session,
+      plan,
+      [...catalog, ...state.exerciseVariants],
+    );
+    const nextThread = syncThreadWithSessionPlan(thread, plan);
+    set({
+      session: nextSession,
+      view: "sessions",
+      weeklyDecisionThread: nextThread,
+    });
+    return true;
+  },
   createSessionFromCoachAdvice: (response) => {
     if (response.mode === "question") return false;
     const state = get();
+    const nextThread =
+      buildThreadFromCoachResponse(response, state.aiPrompt, state.weeklyDecisionThread) ??
+      state.weeklyDecisionThread;
+    if (!nextThread) return false;
+    const plan = buildSessionPlanFromDiagnosis(response.advice, [
+      ...catalog,
+      ...state.exerciseVariants,
+    ]);
     const nextSession = materializeDiagnosisSession(
       state.session,
-      buildSessionPlanFromDiagnosis(response.advice, [
-        ...catalog,
-        ...state.exerciseVariants,
-      ]),
+      plan,
       [...catalog, ...state.exerciseVariants],
     );
     if (!nextSession.blocks.length) return false;
-    set({ session: nextSession, view: "sessions" });
+    set({
+      session: nextSession,
+      view: "sessions",
+      weeklyDecisionThread: syncThreadWithSessionPlan(nextThread, plan),
+    });
     return true;
   },
   loadSnapshot: (snapshot) =>
@@ -840,6 +1077,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       opponentScout: normalizeOpponentScout(
         snapshot.opponentScout ?? current.opponentScout,
       ),
+      manualObservations: snapshot.manualObservations ?? current.manualObservations,
+      weeklyDecisionThread:
+        snapshot.weeklyDecisionThread ?? current.weeklyDecisionThread,
       coachInterview: initialCoachInterview,
       initialized: true,
     })),
@@ -880,6 +1120,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   applyCoachTurnResult: (response) =>
     set((state) => {
+      const nextThread =
+        buildThreadFromCoachResponse(response, state.aiPrompt, state.weeklyDecisionThread) ??
+        state.weeklyDecisionThread;
       if (response.mode === "question") {
         return {
           coachInterview: {
@@ -892,6 +1135,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             turn: state.coachInterview.turn + 1,
             skipped: false,
           },
+          weeklyDecisionThread: nextThread,
         };
       }
 
@@ -907,6 +1151,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           turn: state.coachInterview.turn + 1,
           skipped: false,
         },
+        weeklyDecisionThread: nextThread,
       };
     }),
   skipCoachInterview: () =>
@@ -917,13 +1162,34 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
     })),
   resetCoachInterview: () => set({ coachInterview: initialCoachInterview }),
-  setPendingPostMatchEvidenceText: (pendingPostMatchEvidenceText) =>
-    set({ pendingPostMatchEvidenceText }),
-  consumePendingPostMatchEvidenceText: () => {
-    const value = get().pendingPostMatchEvidenceText;
-    set({ pendingPostMatchEvidenceText: null });
+  queuePostMatchManualObservations: (observationIds) =>
+    set((state) => ({
+      pendingPostMatchImport: buildPendingPostMatchImport(
+        state.manualObservations,
+        observationIds,
+        state.weeklyDecisionThread?.id ?? null,
+      ),
+    })),
+  setPendingPostMatchImport: (pendingPostMatchImport) =>
+    set({ pendingPostMatchImport }),
+  consumePendingPostMatchImport: () => {
+    const value = get().pendingPostMatchImport;
+    set({ pendingPostMatchImport: null });
     return value;
   },
+  syncWeeklyThreadFromPostMatchReport: (savedReport) =>
+    set((state) => ({
+      weeklyDecisionThread: buildThreadFromPostMatchReport(
+        savedReport,
+        state.weeklyDecisionThread,
+      ),
+    })),
+  syncWeeklyThreadProgress: (progress, reportId) =>
+    set((state) => ({
+      weeklyDecisionThread: state.weeklyDecisionThread
+        ? evolveThreadStatus(state.weeklyDecisionThread, progress, reportId)
+        : state.weeklyDecisionThread,
+    })),
   setCoachShapeContext: (coachShapeContext) => set({ coachShapeContext }),
 }));
 
@@ -943,6 +1209,16 @@ export function getSelectedPlayer(state = useAppStore.getState()) {
       (player) => player.id === state.team.selectedPlayerId,
     ) ?? state.team.players[0]
   );
+}
+
+function extractTaggedValue(notes: string | undefined, label: string) {
+  if (!notes?.trim()) return "";
+  const line = notes
+    .split(/\r?\n/)
+    .find((entry) =>
+      entry.toLowerCase().startsWith(`${label.toLowerCase()}:`),
+    );
+  return line?.split(":").slice(1).join(":").trim() ?? "";
 }
 
 function applyLineupToExercise(
@@ -1232,6 +1508,15 @@ function endpointIsValid(
 
 function makeEntityId(prefix: string) {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`;
+}
+
+function normalizeObservationText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function videoMomentFromTime(time: number): VideoMoment {
