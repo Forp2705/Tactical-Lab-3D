@@ -40,7 +40,7 @@ import {
   buildSessionPlanFromWeeklyThread,
   materializeDiagnosisSession,
 } from "@/sessions/diagnosisSession";
-import { catalog, demoPlayers } from "@/data";
+import { catalog, demoPlayers, ExerciseSchema } from "@/data";
 import {
   PILOT_DIAGNOSIS_PROMPT,
   PILOT_SESSION_BLOCKS,
@@ -318,6 +318,7 @@ type AppState = {
     shapeId: string,
     options?: { title?: string; authorNotes?: string },
   ) => string | null;
+  importExerciseVariant: (exercise: Exercise) => string | null;
   setSearch: (value: string) => void;
   setFilter: (key: "phase" | "level" | "principle", value: string) => void;
   toggleLayer: (
@@ -754,6 +755,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       playing: false,
     });
     return exercise.id;
+  },
+  importExerciseVariant: (exercise) => {
+    const state = get();
+    const result = ExerciseSchema.safeParse(exercise);
+    if (!result.success) return null;
+    const id = makeUniqueExerciseId(result.data.id, state.exerciseVariants);
+    const imported = cloneImportedExercise(result.data, id);
+    set({
+      exerciseVariants: [...state.exerciseVariants, imported],
+      selectedExerciseId: imported.id,
+      viewerExerciseOverride: null,
+      view: "library",
+      time: 0,
+      playing: false,
+    });
+    return imported.id;
   },
   setSearch: (value) => set({ search: value }),
   setFilter: (key, value) =>
@@ -1494,6 +1511,23 @@ function cloneExerciseVariant(
       })),
     },
   };
+}
+
+function cloneImportedExercise(source: Exercise, id: string): Exercise {
+  return {
+    ...cloneExerciseVariant(source, {
+      title: source.title,
+      authorNotes: "Jugada importada",
+    }),
+    id,
+    title: source.title,
+  };
+}
+
+function makeUniqueExerciseId(id: string, variants: Exercise[]) {
+  const base = id.trim() || `custom-exercise-${Date.now()}`;
+  if (!findExercise(base, variants)) return base;
+  return `${base}__custom__${Date.now()}`;
 }
 
 function clonePositions(positions: Record<string, Vec2>): Record<string, Vec2> {

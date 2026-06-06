@@ -2490,6 +2490,10 @@ const compactCuratedSpecs = [
   },
 ] as const;
 
+export const generatedLibraryExerciseIds: ReadonlySet<string> = new Set(
+  compactCuratedSpecs.map((spec) => spec.id),
+);
+
 function compactCuratedExercises(): unknown[] {
   return compactCuratedSpecs.map((spec, index) => {
     const duration = 11 + (index % 4);

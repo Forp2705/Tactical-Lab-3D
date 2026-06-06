@@ -259,6 +259,16 @@ function ViewerWorkspace() {
               {selectedExercise.phase} - {selectedExercise.principle} -{" "}
               {selectedExercise.players.min}-{selectedExercise.players.max} jugadores
             </p>
+            <div className="viewer-team-legend" aria-label="Leyenda de equipos">
+              <span>
+                <i className="own" />
+                Equipo propio
+              </span>
+              <span>
+                <i className="rival" />
+                Rival
+              </span>
+            </div>
           </div>
           <div className="segmented">
             {(["top", "iso", "broadcast"] as const).map((item) => (

@@ -1,4 +1,4 @@
-export { catalog } from "./exercises/catalog.js";
+export { catalog, generatedLibraryExerciseIds } from "./exercises/catalog.js";
 export {
   abpExercises,
   attackExercises,

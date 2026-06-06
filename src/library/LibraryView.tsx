@@ -1,8 +1,18 @@
-import { catalog } from "@/data";
+import { catalog, ExerciseSchema, generatedLibraryExerciseIds } from "@/data";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { LoadMeter, PitchViz } from "@/ui/tacticalPrimitives";
+import { useState } from "react";
+
+type ImportFeedback = {
+  type: "success" | "error";
+  message: string;
+};
 
 export function LibraryView() {
+  const [importDraft, setImportDraft] = useState("");
+  const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(
+    null,
+  );
   const search = useAppStore((state) => state.search);
   const phase = useAppStore((state) => state.phase);
   const level = useAppStore((state) => state.level);
@@ -10,7 +20,16 @@ export function LibraryView() {
   const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const selectExercise = useAppStore((state) => state.selectExercise);
-  const exercises = [...catalog, ...exerciseVariants];
+  const createExerciseVariantFrom = useAppStore(
+    (state) => state.createExerciseVariantFrom,
+  );
+  const importExerciseVariant = useAppStore(
+    (state) => state.importExerciseVariant,
+  );
+  const visibleCatalog = catalog.filter(
+    (exercise) => !generatedLibraryExerciseIds.has(exercise.id),
+  );
+  const exercises = [...visibleCatalog, ...exerciseVariants];
 
   const filtered = exercises.filter((exercise) => {
     const q = search.trim().toLowerCase();
@@ -33,6 +52,93 @@ export function LibraryView() {
   });
 
   const selected = getExerciseById(selectedExerciseId);
+  const selectedIsVariant = exerciseVariants.some(
+    (exercise) => exercise.id === selected.id,
+  );
+
+  const handleCreateEditableCopy = () => {
+    const id = createExerciseVariantFrom(selected.id, {
+      title: `${selected.title} - editable`,
+      authorNotes: "Copia editable desde biblioteca",
+    });
+    if (!id) {
+      setImportFeedback({
+        type: "error",
+        message: "No se pudo crear la copia editable.",
+      });
+      return;
+    }
+
+    useAppStore.getState().setView("library");
+    setImportFeedback({
+      type: "success",
+      message: "Copia editable creada en Mis jugadas.",
+    });
+  };
+
+  const handleUseSelectedAsTemplate = () => {
+    setImportDraft(
+      JSON.stringify(
+        {
+          ...selected,
+          id: `${selected.id}-custom`,
+          title: `${selected.title} - propia`,
+          authorNotes: [selected.authorNotes, "Plantilla local"]
+            .filter(Boolean)
+            .join(" | "),
+        },
+        null,
+        2,
+      ),
+    );
+    setImportFeedback(null);
+  };
+
+  const handleImportExercise = () => {
+    const raw = importDraft.trim();
+    if (!raw) {
+      setImportFeedback({
+        type: "error",
+        message: "Pega una jugada en JSON antes de importar.",
+      });
+      return;
+    }
+
+    try {
+      const payload = JSON.parse(raw);
+      const result = ExerciseSchema.safeParse(payload);
+      if (!result.success) {
+        const issue = result.error.issues[0];
+        setImportFeedback({
+          type: "error",
+          message: issue
+            ? `${issue.path.join(".") || "exercise"}: ${issue.message}`
+            : "La jugada no cumple el schema.",
+        });
+        return;
+      }
+
+      const id = importExerciseVariant(result.data);
+      if (!id) {
+        setImportFeedback({
+          type: "error",
+          message: "La jugada no pudo guardarse como variante.",
+        });
+        return;
+      }
+
+      setImportDraft("");
+      setImportFeedback({
+        type: "success",
+        message: "Jugada importada en Mis jugadas.",
+      });
+    } catch {
+      setImportFeedback({
+        type: "error",
+        message: "JSON invalido.",
+      });
+    }
+  };
 
   return (
     <section className="library-layout">
@@ -47,6 +153,11 @@ export function LibraryView() {
             <span className="panel-eyebrow">Foco activo</span>
             <b>{phase === "all" ? "TODAS" : phase}</b>
             <small>fase tactica</small>
+          </div>
+          <div>
+            <span className="panel-eyebrow">Mis jugadas</span>
+            <b>{exerciseVariants.length}</b>
+            <small>variantes locales</small>
           </div>
           <div>
             <span className="panel-eyebrow">Criterio</span>
@@ -138,6 +249,9 @@ export function LibraryView() {
                 <span>{exercise.duration} min</span>
               </div>
               <div className="tags">
+                {exerciseVariants.some((item) => item.id === exercise.id) ? (
+                  <span className="tag custom-tag">propia</span>
+                ) : null}
                 <span className="tag">{exercise.phase}</span>
                 <span className="tag">{exercise.principle}</span>
                 <span className="tag">{exercise.level}</span>
@@ -155,6 +269,9 @@ export function LibraryView() {
       </div>
       <aside className="detail-panel">
         <span className="panel-eyebrow">Informe de campo</span>
+        {selectedIsVariant ? (
+          <span className="tag custom-tag">Jugada propia</span>
+        ) : null}
         <h2>{selected.title}</h2>
         <div className="detail-grid">
           <div className="stat-box">
@@ -224,7 +341,40 @@ export function LibraryView() {
           >
             Agregar a sesión
           </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={handleCreateEditableCopy}
+          >
+            Crear copia editable
+          </button>
         </div>
+        <details className="exercise-import-panel">
+          <summary>Modo edicion / importar jugada</summary>
+          <div className="library-action-row">
+            <button
+              type="button"
+              className="secondary"
+              onClick={handleUseSelectedAsTemplate}
+            >
+              Usar seleccion como plantilla
+            </button>
+            <button type="button" onClick={handleImportExercise}>
+              Importar jugada
+            </button>
+          </div>
+          <textarea
+            value={importDraft}
+            onChange={(event) => setImportDraft(event.target.value)}
+            placeholder="Pegar Exercise JSON validado..."
+            spellCheck={false}
+          />
+          {importFeedback ? (
+            <p className={`import-feedback ${importFeedback.type}`}>
+              {importFeedback.message}
+            </p>
+          ) : null}
+        </details>
       </aside>
     </section>
   );
