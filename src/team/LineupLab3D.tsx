@@ -14,6 +14,7 @@ import {
   type HeatmapCell,
   type TacticalMetrics,
 } from "@/team/lib/shapeMetrics";
+import { PitchViz } from "@/ui/tacticalPrimitives";
 import { Pitch3D } from "@/viewer/Pitch3D";
 import {
   clampPitch,
@@ -330,6 +331,10 @@ export function LineupLab3D({ players }: { players: Player[] }) {
   const transitionDistances = useMemo(
     () => computeTransitionDistances(players, fromShape, toShape),
     [players, fromShape, toShape],
+  );
+  const transitionBoards = useMemo(
+    () => buildTransitionBoards(players, shapes, fromShape, toShape),
+    [fromShape, players, shapes, toShape],
   );
   const heatmapCells = useMemo(
     () => computeHeatmapCells(ownChips, showRival ? rivalChips : []),
@@ -897,6 +902,18 @@ export function LineupLab3D({ players }: { players: Player[] }) {
 
           <div className="lab-panel-card">
             <h4>Transicion ataque-defensa</h4>
+            <div className="lineup-transition-grid">
+              {transitionBoards.map((board) => (
+                <PitchViz
+                  key={board.key}
+                  title={board.title}
+                  subtitle={board.subtitle}
+                  compact
+                  players={board.players}
+                  overlays={board.overlays}
+                />
+              ))}
+            </div>
             <div className="two-col">
               <label>
                 Desde
@@ -1682,6 +1699,115 @@ function computeTransitionDistances(
     .sort((a, b) => b.distance - a.distance);
 }
 
+function buildTransitionBoards(
+  players: Player[],
+  shapes: Shape[],
+  fromShape?: Shape,
+  toShape?: Shape,
+) {
+  const attackShape =
+    fromShape?.phase === "attack"
+      ? fromShape
+      : shapes.find((shape) => shape.phase === "attack") ?? fromShape;
+  const defenseShape =
+    toShape?.phase === "defense"
+      ? toShape
+      : shapes.find((shape) => shape.phase === "defense") ?? toShape;
+  const afterLossShape =
+    shapes.find((shape) => shape.phase === "transition") ??
+    (attackShape && defenseShape
+      ? {
+          id: "virtual-after-loss",
+          name: "Tras perdida",
+          phase: "transition" as ShapePhase,
+          positions: blendPositions(
+            attackShape.positions,
+            defenseShape.positions,
+            0.45,
+          ),
+          notes: "Interpolacion rapida entre shape ofensivo y repliegue.",
+          createdAt: 0,
+        }
+      : undefined);
+
+  return [
+    buildTransitionBoard("attack", "Ataque", attackShape, players),
+    buildTransitionBoard("after-loss", "Tras perdida", afterLossShape, players),
+    buildTransitionBoard("defense", "Defensa", defenseShape, players),
+  ];
+}
+
+function buildTransitionBoard(
+  key: string,
+  title: string,
+  shape: Shape | undefined,
+  players: Player[],
+) {
+  if (!shape) {
+    return {
+      key,
+      title,
+      subtitle: "Sin shape guardado",
+      players: [],
+      overlays: [],
+    };
+  }
+
+  const shapePlayers = Object.entries(shape.positions)
+    .map(([playerId, pos]) => {
+      const player = players.find((item) => item.id === playerId);
+      if (!player) return null;
+      return {
+        id: playerId,
+        x: mapPitchVizX(pos.x),
+        y: mapPitchVizY(pos.y),
+        label: `${player.num}`,
+        tone: "own" as const,
+      };
+    })
+    .filter(
+      (
+        player,
+      ): player is {
+        id: string;
+        x: number;
+        y: number;
+        label: string;
+        tone: "own";
+      } => Boolean(player),
+    );
+
+  const metrics = computeMetrics(
+    Object.entries(shape.positions).map(([playerId, pos]) => ({
+      id: playerId,
+      role:
+        players.find((item) => item.id === playerId)?.positions[0] ?? "CM",
+      pos,
+    })),
+    [],
+  );
+
+  return {
+    key,
+    title,
+    subtitle: shape.name,
+    players: shapePlayers,
+    overlays: [
+      {
+        type: "blockHeight" as const,
+        x: mapPitchVizX((metrics.blockHeight / 105) * 100),
+        tone:
+          title === "Defensa"
+            ? "good"
+            : title === "Tras perdida"
+              ? "warn"
+              : "info" as "good" | "warn" | "info",
+        label: `bloque ${metrics.blockHeight.toFixed(0)}m`,
+      },
+    ],
+  };
+}
+
 function buildCoachShapeContext({
   formation,
   players,
@@ -1894,6 +2020,14 @@ function isAttackRole(role: string) {
 
 function roundPos(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function mapPitchVizX(value: number) {
+  return 2 + value * 0.96;
+}
+
+function mapPitchVizY(value: number) {
+  return 2 + value * 0.6;
 }
 
 function snapPitch(pos: Vec2) {

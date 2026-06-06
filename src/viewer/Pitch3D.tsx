@@ -59,6 +59,9 @@ export function Pitch3D({ mode }: PitchProps) {
         />
       </mesh>
 
+      <PitchStripes length={length} width={width} />
+      <ChannelGuides length={length} width={width} />
+
       <FlatLine
         x={0}
         z={-halfWidth}
@@ -279,6 +282,55 @@ function FlatLine({
         toneMapped={false}
       />
     </mesh>
+  );
+}
+
+function PitchStripes({ length, width }: { length: number; width: number }) {
+  const stripeCount = 8;
+  const stripeLength = length / stripeCount;
+
+  return (
+    <group>
+      {Array.from({ length: stripeCount }, (_, index) => {
+        const x = -length / 2 + stripeLength / 2 + stripeLength * index;
+        const active = index % 2 === 0;
+        return (
+          <mesh key={`stripe-${index}`} position={[x, LINE_Y - 0.048, 0]}>
+            <boxGeometry args={[stripeLength, 0.004, width]} />
+            <meshBasicMaterial
+              color={active ? "#8dcf72" : "#6fae58"}
+              transparent
+              opacity={0.1}
+              toneMapped={false}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+function ChannelGuides({
+  length,
+  width,
+}: {
+  length: number;
+  width: number;
+}) {
+  const thirds = [-0.2, 0, 0.2].map((offset) => offset * width);
+  return (
+    <group>
+      {thirds.map((z, index) => (
+        <FlatLine
+          key={`channel-${index}`}
+          x={0}
+          z={z}
+          length={length}
+          width={0.045}
+          opacity={index === 1 ? 0.12 : 0.08}
+        />
+      ))}
+    </group>
   );
 }
 

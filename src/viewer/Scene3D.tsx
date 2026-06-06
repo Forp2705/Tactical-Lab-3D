@@ -3,7 +3,6 @@ import { useAppStore } from "@/state/useAppStore";
 import {
   Billboard,
   ContactShadows,
-  Environment,
   OrthographicCamera,
   PerspectiveCamera,
   Text,
@@ -17,7 +16,7 @@ import {
   Vignette,
 } from "@react-three/postprocessing";
 import { useEffect, useMemo } from "react";
-import { ACESFilmicToneMapping, SRGBColorSpace } from "three";
+import { ACESFilmicToneMapping, SRGBColorSpace, Vector3 } from "three";
 import { Ball3D } from "./Ball3D";
 import { OverlayLayer } from "./Overlays";
 import { Pitch3D } from "./Pitch3D";
@@ -83,6 +82,10 @@ export function Scene3D({
     [exercise, time, personalSpace],
   );
   const topFocus = useMemo(() => getTopFocus(frame, mode), [frame, mode]);
+  const actionFocus = useMemo(
+    () => ({ x: topFocus.x, z: topFocus.z }),
+    [topFocus.x, topFocus.z],
+  );
   const useSimplifiedActors = cameraMode !== "top" && frame.actors.length > 14;
   const renderSettings = renderSettingsForQuality(quality);
 
@@ -94,29 +97,35 @@ export function Scene3D({
       gl={{ antialias: true, preserveDrawingBuffer: true }}
       onCreated={({ gl }) => {
         gl.toneMapping = ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.1;
+        gl.toneMappingExposure = 1.04;
         gl.outputColorSpace = SRGBColorSpace;
       }}
     >
       <PlaybackDriver duration={exercise.scene.duration} />
-      <color attach="background" args={["#0a1924"]} />
-      <fog attach="fog" args={["#0a1924", 100, 250]} />
-      <SceneCamera cameraMode={cameraMode} mode={mode} topFocus={topFocus} />
-      {renderSettings.environment ? (
-        <Environment preset="park" background={false} blur={0.4} />
-      ) : null}
-      <hemisphereLight intensity={0.78} groundColor="#3d7c42" />
-      <ambientLight intensity={0.3} />
+      <color attach="background" args={["#07131d"]} />
+      <fog attach="fog" args={["#07131d", 115, 240]} />
+      <SceneCamera
+        cameraMode={cameraMode}
+        mode={mode}
+        topFocus={topFocus}
+        actionFocus={actionFocus}
+      />
+      <hemisphereLight
+        intensity={0.92}
+        color="#dff4ff"
+        groundColor="#214c2d"
+      />
+      <ambientLight intensity={0.42} color="#f4fbff" />
       <directionalLight
-        position={[24, 42, 18]}
-        intensity={1.45}
+        position={[18, 38, 14]}
+        intensity={1.58}
         castShadow={renderSettings.shadows}
         shadow-mapSize-width={renderSettings.shadowMapSize}
         shadow-mapSize-height={renderSettings.shadowMapSize}
         shadow-radius={renderSettings.shadowRadius}
         shadow-bias={-0.0001}
       />
-      <directionalLight position={[-18, 26, -12]} intensity={0.42} />
+      <directionalLight position={[-24, 28, -16]} intensity={0.3} color="#8dd6ff" />
       <Pitch3D mode={mode} />
       {renderSettings.contactShadows ? (
         <ContactShadows
@@ -347,12 +356,16 @@ function SceneCamera({
   cameraMode,
   mode,
   topFocus,
+  actionFocus,
 }: {
   cameraMode: "top" | "iso" | "broadcast";
   mode: PitchMode;
   topFocus: TopFocus;
+  actionFocus: { x: number; z: number };
 }) {
   const { camera } = useThree();
+  const lookTarget = useMemo(() => new Vector3(), []);
+  const nextPosition = useMemo(() => new Vector3(), []);
   const preset = useMemo(
     () => cameraPreset(mode, cameraMode),
     [cameraMode, mode],
@@ -368,7 +381,7 @@ function SceneCamera({
     camera.lookAt(0, 0, 0);
   }, [camera, cameraMode, preset]);
 
-  useFrame(() => {
+  useFrame((_state, delta) => {
     if (cameraMode === "top") {
       camera.position.set(topFocus.x, preset.position[1], topFocus.z + 0.01);
       camera.rotation.set(-Math.PI / 2, 0, 0);
@@ -376,7 +389,21 @@ function SceneCamera({
         camera.zoom = topFocus.zoom;
         camera.updateProjectionMatrix();
       }
+      return;
     }
+
+    const focusOffset = cameraFocusOffset(actionFocus, cameraMode, mode);
+    nextPosition.set(
+      preset.position[0] + focusOffset.x,
+      preset.position[1],
+      preset.position[2] + focusOffset.z,
+    );
+    camera.position.lerp(nextPosition, Math.min(1, delta * 2.2));
+    lookTarget.lerp(
+      new Vector3(focusOffset.x * 0.9, 0, focusOffset.z * 0.82),
+      Math.min(1, delta * 3),
+    );
+    camera.lookAt(lookTarget);
   });
 
   if (cameraMode === "top") {
@@ -550,24 +577,24 @@ function cameraPreset(
 
   if (cameraMode === "broadcast") {
     return {
-      position: [0, 30 * scale + 12, 54 * scale + 22] as [
+      position: [0, 27 * scale + 11, 48 * scale + 19] as [
         number,
         number,
         number,
       ],
       zoom: 1,
-      fov: 20,
+      fov: 19,
     };
   }
 
   return {
-    position: [20 * scale + 8, 42 * scale + 12, 56 * scale + 10] as [
+    position: [16 * scale + 7, 34 * scale + 11, 44 * scale + 10] as [
       number,
       number,
       number,
     ],
     zoom: 1,
-    fov: 22,
+    fov: 20,
   };
 }
 
@@ -614,6 +641,27 @@ function getTopFocus(frame: MatchFrame, mode: PitchMode): TopFocus {
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+function cameraFocusOffset(
+  focus: { x: number; z: number },
+  cameraMode: "top" | "iso" | "broadcast",
+  mode: PitchMode,
+) {
+  const { width } = pitchDimensions(mode);
+  const lateralClamp = width * 0.18;
+
+  if (cameraMode === "broadcast") {
+    return {
+      x: clamp(focus.x * 0.5, -18, 18),
+      z: clamp(focus.z * 0.2, -lateralClamp, lateralClamp),
+    };
+  }
+
+  return {
+    x: clamp(focus.x * 0.38, -14, 14),
+    z: clamp(focus.z * 0.34, -lateralClamp, lateralClamp),
+  };
 }
 
 function teamColorFor(team: Actor["team"]) {

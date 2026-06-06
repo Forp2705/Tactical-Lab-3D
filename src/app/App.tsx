@@ -2,6 +2,7 @@ import { type Layer, catalog } from "@/data";
 import { loadSnapshot, saveSnapshot } from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { AppShell } from "@/ui/AppShell";
+import { ViewerCanvasHud } from "@/viewer/ViewerCanvasHud";
 import { useViewerKeyboard } from "@/viewer/useKeyboard";
 import { Suspense, lazy, useEffect } from "react";
 import "./theme.css";
@@ -86,6 +87,39 @@ const TACTICAL_LAYERS: { id: Layer; label: string }[] = [
   { id: "abp", label: "ABP" },
   { id: "notes", label: "Notas" },
 ];
+
+const VIEWER_TOGGLES = [
+  {
+    id: "showZones",
+    label: "Zonas",
+    description: "Sectores y referencias",
+    toggle: () => useAppStore.getState().toggleLayer("showZones"),
+  },
+  {
+    id: "showRuns",
+    label: "Carreras",
+    description: "Desmarques activos",
+    toggle: () => useAppStore.getState().toggleLayer("showRuns"),
+  },
+  {
+    id: "showPasses",
+    label: "Pases",
+    description: "Rutas del balon",
+    toggle: () => useAppStore.getState().toggleLayer("showPasses"),
+  },
+  {
+    id: "showPress",
+    label: "Presion",
+    description: "Saltos y gatillos",
+    toggle: () => useAppStore.getState().toggleLayer("showPress"),
+  },
+  {
+    id: "personalSpace",
+    label: "Separacion",
+    description: "Ajuste automatico",
+    toggle: () => useAppStore.getState().togglePersonalSpace(),
+  },
+] as const;
 
 export function App() {
   useViewerKeyboard();
@@ -203,6 +237,17 @@ function ViewerWorkspace() {
   const personalSpace = useAppStore((state) => state.personalSpace);
   const layers = useAppStore((state) => state.layers);
   const exportStatus = useAppStore((state) => state.exportStatus);
+  const phase =
+    selectedExercise.scene.phases.find(
+      (item) => time >= item.start && time <= item.end,
+    ) ?? selectedExercise.scene.phases[0];
+  const visibleToggles = [
+    { id: "showZones", active: showZones },
+    { id: "showRuns", active: showRuns },
+    { id: "showPasses", active: showPasses },
+    { id: "showPress", active: showPress },
+    { id: "personalSpace", active: personalSpace },
+  ] as const;
 
   return (
     <section className="viewer-layout">
@@ -247,6 +292,17 @@ function ViewerWorkspace() {
                 : "Procesando video..."}
             </div>
           ) : null}
+          <ViewerCanvasHud
+            exercise={selectedExercise}
+            time={time}
+            cameraMode={camera}
+            showZones={showZones}
+            showRuns={showRuns}
+            showPasses={showPasses}
+            showPress={showPress}
+            layers={layers}
+            personalSpace={personalSpace}
+          />
           <Scene3D
             exercise={selectedExercise}
             time={time}
@@ -303,84 +359,93 @@ function ViewerWorkspace() {
       </div>
       {presentationMode ? null : (
         <aside className="team-card viewer-side">
-          <h3>Lectura del ejercicio</h3>
-          <p>
-            <b>Objetivo:</b> {selectedExercise.objective.primary}
-          </p>
-          <p>
-            <b>Exito:</b> {selectedExercise.success}
-          </p>
-          <div className="layer-grid">
-            <label>
-              Calidad
-              <select
-                value={viewerQuality}
-                onChange={(event) =>
-                  useAppStore
-                    .getState()
-                    .setViewerQuality(event.target.value as typeof viewerQuality)
-                }
-              >
-                <option value="high">Alta</option>
-                <option value="medium">Media</option>
-                <option value="low">Baja</option>
-              </select>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={showZones}
-                onChange={() => useAppStore.getState().toggleLayer("showZones")}
-              />{" "}
-              Zonas
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={showRuns}
-                onChange={() => useAppStore.getState().toggleLayer("showRuns")}
-              />{" "}
-              Carreras
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={showPasses}
-                onChange={() => useAppStore.getState().toggleLayer("showPasses")}
-              />{" "}
-              Pases
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={showPress}
-                onChange={() => useAppStore.getState().toggleLayer("showPress")}
-              />{" "}
-              Presion
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={personalSpace}
-                onChange={() => useAppStore.getState().togglePersonalSpace()}
-              />{" "}
-              Separacion auto
-            </label>
+          <div className="viewer-panel-card">
+            <span className="panel-eyebrow">Lectura del ejercicio</span>
+            <h3>{selectedExercise.title}</h3>
+            <p>{selectedExercise.objective.primary}</p>
+            <div className="viewer-summary-grid">
+              <ViewerStatCard label="Fase viva" value={phase.name} />
+              <ViewerStatCard label="Principio" value={selectedExercise.principle} />
+              <ViewerStatCard
+                label="Jugadores"
+                value={`${selectedExercise.players.min}-${selectedExercise.players.max}`}
+              />
+              <ViewerStatCard label="Exito" value={selectedExercise.success} />
+            </div>
           </div>
-          <div className="layer-grid" style={{ marginTop: 12 }}>
-            {TACTICAL_LAYERS.map((layer) => (
-              <label key={layer.id}>
-                <input
-                  type="checkbox"
-                  checked={layers[layer.id]}
-                  onChange={() =>
+
+          <div className="viewer-panel-card">
+            <div className="section-title">
+              <div>
+                <span className="panel-eyebrow">Vista</span>
+                <h3>Claridad tactica</h3>
+              </div>
+              <label className="viewer-quality-select">
+                Calidad
+                <select
+                  value={viewerQuality}
+                  onChange={(event) =>
+                    useAppStore
+                      .getState()
+                      .setViewerQuality(event.target.value as typeof viewerQuality)
+                  }
+                >
+                  <option value="high">Alta</option>
+                  <option value="medium">Media</option>
+                  <option value="low">Baja</option>
+                </select>
+              </label>
+            </div>
+            <div className="viewer-toggle-grid">
+              {VIEWER_TOGGLES.map((toggle) => {
+                const active =
+                  visibleToggles.find((item) => item.id === toggle.id)?.active ??
+                  false;
+                return (
+                  <button
+                    type="button"
+                    key={toggle.id}
+                    className={`viewer-toggle-card ${active ? "active" : ""}`}
+                    onClick={toggle.toggle}
+                  >
+                    <b>{toggle.label}</b>
+                    <span>{toggle.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="viewer-panel-card">
+            <span className="panel-eyebrow">Capas tacticas</span>
+            <div className="viewer-layer-pills">
+              {TACTICAL_LAYERS.map((layer) => (
+                <button
+                  type="button"
+                  key={layer.id}
+                  className={`viewer-layer-pill ${
+                    layers[layer.id] ? "active" : ""
+                  }`}
+                  onClick={() =>
                     useAppStore.getState().toggleTacticalLayer(layer.id)
                   }
-                />{" "}
-                {layer.label}
-              </label>
-            ))}
+                >
+                  {layer.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <div className="viewer-panel-card">
+            <span className="panel-eyebrow">Coaching</span>
+            <p>{phase.notes ?? "Sin nota tactica especifica para esta fase."}</p>
+            <ul className="viewer-note-list">
+              {selectedExercise.coaching.slice(0, 3).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+
           <button
             type="button"
             onClick={() => useAppStore.getState().addToSession(selectedExercise.id)}
@@ -412,6 +477,21 @@ function ViewerWorkspace() {
         </aside>
       )}
     </section>
+  );
+}
+
+function ViewerStatCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="viewer-stat-card">
+      <span>{label}</span>
+      <b>{value}</b>
+    </div>
   );
 }
 

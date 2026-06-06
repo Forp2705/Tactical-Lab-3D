@@ -33,6 +33,7 @@ import {
 } from "@/ui/tacticalPrimitives";
 import {
   getExerciseById,
+  type CoachShapeContext,
   useAppStore,
 } from "@/state/useAppStore";
 import {
@@ -388,7 +389,10 @@ export function AiView() {
               loading={loading}
               onRefresh={() => void refreshAgentStatus()}
             />
-            <ActiveContextPanel context={cockpitContext} />
+            <ActiveContextPanel
+              context={cockpitContext}
+              shapeContext={coachShapeContext}
+            />
             <RecentReportsPanel
               reports={cockpitContext.recentReports}
               error={reportsError}
@@ -478,6 +482,7 @@ export function AiView() {
             ) : !coachInterview.active || !coachInterview.questions.length ? (
               <EmptyState
                 context={cockpitContext}
+                shapeContext={coachShapeContext}
                 weeklyDecisionThread={weeklyDecisionThread}
               />
             ) : null}
@@ -752,11 +757,46 @@ function CoachThinkingPanel() {
   );
 }
 
-function ActiveContextPanel({ context }: { context: CockpitContext }) {
+function ActiveContextPanel({
+  context,
+  shapeContext,
+}: {
+  context: CockpitContext;
+  shapeContext: CoachShapeContext | null;
+}) {
+  const transitionBoards = buildCoachTransitionBoards(shapeContext);
   return (
     <section className="ai-rail-card">
       <span className="panel-eyebrow">Contexto activo</span>
       <h4>Contexto cargado</h4>
+      {shapeContext ? (
+        <PitchViz
+          title="Shape actual"
+          subtitle={shapeContext.selectedShapeName ?? shapeContext.formation}
+          compact
+          players={shapeContext.currentBoard.map((player) => ({
+            id: player.playerId,
+            x: mapPitchVizX(player.x),
+            y: mapPitchVizY(player.y),
+            label: `${player.role}`,
+            tone: "own" as const,
+          }))}
+          overlays={buildCoachBoardOverlays(shapeContext)}
+        />
+      ) : null}
+      {transitionBoards.length ? (
+        <div className="ai-transition-strip">
+          {transitionBoards.map((board) => (
+            <PitchViz
+              key={board.key}
+              title={board.title}
+              subtitle={board.subtitle}
+              compact
+              players={board.players}
+            />
+          ))}
+        </div>
+      ) : null}
       <div className="ai-context-list">
         <ContextRow label="Modelo" value={context.teamModel} />
         <ContextRow
@@ -2225,11 +2265,14 @@ function DiagnosisSessionPanel({ plan }: { plan: ReturnType<typeof buildSessionP
 
 function EmptyState({
   context,
+  shapeContext,
   weeklyDecisionThread,
 }: {
   context: CockpitContext;
+  shapeContext: CoachShapeContext | null;
   weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
 }) {
+  const transitionBoards = buildCoachTransitionBoards(shapeContext);
   return (
     <section className="coach-report empty-coach-state">
       <span className="panel-eyebrow">Sin consulta activa</span>
@@ -2250,6 +2293,40 @@ function EmptyState({
           value={String(context.acceptedMemory.length)}
         />
       </div>
+      {shapeContext ? (
+        <div className="football-report-grid" style={{ marginTop: 14 }}>
+          <PitchViz
+            title="Tablero actual"
+            subtitle={shapeContext.selectedShapeName ?? shapeContext.formation}
+            players={shapeContext.currentBoard.map((player) => ({
+              id: player.playerId,
+              x: mapPitchVizX(player.x),
+              y: mapPitchVizY(player.y),
+              label: player.role,
+              tone: "own" as const,
+            }))}
+            overlays={buildCoachBoardOverlays(shapeContext)}
+          />
+          <section className="coach-report-card">
+            <span className="panel-eyebrow">Secuencia de transicion</span>
+            {transitionBoards.length ? (
+              <div className="ai-transition-strip">
+                {transitionBoards.map((board) => (
+                  <PitchViz
+                    key={board.key}
+                    title={board.title}
+                    subtitle={board.subtitle}
+                    compact
+                    players={board.players}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p>Guarda un shape de ataque, uno de tras perdida y uno defensivo.</p>
+            )}
+          </section>
+        </div>
+      ) : null}
       {weeklyDecisionThread ? (
         <div className="ai-card" style={{ marginTop: 14 }}>
           <b>Hilo semanal activo</b>
@@ -2277,6 +2354,67 @@ function EmptyState({
       ) : null}
     </section>
   );
+}
+
+function buildCoachBoardOverlays(shapeContext: CoachShapeContext) {
+  if (!shapeContext.currentMetrics) return [];
+  const blockX = (shapeContext.currentMetrics.blockHeight / 105) * 100;
+  return [
+    {
+      type: "blockHeight" as const,
+      x: mapPitchVizX(blockX),
+      tone: "info" as const,
+      label: `bloque ${shapeContext.currentMetrics.blockHeight.toFixed(0)}m`,
+    },
+  ];
+}
+
+function buildCoachTransitionBoards(shapeContext: CoachShapeContext | null) {
+  if (!shapeContext) return [];
+
+  const attackShape =
+    shapeContext.shapes.find((shape) => shape.phase === "attack") ??
+    shapeContext.shapes[0];
+  const transitionShape = shapeContext.shapes.find(
+    (shape) => shape.phase === "transition",
+  );
+  const defenseShape =
+    shapeContext.shapes.find((shape) => shape.phase === "defense") ??
+    shapeContext.shapes.at(-1);
+
+  return [
+    makeCoachTransitionBoard("attack", "Ataque", attackShape),
+    makeCoachTransitionBoard("after-loss", "Tras perdida", transitionShape),
+    makeCoachTransitionBoard("defense", "Defensa", defenseShape),
+  ].filter((board): board is NonNullable<typeof board> => Boolean(board));
+}
+
+function makeCoachTransitionBoard(
+  key: string,
+  title: string,
+  shape?: CoachShapeContext["shapes"][number],
+) {
+  if (!shape) return null;
+  return {
+    key,
+    title,
+    subtitle: shape.name,
+    players: shape.players.map((player) => ({
+      id: player.playerId,
+      x: mapPitchVizX(player.x),
+      y: mapPitchVizY(player.y),
+      label: player.role,
+      tone: "own" as const,
+    })),
+  };
+}
+
+function mapPitchVizX(value: number) {
+  return 2 + value * 0.96;
+}
+
+function mapPitchVizY(value: number) {
+  return 2 + value * 0.6;
 }
 
 function labelForAction(type: CoachAction["type"]) {
