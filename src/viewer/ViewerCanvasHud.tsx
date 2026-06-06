@@ -66,7 +66,6 @@ export function ViewerCanvasHud({
     [exercise, layerState, showZones, time],
   );
 
-  const carrier = frame.actors.find((pose) => pose.hasBall);
   const primaryTrigger = frame.triggers[0];
   const activeMovements = overlays
     .slice(0, 4)
@@ -78,51 +77,21 @@ export function ViewerCanvasHud({
     phase.notes ??
     exercise.coaching[0] ??
     exercise.success;
+  const movementText =
+    activeMovements[0] ??
+    "La fase actual prioriza estructura y orientacion del bloque.";
 
   return (
     <div className="viewer-hud" aria-hidden>
-      <div className="viewer-hud-top">
-        <div className="viewer-hud-card viewer-hud-phase">
-          <span className="viewer-hud-kicker">Loop activo</span>
-          <b>{phase.name}</b>
-          <small>{phase.notes ?? "Escena tactica en curso."}</small>
-        </div>
-        <div className="viewer-hud-pill-row">
-          <HudPill label="Camara" value={cameraLabel(cameraMode)} />
-          <HudPill label="Balon" value={carrier ? carrier.actor.role : "Libre"} />
-          <HudPill label="Capas" value={String(activeLayerCount(layerState))} />
-        </div>
+      <div className="viewer-hud-callout viewer-hud-why">
+        <span className="viewer-hud-kicker">Por que importa</span>
+        <b>{exercise.objective.primary}</b>
+        <p>{whyThisMatters}</p>
       </div>
 
-      <div className="viewer-hud-right">
-        <div className="viewer-hud-card">
-          <span className="viewer-hud-kicker">Por que importa</span>
-          <b>{exercise.objective.primary}</b>
-          <p>{whyThisMatters}</p>
-        </div>
-        <div className="viewer-hud-card">
-          <span className="viewer-hud-kicker">Intencion del movimiento</span>
-          {activeMovements.length ? (
-            <ul className="viewer-hud-list">
-              {activeMovements.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>La fase actual prioriza estructura y orientacion del bloque.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="viewer-hud-bottom">
-        <div className="viewer-hud-card viewer-hud-compact">
-          <span className="viewer-hud-kicker">Foco de coaching</span>
-          <p>{exercise.coaching[0] ?? "Sin coaching point cargado."}</p>
-        </div>
-        <div className="viewer-hud-card viewer-hud-compact">
-          <span className="viewer-hud-kicker">Exito de la tarea</span>
-          <p>{exercise.success}</p>
-        </div>
+      <div className="viewer-hud-callout viewer-hud-intent">
+        <span className="viewer-hud-kicker">Intencion del movimiento</span>
+        <p>{movementText}</p>
       </div>
 
       {cameraMode === "top"
@@ -140,15 +109,6 @@ export function ViewerCanvasHud({
             </div>
           ))
         : null}
-    </div>
-  );
-}
-
-function HudPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="viewer-hud-pill">
-      <span>{label}</span>
-      <b>{value}</b>
     </div>
   );
 }
@@ -202,7 +162,7 @@ function describeOverlay(overlay: Overlay, frame: MatchFrame) {
   const from = actorNameForEndpoint(overlay.from, frame);
   const to = actorNameForEndpoint(overlay.to, frame);
   const verb = overlayVerb(overlay.type);
-  const detail = overlay.label ? ` · ${overlay.label}` : "";
+  const detail = overlay.label ? ` - ${overlay.label}` : "";
   return `${verb}: ${from} -> ${to}${detail}`;
 }
 
@@ -228,16 +188,6 @@ function overlayVerb(type: Overlay["type"]) {
     lineBlocked: "Linea cerrada",
   };
   return labels[type];
-}
-
-function cameraLabel(mode: ViewerCanvasHudProps["cameraMode"]) {
-  if (mode === "top") return "Pizarra";
-  if (mode === "broadcast") return "TV";
-  return "Tactica";
-}
-
-function activeLayerCount(layers: Record<Layer, boolean>) {
-  return Object.values(layers).filter(Boolean).length;
 }
 
 function clampPercent(value: number) {

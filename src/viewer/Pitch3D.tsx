@@ -60,7 +60,6 @@ export function Pitch3D({ mode }: PitchProps) {
       </mesh>
 
       <PitchStripes length={length} width={width} />
-      <ChannelGuides length={length} width={width} />
 
       <FlatLine
         x={0}
@@ -139,9 +138,6 @@ export function Pitch3D({ mode }: PitchProps) {
       ) : null}
 
       {isFull || isHalf ? <CircleMarking radius={centerRadius} /> : null}
-      {isThird ? (
-        <ThirdReferenceLine halfLength={halfLength} width={width} />
-      ) : null}
 
       {hasStandardMarkings ? (
         <>
@@ -158,14 +154,6 @@ export function Pitch3D({ mode }: PitchProps) {
 
       {isFull || isHalf || isThird ? <Goal x={halfLength + 1.05} /> : null}
       {isFull ? <Goal x={-halfLength - 1.05} /> : null}
-
-      {isFull ? (
-        <>
-          <CornerFlags halfLength={halfLength} halfWidth={halfWidth} />
-          <TechnicalArea x={-8} z={halfWidth + 1.7} />
-          <TechnicalArea x={8} z={halfWidth + 1.7} />
-        </>
-      ) : null}
     </group>
   );
 }
@@ -218,30 +206,6 @@ function CircleMarking({ radius }: { radius: number }) {
         toneMapped={false}
       />
     </mesh>
-  );
-}
-
-function ThirdReferenceLine({
-  halfLength,
-  width,
-}: { halfLength: number; width: number }) {
-  return (
-    <group>
-      <FlatLine
-        x={-halfLength / 3}
-        z={0}
-        length={0.06}
-        width={width}
-        opacity={0.2}
-      />
-      <FlatLine
-        x={halfLength / 3}
-        z={0}
-        length={0.06}
-        width={width}
-        opacity={0.2}
-      />
-    </group>
   );
 }
 
@@ -306,81 +270,6 @@ function PitchStripes({ length, width }: { length: number; width: number }) {
           </mesh>
         );
       })}
-    </group>
-  );
-}
-
-function ChannelGuides({
-  length,
-  width,
-}: {
-  length: number;
-  width: number;
-}) {
-  const thirds = [-0.2, 0, 0.2].map((offset) => offset * width);
-  return (
-    <group>
-      {thirds.map((z, index) => (
-        <FlatLine
-          key={`channel-${index}`}
-          x={0}
-          z={z}
-          length={length}
-          width={0.045}
-          opacity={index === 1 ? 0.12 : 0.08}
-        />
-      ))}
-    </group>
-  );
-}
-
-function TechnicalArea({ x, z }: { x: number; z: number }) {
-  return (
-    <group position={[x, LINE_Y + 0.002, z]}>
-      <FlatLine x={0} z={-2.5} length={12} width={0.06} opacity={0.34} />
-      <FlatLine x={-6} z={0} length={0.06} width={5} opacity={0.34} />
-      <FlatLine x={6} z={0} length={0.06} width={5} opacity={0.34} />
-      <FlatLine x={0} z={2.5} length={12} width={0.06} opacity={0.34} />
-    </group>
-  );
-}
-
-function CornerFlags({
-  halfLength,
-  halfWidth,
-}: { halfLength: number; halfWidth: number }) {
-  const positions: Array<[number, number]> = [
-    [-halfLength, -halfWidth],
-    [-halfLength, halfWidth],
-    [halfLength, -halfWidth],
-    [halfLength, halfWidth],
-  ];
-
-  return (
-    <group>
-      {positions.map(([x, z]) => (
-        <group key={`${x}-${z}`} position={[x, 0, z]}>
-          <mesh position={[0, 0.75, 0]} castShadow>
-            <cylinderGeometry args={[0.035, 0.035, 1.5, 10]} />
-            <meshStandardMaterial
-              color="#f8fafc"
-              roughness={0.35}
-              metalness={0.03}
-            />
-          </mesh>
-          <mesh
-            position={[0.22 * Math.sign(x || 1), 1.25, 0]}
-            rotation={[0, Math.sign(x || 1) > 0 ? 0 : Math.PI, 0]}
-          >
-            <planeGeometry args={[0.42, 0.28]} />
-            <meshStandardMaterial
-              color="#facc15"
-              side={DoubleSide}
-              roughness={0.6}
-            />
-          </mesh>
-        </group>
-      ))}
     </group>
   );
 }

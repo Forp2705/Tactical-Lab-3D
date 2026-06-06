@@ -251,7 +251,7 @@ function ViewerWorkspace() {
 
   return (
     <section className="viewer-layout">
-      <div className="stage-card">
+      <div className="stage-card viewer-stage">
         <div className="stage-header">
           <div>
             <h3>{selectedExercise.title}</h3>
@@ -283,7 +283,6 @@ function ViewerWorkspace() {
           ) : null}
         </div>
         <div className="canvas-wrap">
-          <div className="phase-badge">{phaseLabel(selectedExercise, time)}</div>
           {exportStatus ? (
             <div className="export-overlay">
               <span className="export-spinner" />
@@ -316,6 +315,7 @@ function ViewerWorkspace() {
             personalSpace={personalSpace}
           />
         </div>
+        <ViewerInsightStrip exercise={selectedExercise} phase={phase} />
         <div className="timeline">
           <button
             type="button"
@@ -416,67 +416,105 @@ function ViewerWorkspace() {
             </div>
           </div>
 
-          <div className="viewer-panel-card">
-            <span className="panel-eyebrow">Capas tacticas</span>
-            <div className="viewer-layer-pills">
-              {TACTICAL_LAYERS.map((layer) => (
-                <button
-                  type="button"
-                  key={layer.id}
-                  className={`viewer-layer-pill ${
-                    layers[layer.id] ? "active" : ""
-                  }`}
-                  onClick={() =>
-                    useAppStore.getState().toggleTacticalLayer(layer.id)
-                  }
-                >
-                  {layer.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="viewer-panel-card">
-            <span className="panel-eyebrow">Coaching</span>
-            <p>{phase.notes ?? "Sin nota tactica especifica para esta fase."}</p>
-            <ul className="viewer-note-list">
-              {selectedExercise.coaching.slice(0, 3).map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-
           <button
             type="button"
+            className="viewer-primary-action"
             onClick={() => useAppStore.getState().addToSession(selectedExercise.id)}
           >
             Agregar a sesion
           </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => useAppStore.getState().duplicateSelectedExercise()}
-          >
-            Duplicar como variante
-          </button>
-          <button
-            type="button"
-            disabled={!!exportStatus}
-            onClick={() => void exportCurrentCanvas("mp4")}
-          >
-            {exportStatus?.format === "mp4" ? "Exportando..." : "Exportar MP4"}
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            disabled={!!exportStatus}
-            onClick={() => void exportCurrentCanvas("gif")}
-          >
-            {exportStatus?.format === "gif" ? "Exportando..." : "Exportar GIF"}
-          </button>
+
+          <details className="viewer-advanced-panel">
+            <summary>Ajustes avanzados</summary>
+            <div>
+              <span className="panel-eyebrow">Capas tacticas</span>
+              <div className="viewer-layer-pills">
+                {TACTICAL_LAYERS.map((layer) => (
+                  <button
+                    type="button"
+                    key={layer.id}
+                    className={`viewer-layer-pill ${
+                      layers[layer.id] ? "active" : ""
+                    }`}
+                    onClick={() =>
+                      useAppStore.getState().toggleTacticalLayer(layer.id)
+                    }
+                  >
+                    {layer.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="viewer-export-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => useAppStore.getState().duplicateSelectedExercise()}
+              >
+                Duplicar variante
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!!exportStatus}
+                onClick={() => void exportCurrentCanvas("mp4")}
+              >
+                {exportStatus?.format === "mp4" ? "Exportando..." : "MP4"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!!exportStatus}
+                onClick={() => void exportCurrentCanvas("gif")}
+              >
+                {exportStatus?.format === "gif" ? "Exportando..." : "GIF"}
+              </button>
+            </div>
+          </details>
         </aside>
       )}
     </section>
+  );
+}
+
+function ViewerInsightStrip({
+  exercise,
+  phase,
+}: {
+  exercise: (typeof catalog)[number];
+  phase: (typeof catalog)[number]["scene"]["phases"][number];
+}) {
+  const insightItems = [
+    {
+      label: "Foco de coaching",
+      value: exercise.coaching[0] ?? "Abrir linea de pase antes de recibir.",
+    },
+    {
+      label: "Exito de la tarea",
+      value: exercise.success,
+    },
+    {
+      label: "Clave",
+      value:
+        exercise.coaching[1] ??
+        exercise.rules[0] ??
+        phase.notes ??
+        "Mantener la intencion tactica visible.",
+    },
+  ];
+
+  return (
+    <div className="viewer-insight-strip">
+      {insightItems.map((item, index) => (
+        <article key={item.label}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <div>
+            <b>{item.label}</b>
+            <p>{item.value}</p>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -493,12 +531,4 @@ function ViewerStatCard({
       <b>{value}</b>
     </div>
   );
-}
-
-function phaseLabel(exercise: (typeof catalog)[number], time: number) {
-  const phase =
-    exercise.scene.phases.find(
-      (item) => time >= item.start && time <= item.end,
-    ) ?? exercise.scene.phases[0];
-  return phase?.name ?? "Setup";
 }
