@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const GameModelSchema = z.object({
-  identity: z.string().min(1),
+  identity: z.string().default(""),
   defensivePrinciples: z.array(z.string()).default([]),
   offensivePrinciples: z.array(z.string()).default([]),
   pressing: z.object({
@@ -23,6 +23,27 @@ export const GameModelSchema = z.object({
 });
 
 export type GameModel = z.infer<typeof GameModelSchema>;
+
+export const EMPTY_GAME_MODEL: GameModel = {
+  identity: "",
+  defensivePrinciples: [],
+  offensivePrinciples: [],
+  pressing: {
+    height: "mid",
+    triggers: [],
+    fallback: "",
+  },
+  blockHeight: "mid",
+  buildUp: [],
+  progression: [],
+  organizedAttack: [],
+  defensiveTransition: [],
+  offensiveTransition: [],
+  setPieces: [],
+  acceptedRisks: [],
+  nonNegotiables: [],
+  coachLanguage: "",
+};
 
 export const DEFAULT_GAME_MODEL: GameModel = {
   identity:
@@ -86,6 +107,18 @@ export const DEFAULT_GAME_MODEL: GameModel = {
 
 export function normalizeGameModel(value: unknown): GameModel {
   return GameModelSchema.catch(DEFAULT_GAME_MODEL).parse(value);
+}
+
+export function isGameModelConfigured(model: GameModel | null | undefined) {
+  if (!model) return false;
+  return Boolean(
+    model.identity.trim() ||
+      model.defensivePrinciples.length ||
+      model.offensivePrinciples.length ||
+      model.pressing.triggers.length ||
+      model.buildUp.length ||
+      model.nonNegotiables.length,
+  );
 }
 
 export function summarizeGameModel(model: GameModel) {

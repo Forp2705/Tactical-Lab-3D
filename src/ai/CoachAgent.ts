@@ -12,11 +12,10 @@ import {
   parseCoachAdvice,
   resolveModelLadder,
 } from "./coachResponseParsing.js"
-import { TEAM_CONTEXT } from "./TeamContext.js"
 import { COACH_RULES } from "./CoachRules.js"
-import { FOOTBALL_IDENTITY } from "./FootballIdentity.js"
 import {
   contrastTextWithGameModel,
+  isGameModelConfigured,
   normalizeGameModel,
   summarizeGameModel,
 } from "../data/gameModel.js"
@@ -24,7 +23,6 @@ import { summarizeOpponentScout } from "../scout/opponentScout.js"
 import { MATCH_MEMORY } from "./MatchMemory.js"
 import { retrieveRelevantContext } from "./retrieveRelevantContext.js"
 import { retrieveRelevantKnowledge } from "./retrieveRelevantKnowledge.js"
-import { TEAM_IDENTITY } from "./teamIdentity.js"
 import { retrieveRelevantGeneratedMemory } from "./retrieveRelevantGeneratedMemory.js"
 import { loadSavedPostMatchReports } from "./post-match/storage.js"
 import { catalog } from "../data/exercises/catalog.js"
@@ -72,6 +70,10 @@ import type {
 } from "./CoachSchemas.js"
 import type { SavedPostMatchReport } from "./post-match/schemas.js"
 import { normalizeRuntimeVideoEvidenceText } from "../video/videoCoachEvidence.js"
+import {
+  buildCoachTeamIdentityContext,
+  MISSING_TEAM_IDENTITY_MESSAGE,
+} from "./coachTeamIdentityContext.js"
 
 export type RetrievedEvidence = {
   id: string
@@ -139,7 +141,7 @@ export async function generateCoachResponse(
   formatRuntimeManualObservations(coachContext)
 
   const coachingStaffContext =
-  formatCoachingStaffContext()
+  formatCoachingStaffContext(coachContext)
   const structuredGameModel =
   formatStructuredGameModel(coachContext)
   const opponentScoutContext =
@@ -243,6 +245,8 @@ Game model and fit rules:
 - Use modelContrast.insufficientEvidence when the request lacks evidence to judge the model.
 - If Player fit context flags risk, include it in playerFitWarnings and adjustmentRisks.
 - Do not raise confidence only because the model says something; current evidence still governs confidence.
+- If Team setup says "${MISSING_TEAM_IDENTITY_MESSAGE}", do not invent a base formation, pressing identity or build-up style.
+- In that case, work only with current evidence and ask for setup context before making model-of-play claims.
 
 Coaching staff context:
 ${coachingStaffContext}
@@ -853,6 +857,8 @@ export async function retrieveCoachEvidence(userInput: string, coachContext?: un
   // otra fase por simple coincidencia de keyword.
   const knowledgeDomains = inferDomainsFromText(userInput)
 
+  const teamIdentityContext =
+    buildCoachTeamIdentityContextFromRuntime(coachContext)
   const [
     recentReports,
     relevantGeneratedMemory,
@@ -860,7 +866,9 @@ export async function retrieveCoachEvidence(userInput: string, coachContext?: un
     persistentRagEvidence,
   ] = await Promise.all([
     loadSavedPostMatchReports(),
-    retrieveRelevantGeneratedMemory(userInput),
+    retrieveRelevantGeneratedMemory(userInput, {
+      allowStaffIdentity: teamIdentityContext.configured,
+    }),
     retrieveRelevantKnowledge(userInput, knowledgeDomains),
     queryCoachRagIndex(userInput, {
       limit: 8,
@@ -1005,21 +1013,39 @@ async function requestQuestionCompletion({
   )
 }
 
-function formatCoachingStaffContext() {
+function buildCoachTeamIdentityContextFromRuntime(coachContext: unknown) {
+  const context = objectValue(coachContext)
+  return buildCoachTeamIdentityContext({
+    teamIdentity:
+      context?.teamIdentity &&
+      typeof context.teamIdentity === "object" &&
+      !Array.isArray(context.teamIdentity)
+        ? (context.teamIdentity as Parameters<
+            typeof buildCoachTeamIdentityContext
+          >[0]["teamIdentity"])
+        : null,
+    gameModel:
+      context?.gameModel &&
+      typeof context.gameModel === "object" &&
+      !Array.isArray(context.gameModel)
+        ? normalizeGameModel(context.gameModel)
+        : null,
+  })
+}
+
+function formatCoachingStaffContext(coachContext?: unknown) {
+  const teamIdentityContext = buildCoachTeamIdentityContextFromRuntime(coachContext)
   return `
 CONTEXTO DEL CUERPO TECNICO
 
-[Weekly context]
-${TEAM_CONTEXT.trim()}
-
-[Team identity]
-${JSON.stringify(TEAM_IDENTITY, null, 2)}
-
-[Football identity]
-${FOOTBALL_IDENTITY.trim()}
+[Team setup]
+${teamIdentityContext.configured ? teamIdentityContext.summary : MISSING_TEAM_IDENTITY_MESSAGE}
 
 [Coach rules]
 ${COACH_RULES.trim()}
+
+[Identity guardrail]
+${teamIdentityContext.setupRequest}
 `.trim()
 }
 
@@ -1112,13 +1138,18 @@ function formatStructuredRuntimeContext(context: Record<string, unknown>) {
 }
 
 function formatTeamRuntimeContext(context: Record<string, unknown>) {
+  const teamIdentityContext = buildCoachTeamIdentityContextFromRuntime(context)
   const teamModel = stringValue(context.teamModel)
   const available = arrayValue(context.availableSquad)
   const unavailable = arrayValue(context.unavailableSquad)
 
   return [
     "TEAM CONTEXT",
-    teamModel ? `- Modelo: ${teamModel}` : "",
+    teamIdentityContext.configured
+      ? teamModel
+        ? `- Modelo: ${teamModel}`
+        : `- Modelo: ${teamIdentityContext.summary}`
+      : `- Modelo: ${MISSING_TEAM_IDENTITY_MESSAGE}`,
     available.length
       ? `- Disponibles: ${available
           .slice(0, 14)
@@ -1166,12 +1197,7 @@ function formatVideoEvidenceRuntimeContext(context: Record<string, unknown>) {
 }
 
 function formatStructuredGameModel(coachContext: unknown) {
-  const context = objectValue(coachContext)
-  const raw = context?.gameModel
-  if (!raw) {
-    return "No editable Game Model provided. Use static identity only as fallback."
-  }
-  return summarizeGameModel(normalizeGameModel(raw))
+  return buildCoachTeamIdentityContextFromRuntime(coachContext).structuredGameModel
 }
 
 function formatOpponentScoutContext(coachContext: unknown) {

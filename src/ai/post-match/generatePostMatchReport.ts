@@ -2,13 +2,10 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 import { COACH_AGENT_SYSTEM_PROMPT } from "../CoachAgentPrompt.js";
 import { COACH_RULES } from "../CoachRules.js";
-import { FOOTBALL_IDENTITY } from "../FootballIdentity.js";
 import { MATCH_MEMORY } from "../MatchMemory.js";
-import { TEAM_CONTEXT } from "../TeamContext.js";
 import { retrieveRelevantContext } from "../retrieveRelevantContext.js";
 import { retrieveRelevantGeneratedMemory } from "../retrieveRelevantGeneratedMemory.js";
 import { retrieveRelevantKnowledge } from "../retrieveRelevantKnowledge.js";
-import { TEAM_IDENTITY } from "../teamIdentity.js";
 import {
   type PostMatchInput,
   PostMatchInputSchema,
@@ -275,14 +272,8 @@ Respond ONLY with valid JSON using this exact structure:
   }
 }
 
-Team context:
-${TEAM_CONTEXT}
-
-Current team identity:
-${JSON.stringify(TEAM_IDENTITY, null, 2)}
-
-Football identity:
-${FOOTBALL_IDENTITY}
+Team setup:
+No asumir formacion base, pressing identity o build-up style si no aparecen en el input, la evidencia o la memoria validada.
 
 Match memory:
 ${MATCH_MEMORY}

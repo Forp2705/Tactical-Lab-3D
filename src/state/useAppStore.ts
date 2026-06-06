@@ -18,9 +18,17 @@ import type {
 } from "@/data";
 import {
   DEFAULT_GAME_MODEL,
+  EMPTY_GAME_MODEL,
   type GameModel,
   normalizeGameModel,
 } from "@/data/gameModel";
+import {
+  createDemoTeamIdentitySetup,
+  createEmptyTeamIdentitySetup,
+  isTeamIdentityConfigured,
+  summarizeTeamIdentity,
+  type TeamIdentitySetup,
+} from "@/data/teamIdentitySetup";
 import {
   DEFAULT_OPPONENT_SCOUT,
   type OpponentScout,
@@ -106,6 +114,7 @@ export type ManualObservationSource = "home" | "postMatch";
 
 export type ManualObservation = {
   id: string;
+  teamId: string;
   text: string;
   createdAt: string;
   source: ManualObservationSource;
@@ -122,7 +131,8 @@ type VideoTrackInput = Omit<VideoTrack, "id" | "moment"> & {
   moment?: VideoMoment;
 };
 
-type ManualObservationInput = Omit<ManualObservation, "id" | "createdAt"> & {
+type ManualObservationInput = Omit<ManualObservation, "id" | "createdAt" | "teamId"> & {
+  teamId?: string;
   id?: string;
   createdAt?: string;
 };
@@ -228,12 +238,15 @@ export type LineupLabStoreState = {
 };
 
 type TeamState = {
+  id: string;
   name: string;
   model: string;
   players: Player[];
   selectedPlayerId: string;
   lineups: Lineup[];
 };
+
+export type WorkspaceMode = "demo" | "real";
 
 export type CoachInterviewRuntimeState = {
   active: boolean;
@@ -267,6 +280,8 @@ type AppState = {
   personalSpace: boolean;
   layers: Record<Layer, boolean>;
   team: TeamState;
+  workspaceMode: WorkspaceMode;
+  teamIdentity: TeamIdentitySetup;
   gameModel: GameModel;
   opponentScout: OpponentScout;
   session: Session;
@@ -335,6 +350,9 @@ type AppState = {
   requestApplyShape: (shapeId: string) => void;
   consumePendingShape: () => void;
   addPlayer: () => void;
+  loadDemoWorkspace: () => void;
+  loadRealWorkspace: () => void;
+  updateTeamIdentity: (patch: Partial<TeamIdentitySetup>) => void;
   removePlayer: (id: string) => void;
   setSelectedPlayerId: (id: string) => void;
   updatePlayer: (id: string, patch: Partial<Player>) => void;
@@ -366,7 +384,7 @@ type AppState = {
 
 const makeSession = (): Session => ({
   id: "session_1",
-  name: "Sesión demo",
+  name: "Sesion semanal",
   blocks: [],
   computed: {
     totalDuration: 0,
@@ -379,25 +397,26 @@ const makeSession = (): Session => ({
 
 const makeMicrocycle = (): Microcycle => ({
   id: "micro_1",
-  name: "Microciclo demo",
+  name: "Microciclo semanal",
   weekOf: new Date().toISOString().slice(0, 10),
   days: {
-    "MD+1": { objective: "Recuperación", targetLoad: "low" },
-    "MD+2": { objective: "Base aeróbica", targetLoad: "low" },
+    "MD+1": { objective: "Recuperacion", targetLoad: "low" },
+    "MD+2": { objective: "Base aerobica", targetLoad: "low" },
     "MD-4": { objective: "Principio principal", targetLoad: "high" },
     "MD-3": { objective: "Intensidad", targetLoad: "high" },
     "MD-2": { objective: "ABP + ajustes", targetLoad: "med" },
-    "MD-1": { objective: "Activación", targetLoad: "low" },
+    "MD-1": { objective: "Activacion", targetLoad: "low" },
     MD: { objective: "Partido", targetLoad: "med" },
   },
   alerts: [],
 });
 
 const initialTeam: TeamState = {
-  name: "Rojo FC",
-  model: "4-3-3 agresivo, presión tras pérdida y ataques por banda",
-  players: demoPlayers,
-  selectedPlayerId: demoPlayers[0]?.id ?? "",
+  id: "team-real-default",
+  name: "",
+  model: "",
+  players: [],
+  selectedPlayerId: "",
   lineups: [],
 };
 
@@ -552,11 +571,16 @@ const seededMicrocycle: Microcycle = {
 
 const seededTeam: TeamState = {
   ...initialTeam,
+  id: "team-demo-rojo-fc",
+  name: "Rojo FC",
+  players: demoPlayers,
+  selectedPlayerId: demoPlayers[0]?.id ?? "",
   model: "4-3-3 agresivo, presion tras perdida y ataques por banda",
 };
 
 const seededWeeklyDecisionThread: WeeklyDecisionThread = {
   id: "weekly-thread-seed",
+  teamId: seededTeam.id,
   problem: PILOT_DIAGNOSIS_PROMPT,
   origin: "coach",
   evidenceIds: [],
@@ -576,7 +600,64 @@ const seededWeeklyDecisionThread: WeeklyDecisionThread = {
   updatedAt: "2026-06-01T12:00:00.000Z",
 };
 
+function createRealWorkspaceState() {
+  return {
+    workspaceMode: "real" as const,
+    team: {
+      ...initialTeam,
+      id: "team-real-default",
+    },
+    teamIdentity: createEmptyTeamIdentitySetup(),
+    gameModel: EMPTY_GAME_MODEL,
+    session: makeSession(),
+    microcycle: makeMicrocycle(),
+    manualObservations: [] as ManualObservation[],
+    weeklyDecisionThread: null as WeeklyDecisionThread | null,
+    aiPrompt: "",
+  };
+}
+
+function createDemoWorkspaceState() {
+  return {
+    workspaceMode: "demo" as const,
+    team: seededTeam,
+    teamIdentity: createDemoTeamIdentitySetup(),
+    gameModel: DEFAULT_GAME_MODEL,
+    session: seededSession,
+    microcycle: seededMicrocycle,
+    manualObservations: [] as ManualObservation[],
+    weeklyDecisionThread: seededWeeklyDecisionThread,
+    aiPrompt: PILOT_DIAGNOSIS_PROMPT,
+  };
+}
+
+function ensureTeamState(team?: Partial<TeamState> | null): TeamState {
+  return {
+    id: team?.id?.trim() || "team-real-default",
+    name: team?.name?.trim() ?? "",
+    model: team?.model?.trim() ?? "",
+    players: team?.players ?? [],
+    selectedPlayerId: team?.selectedPlayerId ?? "",
+    lineups: team?.lineups ?? [],
+  };
+}
+
+function inferWorkspaceModeFromSnapshot(snapshot: Partial<AppState>, team: TeamState) {
+  if (snapshot.workspaceMode === "demo" || snapshot.workspaceMode === "real") {
+    return snapshot.workspaceMode;
+  }
+  if (
+    team.id === seededTeam.id ||
+    team.name === seededTeam.name ||
+    snapshot.aiPrompt === PILOT_DIAGNOSIS_PROMPT
+  ) {
+    return "demo" as const;
+  }
+  return "real" as const;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
+  ...createRealWorkspaceState(),
   version: APP_SNAPSHOT_VERSION,
   selectedExerciseId: catalog[0]?.id ?? "",
   view: "home",
@@ -596,18 +677,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   showPress: true,
   personalSpace: false,
   layers: defaultLayers,
-  team: seededTeam,
-  gameModel: DEFAULT_GAME_MODEL,
   opponentScout: DEFAULT_OPPONENT_SCOUT,
-  session: seededSession,
-  microcycle: seededMicrocycle,
   lineupLab: initialLineupLab,
   tags: [],
   tracks: [],
-  manualObservations: [],
-  weeklyDecisionThread: seededWeeklyDecisionThread,
   aiMode: "coach",
-  aiPrompt: PILOT_DIAGNOSIS_PROMPT,
   coachInterview: initialCoachInterview,
   pendingPostMatchImport: null,
   coachShapeContext: null,
@@ -744,12 +818,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       manualObservations: [
         {
           id: nextId,
+          teamId: observation.teamId || state.team.id,
           text,
           createdAt: observation.createdAt ?? new Date().toISOString(),
           source: observation.source,
         },
         ...state.manualObservations.filter(
-          (item) => normalizeObservationText(item.text) !== normalizeObservationText(text),
+          (item) =>
+            item.teamId !== (observation.teamId || state.team.id) ||
+            normalizeObservationText(item.text) !== normalizeObservationText(text),
         ),
       ].slice(0, 12),
     }));
@@ -772,16 +849,22 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           : state.weeklyDecisionThread,
     })),
-  clearManualObservations: () => set({ manualObservations: [] }),
+  clearManualObservations: () =>
+    set((state) => ({
+      manualObservations: state.manualObservations.filter(
+        (observation) => observation.teamId !== state.team.id,
+      ),
+    })),
   activateWeeklyThreadFromObservation: (observationId) =>
     set((state) => {
       const observation = state.manualObservations.find(
-        (item) => item.id === observationId,
+        (item) => item.id === observationId && item.teamId === state.team.id,
       );
       if (!observation) return state;
       return {
         weeklyDecisionThread: buildThreadFromObservation(
           observation,
+          state.team.id,
           state.weeklyDecisionThread,
         ),
       };
@@ -939,6 +1022,40 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
     });
   },
+  loadDemoWorkspace: () =>
+    set((state) => ({
+      ...createDemoWorkspaceState(),
+      aiMode: state.aiMode,
+      coachInterview: initialCoachInterview,
+      pendingPostMatchImport: null,
+      coachShapeContext: null,
+      lineupLab: initialLineupLab,
+    })),
+  loadRealWorkspace: () =>
+    set((state) => ({
+      ...createRealWorkspaceState(),
+      aiMode: state.aiMode,
+      coachInterview: initialCoachInterview,
+      pendingPostMatchImport: null,
+      coachShapeContext: null,
+      lineupLab: initialLineupLab,
+    })),
+  updateTeamIdentity: (patch) =>
+    set((state) => {
+      const nextIdentity = {
+        ...state.teamIdentity,
+        ...patch,
+      };
+      const summary = summarizeTeamIdentity(nextIdentity);
+      return {
+        teamIdentity: nextIdentity,
+        team: {
+          ...state.team,
+          name: nextIdentity.teamName.trim(),
+          model: isTeamIdentityConfigured(nextIdentity) ? summary : "",
+        },
+      };
+    }),
   removePlayer: (id) =>
     set((state) => {
       if (state.team.players.length <= 1) return {};
@@ -1048,7 +1165,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (response.mode === "question") return false;
     const state = get();
     const nextThread =
-      buildThreadFromCoachResponse(response, state.aiPrompt, state.weeklyDecisionThread) ??
+      buildThreadFromCoachResponse(
+        response,
+        state.aiPrompt,
+        state.team.id,
+        state.weeklyDecisionThread,
+      ) ??
       state.weeklyDecisionThread;
     if (!nextThread) return false;
     const plan = buildSessionPlanFromDiagnosis(response.advice, [
@@ -1069,20 +1191,48 @@ export const useAppStore = create<AppState>((set, get) => ({
     return true;
   },
   loadSnapshot: (snapshot) =>
-    set((current) => ({
-      ...current,
-      ...snapshot,
-      layers: { ...defaultLayers, ...snapshot.layers },
-      gameModel: normalizeGameModel(snapshot.gameModel ?? current.gameModel),
-      opponentScout: normalizeOpponentScout(
-        snapshot.opponentScout ?? current.opponentScout,
-      ),
-      manualObservations: snapshot.manualObservations ?? current.manualObservations,
-      weeklyDecisionThread:
-        snapshot.weeklyDecisionThread ?? current.weeklyDecisionThread,
-      coachInterview: initialCoachInterview,
-      initialized: true,
-    })),
+    set((current) => {
+      const nextTeam = ensureTeamState(
+        (snapshot.team as Partial<TeamState> | undefined) ?? current.team,
+      );
+      const workspaceMode = inferWorkspaceModeFromSnapshot(snapshot, nextTeam);
+      const fallbackIdentity =
+        workspaceMode === "demo"
+          ? createDemoTeamIdentitySetup()
+          : createEmptyTeamIdentitySetup();
+      return {
+        ...current,
+        ...snapshot,
+        workspaceMode,
+        team: nextTeam,
+        teamIdentity: {
+          ...fallbackIdentity,
+          ...(snapshot.teamIdentity ?? current.teamIdentity),
+          teamName:
+            snapshot.teamIdentity?.teamName ??
+            nextTeam.name ??
+            fallbackIdentity.teamName,
+        },
+        layers: { ...defaultLayers, ...snapshot.layers },
+        gameModel: normalizeGameModel(snapshot.gameModel ?? current.gameModel),
+        opponentScout: normalizeOpponentScout(
+          snapshot.opponentScout ?? current.opponentScout,
+        ),
+        manualObservations:
+          snapshot.manualObservations?.map((observation) => ({
+            ...observation,
+            teamId: observation.teamId || nextTeam.id,
+          })) ?? current.manualObservations,
+        weeklyDecisionThread: snapshot.weeklyDecisionThread
+          ? {
+              ...snapshot.weeklyDecisionThread,
+              teamId: snapshot.weeklyDecisionThread.teamId || nextTeam.id,
+            }
+          : current.weeklyDecisionThread,
+        coachInterview: initialCoachInterview,
+        initialized: true,
+      };
+    }),
   markInitialized: () => set({ initialized: true }),
   setAiMode: (aiMode) =>
     set({ aiMode, coachInterview: initialCoachInterview }),
@@ -1121,7 +1271,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   applyCoachTurnResult: (response) =>
     set((state) => {
       const nextThread =
-        buildThreadFromCoachResponse(response, state.aiPrompt, state.weeklyDecisionThread) ??
+        buildThreadFromCoachResponse(
+          response,
+          state.aiPrompt,
+          state.team.id,
+          state.weeklyDecisionThread,
+        ) ??
         state.weeklyDecisionThread;
       if (response.mode === "question") {
         return {
@@ -1167,6 +1322,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       pendingPostMatchImport: buildPendingPostMatchImport(
         state.manualObservations,
         observationIds,
+        state.team.id,
         state.weeklyDecisionThread?.id ?? null,
       ),
     })),
@@ -1181,6 +1337,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       weeklyDecisionThread: buildThreadFromPostMatchReport(
         savedReport,
+        state.team.id,
         state.weeklyDecisionThread,
       ),
     })),

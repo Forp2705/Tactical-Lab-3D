@@ -6,9 +6,14 @@ import type {
   TacticalIntent,
 } from "../src/ai/CoachSchemas";
 import {
+  MISSING_TEAM_IDENTITY_MESSAGE,
+  buildCoachTeamIdentityContext,
+} from "../src/ai/coachTeamIdentityContext";
+import {
   detectTeamPatterns,
   type TeamPattern,
 } from "../src/ai/patternDetection";
+import { createDemoTeamIdentitySetup } from "../src/data/teamIdentitySetup";
 import type { SavedPostMatchReport } from "../src/ai/post-match/schemas";
 import { useAppStore } from "../src/state/useAppStore";
 import { resolveWeeklyDecisionThreadProgress } from "../src/state/weeklyDecisionThread";
@@ -50,6 +55,15 @@ beforeEach(() => {
 });
 
 describe("weeklyDecisionThread", () => {
+  it("arranca en equipo real sin identidad demo ni hilo sembrado", () => {
+    const state = useAppStore.getState();
+    expect(state.workspaceMode).toBe("real");
+    expect(state.team.name).toBe("");
+    expect(state.team.model).toBe("");
+    expect(state.weeklyDecisionThread).toBeNull();
+    expect(state.teamIdentity.baseFormation).toBe("");
+  });
+
   it("mantiene hipotesis cuando la semana nace desde una observacion manual", () => {
     const store = useAppStore.getState();
     const observationId = store.addManualObservation({
@@ -66,6 +80,7 @@ describe("weeklyDecisionThread", () => {
 
     const next = useAppStore.getState().weeklyDecisionThread;
     expect(next).toMatchObject({
+      teamId: useAppStore.getState().team.id,
       problem: "El 5 queda tapado en salida",
       origin: "coach",
       mode: "hypothesis",
@@ -90,6 +105,7 @@ describe("weeklyDecisionThread", () => {
 
     const next = useAppStore.getState().weeklyDecisionThread;
     expect(next).toMatchObject({
+      teamId: useAppStore.getState().team.id,
       problem:
         "El 5 queda tapado en salida y la progresion nace sin apoyo frontal.",
       mode: "diagnosis",
@@ -143,6 +159,7 @@ describe("weeklyDecisionThread", () => {
 
     expect(pending).toMatchObject({
       source: "manualObservation",
+      teamId: useAppStore.getState().team.id,
       observationIds: [firstId],
       threadId: useAppStore.getState().weeklyDecisionThread?.id ?? null,
     });
@@ -205,6 +222,99 @@ describe("weeklyDecisionThread", () => {
       status: "reviewed",
       lastReportId: "r2",
     });
+  });
+
+  it("aísla identidad y observaciones demo al volver al equipo real", () => {
+    const store = useAppStore.getState();
+    store.loadDemoWorkspace();
+    const demoObservationId = store.addManualObservation({
+      text: "En demo el equipo salta tarde al cierre interior.",
+      source: "home",
+    });
+
+    expect(useAppStore.getState().teamIdentity.baseFormation).toBe("4-3-3");
+    expect(useAppStore.getState().manualObservations[0]?.teamId).toBe(
+      "team-demo-rojo-fc",
+    );
+
+    store.loadRealWorkspace();
+    const next = useAppStore.getState();
+    expect(next.workspaceMode).toBe("real");
+    expect(next.teamIdentity.baseFormation).toBe("");
+    expect(next.team.model).toBe("");
+    expect(next.manualObservations).toEqual([]);
+    expect(next.weeklyDecisionThread).toBeNull();
+    expect(demoObservationId).toBeTruthy();
+  });
+
+  it("scopa observaciones e hilo al equipo activo", () => {
+    const store = useAppStore.getState();
+    store.updateTeamIdentity({
+      teamName: "Equipo real",
+      baseFormation: "4-2-3-1",
+      preferredDefensiveHeight: "mid",
+      pressingPreference: "Presion media sobre pase interior.",
+      buildUpPreference: "Salida corta por dentro.",
+      trainingDays: 3,
+      squadLevel: "amateur",
+    });
+
+    const realObservationId = store.addManualObservation({
+      text: "El interior no llega a apoyar al pivote.",
+      source: "home",
+    });
+    store.activateWeeklyThreadFromObservation(realObservationId!);
+    const realTeamId = useAppStore.getState().team.id;
+
+    store.loadDemoWorkspace();
+    const demoObservationId = store.addManualObservation({
+      text: "El extremo salta tarde al lateral rival.",
+      source: "home",
+    });
+    store.activateWeeklyThreadFromObservation(demoObservationId!);
+    const demoTeamId = useAppStore.getState().team.id;
+
+    expect(realTeamId).not.toBe(demoTeamId);
+    expect(useAppStore.getState().weeklyDecisionThread?.teamId).toBe(demoTeamId);
+
+    store.loadRealWorkspace();
+    store.updateTeamIdentity({
+      teamName: "Equipo real",
+      baseFormation: "4-2-3-1",
+      preferredDefensiveHeight: "mid",
+      pressingPreference: "Presion media sobre pase interior.",
+      buildUpPreference: "Salida corta por dentro.",
+      trainingDays: 3,
+      squadLevel: "amateur",
+    });
+    const nextRealObservationId = store.addManualObservation({
+      text: "El lateral no fija altura en salida.",
+      source: "home",
+    });
+    store.activateWeeklyThreadFromObservation(nextRealObservationId!);
+
+    const next = useAppStore.getState();
+    expect(next.manualObservations[0]?.teamId).toBe(next.team.id);
+    expect(next.weeklyDecisionThread?.teamId).toBe(next.team.id);
+    expect(next.weeklyDecisionThread?.problem).toContain("El lateral no fija");
+  });
+});
+
+describe("coachTeamIdentityContext", () => {
+  it("declara identidad faltante cuando el equipo real no fue configurado", () => {
+    const result = buildCoachTeamIdentityContext({});
+    expect(result.configured).toBe(false);
+    expect(result.summary).toBe(MISSING_TEAM_IDENTITY_MESSAGE);
+    expect(result.structuredGameModel).toBe(MISSING_TEAM_IDENTITY_MESSAGE);
+  });
+
+  it("solo permite rasgos de modelo desde setup explicito", () => {
+    const result = buildCoachTeamIdentityContext({
+      teamIdentity: createDemoTeamIdentitySetup(),
+    });
+    expect(result.configured).toBe(true);
+    expect(result.summary).toContain("4-3-3");
+    expect(result.summary).toContain("altura defensiva alta");
   });
 });
 

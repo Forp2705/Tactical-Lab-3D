@@ -140,6 +140,8 @@ export function App() {
         personalSpace: state.personalSpace,
         layers: state.layers,
         team: state.team,
+        workspaceMode: state.workspaceMode,
+        teamIdentity: state.teamIdentity,
         gameModel: state.gameModel,
         opponentScout: state.opponentScout,
         session: state.session,

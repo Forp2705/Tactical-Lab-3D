@@ -18,12 +18,15 @@ import {
   PatternCard,
   PitchViz,
 } from "@/ui/tacticalPrimitives";
+import { isTeamIdentityConfigured } from "@/data/teamIdentitySetup";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
 import { memo, useMemo, useState } from "react";
 import { TeamTimeline } from "./TeamTimeline";
 
 export function HomeView() {
+  const workspaceMode = useAppStore((state) => state.workspaceMode);
+  const teamIdentity = useAppStore((state) => state.teamIdentity);
   const teamPlayers = useAppStore((state) => state.team.players);
   const gameModel = useAppStore((state) => state.gameModel);
   const opponentScout = useAppStore((state) => state.opponentScout);
@@ -33,7 +36,9 @@ export function HomeView() {
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const tags = useAppStore((state) => state.tags);
   const tracks = useAppStore((state) => state.tracks);
-  const manualObservations = useAppStore((state) => state.manualObservations);
+  const manualObservations = useAppStore((state) =>
+    state.manualObservations.filter((observation) => observation.teamId === state.team.id),
+  );
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const lineupLabShapeCount = useAppStore((state) => state.lineupLab.shapes.length);
   const lineupLabTransitionCount = useAppStore(
@@ -176,6 +181,12 @@ export function HomeView() {
             </div>
           </div>
         </div>
+      </section>
+      <section className="home-mode-strip">
+        <WorkspaceModeCard workspaceMode={workspaceMode} />
+        {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
+          <TeamSetupPrompt identity={teamIdentity} />
+        ) : null}
       </section>
       <CommandSummaryPanel
         activeDay={activeDay.label}
@@ -730,6 +741,166 @@ const TacticalHomeActions = memo(function TacticalHomeActions({
         ))}
       </div>
     </section>
+  );
+});
+
+const WorkspaceModeCard = memo(function WorkspaceModeCard({
+  workspaceMode,
+}: {
+  workspaceMode: "demo" | "real";
+}) {
+  return (
+    <article className="command-summary-card">
+      <span className="eyebrow">Contexto activo</span>
+      <h3>{workspaceMode === "demo" ? "Modo demo" : "Equipo real"}</h3>
+      <p>
+        {workspaceMode === "demo"
+          ? "Usas la semana piloto con identidad y relato preconfigurados."
+          : "El equipo real arranca limpio. El Coach no debe asumir identidad si no la defines."}
+      </p>
+      <div className="home-action-strip">
+        <button
+          type="button"
+          className="home-action"
+          onClick={() => useAppStore.getState().loadDemoWorkspace()}
+        >
+          <div className="lr-icon">DM</div>
+          <div>
+            <b>Cargar demo</b>
+            <small>Usar caso piloto</small>
+          </div>
+        </button>
+        <button
+          type="button"
+          className="home-action"
+          onClick={() => useAppStore.getState().loadRealWorkspace()}
+        >
+          <div className="lr-icon">RT</div>
+          <div>
+            <b>Equipo real</b>
+            <small>Trabajar sin narrativa sembrada</small>
+          </div>
+        </button>
+      </div>
+    </article>
+  );
+});
+
+const TeamSetupPrompt = memo(function TeamSetupPrompt({
+  identity,
+}: {
+  identity: ReturnType<typeof useAppStore.getState>["teamIdentity"];
+}) {
+  return (
+    <article className="command-summary-card primary">
+      <span className="eyebrow">Setup minimo</span>
+      <h3>Define la identidad antes de pedir lecturas de modelo</h3>
+      <p>
+        Si no completas estos campos, el Coach debe trabajar como hipotesis y
+        pedir contexto en vez de inventar como juega el equipo.
+      </p>
+      <div className="home-team-setup-grid">
+        <label>
+          <span>Equipo</span>
+          <input
+            value={identity.teamName}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({ teamName: event.target.value })
+            }
+            placeholder="Nombre del equipo"
+          />
+        </label>
+        <label>
+          <span>Formacion base</span>
+          <input
+            value={identity.baseFormation}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({ baseFormation: event.target.value })
+            }
+            placeholder="4-3-3 / 4-4-2 / 3-4-2-1"
+          />
+        </label>
+        <label>
+          <span>Altura defensiva</span>
+          <select
+            value={identity.preferredDefensiveHeight}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({
+                preferredDefensiveHeight: event.target.value as
+                  | ""
+                  | "low"
+                  | "mid"
+                  | "high",
+              })
+            }
+          >
+            <option value="">Seleccionar</option>
+            <option value="low">Baja</option>
+            <option value="mid">Media</option>
+            <option value="high">Alta</option>
+          </select>
+        </label>
+        <label>
+          <span>Dias de entrenamiento</span>
+          <input
+            type="number"
+            min={0}
+            max={7}
+            value={identity.trainingDays || ""}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({
+                trainingDays: Number(event.target.value || 0),
+              })
+            }
+            placeholder="0-7"
+          />
+        </label>
+        <label>
+          <span>Presion</span>
+          <input
+            value={identity.pressingPreference}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({
+                pressingPreference: event.target.value,
+              })
+            }
+            placeholder="Como y cuando quiere presionar"
+          />
+        </label>
+        <label>
+          <span>Salida</span>
+          <input
+            value={identity.buildUpPreference}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({
+                buildUpPreference: event.target.value,
+              })
+            }
+            placeholder="Como quiere iniciar la construccion"
+          />
+        </label>
+        <label>
+          <span>Nivel del plantel</span>
+          <input
+            value={identity.squadLevel}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({ squadLevel: event.target.value })
+            }
+            placeholder="amateur / semiprofesional / juvenil"
+          />
+        </label>
+        <label className="team-setup-notes">
+          <span>Notas</span>
+          <textarea
+            value={identity.notes}
+            onChange={(event) =>
+              useAppStore.getState().updateTeamIdentity({ notes: event.target.value })
+            }
+            placeholder="Rasgos clave que el staff si quiere declarar"
+          />
+        </label>
+      </div>
+    </article>
   );
 });
 

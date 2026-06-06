@@ -35,6 +35,8 @@ function snapshotFromDefaults(): AppSnapshot {
     personalSpace: s.personalSpace,
     layers: s.layers,
     team: s.team,
+    workspaceMode: s.workspaceMode,
+    teamIdentity: s.teamIdentity,
     gameModel: s.gameModel,
     opponentScout: s.opponentScout,
     session: s.session,

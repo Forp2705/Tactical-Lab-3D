@@ -11,10 +11,11 @@ import {
   DEFAULT_OPPONENT_SCOUT,
   OpponentScoutSchema,
 } from "@/scout/opponentScout";
+import { TeamIdentitySetupSchema } from "@/data/teamIdentitySetup";
 import Dexie, { type Table } from "dexie";
 import { z } from "zod";
 
-export const APP_SNAPSHOT_VERSION = 3;
+export const APP_SNAPSHOT_VERSION = 4;
 
 const VideoMomentSchema = z.enum([
   "firstHalf",
@@ -93,6 +94,7 @@ const LineupLabSnapshotSchema = z.object({
 
 const ManualObservationSnapshotSchema = z.object({
   id: z.string().optional(),
+  teamId: z.string().default("team-real-default"),
   text: z.string().min(1),
   createdAt: z.string().optional(),
   source: z.enum(["home", "postMatch"]).default("home"),
@@ -114,6 +116,7 @@ const WeeklyDecisionSessionIntentSnapshotSchema = z.object({
 const WeeklyDecisionThreadSnapshotSchema = z
   .object({
     id: z.string(),
+    teamId: z.string().default("team-real-default"),
     problem: z.string().min(1),
     origin: z.enum(["manualObservation", "coach", "postMatch", "evolution"]),
     evidenceIds: z.array(z.string()).default([]),
@@ -175,12 +178,15 @@ const snapshotShape = {
     })
     .optional(),
   team: z.object({
+    id: z.string().default("team-real-default"),
     name: z.string(),
     model: z.string(),
     players: z.array(PlayerSchema),
     selectedPlayerId: z.string(),
     lineups: z.array(LineupSchema),
   }),
+  workspaceMode: z.enum(["demo", "real"]).default("real"),
+  teamIdentity: TeamIdentitySetupSchema.default({}),
   gameModel: GameModelSchema.default(DEFAULT_GAME_MODEL),
   opponentScout: OpponentScoutSchema.default(DEFAULT_OPPONENT_SCOUT),
   session: SessionSchema,
@@ -232,6 +238,76 @@ const MIGRATIONS: Record<
     version: 3,
     weeklyDecisionThread: snap.weeklyDecisionThread ?? null,
   }),
+  3: (snap) => {
+    const team = typeof snap.team === "object" && snap.team !== null
+      ? (snap.team as Record<string, unknown>)
+      : {};
+    const teamName =
+      typeof team.name === "string" ? team.name : "";
+    const isDemo =
+      teamName === "Rojo FC" || snap.aiPrompt === "Diagnosticar por que el equipo no logra sostener al pivote cuando pierde la primera linea de pase.";
+    const existingTeamId =
+      typeof team.id === "string" && team.id.trim() ? team.id : "";
+    const teamId =
+      existingTeamId && !(isDemo && existingTeamId === "team-real-default")
+        ? existingTeamId
+        : isDemo
+          ? "team-demo-rojo-fc"
+          : "team-real-default";
+    const manualObservations = Array.isArray(snap.manualObservations)
+      ? snap.manualObservations.map((observation) =>
+          typeof observation === "object" && observation !== null
+            ? {
+                teamId,
+                ...observation,
+              }
+            : observation,
+        )
+      : [];
+    const weeklyDecisionThread =
+      typeof snap.weeklyDecisionThread === "object" &&
+      snap.weeklyDecisionThread !== null
+        ? {
+            teamId,
+            ...(snap.weeklyDecisionThread as Record<string, unknown>),
+          }
+        : null;
+
+    return {
+      ...snap,
+      version: 4,
+      workspaceMode: isDemo ? "demo" : "real",
+      team: {
+        ...team,
+        id: teamId,
+      },
+      teamIdentity: isDemo
+        ? {
+            teamName: "Rojo FC",
+            baseFormation: "4-3-3",
+            preferredDefensiveHeight: "high",
+            pressingPreference: "Presion tras perdida y saltos agresivos sobre pase atras.",
+            buildUpPreference:
+              "Salida corta con pivote visible y extremos altos para fijar amplitud.",
+            trainingDays: 3,
+            squadLevel: "semiprofesional",
+            notes:
+              "Semana piloto enfocada en compactar tras perdida y sostener mejor al pivote.",
+          }
+        : {
+            teamName: teamName,
+            baseFormation: "",
+            preferredDefensiveHeight: "",
+            pressingPreference: "",
+            buildUpPreference: "",
+            trainingDays: 0,
+            squadLevel: "",
+            notes: "",
+          },
+      manualObservations,
+      weeklyDecisionThread,
+    };
+  },
 };
 
 function applyVersionMigrations<T extends Record<string, unknown>>(snap: T): T {
@@ -307,12 +383,19 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
   const migrated = applyVersionMigrations(
     snapshot as unknown as Record<string, unknown>,
   ) as unknown as AppSnapshot;
+  const teamId = migrated.team?.id || "team-real-default";
   return {
     ...migrated,
     version: APP_SNAPSHOT_VERSION,
     exerciseVariants: migrated.exerciseVariants ?? [],
     personalSpace: migrated.personalSpace ?? false,
     viewerQuality: migrated.viewerQuality ?? "medium",
+    team: {
+      ...migrated.team,
+      id: teamId,
+    },
+    workspaceMode: migrated.workspaceMode ?? "real",
+    teamIdentity: migrated.teamIdentity ?? {},
     gameModel: migrated.gameModel ?? DEFAULT_GAME_MODEL,
     opponentScout: migrated.opponentScout ?? DEFAULT_OPPONENT_SCOUT,
     lineupLab: migrated.lineupLab ?? {
@@ -325,7 +408,12 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
     manualObservations: (migrated.manualObservations ?? []).map(
       normalizeManualObservation,
     ),
-    weeklyDecisionThread: migrated.weeklyDecisionThread ?? null,
+    weeklyDecisionThread: migrated.weeklyDecisionThread
+      ? {
+          ...migrated.weeklyDecisionThread,
+          teamId: migrated.weeklyDecisionThread.teamId || teamId,
+        }
+      : null,
   };
 }
 
@@ -393,6 +481,7 @@ function normalizeManualObservation(
         observation.text,
       ),
     createdAt: observation.createdAt ?? new Date().toISOString(),
+    teamId: observation.teamId ?? "team-real-default",
     source: observation.source ?? "home",
   };
 }

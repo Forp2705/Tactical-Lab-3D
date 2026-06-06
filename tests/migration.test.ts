@@ -36,6 +36,8 @@ function snapshotFromDefaults(): AppSnapshot {
     personalSpace: s.personalSpace,
     layers: s.layers,
     team: s.team,
+    workspaceMode: s.workspaceMode,
+    teamIdentity: s.teamIdentity,
     gameModel: s.gameModel,
     opponentScout: s.opponentScout,
     session: s.session,
@@ -61,7 +63,7 @@ describe("parseSnapshot — recuperación tolerante", () => {
     expect(parsed?.time).toBeUndefined();
     // Los campos sanos se conservan.
     expect(parsed?.selectedExerciseId).toBe(base.selectedExerciseId);
-    expect(parsed?.team?.players.length).toBeGreaterThan(0);
+    expect(Array.isArray(parsed?.team?.players)).toBe(true);
     expect(parsed?.session?.id).toBeTruthy();
   });
 
@@ -97,6 +99,26 @@ describe("parseSnapshot — recuperación tolerante", () => {
     expect(parsed).not.toBeNull();
     expect(parsed?.version).toBe(APP_SNAPSHOT_VERSION);
     expect(parsed?.weeklyDecisionThread ?? null).toBeNull();
+  });
+
+  it("migra snapshots v3 demo aislando identidad en teamIdentity", () => {
+    const base = snapshotFromDefaults() as unknown as Record<string, unknown>;
+    base.version = 3;
+    delete base.workspaceMode;
+    delete base.teamIdentity;
+    base.team = {
+      ...(base.team as Record<string, unknown>),
+      name: "Rojo FC",
+      id: undefined,
+    };
+    base.aiPrompt =
+      "Diagnosticar por que el equipo no logra sostener al pivote cuando pierde la primera linea de pase.";
+
+    const parsed = parseSnapshot(base);
+    expect(parsed?.workspaceMode).toBe("demo");
+    expect(parsed?.team.id).toBe("team-demo-rojo-fc");
+    expect(parsed?.teamIdentity.teamName).toBe("Rojo FC");
+    expect(parsed?.teamIdentity.baseFormation).toBe("4-3-3");
   });
 
   it("devuelve null cuando no hay ningún campo reconocible", () => {

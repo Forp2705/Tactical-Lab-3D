@@ -32,6 +32,7 @@ export type WeeklyDecisionSessionIntent = {
 
 export type WeeklyDecisionThread = {
   id: string;
+  teamId: string;
   problem: string;
   origin: WeeklyDecisionThreadOrigin;
   evidenceIds: string[];
@@ -48,6 +49,7 @@ export type WeeklyDecisionThread = {
 
 export type PendingPostMatchImport = {
   threadId: string | null;
+  teamId: string | null;
   source: "manualObservation" | "videoEvidence";
   observationIds: string[];
   evidenceText: string;
@@ -55,6 +57,7 @@ export type PendingPostMatchImport = {
 
 export type ManualObservationLike = {
   id: string;
+  teamId: string;
   text: string;
   createdAt: string;
   source: "home" | "postMatch";
@@ -104,72 +107,85 @@ export function buildSessionIntentFromAdvice(
 
 export function buildThreadFromObservation(
   observation: ManualObservationLike,
+  activeTeamId: string,
   current: WeeklyDecisionThread | null = null,
 ): WeeklyDecisionThread {
+  const scopedCurrent = current?.teamId === activeTeamId ? current : null;
   const sessionIntent =
-    current?.sessionIntent ?? buildSessionIntentFromProblem(observation.text);
+    scopedCurrent?.sessionIntent ?? buildSessionIntentFromProblem(observation.text);
 
   return {
-    id: current?.id ?? makeWeeklyThreadId(),
+    id: scopedCurrent?.id ?? makeWeeklyThreadId(),
+    teamId: activeTeamId,
     problem: observation.text.trim(),
     origin: "manualObservation",
-    evidenceIds: uniqueStrings([...(current?.evidenceIds ?? []), observation.id]),
+    evidenceIds: uniqueStrings([...(scopedCurrent?.evidenceIds ?? []), observation.id]),
     mode: "hypothesis",
-    confidence: clampConfidence(current?.confidence ?? 0.38),
+    confidence: clampConfidence(scopedCurrent?.confidence ?? 0.38),
     sessionIntent,
     nextReviewCriteria: uniqueStrings([
-      ...(current?.nextReviewCriteria ?? []),
+      ...(scopedCurrent?.nextReviewCriteria ?? []),
       sessionIntent.reviewCriteria,
     ]).slice(0, 4),
-    status: current?.status === "evolved" ? "open" : current?.status ?? "open",
+    status:
+      scopedCurrent?.status === "evolved"
+        ? "open"
+        : scopedCurrent?.status ?? "open",
     progress: "open",
-    createdAt: current?.createdAt ?? observation.createdAt,
+    createdAt: scopedCurrent?.createdAt ?? observation.createdAt,
     updatedAt: observation.createdAt,
-    lastReportId: current?.lastReportId,
+    lastReportId: scopedCurrent?.lastReportId,
   };
 }
 
 export function buildThreadFromCoachResponse(
   response: CoachResponse,
   prompt: string,
+  activeTeamId: string,
   current: WeeklyDecisionThread | null = null,
 ): WeeklyDecisionThread | null {
-  const baseProblem = prompt.trim() || current?.problem?.trim() || "";
-  if (!baseProblem && response.mode === "question") return current;
+  const scopedCurrent = current?.teamId === activeTeamId ? current : null;
+  const baseProblem = prompt.trim() || scopedCurrent?.problem?.trim() || "";
+  if (!baseProblem && response.mode === "question") return scopedCurrent;
 
   const now = new Date().toISOString();
 
   if (response.mode === "question") {
     const sessionIntent =
-      current?.sessionIntent ?? buildSessionIntentFromProblem(baseProblem);
+      scopedCurrent?.sessionIntent ?? buildSessionIntentFromProblem(baseProblem);
     return {
-      id: current?.id ?? makeWeeklyThreadId(),
-      problem: current?.problem?.trim() || baseProblem,
+      id: scopedCurrent?.id ?? makeWeeklyThreadId(),
+      teamId: activeTeamId,
+      problem: scopedCurrent?.problem?.trim() || baseProblem,
       origin: "coach",
-      evidenceIds: current?.evidenceIds ?? [],
+      evidenceIds: scopedCurrent?.evidenceIds ?? [],
       mode: "hypothesis",
       confidence: clampConfidence(response.confidenceCap),
       sessionIntent,
       nextReviewCriteria: uniqueStrings([
-        ...(current?.nextReviewCriteria ?? []),
+        ...(scopedCurrent?.nextReviewCriteria ?? []),
         sessionIntent.reviewCriteria,
       ]).slice(0, 4),
-      status: current?.status === "evolved" ? "open" : current?.status ?? "open",
-      progress: current?.progress ?? "open",
-      createdAt: current?.createdAt ?? now,
+      status:
+        scopedCurrent?.status === "evolved"
+          ? "open"
+          : scopedCurrent?.status ?? "open",
+      progress: scopedCurrent?.progress ?? "open",
+      createdAt: scopedCurrent?.createdAt ?? now,
       updatedAt: now,
-      lastReportId: current?.lastReportId,
+      lastReportId: scopedCurrent?.lastReportId,
     };
   }
 
   const advice = response.advice;
   const sessionIntent = buildSessionIntentFromAdvice(advice);
   return {
-    id: current?.id ?? makeWeeklyThreadId(),
+    id: scopedCurrent?.id ?? makeWeeklyThreadId(),
+    teamId: activeTeamId,
     problem: advice.tacticalReading.trim() || baseProblem,
     origin: "coach",
     evidenceIds: uniqueStrings([
-      ...(current?.evidenceIds ?? []),
+      ...(scopedCurrent?.evidenceIds ?? []),
       ...advice.evidenceCitations.map((citation) => citation.sourceId),
     ]),
     mode: response.mode,
@@ -181,24 +197,29 @@ export function buildThreadFromCoachResponse(
       advice.saturdayFocus,
       ...advice.successSignals,
     ]).slice(0, 5),
-    status: current?.status === "evolved" ? "open" : current?.status ?? "open",
-    progress: current?.progress ?? "open",
-    createdAt: current?.createdAt ?? now,
+    status:
+      scopedCurrent?.status === "evolved"
+        ? "open"
+        : scopedCurrent?.status ?? "open",
+    progress: scopedCurrent?.progress ?? "open",
+    createdAt: scopedCurrent?.createdAt ?? now,
     updatedAt: now,
-    lastReportId: current?.lastReportId,
+    lastReportId: scopedCurrent?.lastReportId,
   };
 }
 
 export function buildThreadFromPostMatchReport(
   report: WeeklyDecisionThreadReportInput,
+  activeTeamId: string,
   current: WeeklyDecisionThread | null = null,
 ): WeeklyDecisionThread | null {
+  const scopedCurrent = current?.teamId === activeTeamId ? current : null;
   const primaryProblem =
     report.report.ownTeamProblems[0]?.problem ||
     report.report.mainProblems[0]?.problem ||
-    current?.problem ||
+    scopedCurrent?.problem ||
     "";
-  if (!primaryProblem.trim()) return current;
+  if (!primaryProblem.trim()) return scopedCurrent;
 
   const primaryWednesdayTest = report.report.wednesdayTest[0];
   const primarySaturdayFocus = report.report.saturdayFocus[0];
@@ -209,34 +230,35 @@ export function buildThreadFromPostMatchReport(
   );
 
   const sessionIntent = buildSessionIntentFromProblem(
-    current?.problem?.trim() || primaryProblem,
+    scopedCurrent?.problem?.trim() || primaryProblem,
     {
       objective:
-        current?.sessionIntent?.objective ||
+        scopedCurrent?.sessionIntent?.objective ||
         primaryWednesdayTest?.hypothesis ||
         `Ajustar el comportamiento asociado a: ${primaryProblem}`,
       successSignal:
         primarySuccessSignal ||
-        current?.sessionIntent?.successSignal ||
+        scopedCurrent?.sessionIntent?.successSignal ||
         "Confirmar si el ajuste aparece en el siguiente partido.",
       reviewCriteria:
         primaryWednesdayTest?.test ||
         primarySaturdayFocus ||
-        current?.sessionIntent?.reviewCriteria ||
+        scopedCurrent?.sessionIntent?.reviewCriteria ||
         `Comparar si ${normalizeProblemForSentence(primaryProblem)} reaparece en el siguiente partido.`,
     },
   );
   const now = new Date().toISOString();
 
   return {
-    id: current?.id ?? makeWeeklyThreadId(),
-    problem: current?.problem?.trim() || primaryProblem.trim(),
+    id: scopedCurrent?.id ?? makeWeeklyThreadId(),
+    teamId: activeTeamId,
+    problem: scopedCurrent?.problem?.trim() || primaryProblem.trim(),
     origin: "postMatch",
     evidenceIds: uniqueStrings([
-      ...(current?.evidenceIds ?? []),
+      ...(scopedCurrent?.evidenceIds ?? []),
       ...reportEvidenceIds,
     ]),
-    mode: current?.mode ?? "hypothesis",
+    mode: scopedCurrent?.mode ?? "hypothesis",
     confidence: clampConfidence(report.report.reflection.confidence),
     sessionIntent,
     nextReviewCriteria: uniqueStrings([
@@ -249,8 +271,8 @@ export function buildThreadFromPostMatchReport(
       ]),
     ]).slice(0, 5),
     status: "reviewed",
-    progress: current?.progress ?? "open",
-    createdAt: current?.createdAt ?? now,
+    progress: scopedCurrent?.progress ?? "open",
+    createdAt: scopedCurrent?.createdAt ?? now,
     updatedAt: now,
     lastReportId: report.id ?? report.report.id,
   };
@@ -259,15 +281,17 @@ export function buildThreadFromPostMatchReport(
 export function buildPendingPostMatchImport(
   observations: ManualObservationLike[],
   observationIds: string[],
+  activeTeamId: string,
   threadId: string | null,
 ): PendingPostMatchImport | null {
   const scoped = observations.filter((observation) =>
-    observationIds.includes(observation.id),
+    observation.teamId === activeTeamId && observationIds.includes(observation.id),
   );
   if (!scoped.length) return null;
 
   return {
     threadId,
+    teamId: activeTeamId,
     source: "manualObservation",
     observationIds: scoped.map((observation) => observation.id),
     evidenceText: manualObservationsToEvidenceText(scoped),

@@ -7,6 +7,7 @@ import {
 } from "./CoachSchemas";
 import type { CoachShapeContext, ManualObservation } from "@/state/useAppStore";
 import type { GameModel } from "@/data/gameModel";
+import type { TeamIdentitySetup } from "@/data/teamIdentitySetup";
 import type { OpponentScout } from "@/scout/opponentScout";
 
 type CoachAgentError = {
@@ -31,6 +32,9 @@ export type CoachAgentSquadPlayer = {
 };
 
 export type CoachAgentRuntimeContext = {
+  workspaceMode?: "demo" | "real";
+  activeTeamId?: string;
+  teamIdentity?: TeamIdentitySetup;
   shapeContext?: CoachShapeContext | null;
   teamModel?: string;
   gameModel?: GameModel;

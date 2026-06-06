@@ -2024,6 +2024,45 @@ body .app-shell .brand-mark {
   line-height: 1.05;
 }
 
+.home-mode-strip {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.home-team-setup-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-team-setup-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.home-team-setup-grid label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-team-setup-grid input,
+.home-team-setup-grid select,
+.home-team-setup-grid textarea {
+  width: 100%;
+}
+
+.team-setup-notes {
+  grid-column: 1 / -1;
+}
+
+.team-setup-notes textarea {
+  min-height: 92px;
+}
+
 .home-deep-dive {
   background: color-mix(in oklch, var(--panel) 88%, transparent) !important;
 }

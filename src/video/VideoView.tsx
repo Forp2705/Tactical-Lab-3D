@@ -403,6 +403,7 @@ export function VideoView() {
     const store = useAppStore.getState();
     store.setPendingPostMatchImport({
       threadId: store.weeklyDecisionThread?.id ?? null,
+      teamId: store.team.id,
       source: "videoEvidence",
       observationIds: [],
       evidenceText,
@@ -513,6 +514,7 @@ export function VideoView() {
     const store = useAppStore.getState();
     store.setPendingPostMatchImport({
       threadId: store.weeklyDecisionThread?.id ?? null,
+      teamId: store.team.id,
       source: "videoEvidence",
       observationIds: [],
       evidenceText: videoPatternScanToEvidenceText(scanState.result),

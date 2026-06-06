@@ -21,10 +21,16 @@ function getRecencyScore(lastSeen: string) {
 }
 
 export async function retrieveRelevantGeneratedMemory(
-  userInput: string
+  userInput: string,
+  options?: {
+    allowStaffIdentity?: boolean
+  },
 ) {
   const generatedMemory = await loadGeneratedMemory()
-  const documents = generatedMemory.map((item, index) => ({
+  const filteredMemory = generatedMemory.filter(
+    (item) => options?.allowStaffIdentity !== false || item.category !== "staffIdentity",
+  )
+  const documents = filteredMemory.map((item, index) => ({
     id: `MEM-${index + 1}-${item.lastSeen}`,
     sourceType: "memory" as const,
     title: `${item.category}: ${item.pattern.slice(0, 90)}`,

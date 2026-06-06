@@ -60,6 +60,7 @@ type LastRunState =
   | { state: "error"; at: string; message: string };
 
 type CockpitContext = {
+  workspaceMode: "demo" | "real";
   availablePlayers: number;
   unavailablePlayers: number;
   teamModel: string;
@@ -98,6 +99,8 @@ type EvidenceViewModel = {
 export function AiView() {
   const prompt = useAppStore((state) => state.aiPrompt);
   const coachShapeContext = useAppStore((state) => state.coachShapeContext);
+  const workspaceMode = useAppStore((state) => state.workspaceMode);
+  const teamIdentity = useAppStore((state) => state.teamIdentity);
   const teamPlayers = useAppStore((state) => state.team.players);
   const teamModel = useAppStore((state) => state.team.model);
   const lineupLabShapes = useAppStore((state) => state.lineupLab.shapes);
@@ -107,7 +110,9 @@ export function AiView() {
   const tagsCount = useAppStore((state) => state.tags.length);
   const tracksCount = useAppStore((state) => state.tracks.length);
   const sessionBlockCount = useAppStore((state) => state.session.blocks.length);
-  const manualObservations = useAppStore((state) => state.manualObservations);
+  const manualObservations = useAppStore((state) =>
+    state.manualObservations.filter((observation) => observation.teamId === state.team.id),
+  );
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const mode = useAppStore((state) => state.aiMode);
@@ -171,7 +176,11 @@ export function AiView() {
     () => ({
       availablePlayers,
       unavailablePlayers,
-      teamModel: teamModel || "Modelo de equipo no definido",
+      teamModel:
+        teamModel ||
+        (workspaceMode === "demo"
+          ? "Modelo demo"
+          : "No tengo modelo de juego definido para este equipo."),
       shapes: lineupLabShapes.length,
       transitions: lineupLabTransitions.length,
       activeShape:
@@ -186,6 +195,7 @@ export function AiView() {
       recentReports,
       acceptedMemory,
       teamPatterns,
+      workspaceMode,
     }),
     [
       acceptedMemory,
@@ -202,6 +212,7 @@ export function AiView() {
       teamPatterns,
       tracksCount,
       unavailablePlayers,
+      workspaceMode,
     ],
   );
 
@@ -228,7 +239,9 @@ export function AiView() {
     if (!input || loading) return;
     const runtimeState = useAppStore.getState();
     const coachContext = buildCoachRuntimeContext(
+      runtimeState.workspaceMode,
       runtimeState.team,
+      runtimeState.teamIdentity,
       runtimeState.coachShapeContext,
       runtimeState.gameModel,
       runtimeState.opponentScout,
@@ -518,7 +531,9 @@ function impactLabel(value: ContextualQuestion["expectedImpactOnDiagnosis"]) {
 }
 
 function buildCoachRuntimeContext(
+  workspaceMode: ReturnType<typeof useAppStore.getState>["workspaceMode"],
   team: ReturnType<typeof useAppStore.getState>["team"],
+  teamIdentity: ReturnType<typeof useAppStore.getState>["teamIdentity"],
   coachShapeContext: ReturnType<
     typeof useAppStore.getState
   >["coachShapeContext"],
@@ -529,6 +544,9 @@ function buildCoachRuntimeContext(
   const lineupLab = runtimeState.lineupLab;
   const playerById = new Map(team.players.map((player) => [player.id, player]));
   const { tags, tracks, manualObservations } = runtimeState;
+  const scopedObservations = manualObservations.filter(
+    (observation) => observation.teamId === team.id,
+  );
   const videoEvidenceSummary = summarizeVideoEvidence(tags, tracks);
   const videoEvidenceText = videoEvidenceToTagsText(tags, tracks).trim();
   const toPlayer = (player: Player) => ({
@@ -549,6 +567,9 @@ function buildCoachRuntimeContext(
   });
 
   return {
+    workspaceMode,
+    activeTeamId: team.id,
+    teamIdentity,
     shapeContext: coachShapeContext,
     teamModel: team.model,
     gameModel,
@@ -559,7 +580,7 @@ function buildCoachRuntimeContext(
           text: videoEvidenceText,
         }
       : undefined,
-    manualObservations,
+    manualObservations: scopedObservations,
     savedLineups: team.lineups.map((lineup) => ({
       id: lineup.id,
       name: lineup.name,
