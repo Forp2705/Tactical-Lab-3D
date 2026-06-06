@@ -101,6 +101,7 @@ export function AiView() {
   const coachShapeContext = useAppStore((state) => state.coachShapeContext);
   const workspaceMode = useAppStore((state) => state.workspaceMode);
   const teamIdentity = useAppStore((state) => state.teamIdentity);
+  const activeTeamId = useAppStore((state) => state.team.id);
   const teamPlayers = useAppStore((state) => state.team.players);
   const teamModel = useAppStore((state) => state.team.model);
   const lineupLabShapes = useAppStore((state) => state.lineupLab.shapes);
@@ -110,9 +111,7 @@ export function AiView() {
   const tagsCount = useAppStore((state) => state.tags.length);
   const tracksCount = useAppStore((state) => state.tracks.length);
   const sessionBlockCount = useAppStore((state) => state.session.blocks.length);
-  const manualObservations = useAppStore((state) =>
-    state.manualObservations.filter((observation) => observation.teamId === state.team.id),
-  );
+  const allManualObservations = useAppStore((state) => state.manualObservations);
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const mode = useAppStore((state) => state.aiMode);
@@ -170,6 +169,13 @@ export function AiView() {
     () =>
       teamPlayers.filter((player) => player.status === "available").length,
     [teamPlayers],
+  );
+  const manualObservations = useMemo(
+    () =>
+      allManualObservations.filter(
+        (observation) => observation.teamId === activeTeamId,
+      ),
+    [activeTeamId, allManualObservations],
   );
   const unavailablePlayers = teamPlayers.length - availablePlayers;
   const cockpitContext = useMemo(

@@ -27,6 +27,7 @@ import { TeamTimeline } from "./TeamTimeline";
 export function HomeView() {
   const workspaceMode = useAppStore((state) => state.workspaceMode);
   const teamIdentity = useAppStore((state) => state.teamIdentity);
+  const activeTeamId = useAppStore((state) => state.team.id);
   const teamPlayers = useAppStore((state) => state.team.players);
   const gameModel = useAppStore((state) => state.gameModel);
   const opponentScout = useAppStore((state) => state.opponentScout);
@@ -36,9 +37,7 @@ export function HomeView() {
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const tags = useAppStore((state) => state.tags);
   const tracks = useAppStore((state) => state.tracks);
-  const manualObservations = useAppStore((state) =>
-    state.manualObservations.filter((observation) => observation.teamId === state.team.id),
-  );
+  const allManualObservations = useAppStore((state) => state.manualObservations);
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const lineupLabShapeCount = useAppStore((state) => state.lineupLab.shapes.length);
   const lineupLabTransitionCount = useAppStore(
@@ -55,6 +54,13 @@ export function HomeView() {
   const evidence = useMemo(
     () => summarizeVideoEvidence(tags, tracks),
     [tags, tracks],
+  );
+  const manualObservations = useMemo(
+    () =>
+      allManualObservations.filter(
+        (observation) => observation.teamId === activeTeamId,
+      ),
+    [activeTeamId, allManualObservations],
   );
   const patterns = useMemo(
     () =>
