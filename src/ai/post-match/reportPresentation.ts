@@ -116,6 +116,27 @@ export function memoryScopeLabel(scope: string) {
   return scope;
 }
 
+/**
+ * User-facing copy for a memory candidate's trust-guard lifecycle status.
+ * This is the single source of truth for what staff sees about whether a
+ * selected candidate actually became tactical memory — the wording for
+ * "accepted" / "needs_review" / "rejected" is fixed by product requirements
+ * so staff never mistakes a vetoed candidate for a saved one.
+ */
+export function memoryStatusLabel(status: string) {
+  if (status === "accepted") return "Guardado como aprendizaje";
+  if (status === "needs_review") return "Pendiente de revision";
+  if (status === "rejected") return "No guardado: evidencia insuficiente";
+  return "Propuesta sin revisar";
+}
+
+export function memoryStatusModifierClass(status: string) {
+  if (status === "accepted") return "is-accepted";
+  if (status === "needs_review") return "is-needs-review";
+  if (status === "rejected") return "is-rejected";
+  return "is-candidate";
+}
+
 function unique(items: string[]) {
   return Array.from(new Set(items.filter(Boolean)));
 }

@@ -2,6 +2,12 @@ import { z } from "zod";
 
 export const ConfidenceSchema = z.enum(["low", "medium", "high"]);
 export const SubjectSchema = z.enum(["own", "rival", "both", "unknown"]);
+export const MemoryCandidateStatusSchema = z.enum([
+  "candidate",
+  "needs_review",
+  "accepted",
+  "rejected",
+]);
 
 export const PostMatchTagSchema = z.object({
   minute: z.number().min(0).max(130).optional(),
@@ -57,6 +63,7 @@ export const MemoryCandidateSchema = z.object({
   evidence: z.array(z.string()).default([]),
   confidence: ConfidenceSchema,
   scope: z.enum(["oneOff", "repeatWatch", "validated"]),
+  status: MemoryCandidateStatusSchema.default("candidate"),
   selectedByStaff: z.boolean().default(false),
 });
 

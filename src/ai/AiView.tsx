@@ -348,11 +348,11 @@ export function AiView() {
       <section className="ai-cockpit">
         <header className="ai-cockpit-hero team-card">
           <div>
-            <span className="panel-eyebrow">Coach / informe semanal</span>
-            <h3>Diagnostico tactico con contexto real del equipo</h3>
+            <span className="panel-eyebrow">Diagnostico semanal</span>
+            <h3>Decision tactica con evidencia visible</h3>
             <p>
-              Formula el problema, revisa que evidencia sostiene la lectura y
-              baja una decision concreta a la semana.
+              Formula el problema, distingue hipotesis de diagnostico y baja
+              una accion concreta a la semana.
             </p>
           </div>
           <div className="ai-hero-metrics" aria-label="Resumen del agente">
@@ -362,7 +362,7 @@ export function AiView() {
             />
             <MetricPill label="Shapes" value={cockpitContext.shapes} />
             <MetricPill
-              label="Evid actual"
+              label="Evidencia"
               value={
                 cockpitContext.videoTags +
                 cockpitContext.videoTracks +
@@ -707,7 +707,7 @@ function AgentStatusPanel({
           label="Modelo"
           value={status?.openRouterModel ?? "No detectado"}
         />
-        <StatusLine label="Runtime" value={status?.runtime ?? "local"} />
+        <StatusLine label="Entorno" value={status?.runtime ?? "local"} />
         <StatusLine label="Fallback" value="Automatico server-side" />
         <StatusLine
           label="Ultima consulta"
@@ -1128,7 +1128,7 @@ function AdviceResult({
       ? "Diagnostico"
       : "Hipotesis";
   const supportSummary = currentEvidence
-    ? `${currentEvidence} evidencia(s) actual(es) citada(s) y ${Math.max(0, evidenceItems.length - currentEvidence)} apoyo(s) extra.`
+    ? `${currentEvidence} fuentes actuales citadas y ${Math.max(0, evidenceItems.length - currentEvidence)} apoyos de contexto.`
     : evidenceItems.length
       ? "No hay evidencia actual citada; la lectura se apoya en memoria, reportes previos o principios."
       : "No hay citas validas para sostener un diagnostico cerrado.";
@@ -1261,7 +1261,7 @@ function AdviceResult({
       <section className="coach-report-card decision-summary-card">
         <div className="section-title">
           <div>
-            <span className="panel-eyebrow">Decision product</span>
+            <span className="panel-eyebrow">Decision semanal</span>
             <h4>Lectura principal y siguiente accion</h4>
           </div>
           <ConfidenceBadge confidence={advice.reflection.confidence} compact />
@@ -1435,7 +1435,7 @@ function ShortCoachSummary({
       </div>
       <div className="short-summary-grid">
         <SummaryItem label={modeLabel} value={hypothesis} strong />
-        <SummaryItem label="Que lo sostiene" value={supportingEvidence} />
+        <SummaryItem label="Evidencia actual" value={supportingEvidence} />
         <SummaryItem label="Que falta validar" value={missingValidation} />
         <SummaryItem label="Accion primaria" value={primaryAction} />
         <SummaryItem label="Siguiente paso" value={nextStep} />
@@ -1627,7 +1627,7 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
       <div className="evidence-summary-row" aria-label="Resumen de fuentes">
         <span>Actual: {currentEvidence.length}</span>
         <span>Memoria/reportes: {previousMemory.length}</span>
-        <span>Knowledge: {contextSources.length}</span>
+        <span>Contexto tactico: {contextSources.length}</span>
         <span>Total: {evidenceItems.length}</span>
       </div>
       <EvidenceBar
@@ -1645,7 +1645,7 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
         <div className="evidence-groups">
           <EvidenceGroup
             title="Evidencia actual del caso"
-            description="Observaciones manuales o datos actuales citados por el Coach."
+            description="Observaciones manuales, video o datos del caso citados por el Coach."
             items={currentEvidence}
           />
           <EvidenceGroup
@@ -2276,7 +2276,7 @@ function EmptyState({
   return (
     <section className="coach-report empty-coach-state">
       <span className="panel-eyebrow">Sin consulta activa</span>
-      <h3>El cockpit ya tiene contexto cargado</h3>
+      <h3>La sala ya tiene contexto cargado</h3>
       <p>
         Cuando consultes, la respuesta va a mostrar lectura, evidencia usada,
         acciones posibles y nivel de confianza.
@@ -2439,7 +2439,7 @@ function labelForSourceType(
   > = {
     knowledge: "Principio",
     memory: "Memoria",
-    observation: "Observacion",
+    observation: "Observacion manual",
     report: "Reporte",
     video: "Video",
   };
@@ -2487,10 +2487,10 @@ function bucketForCitation(citation: CoachEvidenceCitation): EvidenceBucket {
 
 function modeLabelForCitation(citation: CoachEvidenceCitation) {
   if (isManualObservationCitation(citation)) {
-    return "Observacion manual del staff"
+    return "Observacion manual del staff";
   }
   const labels: Record<CoachEvidenceCitation["sourceType"], string> = {
-    observation: "Confirmado por evidencia actual",
+    observation: "Evidencia manual actual",
     video: "Confirmado por video/timestamp",
     memory: "Usado como memoria previa",
     report: "Usado como reporte previo",

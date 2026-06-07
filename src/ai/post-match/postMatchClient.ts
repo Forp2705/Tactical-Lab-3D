@@ -48,14 +48,27 @@ export async function commitMemoryCandidates({
 }: {
   reportId: string;
   candidates: MemoryCandidate[];
-}): Promise<{ committedCount: number; skippedDuplicates: number }> {
+}): Promise<{
+  committedCount: number;
+  skippedDuplicates: number;
+  rejectedByTrustGuard: number;
+  committedCandidateIds: string[];
+}> {
   const result = await postJson<{
     committedCount: number;
     skippedDuplicates: number;
+    rejectedByTrustGuard?: number;
+    committedCandidateIds?: string[];
   }>("/api/post-match/memory", { reportId, candidates });
 
+  // Only IDs the server explicitly confirms as committed may be marked
+  // "accepted" on the client. Falling back to "everything the staff selected"
+  // would make a TrustGuard veto invisible — the staff would see their
+  // selection reflected as saved even though the server rejected it.
+  const committedCandidateIds = result.committedCandidateIds ?? [];
+
   if (reportsCache) {
-    const accepted = new Set(candidates.map((candidate) => candidate.id));
+    const accepted = new Set(committedCandidateIds);
     setReportsCache(
       reportsCache.map((savedReport) => {
         if (savedReport.id !== reportId) return savedReport;
@@ -77,6 +90,9 @@ export async function commitMemoryCandidates({
                 ...candidate,
                 selectedByStaff:
                   candidate.selectedByStaff || accepted.has(candidate.id),
+                status: accepted.has(candidate.id)
+                  ? "accepted"
+                  : candidate.status,
               }),
             ),
           },
@@ -85,7 +101,12 @@ export async function commitMemoryCandidates({
     );
   }
 
-  return result;
+  return {
+    committedCount: result.committedCount,
+    skippedDuplicates: result.skippedDuplicates,
+    rejectedByTrustGuard: result.rejectedByTrustGuard ?? 0,
+    committedCandidateIds,
+  };
 }
 
 export async function listPostMatchReports(

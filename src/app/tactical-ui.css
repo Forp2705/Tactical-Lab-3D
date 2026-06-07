@@ -2352,6 +2352,22 @@ body .app-shell .brand-mark {
   margin: 0;
 }
 
+.timeline-confirm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in oklch, var(--line) 80%, transparent);
+}
+
+.timeline-confirm-row span,
+.timeline-confirm-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .timeline-decision-grid {
   display: grid;
   gap: 12px;
@@ -2602,6 +2618,472 @@ body .app-shell .brand-mark {
   }
 
   .timeline-retention-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+   ROMBOIQ WEEKLY LOOP POLISH
+   Premium product pass for Sala -> Diagnostico -> Sesion ->
+   Post-partido -> Evolucion. Presentation-only styles.
+   ============================================================ */
+
+.app-shell {
+  --weekly-surface: color-mix(in oklch, var(--panel) 92%, #000);
+  --weekly-surface-raised: color-mix(in oklch, var(--panel-2) 88%, var(--text) 2%);
+  --weekly-border: color-mix(in oklch, var(--line) 78%, transparent);
+  --weekly-border-strong: color-mix(in oklch, var(--accent) 28%, var(--line));
+}
+
+.main {
+  padding-top: clamp(18px, 2.4vw, 30px);
+}
+
+.topbar {
+  margin-bottom: 26px;
+}
+
+.topbar h2 {
+  font-size: clamp(25px, 2.2vw, 34px);
+  line-height: 1.08;
+}
+
+.topbar p,
+.home-subtitle,
+.home-hero-intent,
+.muted-panel,
+.workflow-card p,
+.session-source-note {
+  color: color-mix(in oklch, var(--text) 68%, transparent) !important;
+}
+
+.sidebar {
+  gap: 18px;
+}
+
+.brand {
+  padding-bottom: 14px;
+}
+
+.brand h1 {
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.nav {
+  gap: 6px;
+}
+
+.nav-section-label,
+.panel-eyebrow,
+.eyebrow {
+  letter-spacing: 0.08em !important;
+}
+
+.app-shell .nav .nav-btn {
+  min-height: 42px !important;
+  border-radius: 10px !important;
+}
+
+.app-shell .nav .nav-btn.active {
+  background: color-mix(in oklch, var(--accent) 9%, var(--panel)) !important;
+  border-color: var(--weekly-border-strong) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 10%, transparent) !important;
+}
+
+.app-shell .nav .nav-btn.active .nav-code {
+  background: var(--panel) !important;
+  border-color: color-mix(in oklch, var(--accent) 42%, var(--line)) !important;
+  color: var(--accent) !important;
+}
+
+.nav-more {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.nav-details-copy {
+  color: color-mix(in oklch, var(--text) 58%, transparent);
+}
+
+.command-hero,
+.ai-cockpit-hero,
+.team-card,
+.card,
+.coach-report,
+.coach-report-card,
+.ai-card,
+.session-block,
+.timeline-weekly-decision,
+.session-origin-card,
+.home-next-action,
+.workflow-card,
+.command-summary-card {
+  border-color: var(--weekly-border) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+.command-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  padding: clamp(22px, 3vw, 34px);
+}
+
+.command-hero .home-title {
+  max-width: 13ch;
+  font-size: clamp(38px, 4.8vw, 62px);
+  letter-spacing: 0 !important;
+  line-height: 0.98;
+  text-transform: none;
+}
+
+.home-next-action,
+.session-origin-card,
+.postmatch-verdict-card,
+.coach-short-summary,
+.timeline-weekly-decision {
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--accent) 7%, var(--weekly-surface)), var(--weekly-surface)) !important;
+  border-color: var(--weekly-border-strong) !important;
+}
+
+.home-next-action {
+  gap: 10px;
+  max-width: 660px;
+  padding: 16px 18px;
+}
+
+.home-next-action h3,
+.workflow-card h3,
+.session-origin-card h4,
+.timeline-weekly-decision h4,
+.postmatch-verdict-card h4 {
+  color: var(--text);
+  line-height: 1.18;
+  text-wrap: balance;
+}
+
+.command-status-row,
+.football-report-kicker,
+.evidence-summary-row {
+  gap: 7px;
+}
+
+.home-mode-strip,
+.command-summary-grid,
+.home-workflow-grid {
+  gap: 14px;
+}
+
+.command-summary-card {
+  min-height: 132px;
+  padding: 16px;
+}
+
+.command-summary-card h3 {
+  font-size: clamp(19px, 1.7vw, 25px);
+  line-height: 1.14;
+}
+
+.workflow-card {
+  align-content: start;
+  gap: 12px;
+  min-height: 210px;
+  padding: 18px;
+}
+
+.workflow-card .btn {
+  align-self: end;
+  justify-self: start;
+}
+
+.quick-observation-card {
+  padding: 18px;
+}
+
+.quick-observation-input {
+  background: var(--weekly-surface-raised) !important;
+  min-height: 96px;
+}
+
+.quick-observation-item,
+.session-intent-item,
+.timeline-summary-pill,
+.problem-breakdown-item,
+.alternative-adjustment-card,
+.ai-evidence-item,
+.video-evidence-item,
+.memory-candidate {
+  border-radius: 11px !important;
+  background: color-mix(in oklch, var(--panel-2) 78%, transparent) !important;
+  border-color: var(--weekly-border) !important;
+}
+
+.memory-candidate-status {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  background: color-mix(in oklch, var(--panel-2) 70%, transparent);
+  color: var(--muted);
+  width: fit-content;
+}
+
+.memory-candidate-status.is-accepted {
+  border-color: color-mix(in oklch, var(--good) 45%, transparent);
+  background: color-mix(in oklch, var(--good) 14%, transparent);
+  color: var(--good);
+}
+
+.memory-candidate-status.is-needs-review {
+  border-color: color-mix(in oklch, var(--warn) 45%, transparent);
+  background: color-mix(in oklch, var(--warn) 12%, transparent);
+  color: var(--warn);
+}
+
+.memory-candidate-status.is-rejected {
+  border-color: color-mix(in oklch, var(--danger) 45%, transparent);
+  background: color-mix(in oklch, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.memory-candidate-status.is-candidate {
+  border-color: var(--line);
+  background: color-mix(in oklch, var(--panel-2) 70%, transparent);
+  color: var(--muted);
+}
+
+.quick-observation-item {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.quick-observation-item .toolbar {
+  justify-content: flex-start;
+}
+
+.ai-cockpit {
+  gap: 18px;
+}
+
+.ai-cockpit-hero h3 {
+  max-width: 760px;
+  font-size: clamp(27px, 2.6vw, 38px);
+  line-height: 1.05;
+  text-transform: none;
+}
+
+.ai-hero-metrics {
+  gap: 8px;
+}
+
+.ai-metric-pill {
+  min-height: 70px;
+}
+
+.ai-command-card textarea {
+  min-height: 150px;
+}
+
+.coach-report {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-short-summary {
+  border-left: 1px solid var(--weekly-border-strong) !important;
+  padding: 18px !important;
+}
+
+.coach-short-summary .section-title h3 {
+  font-size: clamp(25px, 2.6vw, 34px);
+  line-height: 1.06;
+}
+
+.short-summary-grid {
+  gap: 12px;
+}
+
+.short-summary-item {
+  min-height: 104px;
+  background: color-mix(in oklch, var(--panel) 84%, transparent);
+}
+
+.football-report-hero {
+  border-left: 1px solid var(--weekly-border-strong) !important;
+}
+
+.football-report-hero h3 {
+  text-transform: none;
+}
+
+.decision-summary-card .problem-breakdown-item {
+  min-height: 104px;
+}
+
+.confidence-chip,
+.ai-context-chip,
+.chip,
+.tag-pill {
+  border-radius: 999px !important;
+  font-weight: 700;
+}
+
+.evidence-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.evidence-groups {
+  gap: 12px;
+}
+
+.evidence-group {
+  padding: 12px;
+  border: 1px solid var(--weekly-border);
+  border-radius: 12px;
+  background: color-mix(in oklch, var(--panel) 72%, transparent);
+}
+
+.evidence-group-head {
+  align-items: start;
+}
+
+.ai-evidence-list {
+  gap: 10px;
+}
+
+.ai-evidence-item.current {
+  border-color: color-mix(in oklch, var(--accent) 30%, var(--line)) !important;
+}
+
+.ai-evidence-item.memory {
+  border-color: color-mix(in oklch, var(--warn) 24%, var(--line)) !important;
+}
+
+.ai-evidence-item.context {
+  opacity: 0.86;
+}
+
+.evidence-card-head span,
+.session-intent-item span,
+.timeline-summary-pill span {
+  color: color-mix(in oklch, var(--text) 54%, transparent) !important;
+}
+
+.session-layout {
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.78fr) minmax(280px, 0.82fr);
+  gap: 16px;
+}
+
+.session-summary {
+  gap: 8px;
+}
+
+.summary-tile {
+  padding: 14px 12px;
+}
+
+.session-block {
+  gap: 12px;
+  padding: 14px;
+}
+
+.post-match-layout {
+  grid-template-columns: minmax(360px, 0.88fr) minmax(0, 1.12fr);
+  gap: 18px;
+}
+
+.postmatch-handoff-card,
+.postmatch-verdict-card {
+  padding: 16px;
+}
+
+.postmatch-verdict-card {
+  display: grid;
+  gap: 12px;
+}
+
+.post-match-layout .form-grid {
+  gap: 12px;
+}
+
+.post-match-layout .stacked-field {
+  margin-top: 14px;
+}
+
+.video-evidence-summary {
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+}
+
+.video-evidence-count {
+  border-radius: 11px;
+}
+
+.timeline-summary-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.timeline-summary-pill b {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.timeline-summary-pill.is-suggestion {
+  border-color: color-mix(in oklch, var(--accent) 38%, var(--weekly-border)) !important;
+  background: color-mix(in oklch, var(--accent) 10%, var(--panel-2)) !important;
+}
+
+.timeline-summary-pill.is-suggestion b {
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.timeline-retention-card {
+  border-color: var(--weekly-border-strong);
+}
+
+.timeline-history-details > summary,
+.coach-analysis-details > summary,
+.football-report-details > summary,
+.home-deep-dive > summary {
+  color: var(--text) !important;
+  font-weight: 800;
+}
+
+@media (max-width: 1180px) {
+  .command-hero,
+  .session-layout,
+  .post-match-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1420px) and (min-width: 1181px) {
+  .session-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.9fr);
+  }
+
+  .session-layout > .team-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .command-hero .home-title {
+    font-size: 38px;
+  }
+
+  .workflow-card {
+    min-height: 0;
+  }
+
+  .timeline-summary-strip {
     grid-template-columns: minmax(0, 1fr);
   }
 }

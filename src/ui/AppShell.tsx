@@ -41,7 +41,7 @@ const LOOP_NAV: NavItem[] = [
     isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("postMatch"),
   },
-  { view: "team", code: "05", label: "Equipo / evolucion" },
+  { view: "team", code: "05", label: "Evolucion" },
 ];
 
 const ADVANCED_NAV: NavItem[] = [
@@ -91,8 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <details className="nav-more">
               <summary>Avanzado</summary>
               <p className="nav-details-copy">
-                Superficies secundarias para preparar, mostrar o profundizar el
-                trabajo semanal.
+                Herramientas de apoyo. El flujo principal sigue arriba.
               </p>
               {ADVANCED_NAV.map((item) => (
                 <NavButton
@@ -228,7 +227,7 @@ function metaFor(view: string) {
       home: ["Sala"],
       library: ["Biblioteca"],
       viewer: ["Cancha"],
-      team: ["Equipo / evolucion"],
+      team: ["Evolucion"],
       sessions: ["Sesion"],
       video: ["Observacion"],
       ai: ["Coach"],
@@ -243,10 +242,10 @@ function titleFor(view: string) {
       home: "Sala de control tactico",
       library: "Biblioteca de ejercicios",
       viewer: "Visor tactico 3D",
-      team: "Equipo / evolucion",
+      team: "Evolucion semanal",
       sessions: "Sesion semanal",
       video: "Video y evidencia",
-      ai: "Coach y post-partido",
+      ai: "Diagnostico y post-partido",
       player: "Briefing para jugadores",
     }[view] ?? "RomboIQ"
   );
@@ -259,10 +258,10 @@ function subtitleFor(view: string) {
       library:
         "Catalogo curado para bajar el diagnostico al campo sin salir del flujo.",
       viewer: "Reproduccion 3D con camaras, capas tacticas y fases.",
-      team: "Plantel, lineup y evolucion del comportamiento del equipo.",
+      team: "Plantel, lineup y veredicto semanal del equipo.",
       sessions: "Plan semanal conectado al problema tactico que queres resolver.",
       video: "Tagging manual y evidencia asistida para revisar partidos.",
-      ai: "Diagnostico y revision con confianza visible y lenguaje tactico.",
+      ai: "Decision tactica, evidencia visible y siguiente accion.",
       player: "Vista limpia para presentar ideas a jugadores y staff.",
     }[view] ?? ""
   );

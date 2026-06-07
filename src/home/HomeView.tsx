@@ -106,10 +106,10 @@ export function HomeView() {
       <section className="hero command-hero">
         <div className="command-hero-copy">
         <span className="eyebrow">RomboIQ / {activeDay.label}</span>
-        <h2 className="home-title">Centro de mando tactico</h2>
+        <h2 className="home-title">Sala semanal</h2>
         <p className="home-subtitle">
-          Un solo flujo semanal para observar, diagnosticar, entrenar,
-          revisar y evolucionar.
+          El problema de la semana, la evidencia, la sesion y la revision en
+          una sola lectura.
         </p>
         <div className="home-next-action">
           <span className="eyebrow">Siguiente paso</span>
@@ -117,8 +117,7 @@ export function HomeView() {
           <p>{nextAction.body}</p>
         </div>
         <p className="home-hero-intent">
-          Arranca por una observacion, conviertela en diagnostico con evidencia
-          y cierra el ciclo con sesion, post-partido y evolucion validada.
+          Primero decision. Despues detalle, trazabilidad y revision.
         </p>
         <div className="command-loop-row">
           <LoopProgress active={loopStage(session.blocks.length, reports.length, patterns.length)} />
@@ -561,14 +560,14 @@ const QuickObservationPanel = memo(function QuickObservationPanel({
     <section className="quick-observation-card card">
       <div className="section-title">
         <div>
-          <span className="panel-eyebrow">Observacion rapida</span>
-          <h3>Captura tactica liviana</h3>
+          <span className="panel-eyebrow">Observacion manual</span>
+          <h3>Captura del staff</h3>
         </div>
         <span className="ai-context-chip">{observations.length} guardadas</span>
       </div>
       <p className="muted-panel">
-        Guarda una lectura corta del staff. Se usa como evidencia actual, pero
-        siempre marcada como observacion manual y no como hecho confirmado por video.
+        Guarda una lectura corta. Cuenta como evidencia actual, con menor peso
+        que video o post-partido estructurado.
       </p>
       <textarea
         className="quick-observation-input"
@@ -612,7 +611,7 @@ const QuickObservationPanel = memo(function QuickObservationPanel({
               <div>
                 <b>{observation.text}</b>
                 <small>
-                  Manual {observation.source === "postMatch" ? "post-partido" : "staff"} ·{" "}
+                  Manual {observation.source === "postMatch" ? "post-partido" : "staff"} -{" "}
                   {formatObservationDate(observation.createdAt)}
                 </small>
               </div>
@@ -662,7 +661,8 @@ const QuickObservationPanel = memo(function QuickObservationPanel({
         </div>
       ) : (
         <p className="muted-panel">
-          Sin observaciones manuales todavia. Usa esta captura cuando no quieras entrar a Video.
+          Sin observaciones manuales todavia. Usa esta captura cuando no haga
+          falta entrar a Video.
         </p>
       )}
     </section>
@@ -685,7 +685,7 @@ const TacticalHomeActions = memo(function TacticalHomeActions({
     {
       title: "Diagnosticar",
       eyebrow: "Observacion -> diagnostico",
-      body: "Plantea un problema táctico. Si falta evidencia, el agente entrevista antes de diagnosticar.",
+      body: "Plantea un problema tactico. Si falta evidencia, el Coach pregunta antes de cerrar una lectura.",
       code: "AI",
       onClick: () => {
         useAppStore.getState().setAiMode("coach");
@@ -715,8 +715,8 @@ const TacticalHomeActions = memo(function TacticalHomeActions({
     },
     {
       title: "Preparar XI",
-      eyebrow: "Lineup Lab -> evidencia objetiva",
-      body: "Ajusta el equipo, guarda shapes y usa metricas geometricas como contexto del Coach.",
+      eyebrow: "Lineup Lab -> contexto",
+      body: "Ajusta el equipo, guarda shapes y usa metricas geometricas como contexto tactico.",
       code: "XI",
       onClick: () => useAppStore.getState().setView("team"),
     },
@@ -1179,7 +1179,7 @@ const PatternCommandCard = memo(function PatternCommandCard({
     <div className="card">
       <div className="card-head">
         <div>
-          <span className="eyebrow">Pattern Intelligence</span>
+          <span className="eyebrow">Evolucion</span>
           <h3>Problema recurrente</h3>
         </div>
         <span className="tag-pill">{patterns.length}</span>

@@ -212,7 +212,7 @@ export function TeamView() {
     <div className="view-enter team-mock-view">
       <div className="team-mock-toolbar">
         <div>
-          <span className="panel-eyebrow">Equipo / evolucion</span>
+          <span className="panel-eyebrow">Evolucion / equipo</span>
           <h3 style={{ margin: "4px 0 0" }}>
             Base semanal del equipo y lectura de patrones
           </h3>
@@ -226,6 +226,8 @@ export function TeamView() {
           {showAdvanced ? "Ocultar avanzado" : "Mostrar avanzado"}
         </button>
       </div>
+
+      <TeamTimeline reports={reports} />
 
       {showAdvanced ? (
         <section className="card team-advanced-card">
@@ -404,7 +406,6 @@ export function TeamView() {
           </div>
         </aside>
       </div>
-      <TeamTimeline reports={reports} />
         </>
       ) : null}
     </div>

@@ -15,6 +15,11 @@ import {
   revertVersionedMemoryEntry,
   seedVersionedMemoryLedger,
 } from "../versionedMemory.js";
+import {
+  type EvidenceLike,
+  extractEvidenceIds,
+  hasCommitGradeEvidence,
+} from "./evidenceStrength.js";
 
 const REPORTS_PATH = "src/ai/post-match/reports.json";
 const GENERATED_MEMORY_PATH = "src/ai/generated/tactical-memory.json";
@@ -58,22 +63,54 @@ export async function loadSavedPostMatchReports() {
 
 export async function commitMemoryCandidates(payload: unknown) {
   const request = CommitMemoryCandidatesRequestSchema.parse(payload);
+  const reports = await loadReports();
+  const savedReport = reports.find((report) => report.id === request.reportId);
+  if (!savedReport) {
+    throw new Error("No se encontro el reporte guardado para validar memoria.");
+  }
+
+  const savedCandidates = new Map(
+    savedReport.report.memoryCandidates.map((candidate) => [candidate.id, candidate]),
+  );
+  const eligibleCandidates = request.candidates
+    .map((candidate) => {
+      const savedCandidate = savedCandidates.get(candidate.id);
+      if (!savedCandidate) return null;
+      return {
+        ...savedCandidate,
+        selectedByStaff:
+          candidate.selectedByStaff ||
+          savedCandidate.selectedByStaff ||
+          savedReport.staffReview.acceptedMemoryCandidateIds.includes(candidate.id),
+      };
+    })
+    .filter((candidate): candidate is MemoryCandidate =>
+      Boolean(candidate && canCommitMemoryCandidate(candidate, savedReport)),
+    );
+
   const memory = await loadGeneratedMemory();
   const existingPatterns = new Set(
     memory.map((item) => normalize(item.pattern)),
   );
   const today = new Date().toISOString().slice(0, 10);
-  const committed = request.candidates
+  // Keep each candidate paired with the memory item generated from it, end to
+  // end — this is what lets us report committedCandidateIds by stable ID
+  // instead of re-matching commits back to candidates by statement-text
+  // equality (which collides when two candidates share similar wording).
+  const committedPairs = eligibleCandidates
     .filter((candidate) => !existingPatterns.has(normalize(candidate.statement)))
-    .map((candidate) =>
-      memoryItemFromCandidate(candidate, request.reportId, today),
-    );
+    .map((candidate) => ({
+      candidate,
+      memoryItem: memoryItemFromCandidate(candidate, request.reportId, today),
+    }));
+  const committed = committedPairs.map((pair) => pair.memoryItem);
+  const committedCandidateIds = committedPairs.map((pair) => pair.candidate.id);
 
   if (committed.length) {
     await seedVersionedMemoryLedger(memory);
     await appendVersionedMemoryEntries({
       reportId: request.reportId,
-      candidates: request.candidates,
+      candidates: committedPairs.map((pair) => pair.candidate),
       memoryItems: committed,
       createdAt: new Date(`${today}T00:00:00.000Z`).toISOString(),
     });
@@ -83,14 +120,13 @@ export async function commitMemoryCandidates(payload: unknown) {
     generatedMemoryPromise = Promise.resolve(nextMemory);
   }
 
-  await markCommittedCandidates(
-    request.reportId,
-    request.candidates.map((candidate) => candidate.id),
-  );
+  await markCommittedCandidates(request.reportId, committedCandidateIds);
 
   return {
     committedCount: committed.length,
-    skippedDuplicates: request.candidates.length - committed.length,
+    skippedDuplicates: eligibleCandidates.length - committed.length,
+    rejectedByTrustGuard: request.candidates.length - eligibleCandidates.length,
+    committedCandidateIds,
   };
 }
 
@@ -178,6 +214,7 @@ async function markCommittedCandidates(reportId: string, candidateIds: string[])
             ...candidate,
             selectedByStaff:
               candidate.selectedByStaff || accepted.has(candidate.id),
+            status: accepted.has(candidate.id) ? "accepted" : candidate.status,
           }),
         ),
       },
@@ -187,6 +224,66 @@ async function markCommittedCandidates(reportId: string, candidateIds: string[])
   await writeJson(REPORTS_PATH, nextReports);
   reportsCache = nextReports;
   reportsCachePromise = Promise.resolve(nextReports);
+}
+
+function canCommitMemoryCandidate(
+  candidate: MemoryCandidate,
+  savedReport: SavedPostMatchReport,
+) {
+  if (!candidate.selectedByStaff) return false;
+  if (candidate.status === "rejected" || candidate.status === "needs_review") {
+    return false;
+  }
+  if (candidate.confidence === "low") return false;
+  if (!candidate.evidence.length) return false;
+
+  const evidenceById = buildSavedEvidenceLedger(savedReport);
+  const evidenceIds = candidate.evidence.flatMap(extractEvidenceIds);
+  if (!evidenceIds.length) return false;
+  if (evidenceIds.some((id) => !evidenceById.has(id))) return false;
+
+  // Same shared classification as guardMemoryCandidate's grounding check, but
+  // with the stricter commit-time bar: strong evidence, or moderate evidence
+  // when the candidate itself represents a staff-validated repeating pattern.
+  // See evidenceStrength.ts — this is the single source of truth that keeps
+  // guardMemoryCandidate and canCommitMemoryCandidate from diverging.
+  return hasCommitGradeEvidence(candidate.evidence, evidenceById, {
+    allowValidatedModerate: candidate.scope === "validated",
+  });
+}
+
+function buildSavedEvidenceLedger(savedReport: SavedPostMatchReport) {
+  const sourceInput = savedReport.sourceInput;
+  const evidence = new Map<string, EvidenceLike>();
+
+  evidence.set("EV-RESULT", {
+    source: "result",
+    text: savedReport.report.matchContext.result,
+  });
+
+  if (sourceInput?.planBeforeMatch?.trim()) {
+    evidence.set("EV-PLAN", {
+      source: "plan",
+      text: sourceInput.planBeforeMatch.trim(),
+    });
+  }
+
+  if (sourceInput?.staffNotes?.trim()) {
+    evidence.set("EV-NOTES", {
+      source: "staffNotes",
+      text: sourceInput.staffNotes.trim(),
+    });
+  }
+
+  sourceInput?.tags.forEach((tag, index) => {
+    evidence.set(`EV-TAG-${index + 1}`, {
+      source: "tag",
+      text: [tag.label, tag.zone, tag.note].filter(Boolean).join(" | "),
+      severity: tag.severity,
+    });
+  });
+
+  return evidence;
 }
 
 function memoryItemFromCandidate(

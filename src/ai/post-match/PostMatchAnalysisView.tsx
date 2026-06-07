@@ -13,6 +13,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   commitMemoryCandidates,
+  getCachedPostMatchReports,
   refreshPostMatchReports,
   requestPostMatchReport,
   savePostMatchReport,
@@ -24,6 +25,8 @@ import {
   humanizeReportText,
   memoryCategoryLabel,
   memoryScopeLabel,
+  memoryStatusLabel,
+  memoryStatusModifierClass,
   subjectLabel,
 } from "./reportPresentation";
 import type {
@@ -240,9 +243,55 @@ export function PostMatchAnalysisView() {
         reportId: savedReportId,
         candidates: selectedCandidates,
       });
-      setStatus(
-        `Memoria actualizada: ${result.committedCount} aprendizajes guardados, ${result.skippedDuplicates} duplicados omitidos.`,
+
+      // Pull the server-confirmed candidate statuses back into view state so
+      // the picker reflects what actually happened (accepted / needs_review /
+      // rejected) instead of the staff's optimistic selection. This is what
+      // keeps the UI from claiming a vetoed candidate was saved.
+      const refreshedReport = getCachedPostMatchReports()?.find(
+        (saved) => saved.id === savedReportId,
+      )?.report;
+      if (refreshedReport) {
+        setReport(refreshedReport);
+      }
+
+      const candidatesById = new Map(
+        (refreshedReport ?? report).memoryCandidates.map((candidate) => [
+          candidate.id,
+          candidate,
+        ]),
       );
+      const outcomeCounts = { accepted: 0, needs_review: 0, rejected: 0 };
+      for (const id of selectedCandidateIds) {
+        const committed = result.committedCandidateIds.includes(id);
+        const finalStatus = committed
+          ? "accepted"
+          : (candidatesById.get(id)?.status ?? "rejected");
+        if (finalStatus === "accepted") outcomeCounts.accepted += 1;
+        else if (finalStatus === "needs_review") outcomeCounts.needs_review += 1;
+        else outcomeCounts.rejected += 1;
+      }
+
+      const summaryParts = [`${outcomeCounts.accepted} guardados como aprendizaje`];
+      if (outcomeCounts.needs_review) {
+        summaryParts.push(`${outcomeCounts.needs_review} pendientes de revision`);
+      }
+      if (outcomeCounts.rejected) {
+        summaryParts.push(
+          `${outcomeCounts.rejected} no guardados por evidencia insuficiente`,
+        );
+      }
+      if (result.skippedDuplicates) {
+        summaryParts.push(`${result.skippedDuplicates} duplicados omitidos`);
+      }
+
+      // Never present this as a plain success message when the trust guard
+      // vetoed something selected by staff — the wording must make the veto
+      // visible, not bury it inside a generic "memory updated" toast.
+      const prefix = result.rejectedByTrustGuard
+        ? "Memoria actualizada con observaciones del control de confianza"
+        : "Memoria actualizada";
+      setStatus(`${prefix}: ${summaryParts.join(", ")}.`);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -269,8 +318,8 @@ export function PostMatchAnalysisView() {
   return (
     <section className="ai-layout post-match-layout">
       <div className="team-card">
-        <span className="panel-eyebrow">Post Match</span>
-        <h3>Analisis post-partido</h3>
+        <span className="panel-eyebrow">Post-partido</span>
+        <h3>Revision del partido</h3>
         <div className="segmented-control" style={{ marginBottom: 14 }}>
           <button
             type="button"
@@ -562,7 +611,7 @@ function AdvancedPostMatchForm({
           <div className="section-title">
             <div>
               <span className="panel-eyebrow">Sesion -&gt; revision</span>
-              <h4>Que deberia revisarse en este partido</h4>
+              <h4>Criterio de revision del partido</h4>
             </div>
           </div>
           <p>{weeklyDecisionThread.problem}</p>
@@ -719,9 +768,14 @@ function ReportReview({
 
   return (
     <>
+      <PostMatchVerdictCard
+        report={report}
+        ownTeamProblems={ownTeamProblems}
+        acceptanceCriteria={acceptanceCriteria}
+      />
       <TextCard title="Resumen ejecutivo" value={report.executiveSummary} />
       <div className="ai-card">
-        <b>Confianza del reporte</b>
+        <b>Confianza y cautela</b>
         <ConfidenceMeter
           value={report.reflection.confidence}
           reason={report.reflection.mainUncertainty}
@@ -731,7 +785,7 @@ function ReportReview({
         <div className="section-title">
           <div>
             <span className="panel-eyebrow">Revision -&gt; siguiente semana</span>
-            <h4>Que deberia pasar ahora</h4>
+            <h4>Siguiente foco semanal</h4>
           </div>
         </div>
         <p>
@@ -860,6 +914,58 @@ function ReportReview({
   );
 }
 
+function PostMatchVerdictCard({
+  report,
+  ownTeamProblems,
+  acceptanceCriteria,
+}: {
+  report: PostMatchReport;
+  ownTeamProblems: ReturnType<typeof getOwnTeamProblems>;
+  acceptanceCriteria: string[];
+}) {
+  const primaryProblem = ownTeamProblems[0]?.problem;
+  const reviewSignal =
+    acceptanceCriteria[0] ??
+    report.saturdayFocus[0] ??
+    "Definir una senal observable para el proximo partido.";
+
+  return (
+    <div className="ai-card postmatch-verdict-card">
+      <div className="section-title">
+        <div>
+          <span className="panel-eyebrow">Veredicto semanal</span>
+          <h4>
+            {primaryProblem
+              ? humanizeReportText(primaryProblem)
+              : "Sin problema principal cerrado"}
+          </h4>
+        </div>
+        <span className="confidence-chip medium">
+          {Math.round(report.reflection.confidence * 100)}% confianza
+        </span>
+      </div>
+      <div className="session-intent-grid compact">
+        <div className="session-intent-item">
+          <span>Estado</span>
+          <b>
+            {primaryProblem
+              ? "Reabrir como foco semanal"
+              : "Mantener como hipotesis"}
+          </b>
+        </div>
+        <div className="session-intent-item">
+          <span>Senal de mejora</span>
+          <b>{humanizeReportText(reviewSignal)}</b>
+        </div>
+        <div className="session-intent-item">
+          <span>Memoria</span>
+          <b>No se guarda automaticamente</b>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModelContrastCard({
   contrast,
 }: {
@@ -915,7 +1021,7 @@ function VideoEvidenceImportPanel({
     <div className="video-evidence-panel post-match-evidence-panel">
       <div className="section-title">
         <div>
-          <span className="panel-eyebrow">Video / Post partido / IA</span>
+          <span className="panel-eyebrow">Evidencia de video</span>
           <h4>Evidencia importable</h4>
         </div>
         <button type="button" disabled={!summary.total} onClick={onImport}>
@@ -982,8 +1088,8 @@ function ManualObservationImportPanel({
     <div className="video-evidence-panel post-match-evidence-panel manual-observation-panel">
       <div className="section-title">
         <div>
-          <span className="panel-eyebrow">Observaciones manuales</span>
-          <h4>Captura del staff</h4>
+          <span className="panel-eyebrow">Observacion manual</span>
+          <h4>Captura del staff, menor confianza</h4>
         </div>
         <button type="button" disabled={!observations.length} onClick={onImport}>
           Importar al informe
@@ -992,10 +1098,10 @@ function ManualObservationImportPanel({
       {observations.length ? (
         <div className="video-evidence-preview">
           {observations.slice(0, 6).map((observation) => (
-            <article className="video-evidence-item note medium" key={observation.id}>
+            <article className="video-evidence-item note low" key={observation.id}>
               <span>manual</span>
               <b>{observation.text}</b>
-              <small>No confirmada por video · {observation.source}</small>
+              <small>No confirmada por video - Requiere validacion</small>
             </article>
           ))}
         </div>
@@ -1346,6 +1452,11 @@ function MemoryCandidatePicker({
               {memoryCategoryLabel(candidate.category)} -{" "}
               {memoryScopeLabel(candidate.scope)} - {candidate.confidence}
             </small>
+            <span
+              className={`memory-candidate-status ${memoryStatusModifierClass(candidate.status)}`}
+            >
+              {memoryStatusLabel(candidate.status)}
+            </span>
             <SmallList items={humanizeEvidenceList(candidate.evidence)} />
           </span>
         </label>
@@ -1421,7 +1532,7 @@ function simpleHasEvidence(form: SimpleFormState) {
   );
 }
 
-function parseTags(text: string): PostMatchTag[] {
+export function parseTags(text: string): PostMatchTag[] {
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -1448,7 +1559,7 @@ function parseTags(text: string): PostMatchTag[] {
     });
 }
 
-function inferEvidenceSeverity(
+export function inferEvidenceSeverity(
   label: string,
   note?: string,
 ): PostMatchTag["severity"] {
@@ -1466,6 +1577,15 @@ function inferEvidenceSeverity(
     return "low";
   }
   if (text.includes("tracking asistido") && !text.includes("validado")) {
+    return "low";
+  }
+  if (
+    text.includes("observacion manual") ||
+    text.includes("observación manual") ||
+    text.includes("no confirmada por video") ||
+    text.includes("requiere validacion") ||
+    text.includes("requiere validación")
+  ) {
     return "low";
   }
   return "medium";

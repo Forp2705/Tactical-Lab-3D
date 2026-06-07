@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   buildWeeklyDecisionSummary,
   detectTeamPatterns,
@@ -13,9 +13,7 @@ export const TeamTimeline = memo(function TeamTimeline({
   reports,
 }: { reports: SavedPostMatchReport[] }) {
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
-  const syncWeeklyThreadProgress = useAppStore(
-    (state) => state.syncWeeklyThreadProgress,
-  );
+  const syncWeeklyThreadProgress = useAppStore((state) => state.syncWeeklyThreadProgress);
   const sortedReports = useMemo(
     () =>
       [...reports].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).slice(0, 5),
@@ -34,17 +32,19 @@ export const TeamTimeline = memo(function TeamTimeline({
     [patterns, weeklyDecisionThread],
   );
 
-  useEffect(() => {
-    if (!threadProgress) return;
-    syncWeeklyThreadProgress(threadProgress, sortedReports[0]?.id);
-  }, [sortedReports, syncWeeklyThreadProgress, threadProgress]);
+  const canConfirmProgress = Boolean(
+    weeklyDecisionThread &&
+      threadProgress &&
+      (weeklyDecisionThread.progress !== threadProgress ||
+        weeklyDecisionThread.lastReportId !== sortedReports[0]?.id),
+  );
 
   return (
     <div className="card">
       <div className="card-head">
         <div>
           <span className="eyebrow">Evolucion del equipo</span>
-          <h3>Timeline tactico</h3>
+          <h3>Veredicto semanal</h3>
         </div>
         <span className="tag-pill">{reports.length} reportes</span>
       </div>
@@ -55,6 +55,10 @@ export const TeamTimeline = memo(function TeamTimeline({
           <b>{weeklyDecision.openProblems.length}</b>
         </div>
         <div className="timeline-summary-pill">
+          <span>Recurrentes</span>
+          <b>{weeklyDecision.recurringProblems.length}</b>
+        </div>
+        <div className="timeline-summary-pill">
           <span>Mejoran</span>
           <b>{weeklyDecision.improvedProblems.length}</b>
         </div>
@@ -62,11 +66,15 @@ export const TeamTimeline = memo(function TeamTimeline({
           <span>Vuelven</span>
           <b>{weeklyDecision.returnedProblems.length}</b>
         </div>
+        <div className="timeline-summary-pill is-suggestion">
+          <span>Sugerencia</span>
+          <b>{shortStatusLabel(threadProgress)}</b>
+        </div>
       </div>
 
       {weeklyDecision.recommendedFocus ? (
         <div className="timeline-weekly-decision">
-          <span className="eyebrow">Decision de la proxima semana</span>
+          <span className="eyebrow">Foco recomendado</span>
           <h4>{weeklyDecision.recommendedFocus.title}</h4>
           <p>{weeklyDecision.recommendedFocus.pattern.statement}</p>
           <small>{weeklyDecision.recommendedFocus.reason}</small>
@@ -75,12 +83,33 @@ export const TeamTimeline = memo(function TeamTimeline({
 
       {weeklyDecisionThread ? (
         <div className="timeline-weekly-decision">
-          <span className="eyebrow">Hilo semanal activo</span>
+          <span className="eyebrow">Sugerencia de evolucion</span>
           <h4>{labelForThreadProgress(threadProgress)}</h4>
           <p>{weeklyDecisionThread.problem}</p>
           <small>
             {threadProgressExplanation(threadProgress, weeklyDecisionThread)}
           </small>
+          {canConfirmProgress ? (
+            <div className="timeline-confirm-row">
+              <span>
+                No se cierra automaticamente. Confirmalo solo si el staff acepta
+                este veredicto.
+              </span>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() =>
+                  syncWeeklyThreadProgress(threadProgress!, sortedReports[0]?.id)
+                }
+              >
+                Confirmar veredicto
+              </button>
+            </div>
+          ) : (
+            <small className="timeline-confirm-note">
+              Estado confirmado: {statusLabel(weeklyDecisionThread.status)}.
+            </small>
+          )}
         </div>
       ) : null}
 
@@ -120,7 +149,7 @@ export const TeamTimeline = memo(function TeamTimeline({
           <h4>Que cambia semana a semana</h4>
           <p>
             Cada reporte valida si el problema sigue, mejora o cambia de forma.
-            Esta es la memoria operativa que vuelve vendible el producto.
+            Esta es la memoria operativa que sostiene el siguiente foco.
           </p>
         </div>
         <button
@@ -209,6 +238,27 @@ function labelForThreadProgress(
   if (progress === "improved") return "El problema mejoro";
   if (progress === "evolved") return "El hilo puede cerrarse por ahora";
   return "El hilo sigue abierto";
+}
+
+function shortStatusLabel(
+  progress: ReturnType<typeof resolveWeeklyDecisionThreadProgress>,
+) {
+  if (progress === "returned") return "Volvio";
+  if (progress === "recurring") return "Sigue";
+  if (progress === "improved") return "Mejora";
+  if (progress === "evolved") return "Evol.";
+  return "Abierto";
+}
+
+function statusLabel(
+  status: NonNullable<
+    ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"]
+  >["status"],
+) {
+  if (status === "trained") return "entrenado";
+  if (status === "reviewed") return "revisado";
+  if (status === "evolved") return "evolucionado";
+  return "abierto";
 }
 
 function threadProgressExplanation(

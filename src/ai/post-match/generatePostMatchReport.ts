@@ -12,6 +12,12 @@ import {
   type PostMatchReport,
   PostMatchReportSchema,
 } from "./schemas.js";
+import {
+  type EvidenceLike,
+  extractEvidenceIds,
+  hasGroundingEvidence,
+  referencesValidEvidence,
+} from "./evidenceStrength.js";
 
 dotenv.config({
   path: ".env.local",
@@ -403,20 +409,138 @@ export function normalizePostMatchReport(
   };
 }
 
-function validatePostMatchGrounding(
+export function validatePostMatchGrounding(
   report: PostMatchReport,
   input: PostMatchInput,
 ) {
+  const evidenceLedger = buildEvidenceLedger(input);
+  const evidenceById = new Map(evidenceLedger.map((item) => [item.id, item]));
+  const validEvidenceIds = new Set(evidenceById.keys());
+  const filterEvidence = (evidence: string[]) =>
+    evidence.filter((item) => referencesValidEvidence(item, validEvidenceIds));
+  const hasStrongEvidence = (evidence: string[]) =>
+    hasGroundingEvidence(filterEvidence(evidence), evidenceById);
+  const hasUnsupportedClaims = report.grounding.unsupportedClaims.length > 0;
+  const evidenceUsed = filterEvidence(report.grounding.evidenceUsed);
+  const groundedMemoryCandidates = report.memoryCandidates.map((candidate) =>
+    guardMemoryCandidate(candidate, evidenceById, validEvidenceIds),
+  );
+
   return {
     ...report,
     matchContext: input.matchContext,
+    ownProblems: report.ownProblems.map((problem) => ({
+      ...problem,
+      evidence: filterEvidence(problem.evidence),
+      severity: hasStrongEvidence(problem.evidence)
+        ? problem.severity
+        : downgradeSeverity(problem.severity),
+    })),
+    ownTeamProblems: report.ownTeamProblems.map((problem) => ({
+      ...problem,
+      evidence: filterEvidence(problem.evidence),
+      severity: hasStrongEvidence(problem.evidence)
+        ? problem.severity
+        : downgradeSeverity(problem.severity),
+    })),
+    tacticalInferences: report.tacticalInferences.map((inference) => ({
+      ...inference,
+      basedOn: filterEvidence(inference.basedOn),
+      confidence: hasStrongEvidence(inference.basedOn)
+        ? inference.confidence
+        : downgradeConfidence(inference.confidence),
+    })),
+    memoryInfluence: report.memoryInfluence.map((item) => ({
+      ...item,
+      usedAs:
+        item.usedAs === "supportedByCurrentEvidence" &&
+        hasStrongEvidence(item.currentEvidence)
+          ? "supportedByCurrentEvidence"
+          : "contextOnly",
+      currentEvidence: filterEvidence(item.currentEvidence),
+    })),
+    memoryCandidates: groundedMemoryCandidates,
+    reflection: {
+      ...report.reflection,
+      confidence:
+        hasUnsupportedClaims || !hasGroundingEvidence(evidenceUsed, evidenceById)
+          ? Math.min(report.reflection.confidence, 0.55)
+          : report.reflection.confidence,
+    },
     grounding: {
       ...report.grounding,
       resultPerspective:
         input.matchContext.interpretedResult?.label ??
         report.grounding.resultPerspective,
+      evidenceUsed,
+      unsupportedClaims: [
+        ...report.grounding.unsupportedClaims,
+        ...collectUnsupportedEvidenceWarnings(report, validEvidenceIds),
+      ],
     },
   };
+}
+
+function guardMemoryCandidate(
+  candidate: PostMatchReport["memoryCandidates"][number],
+  evidenceById: Map<string, EvidenceLike>,
+  validEvidenceIds: Set<string>,
+): PostMatchReport["memoryCandidates"][number] {
+  const evidence = candidate.evidence.filter((item) =>
+    referencesValidEvidence(item, validEvidenceIds),
+  );
+  // Grounding-time check: is there at least moderate-or-better evidence
+  // behind this candidate? This decides whether the AI's claimed
+  // confidence/scope survive or get downgraded — it intentionally uses the
+  // *same* shared classification the commit-time gate uses, so a candidate
+  // that looks "fine" here won't be silently re-judged differently later.
+  const grounded = hasGroundingEvidence(evidence, evidenceById);
+
+  return {
+    ...candidate,
+    evidence,
+    confidence: grounded ? candidate.confidence : downgradeConfidence(candidate.confidence),
+    scope: grounded ? candidate.scope : "oneOff",
+    status: grounded && candidate.confidence !== "low" ? candidate.status : "needs_review",
+    selectedByStaff: false,
+  };
+}
+
+function collectUnsupportedEvidenceWarnings(
+  report: PostMatchReport,
+  validEvidenceIds: Set<string>,
+) {
+  const warnings = new Set<string>();
+  const check = (evidence: string[], context: string) => {
+    for (const item of evidence) {
+      if (!extractEvidenceIds(item).length) continue;
+      if (!referencesValidEvidence(item, validEvidenceIds)) {
+        warnings.add(`${context}: evidencia no encontrada (${item})`);
+      }
+    }
+  };
+
+  for (const item of report.ownProblems) check(item.evidence, item.problem);
+  for (const item of report.ownTeamProblems) check(item.evidence, item.problem);
+  for (const item of report.tacticalInferences) {
+    check(item.basedOn, item.inference);
+  }
+  for (const item of report.memoryCandidates) {
+    check(item.evidence, item.statement);
+  }
+  check(report.grounding.evidenceUsed, "grounding");
+
+  return Array.from(warnings);
+}
+
+function downgradeConfidence(value: "low" | "medium" | "high") {
+  if (value === "high") return "medium";
+  return "low";
+}
+
+function downgradeSeverity(value: "low" | "medium" | "high") {
+  if (value === "high") return "medium";
+  return "low";
 }
 
 function buildEvidenceLedger(input: PostMatchInput): EvidenceItem[] {
@@ -562,6 +686,7 @@ function normalizeMemoryCandidate(
     evidence,
     confidence: confidenceOrMedium(candidate.confidence),
     scope: validMemoryScope(candidate.scope),
+    status: validMemoryCandidateStatus(candidate.status),
     selectedByStaff: false,
   };
 }
@@ -621,6 +746,19 @@ function validMemoryScope(value: unknown) {
   }
 
   return "repeatWatch";
+}
+
+function validMemoryCandidateStatus(value: unknown) {
+  if (
+    value === "candidate" ||
+    value === "needs_review" ||
+    value === "accepted" ||
+    value === "rejected"
+  ) {
+    return value;
+  }
+
+  return "candidate";
 }
 
 function normalizeGrounding(rawGrounding: unknown, input: PostMatchInput) {

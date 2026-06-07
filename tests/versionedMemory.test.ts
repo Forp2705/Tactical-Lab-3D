@@ -51,6 +51,7 @@ describe("versioned tactical memory", () => {
           evidence: ["72' perdida y contra"],
           confidence: "high",
           scope: "validated",
+          status: "accepted",
           selectedByStaff: true,
         },
       ],

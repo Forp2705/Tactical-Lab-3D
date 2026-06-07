@@ -93,7 +93,7 @@ export function SessionsView() {
           <div className="section-title">
             <div>
               <span className="panel-eyebrow">Diagnostico -&gt; campo</span>
-              <h3>Planificador de sesion</h3>
+              <h3>Sesion como respuesta tactica</h3>
             </div>
             <button
               type="button"
@@ -103,7 +103,7 @@ export function SessionsView() {
             </button>
           </div>
           <div className="session-origin-card">
-            <span className="eyebrow">Diagnostico -&gt; sesion</span>
+            <span className="eyebrow">Foco semanal</span>
             <h4>{shorten(sessionIntent.problem, 110)}</h4>
             <div className="session-intent-grid compact">
               <div className="session-intent-item">
@@ -160,10 +160,10 @@ export function SessionsView() {
         </div>
 
         <div className="team-card">
-          <span className="panel-eyebrow">Biblioteca conectada</span>
+          <span className="panel-eyebrow">Ejercicios disponibles</span>
           <h3>Catalogo para arrastrar</h3>
           <p className="muted-panel">
-            Suelta un ejercicio aqui para sumarlo a la sesion activa.
+            Arrastra solo lo que responda al foco semanal.
           </p>
           <div style={{ maxHeight: 680, overflow: "auto", paddingRight: 4 }}>
             {catalog.slice(0, 16).map((exercise) => (

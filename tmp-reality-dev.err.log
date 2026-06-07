@@ -1,0 +1,235 @@
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+[post-match] generate failed ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "object",
+    "received": "undefined",
+    "path": [
+      "matchContext"
+    ],
+    "message": "Required"
+  }
+]
+    at get error (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/zod/v3/types.js:39:31)
+    at ZodEffects.parse (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/zod/v3/types.js:114:22)
+    at generatePostMatchReport (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780852751334-73418a9e5c286.mjs:8763:60)
+    at Object.handler6 (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780852751334-73418a9e5c286.mjs:9449:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780852751334-73418a9e5c286.mjs:9804:11 {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'object',
+      received: 'undefined',
+      path: [Array],
+      message: 'Required'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)]
+}
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+[post-match] generate failed ReferenceError: referencesValidEvidence is not defined
+    at file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780853241658-38fe1df4fc12e.mjs:9110:66
+    at Array.filter (<anonymous>)
+    at filterEvidence (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780853241658-38fe1df4fc12e.mjs:9110:49)
+    at validatePostMatchGrounding (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780853241658-38fe1df4fc12e.mjs:9115:24)
+    at generatePostMatchReport (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780853241658-38fe1df4fc12e.mjs:8810:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.handler6 (file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780853241658-38fe1df4fc12e.mjs:9499:20)
+    at async file:///C:/Users/Facundo/Documents/football-tactics-pro/tactical-lab-3d/node_modules/.vite-temp/vite.config.ts.timestamp-1780853241658-38fe1df4fc12e.mjs:9854:11
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./post-match/storage.js"
+
+    src/ai/CoachAgent.ts:27:42:
+      27 │ import { loadSavedPostMatchReports } from "./post-match/storage.js"
+         ╵                                           ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./post-match/storage.js"
+
+    src/ai/retrieveRelevantContext.ts:2:42:
+      2 │ import { loadSavedPostMatchReports } from "./post-match/storage.js"
+        ╵                                           ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./post-match/storage.js"
+
+    src/ai/retrieveRelevantReports.ts:1:470:
+      1 │ ...mport { loadSavedPostMatchReports } from "./post-match/storage.js";
+        ╵                                             ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./post-match/storage.js"
+
+    src/ai/ragIndex.ts:7:42:
+      7 │ import { loadSavedPostMatchReports } from "./post-match/storage.js";
+        ╵                                           ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[31mfailed to load config from C:\Users\Facundo\Documents\football-tactics-pro\tactical-lab-3d\vite.config.ts[39m
+[2m16:07:38[22m [31m[1m[vite][22m[39m Build failed with 4 errors:
+src/ai/CoachAgent.ts:27:42: ERROR: Could not resolve "./post-match/storage.js"
+src/ai/ragIndex.ts:7:42: ERROR: Could not resolve "./post-match/storage.js"
+src/ai/retrieveRelevantContext.ts:2:42: ERROR: Could not resolve "./post-match/storage.js"
+src/ai/retrieveRelevantReports.ts:1:470: ERROR: Could not resolve "./post-match/storage.js"
+[2m16:07:38[22m [31m[1m[vite][22m[39m server restart failed
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./evidenceStrength.js"
+
+    src/ai/post-match/generatePostMatchReport.ts:20:7:
+      20 │ } from "./evidenceStrength.js";
+         ╵        ~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./evidenceStrength.js"
+
+    src/ai/post-match/storage.ts:22:7:
+      22 │ } from "./evidenceStrength.js";
+         ╵        ~~~~~~~~~~~~~~~~~~~~~~~
+
+[31mfailed to load config from C:\Users\Facundo\Documents\football-tactics-pro\tactical-lab-3d\vite.config.ts[39m
+[2m16:07:41[22m [31m[1m[vite][22m[39m Build failed with 2 errors:
+src/ai/post-match/generatePostMatchReport.ts:20:7: ERROR: Could not resolve "./evidenceStrength.js"
+src/ai/post-match/storage.ts:22:7: ERROR: Could not resolve "./evidenceStrength.js"
+[2m16:07:41[22m [31m[1m[vite][22m[39m server restart failed
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./schemas.js"
+
+    src/ai/post-match/storage.ts:12:7:
+      12 │ } from "./schemas.js";
+         ╵        ~~~~~~~~~~~~~~
+
+X [ERROR] Could not resolve "./schemas.js"
+
+    src/ai/post-match/generatePostMatchReport.ts:14:7:
+      14 │ } from "./schemas.js";
+         ╵        ~~~~~~~~~~~~~~
+
+[31mfailed to load config from C:\Users\Facundo\Documents\football-tactics-pro\tactical-lab-3d\vite.config.ts[39m
+[2m16:07:42[22m [31m[1m[vite][22m[39m Build failed with 2 errors:
+src/ai/post-match/generatePostMatchReport.ts:14:7: ERROR: Could not resolve "./schemas.js"
+src/ai/post-match/storage.ts:12:7: ERROR: Could not resolve "./schemas.js"
+[2m16:07:42[22m [31m[1m[vite][22m[39m server restart failed
+▲ [WARNING] Cannot find base config file "astro/tsconfigs/strict" [tsconfig.json]
+
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "astro/tsconfigs/strict",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~
+

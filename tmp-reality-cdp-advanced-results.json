@@ -1,0 +1,756 @@
+{
+    "severeCount":  3,
+    "results":  [
+                    {
+                        "click":  "Avanzado",
+                        "result":  {
+                                       "clicked":  true,
+                                       "tag":  "SUMMARY",
+                                       "text":  "AVANZADO"
+                                   }
+                    },
+                    {
+                        "click":  "Cancha 3D",
+                        "result":  {
+                                       "clicked":  true,
+                                       "tag":  "BUTTON",
+                                       "text":  "Cancha 3D"
+                                   }
+                    },
+                    {
+                        "label":  "Cancha 3D",
+                        "h2":  "Visor tactico 3D",
+                        "active":  [
+                                       "Cancha 3D"
+                                   ],
+                        "buttons":  [
+                                        "Sala",
+                                        "Diagnostico",
+                                        "Sesion",
+                                        "Post-partido",
+                                        "Evolucion",
+                                        "AVANZADO",
+                                        "Cancha 3D",
+                                        "Video",
+                                        "Biblioteca",
+                                        "Briefing",
+                                        "Proyecto local",
+                                        "Guardar local",
+                                        "Exportar JSON",
+                                        "Abrir menu",
+                                        "Modo presentacion",
+                                        "Exportar PNG",
+                                        "top",
+                                        "iso",
+                                        "broadcast",
+                                        "Play",
+                                        "Reiniciar",
+                                        "ZonasSectores y referencias",
+                                        "CarrerasDesmarques activos",
+                                        "PasesRutas del balon",
+                                        "PresionSaltos y gatillos",
+                                        "SeparacionAjuste automatico",
+                                        "Agregar a sesion",
+                                        "Ajustes avanzados",
+                                        "Con pelota",
+                                        "Sin pelota",
+                                        "Presion",
+                                        "Coberturas",
+                                        "Alt A",
+                                        "Alt B",
+                                        "Rival",
+                                        "ABP",
+                                        "Notas",
+                                        "Duplicar variante",
+                                        "MP4",
+                                        "GIF"
+                                    ],
+                        "body":  "RomboIQ\nFLUJO SEMANAL\nSala\nDiagnostico\nSesion\nPost-partido\nEvolucion\nAVANZADO\n\nHerramientas de apoyo. El flujo principal sigue arriba.\n\nCancha 3D\nVideo\nBiblioteca\nBriefing\nCANCHA\nVisor tactico 3D\n\nReproduccion 3D con camaras, capas tacticas y fases.\n\nBLOQUES\n0\nACTUAL\n6v\nMODO\nPLAN\nProyecto local\nModo presentacion\nExportar PNG\nCargando modulo...",
+                        "blank":  false
+                    },
+                    {
+                        "click":  "Avanzado",
+                        "result":  {
+                                       "clicked":  true,
+                                       "tag":  "SUMMARY",
+                                       "text":  "AVANZADO"
+                                   }
+                    },
+                    {
+                        "click":  "Video",
+                        "result":  {
+                                       "clicked":  false,
+                                       "text":  "Video",
+                                       "available":  [
+                                                         "Sala",
+                                                         "Diagnostico",
+                                                         "Sesion",
+                                                         "Post-partido",
+                                                         "Evolucion",
+                                                         "AVANZADO",
+                                                         "Proyecto local",
+                                                         "Guardar local",
+                                                         "Exportar JSON",
+                                                         "Abrir menu",
+                                                         "Modo presentacion",
+                                                         "Exportar PNG",
+                                                         "Top",
+                                                         "Iso",
+                                                         "Broadcast",
+                                                         "Play",
+                                                         "Reiniciar",
+                                                         "Zonas\nSectores y referencias",
+                                                         "Carreras\nDesmarques activos",
+                                                         "Pases\nRutas del balon",
+                                                         "Presion\nSaltos y gatillos",
+                                                         "Separacion\nAjuste automatico",
+                                                         "Agregar a sesion",
+                                                         "Ajustes avanzados"
+                                                     ]
+                                   }
+                    },
+                    {
+                        "label":  "Video",
+                        "h2":  "Visor tactico 3D",
+                        "active":  [
+                                       ""
+                                   ],
+                        "buttons":  [
+                                        "Sala",
+                                        "Diagnostico",
+                                        "Sesion",
+                                        "Post-partido",
+                                        "Evolucion",
+                                        "AVANZADO",
+                                        "Proyecto local",
+                                        "Guardar local",
+                                        "Exportar JSON",
+                                        "Abrir menu",
+                                        "Modo presentacion",
+                                        "Exportar PNG",
+                                        "Top",
+                                        "Iso",
+                                        "Broadcast",
+                                        "Play",
+                                        "Reiniciar",
+                                        "Zonas\nSectores y referencias",
+                                        "Carreras\nDesmarques activos",
+                                        "Pases\nRutas del balon",
+                                        "Presion\nSaltos y gatillos",
+                                        "Separacion\nAjuste automatico",
+                                        "Agregar a sesion",
+                                        "Ajustes avanzados"
+                                    ],
+                        "body":  "RomboIQ\nFLUJO SEMANAL\nSala\nDiagnostico\nSesion\nPost-partido\nEvolucion\nAVANZADO\nCANCHA\nVisor tactico 3D\n\nReproduccion 3D con camaras, capas tacticas y fases.\n\nBLOQUES\n0\nACTUAL\n6v\nMODO\nPLAN\nProyecto local\nModo presentacion\nExportar PNG\nRondo 4v2 con salida por apoyo libre\n\nattackOrg - amplitud + tercer hombre - 6-6 jugadores\n\nEquipo propio\nRival\nTop\nIso\nBroadcast\nPOR QUE IMPORTA\nConectar 6 pases y salir por el apoyo que quedó libre.\n\nEstructura inicial, sin ruido visual.\n\nINTENCION DEL MOVIMIENTO\n\nLa fase actual prioriza estructura y orientacion del bloque.\n\n01\nFOCO DE COACHING\n\nAbrir línea de pase antes de recibir\n\n02\nEXITO DE LA TAREA\n\nTres salidas limpias en dos minutos sin que los apoyos se cierren.\n\n03\nCLAVE\n\nEl apoyo opuesto no debe mirar la pelota quieto\n\nPlay\nReiniciar\n0.0s\nVelocidad\n0.5x\n1x\n1.5x\n2x\nLECTURA DEL EJERCICIO\nRondo 4v2 con salida por apoyo libre\n\nConectar 6 pases y salir por el apoyo que quedó libre.\n\nFASE VIVA\nSetup\nPRINCIPIO\namplitud + tercer hombre\nJUGADORES\n6-6\nEXITO\nTres salidas limpias en dos minutos sin que los apoyos se cierren.\nVISTA\nClaridad tactica\nCalidad\nAlta\nMedia\nBaja\nZonas\nSectores y referencias\nCarreras\nDesmarques activos\nPases\nRutas del balon\nPresion\nSaltos y gatillos\nSeparacion\nAjuste automatico\nAgregar a sesion\nAjustes avanzados",
+                        "blank":  false
+                    },
+                    {
+                        "click":  "Avanzado",
+                        "result":  {
+                                       "clicked":  true,
+                                       "tag":  "SUMMARY",
+                                       "text":  "AVANZADO"
+                                   }
+                    },
+                    {
+                        "click":  "Biblioteca",
+                        "result":  {
+                                       "clicked":  true,
+                                       "tag":  "BUTTON",
+                                       "text":  "Biblioteca"
+                                   }
+                    },
+                    {
+                        "label":  "Biblioteca",
+                        "h2":  "Biblioteca de ejercicios",
+                        "active":  [
+                                       "Biblioteca"
+                                   ],
+                        "buttons":  [
+                                        "Sala",
+                                        "Diagnostico",
+                                        "Sesion",
+                                        "Post-partido",
+                                        "Evolucion",
+                                        "AVANZADO",
+                                        "Cancha 3D",
+                                        "Video",
+                                        "Biblioteca",
+                                        "Briefing",
+                                        "Proyecto local",
+                                        "Guardar local",
+                                        "Exportar JSON",
+                                        "Abrir menu",
+                                        "Modo presentacion",
+                                        "Exportar PNG",
+                                        "attackOrg\namplitud + tercer hombre\nCONECTAR 6 PAS\nRondo 4v2 con salida por apoyo libre\n12 min\nattackOrg\namplitud + tercer hombre\nU15+\n6-6 jugadores\nRPE 5\nMedia",
+                                        "attackOrg\nsalida 3+1\nPROGRESAR AL S\nSalida 3+1 contra dos puntas\n16 min\nattackOrg\nsalida 3+1\nU18+\n7-8 jugadores\nRPE 6\nMedia",
+                                        "transDef\npresión tras pérdida\nFORZAR EL PASE\nPresión tras pase atrás orientando a banda\n15 min\ntransDef\npresión tras pérdida\nSemi-pro\n9-10 jugadores\nRPE 8\nAlta",
+                                        "attackOrg\ncentro atrás\nFIJAR LATERAL\nAtaque por banda y centro atrás\n14 min\nattackOrg\ncentro atrás\nU18+\n7-8 jugadores\nRPE 7\nAlta",
+                                        "abpOff\nfinalización ABP\nATACAR SEGUNDO\nABP córner al segundo palo + rechace\n10 min\nabpOff\nfinalización ABP\nAmateur+\n8-9 jugadores\nRPE 5\nMedia",
+                                        "transOff\ncambio de zona + reaccion tras perdida\nASEGURAR POSES\nRondo 4v2 a dos zonas con cambio vertical\n14 min\ntransOff\ncambio de zona + reaccion tras perdida\nU14+\n8-8 jugadores\nRPE 7\nAlta",
+                                        "attackOrg\nprogresion central\nUSAR LA CONDUC\nCentral conduce y encuentra mediocentro libre\n15 min\nattackOrg\nprogresion central\nU18+\n7-8 jugadores\nRPE 6\nMedia",
+                                        "attackOrg\nfijar-liberar\nFIJAR POR DENT\nFinalizacion con ruptura al lado debil\n13 min\nattackOrg\nfijar-liberar\nU17+\n7-8 jugadores\nRPE 7\nAlta",
+                                        "defenseOrg\nbasculacion + cobertura\nMOVER BLOQUE A\nBloque medio: bascular sin partirse\n18 min\ndefenseOrg\nbasculacion + cobertura\nU18+\n12-14 jugadores\nRPE 6\nMedia",
+                                        "transOff\nprimer pase + ocupar carriles\nTRAS ROBO, ENC\nContraataque 4v3 tras robo central\n10 min\ntransOff\nprimer pase + ocupar carriles\nU16+\n7-8 jugadores\nRPE 8\nAlta",
+                                        "attackOrg\ntercer hombre por fuera\nLIBERAR LATERA\nSalida por lateral con tercer hombre interior\n15 min\nattackOrg\ntercer hombre por fuera\nU17+\n8-9 jugadores\nRPE 6\nMedia",
+                                        "defenseOrg\ntrigger arquero\nACTIVAR PRESIO\nPresion alta cuando recibe el arquero\n16 min\ndefenseOrg\ntrigger arquero\nSemi-pro\n10-12 jugadores\nRPE 8\nAlta",
+                                        "attackOrg\nhombre libre interior\nCIRCULAR HASTA\nPosesion 6v3 encontrando al pivote\n13 min\nattackOrg\nhombre libre interior\nU15+\n9-9 jugadores\nRPE 5\nMedia",
+                                        "abpOff\ncorner corto\nCREAR 2V1 EN C\nABP corner corto con 2v1 y centro tenso\n11 min\nabpOff\ncorner corto\nAmateur+\n7-9 jugadores\nRPE 5\nMedia",
+                                        "attackOrg\nperfil corporal + apoyo\nAUTOMATIZAR RE\nActivacion: pase, apoyo y tercer hombre\n9 min\nattackOrg\nperfil corporal + apoyo\nU12+\n5-6 jugadores\nRPE 3\nBaja",
+                                        "Abrir visor",
+                                        "Agregar a sesión",
+                                        "Crear copia editable",
+                                        "Modo edicion / importar jugada"
+                                    ],
+                        "body":  "RomboIQ\nFLUJO SEMANAL\nSala\nDiagnostico\nSesion\nPost-partido\nEvolucion\nAVANZADO\n\nHerramientas de apoyo. El flujo principal sigue arriba.\n\nCancha 3D\nVideo\nBiblioteca\nBriefing\nBIBLIOTECA\nBiblioteca de ejercicios\n\nCatalogo curado para bajar el diagnostico al campo sin salir del flujo.\n\nBLOQUES\n0\nACTUAL\n6v\nMODO\nPLAN\nProyecto local\nModo presentacion\nExportar PNG\nCATALOGO CURADO\n15\nejercicios disponibles\nFOCO ACTIVO\nTODAS\nfase tactica\nMIS JUGADAS\n0\nvariantes locales\nCRITERIO\nLIBRE\nprincipio de juego\nTodas las fases\nAtaque organizado\nDefensa organizada\nTransición ofensiva\nTransición defensiva\nABP ofensiva\nABP defensiva\nTodos los niveles\nU12+\nU14+\nU15+\nU16+\nU17+\nU18+\nAmateur+\nSemi-pro\nTodos los principios\namplitud + tercer hombre\nsalida 3+1\npresión tras pérdida\ncentro atrás\nfinalización ABP\ncambio de zona + reaccion tras perdida\nprogresion central\nfijar-liberar\nbasculacion + cobertura\nprimer pase + ocupar carriles\ntercer hombre por fuera\ntrigger arquero\nhombre libre interior\ncorner corto\nperfil corporal + apoyo\nattackOrg\namplitud + tercer hombre\nCONECTAR 6 PAS\nRondo 4v2 con salida por apoyo libre\n12 min\nattackOrg\namplitud + tercer hombre\nU15+\n6-6 jugadores\nRPE 5\nMedia\nattackOrg\nsalida 3+1\nPROGRESAR AL S\nSalida 3+1 contra dos puntas\n16 min\nattackOrg\nsalida 3+1\nU18+\n7-8 jugadores\nRPE 6\nMedia\ntransDef\npresión tras pérdida\nFORZAR EL PASE\nPresión tras pase atrás orientando a banda\n15 min\ntransDef\npresión tras pérdida\nSemi-pro\n9-10 jugadores\nRPE 8\nAlta\nattackOrg\ncentro atrás\nFIJAR LATERAL\nAtaque por banda y centro atrás\n14 min\nattackOrg\ncentro atrás\nU18+\n7-8 jugadores\nRPE 7\nAlta\nabpOff\nfinalización ABP\nATACAR SEGUNDO\nABP córner al segundo palo + rechace\n10 min\nabpOff\nfinalización ABP\nAmateur+\n8-9 jugadores\nRPE 5\nMedia\ntransOff\ncambio de zona + reaccion tras perdida\nASEGURAR POSES\nRondo",
+                        "blank":  false
+                    },
+                    {
+                        "click":  "Avanzado",
+                        "result":  {
+                                       "clicked":  true,
+                                       "tag":  "SUMMARY",
+                                       "text":  "AVANZADO"
+                                   }
+                    },
+                    {
+                        "click":  "Briefing",
+                        "result":  {
+                                       "clicked":  false,
+                                       "text":  "Briefing",
+                                       "available":  [
+                                                         "Sala",
+                                                         "Diagnostico",
+                                                         "Sesion",
+                                                         "Post-partido",
+                                                         "Evolucion",
+                                                         "AVANZADO",
+                                                         "Proyecto local",
+                                                         "Guardar local",
+                                                         "Exportar JSON",
+                                                         "Abrir menu",
+                                                         "Modo presentacion",
+                                                         "Exportar PNG",
+                                                         "attackOrg\namplitud + tercer hombre\nCONECTAR 6 PAS\nRondo 4v2 con salida por apoyo libre\n12 min\nattackOrg\namplitud + tercer hombre\nU15+\n6-6 jugadores\nRPE 5\nMedia",
+                                                         "attackOrg\nsalida 3+1\nPROGRESAR AL S\nSalida 3+1 contra dos puntas\n16 min\nattackOrg\nsalida 3+1\nU18+\n7-8 jugadores\nRPE 6\nMedia",
+                                                         "transDef\npresión tras pérdida\nFORZAR EL PASE\nPresión tras pase atrás orientando a banda\n15 min\ntransDef\npresión tras pérdida\nSemi-pro\n9-10 jugadores\nRPE 8\nAlta",
+                                                         "attackOrg\ncentro atrás\nFIJAR LATERAL\nAtaque por banda y centro atrás\n14 min\nattackOrg\ncentro atrás\nU18+\n7-8 jugadores\nRPE 7\nAlta",
+                                                         "abpOff\nfinalización ABP\nATACAR SEGUNDO\nABP córner al segundo palo + rechace\n10 min\nabpOff\nfinalización ABP\nAmateur+\n8-9 jugadores\nRPE 5\nMedia",
+                                                         "transOff\ncambio de zona + reaccion tras perdida\nASEGURAR POSES\nRondo 4v2 a dos zonas con cambio vertical\n14 min\ntransOff\ncambio de zona + reaccion tras perdida\nU14+\n8-8 jugadores\nRPE 7\nAlta",
+                                                         "attackOrg\nprogresion central\nUSAR LA CONDUC\nCentral conduce y encuentra mediocentro libre\n15 min\nattackOrg\nprogresion central\nU18+\n7-8 jugadores\nRPE 6\nMedia",
+                                                         "attackOrg\nfijar-liberar\nFIJAR POR DENT\nFinalizacion con ruptura al lado debil\n13 min\nattackOrg\nfijar-liberar\nU17+\n7-8 jugadores\nRPE 7\nAlta",
+                                                         "defenseOrg\nbasculacion + cobertura\nMOVER BLOQUE A\nBloque medio: bascular sin partirse\n18 min\ndefenseOrg\nbasculacion + cobertura\nU18+\n12-14 jugadores\nRPE 6\nMedia",
+                                                         "transOff\nprimer pase + ocupar carriles\nTRAS ROBO, ENC\nContraataque 4v3 tras robo central\n10 min\ntransOff\nprimer pase + ocupar carriles\nU16+\n7-8 jugadores\nRPE 8\nAlta",
+                                                         "attackOrg\ntercer hombre por fuera\nLIBERAR LATERA\nSalida por lateral con tercer hombre interior\n15 min\nattackOrg\ntercer hombre por fuera\nU17+\n8-9 jugadores\nRPE 6\nMedia",
+                                                         "defenseOrg\ntrigger arquero\nACTIVAR PRESIO\nPresion alta cuando recibe el arquero\n16 min\ndefenseOrg\ntrigger arquero\nSemi-pro\n10-12 jugadores\nRPE 8\nAlta",
+                                                         "attackOrg\nhombre libre interior\nCIRCULAR HASTA\nPosesion 6v3 encontrando al pivote\n13 min\nattackOrg\nhombre libre interior\nU15+\n9-9 jugadores\nRPE 5\nMedia",
+                                                         "abpOff\ncorner corto\nCREAR 2V1 EN C\nABP corner corto con 2v1 y centro tenso\n11 min\nabpOff\ncorner corto\nAmateur+\n7-9 jugadores\nRPE 5\nMedia",
+                                                         "attackOrg\nperfil corporal + apoyo\nAUTOMATIZAR RE\nActivacion: pase, apoyo y tercer hombre\n9 min\nattackOrg\nperfil corporal + apoyo\nU12+\n5-6 jugadores\nRPE 3\nBaja",
+                                                         "Abrir visor",
+                                                         "Agregar a sesión",
+                                                         "Crear copia editable",
+                                                         "Modo edicion / importar jugada"
+                                                     ]
+                                   }
+                    },
+                    {
+                        "label":  "Briefing",
+                        "h2":  "Biblioteca de ejercicios",
+                        "active":  [
+                                       ""
+                                   ],
+                        "buttons":  [
+                                        "Sala",
+                                        "Diagnostico",
+                                        "Sesion",
+                                        "Post-partido",
+                                        "Evolucion",
+                                        "AVANZADO",
+                                        "Proyecto local",
+                                        "Guardar local",
+                                        "Exportar JSON",
+                                        "Abrir menu",
+                                        "Modo presentacion",
+                                        "Exportar PNG",
+                                        "attackOrg\namplitud + tercer hombre\nCONECTAR 6 PAS\nRondo 4v2 con salida por apoyo libre\n12 min\nattackOrg\namplitud + tercer hombre\nU15+\n6-6 jugadores\nRPE 5\nMedia",
+                                        "attackOrg\nsalida 3+1\nPROGRESAR AL S\nSalida 3+1 contra dos puntas\n16 min\nattackOrg\nsalida 3+1\nU18+\n7-8 jugadores\nRPE 6\nMedia",
+                                        "transDef\npresión tras pérdida\nFORZAR EL PASE\nPresión tras pase atrás orientando a banda\n15 min\ntransDef\npresión tras pérdida\nSemi-pro\n9-10 jugadores\nRPE 8\nAlta",
+                                        "attackOrg\ncentro atrás\nFIJAR LATERAL\nAtaque por banda y centro atrás\n14 min\nattackOrg\ncentro atrás\nU18+\n7-8 jugadores\nRPE 7\nAlta",
+                                        "abpOff\nfinalización ABP\nATACAR SEGUNDO\nABP córner al segundo palo + rechace\n10 min\nabpOff\nfinalización ABP\nAmateur+\n8-9 jugadores\nRPE 5\nMedia",
+                                        "transOff\ncambio de zona + reaccion tras perdida\nASEGURAR POSES\nRondo 4v2 a dos zonas con cambio vertical\n14 min\ntransOff\ncambio de zona + reaccion tras perdida\nU14+\n8-8 jugadores\nRPE 7\nAlta",
+                                        "attackOrg\nprogresion central\nUSAR LA CONDUC\nCentral conduce y encuentra mediocentro libre\n15 min\nattackOrg\nprogresion central\nU18+\n7-8 jugadores\nRPE 6\nMedia",
+                                        "attackOrg\nfijar-liberar\nFIJAR POR DENT\nFinalizacion con ruptura al lado debil\n13 min\nattackOrg\nfijar-liberar\nU17+\n7-8 jugadores\nRPE 7\nAlta",
+                                        "defenseOrg\nbasculacion + cobertura\nMOVER BLOQUE A\nBloque medio: bascular sin partirse\n18 min\ndefenseOrg\nbasculacion + cobertura\nU18+\n12-14 jugadores\nRPE 6\nMedia",
+                                        "transOff\nprimer pase + ocupar carriles\nTRAS ROBO, ENC\nContraataque 4v3 tras robo central\n10 min\ntransOff\nprimer pase + ocupar carriles\nU16+\n7-8 jugadores\nRPE 8\nAlta",
+                                        "attackOrg\ntercer hombre por fuera\nLIBERAR LATERA\nSalida por lateral con tercer hombre interior\n15 min\nattackOrg\ntercer hombre por fuera\nU17+\n8-9 jugadores\nRPE 6\nMedia",
+                                        "defenseOrg\ntrigger arquero\nACTIVAR PRESIO\nPresion alta cuando recibe el arquero\n16 min\ndefenseOrg\ntrigger arquero\nSemi-pro\n10-12 jugadores\nRPE 8\nAlta",
+                                        "attackOrg\nhombre libre interior\nCIRCULAR HASTA\nPosesion 6v3 encontrando al pivote\n13 min\nattackOrg\nhombre libre interior\nU15+\n9-9 jugadores\nRPE 5\nMedia",
+                                        "abpOff\ncorner corto\nCREAR 2V1 EN C\nABP corner corto con 2v1 y centro tenso\n11 min\nabpOff\ncorner corto\nAmateur+\n7-9 jugadores\nRPE 5\nMedia",
+                                        "attackOrg\nperfil corporal + apoyo\nAUTOMATIZAR RE\nActivacion: pase, apoyo y tercer hombre\n9 min\nattackOrg\nperfil corporal + apoyo\nU12+\n5-6 jugadores\nRPE 3\nBaja",
+                                        "Abrir visor",
+                                        "Agregar a sesión",
+                                        "Crear copia editable",
+                                        "Modo edicion / importar jugada"
+                                    ],
+                        "body":  "RomboIQ\nFLUJO SEMANAL\nSala\nDiagnostico\nSesion\nPost-partido\nEvolucion\nAVANZADO\nBIBLIOTECA\nBiblioteca de ejercicios\n\nCatalogo curado para bajar el diagnostico al campo sin salir del flujo.\n\nBLOQUES\n0\nACTUAL\n6v\nMODO\nPLAN\nProyecto local\nModo presentacion\nExportar PNG\nCATALOGO CURADO\n15\nejercicios disponibles\nFOCO ACTIVO\nTODAS\nfase tactica\nMIS JUGADAS\n0\nvariantes locales\nCRITERIO\nLIBRE\nprincipio de juego\nTodas las fases\nAtaque organizado\nDefensa organizada\nTransición ofensiva\nTransición defensiva\nABP ofensiva\nABP defensiva\nTodos los niveles\nU12+\nU14+\nU15+\nU16+\nU17+\nU18+\nAmateur+\nSemi-pro\nTodos los principios\namplitud + tercer hombre\nsalida 3+1\npresión tras pérdida\ncentro atrás\nfinalización ABP\ncambio de zona + reaccion tras perdida\nprogresion central\nfijar-liberar\nbasculacion + cobertura\nprimer pase + ocupar carriles\ntercer hombre por fuera\ntrigger arquero\nhombre libre interior\ncorner corto\nperfil corporal + apoyo\nattackOrg\namplitud + tercer hombre\nCONECTAR 6 PAS\nRondo 4v2 con salida por apoyo libre\n12 min\nattackOrg\namplitud + tercer hombre\nU15+\n6-6 jugadores\nRPE 5\nMedia\nattackOrg\nsalida 3+1\nPROGRESAR AL S\nSalida 3+1 contra dos puntas\n16 min\nattackOrg\nsalida 3+1\nU18+\n7-8 jugadores\nRPE 6\nMedia\ntransDef\npresión tras pérdida\nFORZAR EL PASE\nPresión tras pase atrás orientando a banda\n15 min\ntransDef\npresión tras pérdida\nSemi-pro\n9-10 jugadores\nRPE 8\nAlta\nattackOrg\ncentro atrás\nFIJAR LATERAL\nAtaque por banda y centro atrás\n14 min\nattackOrg\ncentro atrás\nU18+\n7-8 jugadores\nRPE 7\nAlta\nabpOff\nfinalización ABP\nATACAR SEGUNDO\nABP córner al segundo palo + rechace\n10 min\nabpOff\nfinalización ABP\nAmateur+\n8-9 jugadores\nRPE 5\nMedia\ntransOff\ncambio de zona + reaccion tras perdida\nASEGURAR POSES\nRondo 4v2 a dos zonas con cambio vertical\n14 min\ntransOff\ncambio de zona + reaccion tras perdida\nU1",
+                        "blank":  false
+                    },
+                    {
+                        "click":  "Avanzado",
+                        "result":  {
+                                       "clicked":  true,
+                                       "tag":  "SUMMARY",
+                                       "text":  "AVANZADO"
+                                   }
+                    }
+                ],
+    "severe":  [
+                   {
+                       "method":  "Runtime.consoleAPICalled",
+                       "params":  {
+                                      "type":  "error",
+                                      "args":  [
+                                                   {
+                                                       "type":  "string",
+                                                       "value":  "Please enable the NormalPass in the EffectComposer in order to use SSAO."
+                                                   }
+                                               ],
+                                      "executionContextId":  2,
+                                      "timestamp":  1780853059896.002,
+                                      "stackTrace":  {
+                                                         "callFrames":  [
+                                                                            {
+                                                                                "functionName":  "console.error",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  18177,
+                                                                                "columnNumber":  15
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "",
+                                                                                "scriptId":  "150",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/@react-three_postprocessing.js?v=6593f1f4",
+                                                                                "lineNumber":  18350,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "mountMemo",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  6536,
+                                                                                "columnNumber":  26
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "useMemo",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  6880,
+                                                                                "columnNumber":  23
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "useMemo",
+                                                                                "scriptId":  "14",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-4AFIVRCK.js?v=6593f1f4",
+                                                                                "lineNumber":  1093,
+                                                                                "columnNumber":  28
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "SSAO2",
+                                                                                "scriptId":  "150",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/@react-three_postprocessing.js?v=6593f1f4",
+                                                                                "lineNumber":  18348,
+                                                                                "columnNumber":  44
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "renderWithHooks",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  5893,
+                                                                                "columnNumber":  25
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "updateForwardRef",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  8769,
+                                                                                "columnNumber":  27
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "beginWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  10391,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "beginWork$1",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  14193,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performUnitOfWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13669,
+                                                                                "columnNumber":  19
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "workLoopSync",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13609,
+                                                                                "columnNumber":  12
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "renderRootSync",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13588,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performConcurrentWorkOnRoot",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13117,
+                                                                                "columnNumber":  81
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "workLoop",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  273,
+                                                                                "columnNumber":  41
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "flushWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  252,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performWorkUntilDeadline",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  460,
+                                                                                "columnNumber":  28
+                                                                            }
+                                                                        ]
+                                                     }
+                                  }
+                   },
+                   {
+                       "method":  "Runtime.consoleAPICalled",
+                       "params":  {
+                                      "type":  "error",
+                                      "args":  [
+                                                   {
+                                                       "type":  "string",
+                                                       "value":  "Please enable the NormalPass in the EffectComposer in order to use SSAO."
+                                                   }
+                                               ],
+                                      "executionContextId":  2,
+                                      "timestamp":  1780853060109.6731,
+                                      "stackTrace":  {
+                                                         "callFrames":  [
+                                                                            {
+                                                                                "functionName":  "console.error",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  18177,
+                                                                                "columnNumber":  15
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "",
+                                                                                "scriptId":  "150",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/@react-three_postprocessing.js?v=6593f1f4",
+                                                                                "lineNumber":  18350,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "mountMemo",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  6536,
+                                                                                "columnNumber":  26
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "useMemo",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  6880,
+                                                                                "columnNumber":  23
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "useMemo",
+                                                                                "scriptId":  "14",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-4AFIVRCK.js?v=6593f1f4",
+                                                                                "lineNumber":  1093,
+                                                                                "columnNumber":  28
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "SSAO2",
+                                                                                "scriptId":  "150",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/@react-three_postprocessing.js?v=6593f1f4",
+                                                                                "lineNumber":  18348,
+                                                                                "columnNumber":  44
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "renderWithHooks",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  5893,
+                                                                                "columnNumber":  25
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "updateForwardRef",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  8769,
+                                                                                "columnNumber":  27
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "beginWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  10391,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "beginWork$1",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  14193,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performUnitOfWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13669,
+                                                                                "columnNumber":  19
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "workLoopConcurrent",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13660,
+                                                                                "columnNumber":  12
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "renderRootConcurrent",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13635,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performConcurrentWorkOnRoot",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13117,
+                                                                                "columnNumber":  45
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "workLoop",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  273,
+                                                                                "columnNumber":  41
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "flushWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  252,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performWorkUntilDeadline",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  460,
+                                                                                "columnNumber":  28
+                                                                            }
+                                                                        ]
+                                                     }
+                                  }
+                   },
+                   {
+                       "method":  "Runtime.consoleAPICalled",
+                       "params":  {
+                                      "type":  "error",
+                                      "args":  [
+                                                   {
+                                                       "type":  "string",
+                                                       "value":  "Please enable the NormalPass in the EffectComposer in order to use SSAO."
+                                                   }
+                                               ],
+                                      "executionContextId":  2,
+                                      "timestamp":  1780853060116.6479,
+                                      "stackTrace":  {
+                                                         "callFrames":  [
+                                                                            {
+                                                                                "functionName":  "console.error",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  18177,
+                                                                                "columnNumber":  15
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "",
+                                                                                "scriptId":  "150",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/@react-three_postprocessing.js?v=6593f1f4",
+                                                                                "lineNumber":  18350,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "updateMemo",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  6552,
+                                                                                "columnNumber":  26
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "useMemo",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  7088,
+                                                                                "columnNumber":  23
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "useMemo",
+                                                                                "scriptId":  "14",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-4AFIVRCK.js?v=6593f1f4",
+                                                                                "lineNumber":  1093,
+                                                                                "columnNumber":  28
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "SSAO2",
+                                                                                "scriptId":  "150",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/@react-three_postprocessing.js?v=6593f1f4",
+                                                                                "lineNumber":  18348,
+                                                                                "columnNumber":  44
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "renderWithHooks",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  5893,
+                                                                                "columnNumber":  25
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "updateForwardRef",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  8769,
+                                                                                "columnNumber":  27
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "beginWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  10391,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "beginWork$1",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  14193,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performUnitOfWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13669,
+                                                                                "columnNumber":  19
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "workLoopSync",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13609,
+                                                                                "columnNumber":  12
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "renderRootSync",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13588,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performSyncWorkOnRoot",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13316,
+                                                                                "columnNumber":  27
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "flushSyncCallbacks",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  2766,
+                                                                                "columnNumber":  29
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "commitRootImpl",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13892,
+                                                                                "columnNumber":  10
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "commitRoot",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13748,
+                                                                                "columnNumber":  12
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "finishConcurrentRender",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13247,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performConcurrentWorkOnRoot",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  13157,
+                                                                                "columnNumber":  14
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "workLoop",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  273,
+                                                                                "columnNumber":  41
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "flushWork",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  252,
+                                                                                "columnNumber":  21
+                                                                            },
+                                                                            {
+                                                                                "functionName":  "performWorkUntilDeadline",
+                                                                                "scriptId":  "156",
+                                                                                "url":  "http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4",
+                                                                                "lineNumber":  460,
+                                                                                "columnNumber":  28
+                                                                            }
+                                                                        ]
+                                                     }
+                                  }
+                   }
+               ]
+}
