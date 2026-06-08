@@ -2,12 +2,12 @@ import {
   type GameModel,
   isGameModelConfigured,
   summarizeGameModel,
-} from "../data/gameModel";
+} from "../data/gameModel.js";
 import {
   type TeamIdentitySetup,
   isTeamIdentityConfigured,
   summarizeTeamIdentity,
-} from "../data/teamIdentitySetup";
+} from "../data/teamIdentitySetup.js";
 
 export type CoachTeamIdentityContext = {
   configured: boolean;
@@ -58,5 +58,9 @@ export function buildCoachTeamIdentityContext({
         : MISSING_TEAM_IDENTITY_MESSAGE,
     setupRequest:
       "Usa identidad solo si viene del setup del equipo, memoria aceptada o evidencia actual. No inventes rasgos de modelo de juego.",
+  };
+}
+ };
+}
   };
 }
