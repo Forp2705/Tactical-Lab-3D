@@ -19,6 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { memo, useMemo, useState } from "react";
 import { computeMicrocycleAlerts } from "./MicrocycleAlerts";
+import { PitchSideView } from "./PitchSideView";
 import {
   LoadMeter,
   PitchViz,
@@ -56,6 +57,7 @@ export function SessionsView() {
   const [dragMeta, setDragMeta] = useState<DragMeta>(null);
   const [drawerSearch, setDrawerSearch] = useState("");
   const [drawerFilter, setDrawerFilter] = useState<DrawerFilter>("all");
+  const [pitchSideOpen, setPitchSideOpen] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -118,6 +120,10 @@ export function SessionsView() {
   }, [drawerExercises, drawerFavoriteIdSet, drawerFilter, drawerMineIdSet, drawerRecentIdSet, drawerSearch]);
   const drawerVisible = drawerFiltered.slice(0, SESSION_DRAWER_LIMIT);
 
+  if (pitchSideOpen) {
+    return <PitchSideView onExit={() => setPitchSideOpen(false)} />;
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -154,12 +160,22 @@ export function SessionsView() {
               <span className="panel-eyebrow">Diagnostico -&gt; campo</span>
               <h3>Sesion como respuesta tactica</h3>
             </div>
-            <button
-              type="button"
-              onClick={() => void exportSessionPdf(session.blocks, computed)}
-            >
-              Exportar PDF
-            </button>
+            <div className="toolbar compact" style={{ marginBottom: 0 }}>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!session.blocks.length}
+                onClick={() => setPitchSideOpen(true)}
+              >
+                Modo cancha
+              </button>
+              <button
+                type="button"
+                onClick={() => void exportSessionPdf(session.blocks, computed)}
+              >
+                Exportar PDF
+              </button>
+            </div>
           </div>
           <div className="session-origin-card">
             <span className="eyebrow">Foco semanal</span>
@@ -569,7 +585,7 @@ function SessionBlockSketch({
           <div className="session-sketch-meta">
             <b>{attachedSketch.title}</b>
             <small className="muted">
-              {attachedSketch.tokens.length} tokens - {attachedSketch.annotations.length} anotaciones
+              {attachedSketch.tokens.length} jugadores - {attachedSketch.annotations.length} anotaciones
             </small>
           </div>
         </div>
@@ -674,7 +690,7 @@ function shorten(text: string, max: number) {
   return `${text.slice(0, max - 1).trim()}...`;
 }
 
-function readSessionIntent(
+export function readSessionIntent(
   staffNotes: string | undefined,
   aiPrompt: string,
   weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"],
@@ -703,9 +719,9 @@ function readSessionIntent(
   };
 }
 
-function readSessionBlockIntent(
+export function readSessionBlockIntent(
   notes: string | undefined,
-  exercise: (typeof catalog)[number],
+  exercise: Exercise,
   aiPrompt: string,
   weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"],
 ) {

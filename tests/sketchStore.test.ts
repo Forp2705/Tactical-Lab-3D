@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppStore } from "../src/state/useAppStore";
 import { SketchSchema, type Sketch } from "../src/sketch/sketchSchemas";
 import type { SessionBlock } from "../src/data/schemas";
@@ -19,6 +19,11 @@ function block(overrides: Partial<SessionBlock>): SessionBlock {
     ...overrides,
   };
 }
+
+afterEach(() => {
+  // Safety net: restore real timers even if an assertion above throws mid-test.
+  vi.useRealTimers();
+});
 
 beforeEach(() => {
   useAppStore.setState(useAppStore.getInitialState(), true);
@@ -42,23 +47,39 @@ describe("Sketch store actions", () => {
   });
 
   it("updateSketch patches fields, bumps updatedAt, and re-validates before writing", () => {
+    // `createSketch`/`updateSketch` both stamp `updatedAt` with
+    // `new Date().toISOString()`. Two calls issued back-to-back can land in
+    // the same millisecond, making a plain `not.toBe` comparison flaky. Pin
+    // the clock and advance it deterministically between writes so the
+    // assertion stays meaningful (an actual time change must be reflected)
+    // without relying on real wall-clock granularity or sleeps.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-08T10:00:00.000Z"));
+
     const id = useAppStore.getState().createSketch({ title: "Original" });
     const before = useAppStore.getState().sketches[0] as Sketch;
+    expect(before.updatedAt).toBe("2026-06-08T10:00:00.000Z");
 
+    vi.setSystemTime(new Date("2026-06-08T10:00:01.000Z"));
     useAppStore.getState().updateSketch(id, {
       tokens: [{ id: "tok-1", x: 30, y: 40, label: "9", team: "home" }],
     });
     const afterValid = useAppStore.getState().sketches.find((s) => s.id === id);
     expect(afterValid?.tokens).toHaveLength(1);
+    expect(afterValid?.updatedAt).toBe("2026-06-08T10:00:01.000Z");
     expect(afterValid?.updatedAt).not.toBe(before.updatedAt);
 
     // An invalid patch (coordinate outside 0-100) must be rejected silently —
     // the previously-valid sketch stays untouched rather than being corrupted.
+    vi.setSystemTime(new Date("2026-06-08T10:00:02.000Z"));
     useAppStore.getState().updateSketch(id, {
       tokens: [{ id: "tok-2", x: 999, y: 40, label: "9", team: "home" }],
     });
     const afterInvalid = useAppStore.getState().sketches.find((s) => s.id === id);
     expect(afterInvalid?.tokens).toEqual(afterValid?.tokens);
+    expect(afterInvalid?.updatedAt).toBe(afterValid?.updatedAt);
+
+    vi.useRealTimers();
   });
 
   it("renameSketch trims, clamps length, and ignores blank titles", () => {

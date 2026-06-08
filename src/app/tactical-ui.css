@@ -2030,6 +2030,77 @@ body .app-shell .brand-mark {
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
 }
 
+.home-onboarding-strip {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-card .section-title {
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.onboarding-problem-step {
+  display: grid;
+  gap: 10px;
+}
+
+.onboarding-problem-step label {
+  display: grid;
+  gap: 6px;
+}
+
+.onboarding-problem-step label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.onboarding-chip-row {
+  flex-wrap: wrap;
+}
+
+.onboarding-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.onboarding-summary-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding-summary-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+
+.onboarding-summary-list li span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.onboarding-summary-list li b {
+  text-align: right;
+}
+
+.onboarding-nav {
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
 .home-team-setup-grid {
   display: grid;
   gap: 10px;

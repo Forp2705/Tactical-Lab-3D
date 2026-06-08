@@ -230,6 +230,15 @@ export const SessionBlockSchema = z.object({
    * `detachSketchFromSessionBlock` in useAppStore for the write path.
    */
   sketchId: z.string().optional(),
+  /**
+   * Optional "marked as done" flag, set from Pitch-side Mode while running a
+   * session on the field (see `src/sessions/PitchSideView.tsx`). Purely a UI
+   * checkbox for the coach during training — additive/backward-compatible,
+   * does not affect session totals, materials, or objectives. Written via the
+   * existing generic `updateSessionBlock(id, patch)` action, same pattern as
+   * `sketchId` above — no new store action or migration needed.
+   */
+  done: z.boolean().optional(),
 });
 
 export const SessionSchema = z.object({

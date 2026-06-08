@@ -4300,6 +4300,125 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   font-size: 12px;
 }
 
+/* ===== Pitch-side Mode (focused execution surface for training day) ===== */
+
+.pitch-side-view {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0 32px;
+}
+
+.pitch-side-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pitch-side-header h2 {
+  margin: 4px 0 0;
+}
+
+.pitch-side-focus {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  padding: 12px 14px;
+}
+
+.pitch-side-focus p {
+  margin: 4px 0 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.pitch-side-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 18px 20px;
+}
+
+.pitch-side-card-head h3 {
+  margin: 4px 0 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.pitch-side-sketch-thumb {
+  width: 100%;
+  max-width: 320px;
+}
+
+.pitch-side-detail {
+  display: grid;
+  gap: 6px;
+}
+
+.pitch-side-detail > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pitch-side-detail p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.pitch-side-detail ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  line-height: 1.45;
+}
+
+.pitch-side-nav {
+  flex-wrap: wrap;
+}
+
+.pitch-side-nav button {
+  min-height: 44px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.pitch-side-note {
+  display: grid;
+  gap: 8px;
+}
+
+.pitch-side-note label {
+  display: grid;
+  gap: 6px;
+}
+
+.pitch-side-note label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .pitch-side-view {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .pitch-side-header {
+    flex-direction: column;
+  }
+}
+
 .session-drawer-search:focus {
   outline: none;
   border-color: rgba(94, 234, 212, 0.5);

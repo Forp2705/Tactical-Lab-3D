@@ -22,6 +22,7 @@ import { isTeamIdentityConfigured } from "@/data/teamIdentitySetup";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
 import { memo, useMemo, useState } from "react";
+import { RealCoachOnboarding } from "./RealCoachOnboarding";
 import { TeamTimeline } from "./TeamTimeline";
 
 export function HomeView() {
@@ -187,6 +188,11 @@ export function HomeView() {
           </div>
         </div>
       </section>
+      {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
+        <section className="home-onboarding-strip">
+          <RealCoachOnboarding identity={teamIdentity} />
+        </section>
+      ) : null}
       <section className="home-mode-strip">
         <WorkspaceModeCard workspaceMode={workspaceMode} />
         {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
