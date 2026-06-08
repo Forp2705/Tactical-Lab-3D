@@ -43,6 +43,111 @@ export async function exportCanvasMedia(
   }
 }
 
+export async function exportCanvasImage(
+  canvas: HTMLCanvasElement,
+  filename: string,
+) {
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((result) => resolve(result), "image/png"),
+  );
+  if (!blob) throw new Error("No se pudo generar la imagen del visor.");
+  downloadBlob(blob, filename.endsWith(".png") ? filename : `${filename}.png`);
+}
+
+const SVG_EXPORT_STYLE_PROPS = [
+  "fill",
+  "stroke",
+  "stroke-width",
+  "stroke-dasharray",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "opacity",
+  "fill-opacity",
+  "stroke-opacity",
+  "font-family",
+  "font-size",
+  "font-weight",
+  "text-anchor",
+  "color",
+] as const;
+
+/**
+ * Exports a live SVG element (e.g. a Quick Sketch surface) as a PNG image.
+ * Quick Sketch styles its shapes via CSS classes from theme.css, which are
+ * not available to a detached/serialized SVG, so this clones the node and
+ * inlines the computed styles before rasterizing through an offscreen canvas.
+ */
+export async function exportSvgImage(
+  svg: SVGSVGElement,
+  filename: string,
+  options?: { background?: string; scale?: number },
+) {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  inlineComputedSvgStyles(svg, clone);
+
+  const viewBox = svg.viewBox.baseVal;
+  const width = viewBox && viewBox.width ? viewBox.width : svg.clientWidth || 800;
+  const height = viewBox && viewBox.height ? viewBox.height : svg.clientHeight || 512;
+  const scale = options?.scale ?? 6;
+
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("width", String(width));
+  clone.setAttribute("height", String(height));
+
+  const serialized = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+
+  try {
+    const image = await loadImage(url);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No se pudo preparar el lienzo de exportacion.");
+    if (options?.background) {
+      ctx.fillStyle = options.background;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((result) => resolve(result), "image/png"),
+    );
+    if (!blob) throw new Error("No se pudo generar la imagen del boceto.");
+    downloadBlob(blob, filename.endsWith(".png") ? filename : `${filename}.png`);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function inlineComputedSvgStyles(source: Element, target: Element) {
+  if (source instanceof SVGElement && target instanceof SVGElement) {
+    const computed = window.getComputedStyle(source);
+    let styleText = "";
+    for (const prop of SVG_EXPORT_STYLE_PROPS) {
+      const value = computed.getPropertyValue(prop);
+      if (value) styleText += `${prop}:${value};`;
+    }
+    if (styleText) target.setAttribute("style", styleText);
+  }
+  const sourceChildren = Array.from(source.children);
+  const targetChildren = Array.from(target.children);
+  sourceChildren.forEach((child, index) => {
+    const targetChild = targetChildren[index];
+    if (targetChild) inlineComputedSvgStyles(child, targetChild);
+  });
+}
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo cargar el boceto para exportar."));
+    image.src = url;
+  });
+}
+
 async function recordCanvas(canvas: HTMLCanvasElement, seconds: number) {
   const stream = canvas.captureStream(30);
   const chunks: BlobPart[] = [];

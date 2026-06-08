@@ -223,6 +223,13 @@ export const SessionBlockSchema = z.object({
   durationMin: z.number().positive(),
   notes: z.string().optional(),
   swappable: z.boolean().default(true),
+  /**
+   * Optional reference to a Quick Sketch (`Sketch.id`, see src/sketch/).
+   * Additive/backward-compatible pointer — does not change session totals,
+   * materials, or objectives. See `attachSketchToSessionBlock` /
+   * `detachSketchFromSessionBlock` in useAppStore for the write path.
+   */
+  sketchId: z.string().optional(),
 });
 
 export const SessionSchema = z.object({

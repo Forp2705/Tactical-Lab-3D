@@ -380,27 +380,7 @@ export function AiView() {
           </div>
         </header>
 
-        <div className="ai-cockpit-grid">
-          <aside className="ai-context-rail">
-            <AgentStatusPanel
-              status={agentStatus}
-              statusError={agentStatusError}
-              lastRun={lastRun}
-              loading={loading}
-              onRefresh={() => void refreshAgentStatus()}
-            />
-            <ActiveContextPanel
-              context={cockpitContext}
-              shapeContext={coachShapeContext}
-            />
-            <RecentReportsPanel
-              reports={cockpitContext.recentReports}
-              error={reportsError}
-            />
-            <MemoryPanel acceptedMemory={cockpitContext.acceptedMemory} />
-            <PatternsPanel patterns={cockpitContext.teamPatterns} />
-          </aside>
-
+        <div className="ai-cockpit-stack">
           <main className="ai-workbench">
             <section className="ai-command-card team-card">
               <div className="section-title">
@@ -487,6 +467,35 @@ export function AiView() {
               />
             ) : null}
           </main>
+
+          <details className="ai-context-details">
+            <summary>
+              <span>Contexto completo del agente</span>
+              <small>
+                Estado, plantel, reportes, memoria y patrones que sostienen la
+                lectura
+              </small>
+            </summary>
+            <aside className="ai-context-rail">
+              <AgentStatusPanel
+                status={agentStatus}
+                statusError={agentStatusError}
+                lastRun={lastRun}
+                loading={loading}
+                onRefresh={() => void refreshAgentStatus()}
+              />
+              <ActiveContextPanel
+                context={cockpitContext}
+                shapeContext={coachShapeContext}
+              />
+              <RecentReportsPanel
+                reports={cockpitContext.recentReports}
+                error={reportsError}
+              />
+              <MemoryPanel acceptedMemory={cockpitContext.acceptedMemory} />
+              <PatternsPanel patterns={cockpitContext.teamPatterns} />
+            </aside>
+          </details>
         </div>
       </section>
     </>

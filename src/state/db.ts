@@ -12,10 +12,11 @@ import {
   OpponentScoutSchema,
 } from "@/scout/opponentScout";
 import { TeamIdentitySetupSchema } from "@/data/teamIdentitySetup";
+import { SketchSchema } from "@/sketch/sketchSchemas";
 import Dexie, { type Table } from "dexie";
 import { z } from "zod";
 
-export const APP_SNAPSHOT_VERSION = 4;
+export const APP_SNAPSHOT_VERSION = 6;
 
 const VideoMomentSchema = z.enum([
   "firstHalf",
@@ -105,6 +106,11 @@ const ManualObservationSnapshotSchema = z.object({
     makeStableEventId("manual-observation", Date.parse(observation.createdAt ?? "") || Date.now(), observation.text),
   createdAt: observation.createdAt ?? new Date().toISOString(),
 }));
+
+const LibraryRecentOpenSnapshotSchema = z.object({
+  exerciseId: z.string(),
+  at: z.string(),
+});
 
 const WeeklyDecisionSessionIntentSnapshotSchema = z.object({
   problem: z.string(),
@@ -196,6 +202,9 @@ const snapshotShape = {
   tracks: z.array(VideoTrackSnapshotSchema),
   manualObservations: z.array(ManualObservationSnapshotSchema).default([]),
   weeklyDecisionThread: WeeklyDecisionThreadSnapshotSchema.default(null),
+  libraryFavoriteIds: z.array(z.string()).default([]),
+  libraryRecentOpens: z.array(LibraryRecentOpenSnapshotSchema).default([]),
+  sketches: z.array(SketchSchema).default([]),
   aiPrompt: z.string(),
 } as const;
 
@@ -308,6 +317,21 @@ const MIGRATIONS: Record<
       weeklyDecisionThread,
     };
   },
+  4: (snap) => ({
+    ...snap,
+    version: 5,
+    libraryFavoriteIds: Array.isArray(snap.libraryFavoriteIds)
+      ? snap.libraryFavoriteIds
+      : [],
+    libraryRecentOpens: Array.isArray(snap.libraryRecentOpens)
+      ? snap.libraryRecentOpens
+      : [],
+  }),
+  5: (snap) => ({
+    ...snap,
+    version: 6,
+    sketches: Array.isArray(snap.sketches) ? snap.sketches : [],
+  }),
 };
 
 function applyVersionMigrations<T extends Record<string, unknown>>(snap: T): T {
@@ -414,6 +438,9 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
           teamId: migrated.weeklyDecisionThread.teamId || teamId,
         }
       : null,
+    libraryFavoriteIds: migrated.libraryFavoriteIds ?? [],
+    libraryRecentOpens: migrated.libraryRecentOpens ?? [],
+    sketches: migrated.sketches ?? [],
   };
 }
 

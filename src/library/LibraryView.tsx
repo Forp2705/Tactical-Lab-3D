@@ -1,18 +1,31 @@
 import { catalog, ExerciseSchema, generatedLibraryExerciseIds } from "@/data";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { LoadMeter, PitchViz } from "@/ui/tacticalPrimitives";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type ImportFeedback = {
   type: "success" | "error";
   message: string;
 };
 
+type SmartFilter = "all" | "favorites" | "recent" | "week" | "mine";
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+const SMART_FILTERS: { id: SmartFilter; label: string }[] = [
+  { id: "favorites", label: "Favoritos" },
+  { id: "recent", label: "Recientes" },
+  { id: "week", label: "Usados esta semana" },
+  { id: "mine", label: "Mis ejercicios base" },
+];
+
 export function LibraryView() {
   const [importDraft, setImportDraft] = useState("");
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(
     null,
   );
+  const [newDrillTitle, setNewDrillTitle] = useState("");
+  const [smartFilter, setSmartFilter] = useState<SmartFilter>("all");
   const search = useAppStore((state) => state.search);
   const phase = useAppStore((state) => state.phase);
   const level = useAppStore((state) => state.level);
@@ -26,10 +39,74 @@ export function LibraryView() {
   const importExerciseVariant = useAppStore(
     (state) => state.importExerciseVariant,
   );
+  const createBlankExercise = useAppStore((state) => state.createBlankExercise);
+  const libraryFavoriteIds = useAppStore((state) => state.libraryFavoriteIds);
+  const libraryRecentOpens = useAppStore((state) => state.libraryRecentOpens);
+  const toggleLibraryFavorite = useAppStore(
+    (state) => state.toggleLibraryFavorite,
+  );
+  const recordLibraryOpen = useAppStore((state) => state.recordLibraryOpen);
   const visibleCatalog = catalog.filter(
     (exercise) => !generatedLibraryExerciseIds.has(exercise.id),
   );
   const exercises = [...visibleCatalog, ...exerciseVariants];
+
+  const favoriteIdSet = useMemo(
+    () => new Set(libraryFavoriteIds),
+    [libraryFavoriteIds],
+  );
+  const recentIdsOrdered = useMemo(
+    () => libraryRecentOpens.map((entry) => entry.exerciseId),
+    [libraryRecentOpens],
+  );
+  const recentIdSet = useMemo(
+    () => new Set(recentIdsOrdered.slice(0, 8)),
+    [recentIdsOrdered],
+  );
+  const weekIdSet = useMemo(() => {
+    const now = Date.now();
+    return new Set(
+      libraryRecentOpens
+        .filter((entry) => now - Date.parse(entry.at) <= WEEK_MS)
+        .map((entry) => entry.exerciseId),
+    );
+  }, [libraryRecentOpens]);
+  const mineIdSet = useMemo(
+    () => new Set(exerciseVariants.map((exercise) => exercise.id)),
+    [exerciseVariants],
+  );
+  const smartFilterCounts: Record<SmartFilter, number> = {
+    all: exercises.length,
+    favorites: exercises.filter((exercise) => favoriteIdSet.has(exercise.id))
+      .length,
+    recent: exercises.filter((exercise) => recentIdSet.has(exercise.id)).length,
+    week: exercises.filter((exercise) => weekIdSet.has(exercise.id)).length,
+    mine: exercises.filter((exercise) => mineIdSet.has(exercise.id)).length,
+  };
+
+  const handleSelectExercise = (exerciseId: string) => {
+    selectExercise(exerciseId);
+    recordLibraryOpen(exerciseId);
+  };
+
+  const handleCreateBlankExercise = () => {
+    const id = createBlankExercise({
+      title: newDrillTitle.trim() || undefined,
+    });
+    if (!id) {
+      setImportFeedback({
+        type: "error",
+        message: "No se pudo crear el ejercicio nuevo.",
+      });
+      return;
+    }
+    setNewDrillTitle("");
+    setImportFeedback({
+      type: "success",
+      message:
+        "Ejercicio creado desde cero y abierto en el visor. Personalizalo y agregalo a la sesion cuando este listo.",
+    });
+  };
 
   const filtered = exercises.filter((exercise) => {
     const q = search.trim().toLowerCase();
@@ -50,6 +127,28 @@ export function LibraryView() {
       (principle === "all" || exercise.principle === principle)
     );
   });
+
+  const smartFiltered = filtered.filter((exercise) => {
+    switch (smartFilter) {
+      case "favorites":
+        return favoriteIdSet.has(exercise.id);
+      case "recent":
+        return recentIdSet.has(exercise.id);
+      case "week":
+        return weekIdSet.has(exercise.id);
+      case "mine":
+        return mineIdSet.has(exercise.id);
+      default:
+        return true;
+    }
+  });
+  const displayedExercises =
+    smartFilter === "recent"
+      ? [...smartFiltered].sort(
+          (a, b) =>
+            recentIdsOrdered.indexOf(a.id) - recentIdsOrdered.indexOf(b.id),
+        )
+      : smartFiltered;
 
   const selected = getExerciseById(selectedExerciseId);
   const selectedIsVariant = exerciseVariants.some(
@@ -220,14 +319,44 @@ export function LibraryView() {
             ))}
           </select>
         </div>
-        <div className="exercise-grid">
-          {filtered.map((exercise) => (
+        <div className="library-new-drill-row">
+          <input
+            placeholder="Nombre del ejercicio nuevo (opcional)"
+            value={newDrillTitle}
+            onChange={(event) => setNewDrillTitle(event.target.value)}
+          />
+          <button type="button" className="btn primary" onClick={handleCreateBlankExercise}>
+            Crear ejercicio desde cero
+          </button>
+        </div>
+        <div className="library-smart-filters">
+          {SMART_FILTERS.map((filter) => (
             <button
+              key={filter.id}
               type="button"
-              key={exercise.id}
-              className={`exercise-card ${exercise.id === selectedExerciseId ? "selected" : ""}`}
-              onClick={() => selectExercise(exercise.id)}
+              className={`smart-filter-chip ${smartFilter === filter.id ? "active" : ""}`}
+              onClick={() =>
+                setSmartFilter((current) =>
+                  current === filter.id ? "all" : filter.id,
+                )
+              }
             >
+              {filter.label}
+              <span>{smartFilterCounts[filter.id]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="exercise-grid">
+          {displayedExercises.map((exercise) => (
+            <div
+              className={`exercise-card-wrap ${exercise.id === selectedExerciseId ? "selected" : ""}`}
+              key={exercise.id}
+            >
+              <button
+                type="button"
+                className={`exercise-card ${exercise.id === selectedExerciseId ? "selected" : ""}`}
+                onClick={() => handleSelectExercise(exercise.id)}
+              >
               <PitchViz
                 compact
                 title={exercise.phase}
@@ -263,7 +392,28 @@ export function LibraryView() {
                 load={exercise.rpe >= 7 ? "high" : exercise.rpe >= 5 ? "med" : "low"}
                 label={`RPE ${exercise.rpe}`}
               />
-            </button>
+              </button>
+              <button
+                type="button"
+                className={`favorite-toggle ${favoriteIdSet.has(exercise.id) ? "active" : ""}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleLibraryFavorite(exercise.id);
+                }}
+                aria-label={
+                  favoriteIdSet.has(exercise.id)
+                    ? "Quitar de favoritos"
+                    : "Marcar como favorito"
+                }
+                title={
+                  favoriteIdSet.has(exercise.id)
+                    ? "Quitar de favoritos"
+                    : "Marcar como favorito"
+                }
+              >
+                {favoriteIdSet.has(exercise.id) ? "★" : "☆"}
+              </button>
+            </div>
           ))}
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
   parseSnapshot,
 } from "../src/state/db";
 import { useAppStore } from "../src/state/useAppStore";
+import { createBlankSketch } from "../src/sketch/sketchSchemas";
 
 /**
  * Migración tolerante (Nivel 1): parseSnapshot ya no descarta todo el snapshot
@@ -119,6 +120,32 @@ describe("parseSnapshot — recuperación tolerante", () => {
     expect(parsed?.team.id).toBe("team-demo-rojo-fc");
     expect(parsed?.teamIdentity.teamName).toBe("Rojo FC");
     expect(parsed?.teamIdentity.baseFormation).toBe("4-3-3");
+  });
+
+  it("migra snapshots v5 agregando sketches vacios", () => {
+    const base = snapshotFromDefaults() as unknown as Record<string, unknown>;
+    base.version = 5;
+    delete base.sketches;
+
+    const parsed = parseSnapshot(base);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.version).toBe(APP_SNAPSHOT_VERSION);
+    expect(Array.isArray(parsed?.sketches)).toBe(true);
+    expect(parsed?.sketches).toEqual([]);
+  });
+
+  it("conserva bocetos existentes válidos al migrar desde v5", () => {
+    const base = snapshotFromDefaults() as unknown as Record<string, unknown>;
+    base.version = 5;
+    const sketch = createBlankSketch("Salida en bloque medio");
+    base.sketches = [sketch];
+
+    const parsed = parseSnapshot(base);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.version).toBe(APP_SNAPSHOT_VERSION);
+    expect(parsed?.sketches).toHaveLength(1);
+    expect(parsed?.sketches?.[0]?.id).toBe(sketch.id);
+    expect(parsed?.sketches?.[0]?.title).toBe("Salida en bloque medio");
   });
 
   it("devuelve null cuando no hay ningún campo reconocible", () => {

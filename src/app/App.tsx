@@ -76,6 +76,41 @@ async function exportCurrentCanvas(format: "mp4" | "gif") {
   }
 }
 
+function slugifyForFilename(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "ejercicio";
+}
+
+async function exportCurrentCanvasImage() {
+  const canvas = document.querySelector(
+    ".canvas-wrap canvas",
+  ) as HTMLCanvasElement | null;
+  if (!canvas) return;
+
+  const store = useAppStore.getState();
+  if (store.exportStatus) return;
+
+  const exercise =
+    store.viewerExerciseOverride ??
+    getExerciseById(store.selectedExerciseId) ??
+    catalog[0];
+  const today = new Date().toISOString().slice(0, 10);
+  const filename = `romboiq-${slugifyForFilename(exercise.title)}-${today}.png`;
+
+  try {
+    store.setExportStatus({ phase: "recording", format: "png" });
+    const { exportCanvasImage } = await import("@/export/media");
+    await exportCanvasImage(canvas, filename);
+  } finally {
+    useAppStore.getState().setExportStatus(null);
+  }
+}
+
 const TACTICAL_LAYERS: { id: Layer; label: string }[] = [
   { id: "withBall", label: "Con pelota" },
   { id: "withoutBall", label: "Sin pelota" },
@@ -185,6 +220,9 @@ export function App() {
         tracks: state.tracks,
         manualObservations: state.manualObservations,
         weeklyDecisionThread: state.weeklyDecisionThread,
+        libraryFavoriteIds: state.libraryFavoriteIds,
+        libraryRecentOpens: state.libraryRecentOpens,
+        sketches: state.sketches,
         aiPrompt: state.aiPrompt,
       });
     };
@@ -296,9 +334,11 @@ function ViewerWorkspace() {
           {exportStatus ? (
             <div className="export-overlay">
               <span className="export-spinner" />
-              {exportStatus.phase === "recording"
-                ? `Grabando escena (${exportStatus.format.toUpperCase()})...`
-                : "Procesando video..."}
+              {exportStatus.format === "png"
+                ? "Generando imagen..."
+                : exportStatus.phase === "recording"
+                  ? `Grabando escena (${exportStatus.format.toUpperCase()})...`
+                  : "Procesando video..."}
             </div>
           ) : null}
           <ViewerCanvasHud
@@ -426,13 +466,26 @@ function ViewerWorkspace() {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="viewer-primary-action"
-            onClick={() => useAppStore.getState().addToSession(selectedExercise.id)}
-          >
-            Agregar a sesion
-          </button>
+          <div className="viewer-cta-row">
+            <button
+              type="button"
+              className="viewer-primary-action"
+              onClick={() => useAppStore.getState().addToSession(selectedExercise.id)}
+            >
+              Agregar a sesion
+            </button>
+            <button
+              type="button"
+              className="viewer-primary-action secondary-cta"
+              disabled={!!exportStatus}
+              onClick={() => void exportCurrentCanvasImage()}
+              title="Descarga una imagen PNG de la escena actual para compartir con el plantel"
+            >
+              {exportStatus?.format === "png"
+                ? "Generando imagen..."
+                : "Exportar imagen / Compartir con jugadores"}
+            </button>
+          </div>
 
           <details className="viewer-advanced-panel">
             <summary>Ajustes avanzados</summary>

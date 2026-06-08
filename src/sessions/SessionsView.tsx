@@ -1,5 +1,5 @@
-import { catalog } from "@/data";
-import type { Session } from "@/data";
+import { catalog, generatedLibraryExerciseIds } from "@/data";
+import type { Exercise, Session } from "@/data";
 import { useAppStore } from "@/state/useAppStore";
 import {
   DndContext,
@@ -24,11 +24,22 @@ import {
   PitchViz,
   type PitchOverlay,
 } from "@/ui/tacticalPrimitives";
+import { QuickSketchView, SketchThumbnail, type Sketch } from "@/sketch";
 
 type DragMeta =
   | { type: "exercise"; exerciseId: string }
   | { type: "block"; blockId: string }
   | null;
+
+type DrawerFilter = "all" | "favorites" | "recent" | "mine";
+
+const DRAWER_FILTERS: { id: Exclude<DrawerFilter, "all">; label: string }[] = [
+  { id: "favorites", label: "Favoritos" },
+  { id: "recent", label: "Recientes" },
+  { id: "mine", label: "Mis ejercicios" },
+];
+
+const SESSION_DRAWER_LIMIT = 60;
 
 export function SessionsView() {
   const session = useAppStore((state) => state.session);
@@ -39,7 +50,12 @@ export function SessionsView() {
   const reorderSessionBlocks = useAppStore(
     (state) => state.reorderSessionBlocks,
   );
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
+  const libraryFavoriteIds = useAppStore((state) => state.libraryFavoriteIds);
+  const libraryRecentOpens = useAppStore((state) => state.libraryRecentOpens);
   const [dragMeta, setDragMeta] = useState<DragMeta>(null);
+  const [drawerSearch, setDrawerSearch] = useState("");
+  const [drawerFilter, setDrawerFilter] = useState<DrawerFilter>("all");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
@@ -58,6 +74,49 @@ export function SessionsView() {
     () => session.blocks.map((block) => block.id),
     [session.blocks],
   );
+
+  // El catalogo curado por si solo dejaba afuera ejercicios propios (creados
+  // desde cero, duplicados, importados). Combinamos catalogo + variantes, como
+  // hace LibraryView, para que lo que el coach ve en Biblioteca tambien
+  // aparezca aca para arrastrar a la sesion.
+  const drawerExercises = useMemo(() => {
+    const visibleCatalog = catalog.filter(
+      (exercise) => !generatedLibraryExerciseIds.has(exercise.id),
+    );
+    return [...visibleCatalog, ...exerciseVariants];
+  }, [exerciseVariants]);
+  const drawerFavoriteIdSet = useMemo(
+    () => new Set(libraryFavoriteIds),
+    [libraryFavoriteIds],
+  );
+  const drawerRecentIdSet = useMemo(
+    () => new Set(libraryRecentOpens.slice(0, 8).map((entry) => entry.exerciseId)),
+    [libraryRecentOpens],
+  );
+  const drawerMineIdSet = useMemo(
+    () => new Set(exerciseVariants.map((exercise) => exercise.id)),
+    [exerciseVariants],
+  );
+  const drawerCounts: Record<DrawerFilter, number> = {
+    all: drawerExercises.length,
+    favorites: drawerExercises.filter((exercise) => drawerFavoriteIdSet.has(exercise.id)).length,
+    recent: drawerExercises.filter((exercise) => drawerRecentIdSet.has(exercise.id)).length,
+    mine: drawerExercises.filter((exercise) => drawerMineIdSet.has(exercise.id)).length,
+  };
+  const drawerFiltered = useMemo(() => {
+    const q = drawerSearch.trim().toLowerCase();
+    return drawerExercises.filter((exercise) => {
+      if (drawerFilter === "favorites" && !drawerFavoriteIdSet.has(exercise.id)) return false;
+      if (drawerFilter === "recent" && !drawerRecentIdSet.has(exercise.id)) return false;
+      if (drawerFilter === "mine" && !drawerMineIdSet.has(exercise.id)) return false;
+      if (!q) return true;
+      return [exercise.title, exercise.phase, exercise.principle, exercise.level]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [drawerExercises, drawerFavoriteIdSet, drawerFilter, drawerMineIdSet, drawerRecentIdSet, drawerSearch]);
+  const drawerVisible = drawerFiltered.slice(0, SESSION_DRAWER_LIMIT);
 
   return (
     <DndContext
@@ -165,11 +224,46 @@ export function SessionsView() {
           <p className="muted-panel">
             Arrastra solo lo que responda al foco semanal.
           </p>
-          <div style={{ maxHeight: 680, overflow: "auto", paddingRight: 4 }}>
-            {catalog.slice(0, 16).map((exercise) => (
-              <ExerciseDraggable key={exercise.id} exerciseId={exercise.id} />
+          <input
+            type="search"
+            className="session-drawer-search"
+            placeholder="Buscar por titulo, fase o principio..."
+            value={drawerSearch}
+            onChange={(event) => setDrawerSearch(event.target.value)}
+            aria-label="Buscar ejercicios para la sesion"
+          />
+          <div className="session-drawer-filters">
+            {DRAWER_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={`smart-filter-chip ${drawerFilter === filter.id ? "active" : ""}`.trim()}
+                onClick={() =>
+                  setDrawerFilter((current) => (current === filter.id ? "all" : filter.id))
+                }
+              >
+                {filter.label} <span>{drawerCounts[filter.id]}</span>
+              </button>
             ))}
           </div>
+          <div style={{ maxHeight: 620, overflow: "auto", paddingRight: 4 }}>
+            {drawerVisible.length ? (
+              drawerVisible.map((exercise) => (
+                <ExerciseDraggable key={exercise.id} exercise={exercise} />
+              ))
+            ) : (
+              <p className="muted">
+                Sin resultados para esta busqueda o filtro. Probá limpiar la
+                busqueda o elegir "Mis ejercicios".
+              </p>
+            )}
+          </div>
+          {drawerFiltered.length > drawerVisible.length && (
+            <p className="muted session-drawer-hint">
+              Mostrando {drawerVisible.length} de {drawerFiltered.length}. Afina
+              la busqueda para encontrar mas rapido.
+            </p>
+          )}
         </div>
 
         <div className="team-card">
@@ -222,13 +316,12 @@ export function SessionsView() {
 }
 
 const ExerciseDraggable = memo(function ExerciseDraggable({
-  exerciseId,
-}: { exerciseId: string }) {
-  const exercise = catalog.find((item) => item.id === exerciseId);
+  exercise,
+}: { exercise: Exercise }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
-      id: exerciseId,
-      data: { type: "exercise", exerciseId } satisfies DragMeta,
+      id: exercise.id,
+      data: { type: "exercise", exerciseId: exercise.id } satisfies DragMeta,
     });
 
   const style = {
@@ -237,8 +330,6 @@ const ExerciseDraggable = memo(function ExerciseDraggable({
     cursor: "grab",
     marginBottom: 10,
   } as const;
-
-  if (!exercise) return null;
 
   return (
     <div
@@ -268,6 +359,13 @@ const SessionBlockCard = memo(function SessionBlockCard({
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const updateSessionBlock = useAppStore((state) => state.updateSessionBlock);
   const removeSessionBlock = useAppStore((state) => state.removeSessionBlock);
+  const sketches = useAppStore((state) => state.sketches);
+  const createSketch = useAppStore((state) => state.createSketch);
+  const updateSketch = useAppStore((state) => state.updateSketch);
+  const attachSketchToSessionBlock = useAppStore((state) => state.attachSketchToSessionBlock);
+  const detachSketchFromSessionBlock = useAppStore((state) => state.detachSketchFromSessionBlock);
+  const [pendingAttachId, setPendingAttachId] = useState("");
+  const [editingSketch, setEditingSketch] = useState<Sketch | null>(null);
   const exercise = catalog.find((item) => item.id === block?.exerciseId);
   const {
     attributes,
@@ -366,6 +464,37 @@ const SessionBlockCard = memo(function SessionBlockCard({
           <b>{blockIntent.nextReview}</b>
         </div>
       </div>
+      <SessionBlockSketch
+        block={block}
+        exerciseTitle={exercise.title}
+        sketches={sketches}
+        pendingAttachId={pendingAttachId}
+        onPendingAttachChange={setPendingAttachId}
+        onAttach={(sketchId) => {
+          attachSketchToSessionBlock(block.id, sketchId);
+          setPendingAttachId("");
+        }}
+        onDetach={() => detachSketchFromSessionBlock(block.id)}
+        onEdit={(sketch) => setEditingSketch(sketch)}
+        onCreate={() => {
+          const id = createSketch({ title: `Boceto - ${exercise.title}` });
+          attachSketchToSessionBlock(block.id, id);
+          const created = useAppStore.getState().sketches.find((entry) => entry.id === id);
+          if (created) setEditingSketch(created);
+        }}
+      />
+      {editingSketch && (
+        <div className="session-sketch-editor">
+          <QuickSketchView
+            sketch={editingSketch}
+            onSave={(sketch) => {
+              updateSketch(sketch.id, sketch);
+              setEditingSketch(null);
+            }}
+            onCancel={() => setEditingSketch(null)}
+          />
+        </div>
+      )}
       <div className="toolbar">
         <input
           type="number"
@@ -383,6 +512,101 @@ const SessionBlockCard = memo(function SessionBlockCard({
     </div>
   );
 });
+
+type SessionBlockSketchProps = {
+  block: Session["blocks"][number];
+  exerciseTitle: string;
+  sketches: Sketch[];
+  pendingAttachId: string;
+  onPendingAttachChange: (id: string) => void;
+  onAttach: (sketchId: string) => void;
+  onDetach: () => void;
+  onEdit: (sketch: Sketch) => void;
+  onCreate: () => void;
+};
+
+/**
+ * Sketch attachment affordance for a session block: shows the attached
+ * sketch's preview, or lets the coach attach an existing one / create a new
+ * one inline. Quick Sketch stays a clearly secondary, opt-in surface here —
+ * it never replaces the block's tactical-problem/objective/review summary.
+ */
+function SessionBlockSketch({
+  block,
+  exerciseTitle,
+  sketches,
+  pendingAttachId,
+  onPendingAttachChange,
+  onAttach,
+  onDetach,
+  onEdit,
+  onCreate,
+}: SessionBlockSketchProps) {
+  const attachedSketch = block.sketchId
+    ? sketches.find((entry) => entry.id === block.sketchId) ?? null
+    : null;
+  const otherSketches = sketches.filter((entry) => entry.id !== block.sketchId);
+
+  return (
+    <div className="session-sketch-block">
+      <div className="session-sketch-header">
+        <span>Boceto del bloque</span>
+        {attachedSketch && (
+          <div className="session-sketch-actions">
+            <button type="button" className="link-btn" onClick={() => onEdit(attachedSketch)}>
+              Editar
+            </button>
+            <button type="button" className="link-btn" onClick={onDetach}>
+              Quitar
+            </button>
+          </div>
+        )}
+      </div>
+
+      {attachedSketch ? (
+        <div className="session-sketch-preview-row">
+          <SketchThumbnail sketch={attachedSketch} className="session-sketch-thumb" />
+          <div className="session-sketch-meta">
+            <b>{attachedSketch.title}</b>
+            <small className="muted">
+              {attachedSketch.tokens.length} tokens - {attachedSketch.annotations.length} anotaciones
+            </small>
+          </div>
+        </div>
+      ) : (
+        <div className="session-sketch-attach-row">
+          {otherSketches.length > 0 && (
+            <>
+              <select
+                value={pendingAttachId}
+                onChange={(event) => onPendingAttachChange(event.target.value)}
+                aria-label="Elegir un boceto existente para adjuntar"
+              >
+                <option value="">Elegir boceto existente...</option>
+                {otherSketches.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!pendingAttachId}
+                onClick={() => onAttach(pendingAttachId)}
+              >
+                Adjuntar
+              </button>
+            </>
+          )}
+          <button type="button" className="secondary" onClick={onCreate}>
+            Crear boceto para "{exerciseTitle}"
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DroppableSessionArea({
   id,

@@ -346,6 +346,77 @@ textarea {
   outline: 2px solid rgba(94, 234, 212, 0.45);
 }
 
+.exercise-card-wrap {
+  position: relative;
+}
+
+.favorite-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 232, 210, 0.18);
+  background: rgba(13, 17, 23, 0.55);
+  color: rgba(241, 232, 210, 0.55);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.favorite-toggle.active {
+  color: #f5c451;
+  border-color: rgba(245, 196, 81, 0.5);
+}
+
+.library-smart-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.smart-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 232, 210, 0.16);
+  background: rgba(241, 232, 210, 0.04);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.smart-filter-chip span {
+  font-size: 11px;
+  opacity: 0.65;
+}
+
+.smart-filter-chip.active {
+  border-color: rgba(94, 234, 212, 0.5);
+  background: rgba(94, 234, 212, 0.12);
+  color: #5eead4;
+}
+
+.library-new-drill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.library-new-drill-row input {
+  flex: 1;
+  min-width: 200px;
+}
+
 .exercise-card canvas {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -1194,10 +1265,49 @@ button.danger {
   align-items: start;
 }
 
+.ai-cockpit-stack {
+  display: grid;
+  gap: 18px;
+}
+
 .ai-context-rail,
 .ai-workbench {
   display: grid;
   gap: 14px;
+}
+
+.ai-context-details {
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  padding: 4px 16px 16px;
+  background: var(--panel, rgba(255, 255, 255, 0.03));
+}
+
+.ai-context-details summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 2px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ai-context-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-context-details summary small {
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+.ai-context-details .ai-context-rail {
+  margin-top: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  display: grid;
 }
 
 .ai-rail-card,
@@ -3563,6 +3673,28 @@ textarea:focus {
   min-height: 46px;
 }
 
+.viewer-cta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.viewer-cta-row .viewer-primary-action {
+  width: auto;
+}
+
+.viewer-cta-row .secondary-cta {
+  background: var(--panel-2, rgba(241, 232, 210, 0.06));
+  color: var(--text);
+  border: 1px solid var(--line, rgba(241, 232, 210, 0.16));
+}
+
+@media (max-width: 720px) {
+  .viewer-cta-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .viewer-advanced-panel {
   display: grid;
   gap: 12px;
@@ -3733,4 +3865,454 @@ body .app-shell .nav button.nav-btn .nav-dot {
 body .app-shell .nav button.nav-btn.active .nav-dot {
   background: var(--accent) !important;
   box-shadow: 0 0 10px var(--accent) !important;
+}
+
+/* ===== Quick Sketch ===== */
+
+.quick-sketch {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  outline: none;
+}
+
+.quick-sketch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.quick-sketch-title-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(241, 232, 210, 0.04);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.quick-sketch-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-sketch-tool {
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(241, 232, 210, 0.04);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.quick-sketch-tool:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.quick-sketch-tool.active {
+  color: #04211d;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.quick-sketch-team-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.quick-sketch-team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(241, 232, 210, 0.04);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quick-sketch-team-chip::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--team-color, var(--muted-2));
+}
+
+.quick-sketch-team-chip.active {
+  color: var(--text);
+  border-color: var(--team-color, var(--accent));
+  background: rgba(241, 232, 210, 0.08);
+}
+
+.quick-sketch-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.quick-sketch-surface-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 100 / 64;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: rgba(5, 11, 16, 0.6);
+}
+
+.quick-sketch-surface {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.quick-sketch-pitch {
+  fill: rgba(94, 234, 212, 0.04);
+  stroke: var(--line-strong);
+  stroke-width: 0.3;
+}
+
+.quick-sketch-pitch-mark {
+  stroke: var(--line-strong);
+  stroke-width: 0.25;
+  fill: none;
+  opacity: 0.7;
+}
+
+.quick-sketch-token circle {
+  stroke: rgba(5, 11, 16, 0.7);
+  stroke-width: 0.4;
+}
+
+.quick-sketch-token.selected circle {
+  stroke: var(--text);
+  stroke-width: 0.6;
+}
+
+.quick-sketch-token-label {
+  font-size: 2.6px;
+  fill: #04211d;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  font-weight: 600;
+}
+
+.quick-sketch-label {
+  font-size: 3px;
+  fill: var(--text);
+  pointer-events: none;
+}
+
+.quick-sketch-label.selected {
+  fill: var(--accent);
+}
+
+.sketch-annotation-arrow,
+.sketch-annotation-line {
+  stroke: var(--accent-2);
+  stroke-width: 0.5;
+  fill: none;
+}
+
+.sketch-annotation-line {
+  stroke-dasharray: 2 1.4;
+}
+
+.sketch-annotation-zone {
+  fill: rgba(199, 223, 95, 0.1);
+  stroke: var(--warn);
+  stroke-width: 0.4;
+}
+
+.sketch-annotation-arrow.selected,
+.sketch-annotation-line.selected,
+.sketch-annotation-zone.selected {
+  stroke: var(--accent);
+  stroke-width: 0.7;
+}
+
+.sketch-annotation-preview {
+  opacity: 0.6;
+}
+
+.sketch-arrowhead,
+.sketch-arrowhead-preview {
+  fill: var(--accent-2);
+}
+
+.quick-sketch-text-input {
+  position: absolute;
+  transform: translate(-4px, -50%);
+  max-width: 60%;
+  padding: 3px 7px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: rgba(5, 11, 16, 0.92);
+  color: var(--text);
+  font-size: 12px;
+  z-index: 3;
+}
+
+.quick-sketch-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.quick-sketch-delete-selected {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 116, 116, 0.06);
+  color: var(--danger);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quick-sketch-delete-selected:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.quick-sketch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.quick-sketch-cancel {
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.quick-sketch-save {
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #04211d;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.quick-sketch-export {
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: rgba(241, 232, 210, 0.04);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.quick-sketch-export:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.quick-sketch-export-error {
+  align-self: center;
+  color: var(--danger);
+  font-size: 11px;
+}
+
+/* ===== Sketch thumbnail (read-only preview) ===== */
+
+.sketch-thumb {
+  width: 100%;
+  aspect-ratio: 100 / 64;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(5, 11, 16, 0.5);
+  display: block;
+}
+
+.sketch-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
+.sketch-thumb-pitch {
+  fill: rgba(94, 234, 212, 0.03);
+  stroke: var(--line);
+  stroke-width: 0.4;
+}
+
+.sketch-thumb-mark {
+  stroke: var(--line);
+  stroke-width: 0.3;
+  opacity: 0.6;
+}
+
+.sketch-thumb-arrow,
+.sketch-thumb-line {
+  stroke: var(--accent-2);
+  stroke-width: 0.6;
+  fill: none;
+}
+
+.sketch-thumb-line {
+  stroke-dasharray: 2 1.4;
+}
+
+.sketch-thumb-zone {
+  fill: rgba(199, 223, 95, 0.1);
+  stroke: var(--warn);
+  stroke-width: 0.5;
+}
+
+.sketch-thumb-text {
+  font-size: 3px;
+  fill: var(--text);
+}
+
+.sketch-thumb-arrowhead {
+  fill: var(--accent-2);
+}
+
+.sketch-thumb-token {
+  stroke: rgba(5, 11, 16, 0.7);
+  stroke-width: 0.4;
+}
+
+/* ===== Session block sketch attachment ===== */
+
+.session-sketch-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(241, 232, 210, 0.02);
+}
+
+.session-sketch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.session-sketch-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  color: var(--accent-2);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-btn:hover {
+  color: var(--accent);
+}
+
+.session-sketch-preview-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.session-sketch-thumb {
+  width: 96px;
+  flex-shrink: 0;
+}
+
+.session-sketch-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.session-sketch-attach-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.session-sketch-attach-row select {
+  flex: 1;
+  min-width: 160px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(241, 232, 210, 0.04);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.session-sketch-editor {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: rgba(5, 11, 16, 0.5);
+}
+
+.session-drawer-search {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(241, 232, 210, 0.04);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.session-drawer-search:focus {
+  outline: none;
+  border-color: rgba(94, 234, 212, 0.5);
+}
+
+.session-drawer-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.session-drawer-hint {
+  margin-top: 10px;
+  font-size: 11px;
 }

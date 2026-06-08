@@ -35,6 +35,7 @@ import {
   normalizeOpponentScout,
 } from "@/scout/opponentScout";
 import { APP_SNAPSHOT_VERSION } from "./db";
+import { createBlankSketch, SketchSchema, type Sketch } from "@/sketch/sketchSchemas";
 import {
   buildSessionPlanFromDiagnosis,
   buildSessionPlanFromWeeklyThread,
@@ -76,7 +77,12 @@ export type AiMode = "coach" | "postMatch";
 
 export type ExportStatus = {
   phase: "recording" | "encoding";
-  format: "mp4" | "gif";
+  format: "mp4" | "gif" | "png";
+};
+
+export type LibraryRecentOpen = {
+  exerciseId: string;
+  at: string;
 };
 
 export type VideoMoment = "firstHalf" | "secondHalf" | "extraTime" | "unknown";
@@ -300,6 +306,9 @@ type AppState = {
   viewerExerciseOverride: Exercise | null;
   presentationMode: boolean;
   exportStatus: ExportStatus | null;
+  libraryFavoriteIds: string[];
+  libraryRecentOpens: LibraryRecentOpen[];
+  sketches: Sketch[];
   setView: (view: ViewId) => void;
   setPresentationMode: (enabled: boolean) => void;
   setExportStatus: (status: ExportStatus | null) => void;
@@ -319,6 +328,15 @@ type AppState = {
     options?: { title?: string; authorNotes?: string },
   ) => string | null;
   importExerciseVariant: (exercise: Exercise) => string | null;
+  createBlankExercise: (options?: { title?: string }) => string | null;
+  toggleLibraryFavorite: (exerciseId: string) => void;
+  recordLibraryOpen: (exerciseId: string) => void;
+  createSketch: (options?: { title?: string }) => string;
+  updateSketch: (id: string, patch: Partial<Omit<Sketch, "id" | "createdAt">>) => void;
+  deleteSketch: (id: string) => void;
+  renameSketch: (id: string, title: string) => void;
+  attachSketchToSessionBlock: (blockId: string, sketchId: string) => void;
+  detachSketchFromSessionBlock: (blockId: string) => void;
   setSearch: (value: string) => void;
   setFilter: (key: "phase" | "level" | "principle", value: string) => void;
   toggleLayer: (
@@ -690,6 +708,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   viewerExerciseOverride: null,
   presentationMode: false,
   exportStatus: null,
+  libraryFavoriteIds: [],
+  libraryRecentOpens: [],
+  sketches: [],
   setView: (view) =>
     set({
       view,
@@ -771,6 +792,100 @@ export const useAppStore = create<AppState>((set, get) => ({
       playing: false,
     });
     return imported.id;
+  },
+  createBlankExercise: (options) => {
+    const state = get();
+    const exercise = buildBlankExercise(options, state.exerciseVariants);
+    set({
+      exerciseVariants: [...state.exerciseVariants, exercise],
+      selectedExerciseId: exercise.id,
+      viewerExerciseOverride: null,
+      view: "viewer",
+      time: 0,
+      playing: false,
+    });
+    return exercise.id;
+  },
+  toggleLibraryFavorite: (exerciseId) => {
+    const state = get();
+    const isFavorite = state.libraryFavoriteIds.includes(exerciseId);
+    set({
+      libraryFavoriteIds: isFavorite
+        ? state.libraryFavoriteIds.filter((id) => id !== exerciseId)
+        : [...state.libraryFavoriteIds, exerciseId],
+    });
+  },
+  recordLibraryOpen: (exerciseId) => {
+    const state = get();
+    const at = new Date().toISOString();
+    const withoutCurrent = state.libraryRecentOpens.filter(
+      (entry) => entry.exerciseId !== exerciseId,
+    );
+    set({
+      libraryRecentOpens: [{ exerciseId, at }, ...withoutCurrent].slice(0, 24),
+    });
+  },
+  createSketch: (options) => {
+    const sketch = createBlankSketch(options?.title);
+    set((state) => ({ sketches: [...state.sketches, sketch] }));
+    return sketch.id;
+  },
+  updateSketch: (id, patch) =>
+    set((state) => ({
+      sketches: state.sketches.map((sketch) => {
+        if (sketch.id !== id) return sketch;
+        const next = { ...sketch, ...patch, updatedAt: new Date().toISOString() };
+        const parsed = SketchSchema.safeParse(next);
+        return parsed.success ? parsed.data : sketch;
+      }),
+    })),
+  deleteSketch: (id) =>
+    set((state) => ({
+      sketches: state.sketches.filter((sketch) => sketch.id !== id),
+      session: {
+        ...state.session,
+        blocks: state.session.blocks.map((block) =>
+          block.sketchId === id ? { ...block, sketchId: undefined } : block,
+        ),
+      },
+    })),
+  renameSketch: (id, title) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    set((state) => ({
+      sketches: state.sketches.map((sketch) =>
+        sketch.id === id
+          ? { ...sketch, title: trimmed.slice(0, 80), updatedAt: new Date().toISOString() }
+          : sketch,
+      ),
+    }));
+  },
+  attachSketchToSessionBlock: (blockId, sketchId) => {
+    const state = get();
+    if (!state.sketches.some((sketch) => sketch.id === sketchId)) return;
+    const blocks = state.session.blocks.map((block) =>
+      block.id === blockId ? { ...block, sketchId } : block,
+    );
+    set({
+      session: {
+        ...state.session,
+        blocks,
+        computed: recomputeSession(blocks, state.exerciseVariants),
+      },
+    });
+  },
+  detachSketchFromSessionBlock: (blockId) => {
+    const state = get();
+    const blocks = state.session.blocks.map((block) =>
+      block.id === blockId ? { ...block, sketchId: undefined } : block,
+    );
+    set({
+      session: {
+        ...state.session,
+        blocks,
+        computed: recomputeSession(blocks, state.exerciseVariants),
+      },
+    });
   },
   setSearch: (value) => set({ search: value }),
   setFilter: (key, value) =>
@@ -1657,6 +1772,83 @@ function buildExerciseFromShape(
     authorNotes: [shape.notes, options?.authorNotes, "Creado desde Lineup Lab"]
       .filter(Boolean)
       .join(" | "),
+  };
+}
+
+function buildBlankExercise(
+  options: { title?: string } | undefined,
+  existingVariants: Exercise[],
+): Exercise {
+  const title = options?.title?.trim() || "Nuevo ejercicio";
+  const id = makeUniqueExerciseId(
+    `ejercicio-nuevo-${Date.now()}`,
+    existingVariants,
+  );
+
+  return {
+    id,
+    title,
+    phase: "attackOrg",
+    principle: "A definir",
+    level: "U18+",
+    intensity: "med",
+    rpe: 5,
+    density: 0.5,
+    players: { min: 1, max: 22 },
+    duration: 15,
+    space: "Cancha completa adaptable",
+    material: [],
+    objective: {
+      primary: "Definir el objetivo principal de esta tarea.",
+    },
+    organization:
+      "Describe aqui como se organiza la tarea: espacios, roles y referencias.",
+    rules: [],
+    coaching: [],
+    errors: [],
+    success: "Definir la senal de exito de esta tarea.",
+    progressions: [],
+    regressions: [],
+    scene: {
+      duration: 10,
+      pitchMode: "full",
+      actors: [],
+      ball: {
+        start: { x: 50, y: 50, z: 0 },
+        path: [],
+      },
+      overlays: [],
+      zones: [],
+      triggers: [],
+      phases: [
+        {
+          id: "setup",
+          name: "Setup",
+          start: 0,
+          end: 3,
+          activeLayers: ["withBall", "withoutBall"],
+          notes: "Arma la escena: agrega jugadores, pelota y movimientos.",
+        },
+        {
+          id: "execution",
+          name: "Ejecución",
+          start: 3,
+          end: 8,
+          activeLayers: ["withBall", "withoutBall"],
+          notes: "",
+        },
+        {
+          id: "outcome",
+          name: "Resultado",
+          start: 8,
+          end: 10,
+          activeLayers: ["withBall", "withoutBall"],
+          notes: "",
+        },
+      ],
+    },
+    authorNotes:
+      "Ejercicio creado desde cero. Completa los campos y la escena segun lo necesites.",
   };
 }
 
