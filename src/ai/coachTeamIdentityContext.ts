@@ -60,7 +60,3 @@ export function buildCoachTeamIdentityContext({
       "Usa identidad solo si viene del setup del equipo, memoria aceptada o evidencia actual. No inventes rasgos de modelo de juego.",
   };
 }
- };
-}
-  };
-}
