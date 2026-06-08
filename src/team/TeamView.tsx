@@ -22,7 +22,7 @@ import { analyzePlayerFit } from "@/ai/playerFit";
 import { FitChip, PitchViz } from "@/ui/tacticalPrimitives";
 import { TeamTimeline } from "@/home/TeamTimeline";
 
-type LineupSlot = {
+export type LineupSlot = {
   playerId: string;
   slot: string;
   x: number;
@@ -34,7 +34,7 @@ const PITCH_H = 64;
 const sx = (x: number) => (x / 100) * PITCH_W;
 const sy = (y: number) => (y / 100) * PITCH_H;
 
-const FORMATIONS: Record<string, Array<Omit<LineupSlot, "playerId">>> = {
+export const FORMATIONS: Record<string, Array<Omit<LineupSlot, "playerId">>> = {
   "4-3-3": [
     slot("GK", 7, 50),
     slot("LB", 24, 20),
@@ -789,24 +789,44 @@ function PitchMarkings({ color = "rgba(255,255,255,0.55)" }) {
   );
 }
 
-function buildLineup(players: Player[], formation: string): LineupSlot[] {
+export function buildLineup(players: Player[], formation: string): LineupSlot[] {
   const slots = FORMATIONS[formation] ?? FORMATIONS["4-3-3"];
   const used = new Set<string>();
-  return slots.map((formationSlot) => {
+  const assignments: string[] = slots.map(() => "");
+
+  // Pass 1 — commit role-compatible matches across ALL slots first. Resolving
+  // slot-by-slot with an immediate "first unused player" fallback let an early
+  // slot with no naturally-compatible candidate (e.g. no LB in the squad)
+  // grab a player who actually belonged in a *later* slot (e.g. the squad's
+  // only RB), rendering them on the wrong side under the wrong label —
+  // exactly the "Fede"/RB-shown-as-LB bug. Mirrors LineupLab3D's autoAssign.
+  slots.forEach((formationSlot, index) => {
     const exact = players.find(
       (player) => !used.has(player.id) && compatibleRole(player, formationSlot.slot),
     );
-    const fallback = players.find((player) => !used.has(player.id));
-    const selected = exact ?? fallback;
-    if (selected) used.add(selected.id);
-    return {
-      ...formationSlot,
-      playerId: selected?.id ?? "",
-    };
+    if (exact) {
+      used.add(exact.id);
+      assignments[index] = exact.id;
+    }
   });
+
+  // Pass 2 — only now fill slots nobody fit, with whoever is left.
+  slots.forEach((_, index) => {
+    if (assignments[index]) return;
+    const fallback = players.find((player) => !used.has(player.id));
+    if (fallback) {
+      used.add(fallback.id);
+      assignments[index] = fallback.id;
+    }
+  });
+
+  return slots.map((formationSlot, index) => ({
+    ...formationSlot,
+    playerId: assignments[index] ?? "",
+  }));
 }
 
-function reconcileLineup(
+export function reconcileLineup(
   current: LineupSlot[],
   players: Player[],
   formation: string,
@@ -818,27 +838,49 @@ function reconcileLineup(
 
   const playerIds = new Set(players.map((player) => player.id));
   const used = new Set<string>();
-  return current.map((item, index) => {
-    const formationSlot = slots[index] ?? item;
+  const formationSlots = current.map((item, index) => slots[index] ?? item);
+
+  // Pass 1 — keep whatever is already validly placed (same as before).
+  const kept: Array<string | null> = current.map((item) => {
     const canKeep =
       item.playerId && playerIds.has(item.playerId) && !used.has(item.playerId);
     if (canKeep) {
       used.add(item.playerId);
-      return { ...item, slot: formationSlot.slot };
+      return item.playerId;
     }
+    return null;
+  });
 
+  // Pass 2 — fill the empty slots with role-compatible players first, across
+  // ALL of them, before falling back to leftovers. Prevents an empty slot
+  // with no natural fit from stealing a player who belongs in a later slot
+  // (the same "Fede"/RB-as-LB bug, triggered on reflow/formation reconcile).
+  const filled = [...kept];
+  formationSlots.forEach((formationSlot, index) => {
+    if (filled[index]) return;
     const exact = players.find(
       (player) => !used.has(player.id) && compatibleRole(player, formationSlot.slot),
     );
-    const fallback = players.find((player) => !used.has(player.id));
-    const selected = exact ?? fallback;
-    if (selected) used.add(selected.id);
-    return {
-      ...item,
-      slot: formationSlot.slot,
-      playerId: selected?.id ?? "",
-    };
+    if (exact) {
+      used.add(exact.id);
+      filled[index] = exact.id;
+    }
   });
+
+  formationSlots.forEach((_, index) => {
+    if (filled[index]) return;
+    const fallback = players.find((player) => !used.has(player.id));
+    if (fallback) {
+      used.add(fallback.id);
+      filled[index] = fallback.id;
+    }
+  });
+
+  return current.map((item, index) => ({
+    ...item,
+    slot: formationSlots[index].slot,
+    playerId: filled[index] ?? "",
+  }));
 }
 
 function shapeFromLineup(

@@ -199,17 +199,6 @@ export function HomeView() {
           <TeamSetupPrompt identity={teamIdentity} />
         ) : null}
       </section>
-      <CommandSummaryPanel
-        activeDay={activeDay.label}
-        availablePlayers={availablePlayers}
-        totalPlayers={teamPlayers.length}
-        sessionBlocks={session.blocks.length}
-        sessionMinutes={session.computed?.totalDuration ?? 0}
-        evidenceTotal={evidence.total}
-        manualObservationCount={manualObservations.length}
-        reportsCount={reports.length}
-        primaryPattern={primaryPattern}
-      />
 
       <WeeklyWorkflowPanel
         activeDiagnosis={activeDiagnosis}
@@ -233,6 +222,17 @@ export function HomeView() {
       <details className="home-deep-dive">
         <summary>Ver detalle operativo</summary>
         <div className="home-deep-dive-body">
+      <CommandSummaryPanel
+        activeDay={activeDay.label}
+        availablePlayers={availablePlayers}
+        totalPlayers={teamPlayers.length}
+        sessionBlocks={session.blocks.length}
+        sessionMinutes={session.computed?.totalDuration ?? 0}
+        evidenceTotal={evidence.total}
+        manualObservationCount={manualObservations.length}
+        reportsCount={reports.length}
+        primaryPattern={primaryPattern}
+      />
       <section className="home-grid">
         <div className="card">
           <div className="card-head">

@@ -39,7 +39,7 @@ import {
   Vector3,
 } from "three";
 
-type FormationSlot = {
+export type FormationSlot = {
   role: string;
   pos: Vec2;
 };
@@ -1493,27 +1493,49 @@ function groupLinePlayers(
   };
 }
 
-function autoAssign(players: Player[], slots: FormationSlot[]) {
+export function autoAssign(players: Player[], slots: FormationSlot[]) {
   const used = new Set<string>();
-  return slots.map((formationSlot) => {
+  const result: string[] = slots.map(() => "");
+
+  // Pass 1 — commit only role-compatible matches first. Resolving every slot
+  // in formation order with an immediate "first unused player" fallback let
+  // an early slot with no compatible candidate (e.g. no LB in the squad)
+  // grab a player who actually fit a *later* slot (e.g. the only RB), which
+  // then rendered that player on the wrong side under the wrong label.
+  slots.forEach((formationSlot, index) => {
     const exact = players.find(
       (player) =>
         !used.has(player.id) && compatibleRole(player, formationSlot.role),
     );
-    const fallback = players.find((player) => !used.has(player.id));
-    const selected = exact ?? fallback;
-    if (selected) used.add(selected.id);
-    return selected?.id ?? "";
+    if (exact) {
+      used.add(exact.id);
+      result[index] = exact.id;
+    }
   });
+
+  // Pass 2 — only now fill the slots nobody fit, with whoever is left.
+  slots.forEach((_, index) => {
+    if (result[index]) return;
+    const fallback = players.find((player) => !used.has(player.id));
+    if (fallback) {
+      used.add(fallback.id);
+      result[index] = fallback.id;
+    }
+  });
+
+  return result;
 }
 
-function preserveOrAutoAssign(
+export function preserveOrAutoAssign(
   current: string[],
   players: Player[],
   slots: FormationSlot[],
 ) {
   const used = new Set<string>();
-  return slots.map((slotItem, index) => {
+  const result: string[] = slots.map(() => "");
+
+  // Pass 1 — keep whatever is already validly placed.
+  slots.forEach((_, index) => {
     const currentId = current[index];
     if (
       currentId &&
@@ -1521,16 +1543,36 @@ function preserveOrAutoAssign(
       !used.has(currentId)
     ) {
       used.add(currentId);
-      return currentId;
+      result[index] = currentId;
     }
-    const selected =
-      players.find(
-        (player) =>
-          !used.has(player.id) && compatibleRole(player, slotItem.role),
-      ) ?? players.find((player) => !used.has(player.id));
-    if (selected) used.add(selected.id);
-    return selected?.id ?? "";
   });
+
+  // Pass 2 — fill empty slots with role-compatible players first, exactly
+  // like autoAssign, so a slot without a fit never steals a player who
+  // belongs in a later slot.
+  slots.forEach((slotItem, index) => {
+    if (result[index]) return;
+    const exact = players.find(
+      (player) =>
+        !used.has(player.id) && compatibleRole(player, slotItem.role),
+    );
+    if (exact) {
+      used.add(exact.id);
+      result[index] = exact.id;
+    }
+  });
+
+  // Pass 3 — only now, whoever is left fills whatever remains empty.
+  slots.forEach((_, index) => {
+    if (result[index]) return;
+    const fallback = players.find((player) => !used.has(player.id));
+    if (fallback) {
+      used.add(fallback.id);
+      result[index] = fallback.id;
+    }
+  });
+
+  return result;
 }
 
 function positionsFromAssignments(
