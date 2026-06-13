@@ -31,7 +31,7 @@
 | D1 | Store | God-store monolítico: `useAppStore.ts` = 1.910 líneas, 22 dominios, 72 acciones, acoplamiento cruzado, sin slices, sin selectores | Alta |
 | D2 | Persistencia | Extracción de snapshot **duplicada** (`App.tsx` + `AppShell.tsx`); se persisten campos derivados (`session.computed`); recovery no es por-item en arrays; saves silenciosos sin debounce | Alta |
 | D3 | Bundle | Dep muerta `@google/generative-ai`; SDK `openai` importado **estáticamente** en 8 módulos server-ish; `useAppStore` arrastra Dexie/`db.ts` al bundle principal solo por la constante `APP_SNAPSHOT_VERSION` | Media-Alta |
-| D4 | Deploy | **No existe** `vercel.json` ni config de deploy; `/api` asume convención Vercel implícita; `post-match/storage.ts` escribe en `fs` (efímero en serverless) | Alta |
+| D4 | Persistencia server-side | Deployado en Vercel (`romboiq.vercel.app`). El crash read-only ya está mitigado (`serverDataPaths.ts:12` redirige a `/tmp` bajo `VERCEL`), **pero** reports post-match y memoria táctica commiteada se escriben en `/tmp` efímero → **pérdida silenciosa de datos en prod** (cold start / instancia nueva los borra; no se comparten entre instancias) | Alta |
 | D5 | CI | Solo el workflow `coach-eval` (filtrado por paths). No hay CI general (type-check + lint + test + build) en cada PR; sin cobertura; sin pipeline de deploy | Alta |
 | D6 | Testing | Caminos críticos de UI/render sin tests: `Scene3D.tsx` (671), `LineupLab3D.tsx` (2.099), `useAppStore.ts`, round-trip de `db.ts`, `SessionsView.tsx`, `VideoView.tsx`. Sin E2E | Media |
 | D7 | Strictness | Faltan `noUnusedLocals`/`noUnusedParameters`/`noUncheckedIndexedAccess`; Biome solo `recommended`; 543 non-null assertions sin auditar | Media-Baja |
@@ -127,20 +127,30 @@ stores). Mantiene un único punto de persistencia y evita el dolor de sincroniza
 
 ---
 
-## Fase 4 — Fundación de deploy
+## Fase 4 — Durabilidad de la persistencia server-side (BLOCKER DE PRODUCCIÓN)
 
-**Objetivo:** que el boundary `/api` sea real en producción, no una convención implícita.
+**Contexto real:** ya está deployado en Vercel (`romboiq.vercel.app`). El crash de filesystem
+read-only ya está resuelto: `serverDataPaths.ts:12` detecta `VERCEL` y redirige los writes a
+`/tmp/tactical-lab-3d`. **El problema que queda es durabilidad, no arranque.**
 
-1. **`vercel.json`** (o el target elegido) con config de funciones por ruta `/api`, runtime Node
-   explícito, y documentación del flujo dev (Vite middleware) vs prod.
-2. **Deploy en CI:** pipeline de build + deploy de preview por PR.
-3. **DECISIÓN DE FUNDACIÓN A RESOLVER (bloqueante real):** `post-match/storage.ts` y la memoria
-   táctica escriben en `fs`. En serverless stateless (`/tmp`) eso **no sobrevive entre invocaciones**.
-   Hoy funciona en local; en deploy real se pierde. Hay que decidir el backend de persistencia
-   server-side (blob store, KV, DB gestionada, etc.). Esto es fundación pura aunque la app siga
-   siendo single-user — no es el eje "multiusuario" que descartaste, pero es un blocker de deploy.
+**El bug en producción:** `/tmp` en serverless es efímero por instancia. Hoy en prod:
 
-**Riesgo:** medio-alto (decisión arquitectónica). **Depende de:** Fase 1.
+- `savePostMatchReport` y `commitMemoryCandidates` (`storage.ts:33,64`) escriben en `/tmp` →
+  los reports y la memoria táctica commiteada **desaparecen** en el próximo cold start o instancia.
+- `loadReports`/`loadGeneratedMemory` (`storage.ts:147,170`) leen de `/tmp`, no del archivo
+  seedeado en el repo → en prod arrancan vacíos en cada boot frío.
+- Para el staff: commitea memoria, ve "éxito", y se evapora. Pérdida silenciosa de datos.
+
+**Decisión de fundación a resolver:** elegir un backend de persistencia server-side durable
+(Vercel Blob / KV, Postgres gestionado, Supabase, etc.) detrás de la misma interfaz de `storage.ts`,
+manteniendo el seed del repo como estado inicial. Es fundación pura aunque la app siga siendo
+single-user — no es el eje "multiusuario" que descartaste, pero hoy es un bug activo en prod.
+
+**Acompaña:** documentar el flujo dev (Vite middleware) vs prod (Vercel functions) y, opcionalmente,
+deploy de preview por PR en CI.
+
+**Riesgo:** medio-alto (decisión arquitectónica + datos en vivo). **Depende de:** Fase 1.
+**Prioridad real:** dado que es un bug activo en prod, candidato a adelantarse antes que las Fases 2-3.
 
 ---
 
@@ -181,7 +191,14 @@ Fase 0 (red de seguridad)
 
 ## Recomendación de arranque
 
-Empezar por **Fase 0**. Es la que convierte todo el resto en seguro y es 100% aditiva: ningún
-riesgo de romper lo que ya funciona, y deja una métrica objetiva (CI verde + cobertura baseline)
-contra la cual medir cada fase siguiente. Sin la red de seguridad, atacar el god-store (Fase 3)
-o la persistencia (Fase 2) sería trabajar a ciegas sobre el corazón de la app.
+Hay una tensión a resolver, ahora que la app está en producción:
+
+- **Fase 0** es el arranque correcto por disciplina: 100% aditiva, deja la métrica objetiva
+  (CI verde + cobertura baseline) contra la cual medir todo lo demás. Sin la red de seguridad,
+  atacar el god-store (Fase 3) o la persistencia (Fase 2) es trabajar a ciegas sobre el corazón.
+- **Fase 4** es un **bug activo en prod** (pérdida silenciosa de reports y memoria commiteada).
+  Si el staff ya usa el flujo post-match en `romboiq.vercel.app`, esto sangra datos hoy.
+
+**Sugerencia:** Fase 0 primero (rápida y habilitante), e inmediatamente Fase 4 como primer trabajo
+pesado, ya que es el único ítem que está causando daño en producción en este momento. El resto
+(2, 3, 5, 6) sigue el mapa de dependencias.
