@@ -1,7 +1,16 @@
 import { type Layer, catalog } from "@/data";
+import { exportWeeklyBriefingHtml } from "@/export/premiumExports";
+import {
+  QuickSketchLauncher,
+  SketchThumbnail,
+  buildContextualSketchDraft,
+  buildQuickSketchTitle,
+} from "@/sketch";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
+import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 import { Scene3D } from "@/viewer/Scene3D";
-import { useState } from "react";
+import { readSessionBlockIntent, readSessionIntent } from "@/sessions/SessionsView";
+import { useMemo, useState } from "react";
 
 const PLAYER_LAYERS: Record<Layer, boolean> = {
   withBall: true,
@@ -17,6 +26,10 @@ const PLAYER_LAYERS: Record<Layer, boolean> = {
 
 export function PlayerView() {
   const session = useAppStore((state) => state.session);
+  const teamName = useAppStore((state) => state.team.name);
+  const aiPrompt = useAppStore((state) => state.aiPrompt);
+  const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
+  const sketches = useAppStore((state) => state.sketches);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const fallbackExercise =
     catalog.find((item) => item.id === selectedExerciseId) ?? catalog[0];
@@ -35,6 +48,27 @@ export function PlayerView() {
   const focusBlock = blocks[safeIndex];
   const focusExercise =
     getExerciseById(focusBlock.exerciseId) ?? fallbackExercise;
+  const sessionIntent = useMemo(
+    () => readSessionIntent(session.staffNotes, aiPrompt, weeklyDecisionThread),
+    [aiPrompt, session.staffNotes, weeklyDecisionThread],
+  );
+  const blockIntent = useMemo(
+    () =>
+      readSessionBlockIntent(
+        focusBlock.notes,
+        focusExercise,
+        aiPrompt,
+        weeklyDecisionThread,
+      ),
+    [aiPrompt, focusBlock.notes, focusExercise, weeklyDecisionThread],
+  );
+  const attachedSketch = focusBlock.sketchId
+    ? sketches.find((entry) => entry.id === focusBlock.sketchId) ?? null
+    : null;
+  const weeklyDecisionCard = useMemo(
+    () => buildWeeklyDecisionCardModel({ thread: weeklyDecisionThread }),
+    [weeklyDecisionThread],
+  );
 
   return (
     <section className="team-card" style={{ maxWidth: 1080, margin: "0 auto" }}>
@@ -43,6 +77,16 @@ export function PlayerView() {
         Vista simple para entregar la consigna sin notas del staff ni ruido
         tactico extra.
       </p>
+      <div className="detail-grid" style={{ marginTop: 12 }}>
+        <div className="stat-box">
+          <b>Foco semanal</b>
+          {sessionIntent.problem}
+        </div>
+        <div className="stat-box">
+          <b>Objetivo de hoy</b>
+          {blockIntent.objective}
+        </div>
+      </div>
       <div className="canvas-wrap" style={{ height: 420, marginTop: 12 }}>
         <Scene3D
           exercise={focusExercise}
@@ -99,17 +143,57 @@ export function PlayerView() {
       <div className="team-card" style={{ marginTop: 12 }}>
         <h3>Que miramos</h3>
         <ul>
-          {focusExercise.coaching.slice(0, 3).map((item, index) => (
+          {[blockIntent.successSignal, ...focusExercise.coaching].slice(0, 3).map((item, index) => (
             <li key={`${focusExercise.id}-coaching-${index}`}>{item}</li>
           ))}
         </ul>
       </div>
-      <div className="toolbar" style={{ marginTop: 12 }}>
+      {attachedSketch ? (
+        <div className="team-card" style={{ marginTop: 12 }}>
+          <h3>Boceto adjunto</h3>
+          <SketchThumbnail sketch={attachedSketch} />
+        </div>
+      ) : null}
+      <div className="toolbar" style={{ marginTop: 12, flexWrap: "wrap" }}>
+        <QuickSketchLauncher
+          buttonClassName="secondary"
+          buttonLabel="Boceto rapido"
+          buttonTitle="Crear un boceto rapido para el briefing actual"
+          panelTitle="Boceto rapido para briefing"
+          buildDraft={() =>
+            buildContextualSketchDraft({
+              title: buildQuickSketchTitle([
+                "Boceto",
+                focusExercise.title,
+                sessionIntent.problem,
+              ]),
+              tacticalFocus: blockIntent.objective,
+              sourceLabel: `Bloque ${safeIndex + 1}`,
+            })
+          }
+          onSaveSuccess={(sketchId) =>
+            useAppStore.getState().attachSketchToSessionBlock(focusBlock.id, sketchId)
+          }
+        />
         <button
           type="button"
-          onClick={() => useAppStore.getState().setView("viewer")}
+          onClick={() => {
+            if (!weeklyDecisionCard) return;
+            exportWeeklyBriefingHtml({
+              teamName: teamName.trim() || "Equipo",
+              session,
+              decision: weeklyDecisionCard,
+              sketch: attachedSketch,
+              coachingPoints: [blockIntent.objective, ...focusExercise.coaching],
+              reminders: [
+                blockIntent.successSignal,
+                blockIntent.nextReview,
+                weeklyDecisionCard.whatIsMissing,
+              ],
+            });
+          }}
         >
-          Volver al visor
+          Compartir briefing
         </button>
         <button
           type="button"
@@ -117,6 +201,19 @@ export function PlayerView() {
           onClick={() => window.print()}
         >
           Imprimir
+        </button>
+      </div>
+      <WeeklyDecisionCard
+        model={weeklyDecisionCard}
+        title="Resumen para staff/plantel"
+        detailsLabel="Usalo como briefing corto antes de cancha o partido."
+      />
+      <div className="toolbar" style={{ marginTop: 12 }}>
+        <button
+          type="button"
+          onClick={() => useAppStore.getState().setView("viewer")}
+        >
+          Volver al visor
         </button>
       </div>
     </section>

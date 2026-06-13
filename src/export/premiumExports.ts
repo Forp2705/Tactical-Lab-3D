@@ -3,6 +3,9 @@ import type { CoachMatchAdvice } from "@/ai/CoachSchemas";
 import type { GameModel } from "@/data/gameModel";
 import type { Session } from "@/data";
 import type { OpponentGamePlan, OpponentScout } from "@/scout/opponentScout";
+import type { Sketch } from "@/sketch";
+import { renderSketchSvgMarkup } from "@/sketch/renderSketchSvg";
+import type { WeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 
 export function exportCoachDiagnosisHtml(
   advice: CoachMatchAdvice,
@@ -151,12 +154,68 @@ export function exportEvolutionHtml(reports: SavedPostMatchReport[]) {
   });
 }
 
+export function exportWeeklyBriefingHtml({
+  teamName,
+  session,
+  decision,
+  coachingPoints,
+  reminders,
+  sketch,
+}: {
+  teamName: string;
+  session: Session;
+  decision: WeeklyDecisionCardModel;
+  coachingPoints: string[];
+  reminders: string[];
+  sketch?: Sketch | null;
+}) {
+  const date = (session.date || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const safeTeam = slugify(teamName || "equipo");
+  const filename = `romboiq-briefing-${safeTeam}-${date}`;
+  const metrics: Array<[string, string]> = [
+    ["Equipo", teamName || "Equipo sin nombre"],
+    ["Sesion", session.name || "Sesion semanal"],
+    ["Confianza", `${Math.round(decision.confidence * 100)}%`],
+  ];
+
+  openStyledDocument({
+    documentTitle: filename,
+    title: "Briefing semanal",
+    subtitle: "Compartir con plantel/staff",
+    kicker: filename,
+    body: [
+      metricStrip(metrics),
+      splitSection("Decision de la semana", [
+        cardBlock("Problema", [decision.problem]),
+        cardBlock("Por que", [decision.why]),
+        cardBlock("Que entrenar", [decision.whatToTrain]),
+        cardBlock("Que mirar", [decision.whatToWatch]),
+      ]),
+      sketch
+        ? `<section><h2>Boceto rapido</h2><div class="sketch-frame">${renderSketchSvgMarkup(sketch)}</div></section>`
+        : "",
+      listSection("Puntos de coaching", coachingPoints.slice(0, 3)),
+      listSection(
+        "Que recordar",
+        reminders.slice(0, 3).length
+          ? reminders.slice(0, 3)
+          : [decision.whatIsMissing],
+      ),
+      footerBlock(
+        `Ultima actualizacion: ${escapeHtml(decision.updatedAt)}. Si la evidencia es debil, usar este briefing como guia de trabajo y no como cierre definitivo.`,
+      ),
+    ].join(""),
+  });
+}
+
 function openStyledDocument({
+  documentTitle,
   title,
   subtitle,
   kicker,
   body,
 }: {
+  documentTitle?: string;
   title: string;
   subtitle: string;
   kicker: string;
@@ -169,7 +228,7 @@ function openStyledDocument({
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
+  <title>${escapeHtml(documentTitle ?? title)}</title>
   <style>
     :root {
       color-scheme: light;
@@ -283,6 +342,18 @@ function openStyledDocument({
       font-size: 13px;
       line-height: 1.55;
     }
+    .sketch-frame {
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #081219;
+    }
+    .sketch-frame svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
     @media print {
       body { background: #ffffff; }
       .page { padding: 18mm 16mm 20mm; }
@@ -357,4 +428,14 @@ function escapeHtml(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32) || "equipo";
 }

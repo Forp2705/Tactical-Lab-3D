@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { SketchThumbnail } from "@/sketch";
+import {
+  QuickSketchLauncher,
+  SketchThumbnail,
+  buildContextualSketchDraft,
+  buildQuickSketchTitle,
+} from "@/sketch";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { readSessionBlockIntent, readSessionIntent } from "./SessionsView";
 
@@ -83,6 +88,9 @@ export function PitchSideView({ onExit }: { onExit: () => void }) {
       <div className="pitch-side-focus">
         <span className="eyebrow">Foco semanal</span>
         <p>{sessionIntent.problem}</p>
+        <small className="muted">
+          Hoy: {blockIntent?.objective ?? "Cargar un bloque para salir a cancha."}
+        </small>
       </div>
 
       {block && exercise && blockIntent ? (
@@ -100,7 +108,30 @@ export function PitchSideView({ onExit }: { onExit: () => void }) {
           {attachedSketch ? (
             <SketchThumbnail sketch={attachedSketch} className="pitch-side-sketch-thumb" />
           ) : (
-            <p className="muted-panel">Este bloque todavia no tiene un boceto adjunto.</p>
+            <div className="muted-panel">
+              <p style={{ marginTop: 0 }}>
+                Este bloque todavia no tiene un boceto adjunto.
+              </p>
+              <QuickSketchLauncher
+                buttonClassName="secondary"
+                buttonLabel="Crear boceto rapido"
+                panelTitle="Boceto rapido para modo cancha"
+                buildDraft={() =>
+                  buildContextualSketchDraft({
+                    title: buildQuickSketchTitle([
+                      "Boceto",
+                      exercise.title,
+                      sessionIntent.problem,
+                    ]),
+                    tacticalFocus: blockIntent.objective,
+                    sourceLabel: `Modo cancha bloque ${safeIndex + 1}`,
+                  })
+                }
+                onSaveSuccess={(sketchId) =>
+                  useAppStore.getState().attachSketchToSessionBlock(block.id, sketchId)
+                }
+              />
+            </div>
           )}
 
           <div className="pitch-side-detail">
@@ -145,6 +176,15 @@ export function PitchSideView({ onExit }: { onExit: () => void }) {
             >
               {block.done ? "Realizado" : "Marcar realizado"}
             </button>
+            {(block.done || noteSaved) && safeIndex < blocks.length - 1 ? (
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => goTo(safeIndex + 1)}
+              >
+                Ir al siguiente ejercicio
+              </button>
+            ) : null}
           </div>
 
           <div className="pitch-side-note">

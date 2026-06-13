@@ -48,6 +48,15 @@ export function isTeamIdentityConfigured(identity: TeamIdentitySetup) {
   );
 }
 
+export function isTeamIdentityBootstrapped(identity: TeamIdentitySetup) {
+  return Boolean(
+    identity.teamName.trim() &&
+      identity.baseFormation.trim() &&
+      identity.trainingDays > 0 &&
+      identity.squadLevel.trim(),
+  );
+}
+
 export function summarizeTeamIdentity(identity: TeamIdentitySetup) {
   if (!isTeamIdentityConfigured(identity)) return "";
 

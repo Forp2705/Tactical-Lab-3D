@@ -94,12 +94,13 @@ export function buildSessionPlanFromWeeklyThread(
     intent?.objective ?? "",
     ...(thread.nextReviewCriteria ?? []),
   ].join(" ");
-  const exerciseIds = matchExercisesForDiagnosis({
+  const matchedIds = matchExercisesForDiagnosis({
     domains: inferDomainsFromText(text),
     query: text,
     exercises,
-    limit: 4,
+    limit: 8,
   }).map((match) => match.exercise.id);
+  const exerciseIds = buildWeeklyThreadExerciseIds(matchedIds, exercises);
   const selected = exerciseIds.flatMap((id) => {
     const exercise = exercises.find((item) => item.id === id);
     return exercise ? [exercise] : [];
@@ -220,8 +221,107 @@ function unique(items: string[]) {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
 }
 
+function buildWeeklyThreadExerciseIds(
+  matchedIds: string[],
+  exercises: Exercise[],
+) {
+  const matched = matchedIds
+    .map((id) => exercises.find((exercise) => exercise.id === id) ?? null)
+    .filter((exercise): exercise is Exercise => Boolean(exercise));
+  const used = new Set<string>();
+  const picked: string[] = [];
+
+  const warmUp =
+    pickExercise(
+      matched,
+      (exercise) =>
+        exercise.intensity !== "veryHigh" &&
+        (exercise.title.toLowerCase().includes("activacion") ||
+          exercise.title.toLowerCase().includes("rondo") ||
+          exercise.players.max <= 10),
+      used,
+    ) ??
+    pickExercise(
+      exercises,
+      (exercise) =>
+        exercise.phase === "attackOrg" &&
+        exercise.intensity !== "veryHigh" &&
+        (exercise.title.toLowerCase().includes("activacion") ||
+          exercise.title.toLowerCase().includes("rondo")),
+      used,
+    );
+  if (warmUp) {
+    used.add(warmUp.id);
+    picked.push(warmUp.id);
+  }
+
+  const main =
+    pickExercise(matched, () => true, used) ??
+    pickExercise(exercises, (exercise) => exercise.phase === "attackOrg", used);
+  if (main) {
+    used.add(main.id);
+    picked.push(main.id);
+  }
+
+  const conditioned =
+    pickExercise(
+      matched,
+      (exercise) =>
+        exercise.intensity === "high" ||
+        exercise.intensity === "veryHigh" ||
+        exercise.phase === "transOff" ||
+        exercise.phase === "transDef" ||
+        exercise.phase === "defenseOrg",
+      used,
+    ) ??
+    pickExercise(
+      exercises,
+      (exercise) =>
+        exercise.phase === "transOff" ||
+        exercise.phase === "transDef" ||
+        exercise.phase === "defenseOrg",
+      used,
+    );
+  if (conditioned) {
+    used.add(conditioned.id);
+    picked.push(conditioned.id);
+  }
+
+  const review =
+    pickExercise(
+      matched,
+      (exercise) =>
+        exercise.duration <= 16 ||
+        exercise.title.toLowerCase().includes("posesion") ||
+        exercise.title.toLowerCase().includes("rondo"),
+      used,
+    ) ??
+    pickExercise(
+      exercises,
+      (exercise) =>
+        exercise.phase === "attackOrg" && exercise.duration <= 16,
+      used,
+    );
+  if (review) {
+    used.add(review.id);
+    picked.push(review.id);
+  }
+
+  return picked.slice(0, 4);
+}
+
 function shortTitle(value: string) {
   return value.replace(/\s+/g, " ").trim().slice(0, 42) || "plan tactico";
+}
+
+function pickExercise(
+  exercises: Exercise[],
+  predicate: (exercise: Exercise) => boolean,
+  used: Set<string>,
+) {
+  return exercises.find(
+    (exercise) => !used.has(exercise.id) && predicate(exercise),
+  );
 }
 
 function formatDiagnosisBlockNotes({

@@ -3,18 +3,10 @@ import type { TeamIdentitySetup } from "@/data/teamIdentitySetup";
 import { useAppStore } from "@/state/useAppStore";
 
 /**
- * Real Coach Onboarding — a short, skippable guided setup shown only in the
- * real workspace while team identity is not configured (see
- * `isTeamIdentityConfigured`). It writes exclusively through the existing
- * `updateTeamIdentity` action, so the "Coach must not invent identity" rule
- * (enforced in `buildCoachTeamIdentityContext`) stays intact: nothing here
- * bypasses or duplicates that gate.
- *
- * Scope is intentionally small: 5 short steps, plain language, skippable at
- * any point. Skipping (or simply not finishing) leaves the always-visible
- * `TeamSetupPrompt` card as the ongoing reminder that identity is missing —
- * so requirement "#3 Coach must know identity is missing if skipped" is
- * covered without adding new persisted state or touching db.ts/migrations.
+ * Real Coach Onboarding keeps the same safe write path as before:
+ * `updateTeamIdentity` for setup and the existing observation -> weekly-thread
+ * pipeline for the current problem. This pass only shortens the path to first
+ * value; it does not create a new identity or thread source of truth.
  */
 
 const PROBLEM_EXAMPLES = [
@@ -24,7 +16,7 @@ const PROBLEM_EXAMPLES = [
   "Nos atacan la espalda de los laterales",
 ];
 
-type StepIndex = 1 | 2 | 3 | 4 | 5;
+type StepIndex = 1 | 2 | 3;
 type Phase = "intro" | StepIndex;
 
 type OnboardingDraft = {
@@ -55,16 +47,11 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
   const [phase, setPhase] = useState<Phase>("intro");
   const [hidden, setHidden] = useState(false);
   const [draft, setDraft] = useState<OnboardingDraft>(() => draftFromIdentity(identity));
-  const [justCreatedThread, setJustCreatedThread] = useState(false);
 
   if (hidden) return null;
 
   function patch(next: Partial<OnboardingDraft>) {
     setDraft((current) => ({ ...current, ...next }));
-  }
-
-  function skip() {
-    setHidden(true);
   }
 
   function finish() {
@@ -87,41 +74,25 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
       if (observationId) {
         useAppStore.getState().activateWeeklyThreadFromObservation(observationId);
       }
-      setJustCreatedThread(Boolean(observationId));
     }
 
     setHidden(true);
-  }
-
-  if (justCreatedThread) {
-    return (
-      <article className="command-summary-card primary onboarding-card">
-        <span className="eyebrow">Foco semanal creado</span>
-        <h3>Tu primer hilo de la semana ya esta abierto</h3>
-        <p>
-          Lo vas a ver como hipotesis (evidencia manual, confianza baja) en el
-          panel de decision semanal. Se va a fortalecer con observaciones,
-          lecturas del Coach o el proximo informe post-partido.
-        </p>
-      </article>
-    );
   }
 
   if (phase === "intro") {
     return (
       <article className="command-summary-card primary onboarding-card">
         <span className="eyebrow">Primeros pasos</span>
-        <h3>Configurar equipo</h3>
+        <h3>Arrancar la semana</h3>
         <p>
-          Cinco pasos cortos para que el Coach sepa quien sos, como jugas y en
-          que estas trabajando esta semana. Podes saltarlo y completarlo
-          despues desde el panel de identidad.
+          Carga lo minimo para abrir el foco semanal ahora: nombre, categoria,
+          dias, sistema base y problema actual. El resto queda para despues.
         </p>
         <div className="toolbar compact">
           <button type="button" className="btn primary" onClick={() => setPhase(1)}>
             Empezar con mi equipo
           </button>
-          <button type="button" className="btn ghost" onClick={skip}>
+          <button type="button" className="btn ghost" onClick={() => setHidden(true)}>
             Lo hago mas tarde
           </button>
         </div>
@@ -135,10 +106,10 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
     <article className="command-summary-card primary onboarding-card">
       <div className="section-title">
         <div>
-          <span className="eyebrow">Configurar equipo - paso {step} de 5</span>
+          <span className="eyebrow">Configurar equipo - paso {step} de 3</span>
           <h3>{stepTitle(step)}</h3>
         </div>
-        <button type="button" className="btn ghost" onClick={skip}>
+        <button type="button" className="btn ghost" onClick={() => setHidden(true)}>
           Saltar
         </button>
       </div>
@@ -189,43 +160,6 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
       ) : null}
 
       {step === 3 ? (
-        <div className="home-team-setup-grid">
-          <label>
-            <span>Presion</span>
-            <input
-              value={draft.pressingPreference}
-              onChange={(event) => patch({ pressingPreference: event.target.value })}
-              placeholder="Como y cuando queres presionar"
-            />
-          </label>
-          <label>
-            <span>Altura defensiva</span>
-            <select
-              value={draft.preferredDefensiveHeight}
-              onChange={(event) =>
-                patch({
-                  preferredDefensiveHeight: event.target.value as TeamIdentitySetup["preferredDefensiveHeight"],
-                })
-              }
-            >
-              <option value="">Seleccionar</option>
-              <option value="low">Baja</option>
-              <option value="mid">Media</option>
-              <option value="high">Alta</option>
-            </select>
-          </label>
-          <label>
-            <span>Salida</span>
-            <input
-              value={draft.buildUpPreference}
-              onChange={(event) => patch({ buildUpPreference: event.target.value })}
-              placeholder="Como queres iniciar la construccion"
-            />
-          </label>
-        </div>
-      ) : null}
-
-      {step === 4 ? (
         <div className="onboarding-problem-step">
           <label>
             <span>Problema actual</span>
@@ -237,9 +171,9 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
             />
           </label>
           <p className="muted-panel">
-            Es opcional, pero si cargas algo el sistema abre tu primer foco
-            semanal como hipotesis (evidencia manual, confianza baja) listo
-            para validar en la cancha.
+            Si lo cargas ahora, el sistema abre tu primer foco semanal como
+            hipotesis del staff. Presion, altura, salida e imports quedan para
+            despues.
           </p>
           <div className="toolbar compact onboarding-chip-row">
             {PROBLEM_EXAMPLES.map((example) => (
@@ -253,46 +187,30 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
               </button>
             ))}
           </div>
-        </div>
-      ) : null}
-
-      {step === 5 ? (
-        <div className="onboarding-summary">
-          <ul className="onboarding-summary-list">
-            <li>
-              <span>Equipo</span>
-              <b>{draft.teamName.trim() || "Sin definir"}</b>
-            </li>
-            <li>
-              <span>Nivel</span>
-              <b>{draft.squadLevel.trim() || "Sin definir"}</b>
-            </li>
-            <li>
-              <span>Sistema</span>
-              <b>{draft.baseFormation.trim() || "Sin definir"}</b>
-            </li>
-            <li>
-              <span>Dias de entrenamiento</span>
-              <b>{draft.trainingDays || "Sin definir"}</b>
-            </li>
-            <li>
-              <span>Presion / Altura / Salida</span>
-              <b>
-                {[draft.pressingPreference, heightSummary(draft.preferredDefensiveHeight), draft.buildUpPreference]
-                  .filter((value) => value && value.trim())
-                  .join(" - ") || "Sin definir"}
-              </b>
-            </li>
-            <li>
-              <span>Problema actual</span>
-              <b>{draft.mainCurrentProblem.trim() || "No cargado"}</b>
-            </li>
-          </ul>
-          <p className="muted-panel">
-            {draft.mainCurrentProblem.trim()
-              ? "Vamos a guardar esta identidad y abrir tu primer foco semanal a partir del problema cargado."
-              : "Vamos a guardar esta identidad. Podes cargar el problema actual mas adelante desde la captura del staff."}
-          </p>
+          <div className="onboarding-summary">
+            <ul className="onboarding-summary-list">
+              <li>
+                <span>Equipo</span>
+                <b>{draft.teamName.trim() || "Sin definir"}</b>
+              </li>
+              <li>
+                <span>Nivel</span>
+                <b>{draft.squadLevel.trim() || "Sin definir"}</b>
+              </li>
+              <li>
+                <span>Sistema</span>
+                <b>{draft.baseFormation.trim() || "Sin definir"}</b>
+              </li>
+              <li>
+                <span>Dias de entrenamiento</span>
+                <b>{draft.trainingDays || "Sin definir"}</b>
+              </li>
+              <li>
+                <span>Problema actual</span>
+                <b>{draft.mainCurrentProblem.trim() || "No cargado"}</b>
+              </li>
+            </ul>
+          </div>
         </div>
       ) : null}
 
@@ -304,7 +222,7 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
         ) : (
           <span />
         )}
-        {step < 5 ? (
+        {step < 3 ? (
           <button type="button" className="btn primary" onClick={() => setPhase((step + 1) as StepIndex)}>
             Siguiente
           </button>
@@ -321,23 +239,12 @@ export function RealCoachOnboarding({ identity }: { identity: TeamIdentitySetup 
 function stepTitle(step: StepIndex) {
   switch (step) {
     case 1:
-      return "Quien sos";
+      return "Equipo";
     case 2:
-      return "Como jugas";
+      return "Base semanal";
     case 3:
-      return "Estilo de juego";
-    case 4:
       return "Problema actual";
-    case 5:
-      return "Confirmar";
     default:
       return "";
   }
-}
-
-function heightSummary(value: TeamIdentitySetup["preferredDefensiveHeight"]) {
-  if (value === "high") return "altura alta";
-  if (value === "mid") return "altura media";
-  if (value === "low") return "altura baja";
-  return "";
 }

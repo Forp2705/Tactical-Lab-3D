@@ -25,7 +25,14 @@ import {
   PitchViz,
   type PitchOverlay,
 } from "@/ui/tacticalPrimitives";
-import { QuickSketchView, SketchThumbnail, type Sketch } from "@/sketch";
+import {
+  QuickSketchLauncher,
+  QuickSketchView,
+  SketchThumbnail,
+  buildContextualSketchDraft,
+  buildQuickSketchTitle,
+  type Sketch,
+} from "@/sketch";
 
 type DragMeta =
   | { type: "exercise"; exerciseId: string }
@@ -161,6 +168,25 @@ export function SessionsView() {
               <h3>Sesion como respuesta tactica</h3>
             </div>
             <div className="toolbar compact" style={{ marginBottom: 0 }}>
+              <QuickSketchLauncher
+                buttonClassName="secondary"
+                buttonLabel="Boceto rapido"
+                buttonTitle="Abrir un boceto rapido desde Sesion"
+                panelTitle="Boceto rapido para la sesion"
+                buildDraft={() =>
+                  buildContextualSketchDraft({
+                    title: buildQuickSketchTitle([
+                      "Boceto",
+                      session.name,
+                      sessionIntent.problem,
+                    ]),
+                    tacticalFocus: sessionIntent.objective,
+                    sourceLabel: session.blocks.length
+                      ? `Sesion ${session.name || "semanal"}`
+                      : "Sesion desde foco semanal",
+                  })
+                }
+              />
               <button
                 type="button"
                 className="secondary"
@@ -224,10 +250,37 @@ export function SessionsView() {
                     />
                   ))
                 ) : (
-                  <p className="muted">
-                    Arrastra ejercicios desde Biblioteca para conectar la
-                    semana con el problema tactico.
-                  </p>
+                  <div className="muted-panel">
+                    <p style={{ marginTop: 0 }}>
+                      Arrastra ejercicios desde Biblioteca o crea un borrador
+                      guiado desde el foco semanal.
+                    </p>
+                    <div className="toolbar compact" style={{ marginBottom: 0, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => useAppStore.getState().createSessionFromWeeklyThread()}
+                      >
+                        Crear sesion desde foco semanal
+                      </button>
+                      <QuickSketchLauncher
+                        buttonClassName="secondary"
+                        buttonLabel="Boceto rapido"
+                        buttonTitle="Abrir un boceto rapido desde Sesion"
+                        panelTitle="Boceto rapido para la sesion"
+                        buildDraft={() =>
+                          buildContextualSketchDraft({
+                            title: buildQuickSketchTitle([
+                              "Boceto",
+                              sessionIntent.problem,
+                            ]),
+                            tacticalFocus: sessionIntent.objective,
+                            sourceLabel: "Sesion vacia",
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </SortableContext>

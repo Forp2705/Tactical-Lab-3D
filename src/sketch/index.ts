@@ -50,3 +50,8 @@ export {
 
 export { QuickSketchView, type QuickSketchViewProps } from "./QuickSketchView";
 export { SketchThumbnail } from "./SketchThumbnail";
+export { QuickSketchLauncher } from "./QuickSketchLauncher";
+export {
+  buildContextualSketchDraft,
+  buildQuickSketchTitle,
+} from "./contextualSketch";

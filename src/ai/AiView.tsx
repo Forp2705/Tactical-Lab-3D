@@ -31,6 +31,7 @@ import {
   ModeBadge,
   PitchViz,
 } from "@/ui/tacticalPrimitives";
+import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 import {
   getExerciseById,
   type CoachShapeContext,
@@ -222,6 +223,15 @@ export function AiView() {
       workspaceMode,
     ],
   );
+  const weeklyDecisionCard = useMemo(
+    () =>
+      buildWeeklyDecisionCardModel({
+        thread: weeklyDecisionThread,
+        advice,
+        responseMode,
+      }),
+    [advice, responseMode, weeklyDecisionThread],
+  );
 
   useEffect(() => {
     void refreshAgentStatus();
@@ -370,12 +380,8 @@ export function AiView() {
               }
             />
             <MetricPill
-              label="Manual"
-              value={cockpitContext.manualObservations}
-            />
-            <MetricPill
-              label="Memoria"
-              value={cockpitContext.acceptedMemory.length}
+              label="Reportes"
+              value={cockpitContext.recentReports.length}
             />
           </div>
         </header>
@@ -436,6 +442,12 @@ export function AiView() {
               {loading ? <CoachThinkingPanel /> : null}
             </section>
 
+            <WeeklyDecisionCard
+              model={weeklyDecisionCard}
+              title="Decision de la semana"
+              detailsLabel="El reporte completo y el contexto tecnico quedan debajo como detalle secundario."
+            />
+
             {coachInterview.active && coachInterview.questions.length ? (
               <InterviewPanel
                 questions={coachInterview.questions}
@@ -470,10 +482,9 @@ export function AiView() {
 
           <details className="ai-context-details">
             <summary>
-              <span>Contexto completo del agente</span>
+              <span>Avanzado</span>
               <small>
-                Estado, plantel, reportes, memoria y patrones que sostienen la
-                lectura
+                Estado tecnico, plantel, reportes, memoria y patrones de apoyo
               </small>
             </summary>
             <aside className="ai-context-rail">

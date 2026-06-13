@@ -13,12 +13,21 @@ import {
   exportTrainingWeekHtml,
 } from "@/export/premiumExports";
 import {
+  QuickSketchLauncher,
+  buildContextualSketchDraft,
+  buildQuickSketchTitle,
+} from "@/sketch";
+import {
   EvidenceChip,
   LoopProgress,
   PatternCard,
   PitchViz,
 } from "@/ui/tacticalPrimitives";
-import { isTeamIdentityConfigured } from "@/data/teamIdentitySetup";
+import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
+import {
+  isTeamIdentityBootstrapped,
+  isTeamIdentityConfigured,
+} from "@/data/teamIdentitySetup";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
 import { memo, useMemo, useState } from "react";
@@ -101,6 +110,10 @@ export function HomeView() {
   });
   const activeDiagnosis =
     weeklyDecisionThread?.problem || aiPrompt.trim() || primaryPattern?.statement || "";
+  const weeklyDecisionCard = useMemo(
+    () => buildWeeklyDecisionCardModel({ thread: weeklyDecisionThread }),
+    [weeklyDecisionThread],
+  );
 
   return (
     <div className="view-enter grid home-command-view" style={{ gap: 16 }}>
@@ -120,6 +133,30 @@ export function HomeView() {
         <p className="home-hero-intent">
           Primero decision. Despues detalle, trazabilidad y revision.
         </p>
+        <div className="toolbar compact" style={{ marginBottom: 0, flexWrap: "wrap" }}>
+          <button type="button" className="btn primary" onClick={nextAction.onClick}>
+            {nextAction.cta}
+          </button>
+          <QuickSketchLauncher
+            buttonClassName="secondary"
+            buttonLabel="Boceto rapido"
+            buttonTitle="Abrir un boceto rapido desde Sala"
+            panelTitle="Boceto rapido para esta semana"
+            buildDraft={() =>
+              buildContextualSketchDraft({
+                title: buildQuickSketchTitle([
+                  "Boceto",
+                  weeklyDecisionThread?.problem,
+                  activeDay.label,
+                ]),
+                tacticalFocus:
+                  weeklyDecisionThread?.sessionIntent?.objective ??
+                  weeklyDecisionThread?.problem,
+                sourceLabel: "Sala semanal",
+              })
+            }
+          />
+        </div>
         <div className="command-loop-row">
           <LoopProgress active={loopStage(session.blocks.length, reports.length, patterns.length)} />
         </div>
@@ -188,7 +225,7 @@ export function HomeView() {
           </div>
         </div>
       </section>
-      {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
+      {workspaceMode === "real" && !isTeamIdentityBootstrapped(teamIdentity) ? (
         <section className="home-onboarding-strip">
           <RealCoachOnboarding identity={teamIdentity} />
         </section>
@@ -208,6 +245,12 @@ export function HomeView() {
         session={session}
         weeklyDecision={weeklyDecision}
         weeklyDecisionThread={weeklyDecisionThread}
+      />
+
+      <WeeklyDecisionCard
+        model={weeklyDecisionCard}
+        title="Lectura coach de la semana"
+        detailsLabel="La evidencia completa y la trazabilidad quedan como detalle secundario."
       />
 
       <QuickObservationPanel
