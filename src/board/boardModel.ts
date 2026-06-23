@@ -204,6 +204,82 @@ export const BoardSceneSchema = z.object({
 });
 export type BoardScene = z.infer<typeof BoardSceneSchema>;
 
+// Board "workspace": the editor-side planning data that used to live in
+// localStorage (see TacticalBoardView). Folded into the model so a board is the
+// single source of truth and persists via Dexie. Defaults below mirror the
+// view-facing constants in productBoardTypes.ts.
+export const BoardWorkspacePlayerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  position: z.string(),
+  number: z.union([z.string(), z.number()]),
+  traits: z.string(),
+  team: z.enum(["A", "B"]),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  role: z.string().optional(),
+  task: z.string().optional(),
+});
+
+export const BoardWorkspaceViewSchema = z.enum([
+  "Ataque",
+  "Defensa",
+  "Transicion",
+  "ABP",
+]);
+
+export const BoardWorkspaceProblemSchema = z.object({
+  problem: z.string(),
+  objective: z.string(),
+});
+
+export const BoardWorkspaceExerciseSchema = z.object({
+  objective: z.string(),
+  players: z.string(),
+  space: z.string(),
+  duration: z.string(),
+  rule: z.string(),
+  successCondition: z.string(),
+  progression: z.string(),
+  coachCorrection: z.string(),
+});
+
+export const BoardWorkspaceLayerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  visible: z.boolean(),
+});
+
+export const BoardWorkspaceSchema = z.object({
+  roster: z.array(BoardWorkspacePlayerSchema).default([]),
+  problem: BoardWorkspaceProblemSchema.default({
+    problem: "Nos presionan alto y no salimos limpio",
+    objective: "Encontrar pase interior y tercer hombre",
+  }),
+  exercise: BoardWorkspaceExerciseSchema.default({
+    objective: "Salida ante presion alta",
+    players: "6v4 + arquero",
+    space: "35x40",
+    duration: "12 min",
+    rule: "Gol doble si progresa por tercer hombre",
+    successCondition: "Superar primera linea y fijar al 6",
+    progression: "Anadir comodin interior",
+    coachCorrection: "Perfilar cuerpo y jugar de cara",
+  }),
+  layers: z.array(BoardWorkspaceLayerSchema).default([
+    { id: "attack", name: "Ataque", visible: true },
+    { id: "defense", name: "Defensa", visible: true },
+    { id: "offensiveTransition", name: "Transicion ofensiva", visible: true },
+    { id: "defensiveTransition", name: "Transicion defensiva", visible: true },
+    { id: "setPieces", name: "ABP / Balon parado", visible: true },
+    { id: "counterPress", name: "Presion tras perdida", visible: true },
+    { id: "midBlock", name: "Bloque medio", visible: true },
+  ]),
+  currentView: BoardWorkspaceViewSchema.default("Ataque"),
+  teamAFormation: z.string().default("4-3-3"),
+});
+export type BoardWorkspace = z.infer<typeof BoardWorkspaceSchema>;
+
 export const TacticalBoardSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).max(120),
@@ -233,6 +309,7 @@ export const TacticalBoardSchema = z.object({
   successSignals: z.array(z.string().max(180)).default([]),
   scenes: z.array(BoardSceneSchema).min(1),
   instructions: z.array(BoardInstructionSchema).default([]),
+  workspace: BoardWorkspaceSchema.default({}),
 });
 export type TacticalBoard = z.infer<typeof TacticalBoardSchema>;
 
@@ -321,6 +398,24 @@ export function createDefaultBoard(
         visibility: "player",
       }),
     ],
+    workspace: {
+      roster: (options?.players ?? []).map((player) => ({
+        id: player.id,
+        name: player.name,
+        position: player.positions[0] ?? "Sin puesto",
+        number: player.num,
+        traits: player.profile,
+        team: "A" as const,
+      })),
+      problem: {
+        problem:
+          (options?.weeklyThread?.problem ?? "") ||
+          "Nos presionan alto y no salimos limpio",
+        objective: objective || "Encontrar pase interior y tercer hombre",
+      },
+      currentView: "Ataque",
+      teamAFormation: "4-3-3",
+    },
   });
 }
 
