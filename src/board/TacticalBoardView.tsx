@@ -11,8 +11,6 @@ import {
   createDefaultBoardScene,
   createOpponentShape,
   createPlayerToken,
-  createSemanticArrow,
-  createTacticalZone,
   tacticalBoardSceneSvgString,
 } from "@/board";
 import type { SessionBlock } from "@/data";
@@ -25,6 +23,39 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  type BoardTool,
+  COLORS,
+  type DraftPlayer,
+  FORMATIONS,
+  LINE_WIDTHS,
+  PITCH_H,
+  PITCH_W,
+  type Selection,
+  TOOL_DEFS,
+  VIEW_OPTIONS,
+  emptyDraft,
+  exerciseFields,
+  formationPoints,
+} from "./boardConstants";
+import {
+  blockTitle,
+  clamp,
+  distance,
+  downloadBlob,
+  endpointPoint,
+  layerVisibleForArrow,
+  pointFromSvgEvent,
+  scaleY,
+  shortName,
+  slug,
+  zoneVisible,
+} from "./boardGeometry";
+import {
+  handleCanvasPress,
+  labelForTool,
+  tokenFromPlanningPlayer,
+} from "./boardTools";
 import {
   type BoardPayload,
   type CurrentBoardView,
@@ -39,168 +70,7 @@ import {
   inferAiInterpretation,
 } from "./productBoardTypes";
 
-type BoardTool =
-  | "select"
-  | "move"
-  | "pencil"
-  | "line"
-  | "arrow"
-  | "cone"
-  | "zone"
-  | "text"
-  | "goal"
-  | "mannequin"
-  | "pressureLine"
-  | "ballRoute"
-  | "longPass"
-  | "cross"
-  | "shot"
-  | "run"
-  | "block";
-
-type DraftPlayer = Omit<PlanningBoardPlayer, "id" | "team"> & {
-  team: "A" | "B";
-};
-type Selection =
-  | { kind: "object"; id: string }
-  | { kind: "arrow"; id: string }
-  | { kind: "zone"; id: string }
-  | null;
-
-const PITCH_W = 100;
-const PITCH_H = 64;
 const STORAGE_PREFIX = "romboiq-planning-board";
-const FORMATIONS = ["4-4-2", "4-3-3", "4-2-3-1", "3-5-2", "3-4-3", "5-4-1"];
-const VIEW_OPTIONS: CurrentBoardView[] = [
-  "Ataque",
-  "Defensa",
-  "Transicion",
-  "ABP",
-];
-
-const TOOL_DEFS: Array<{ id: BoardTool; label: string }> = [
-  { id: "select", label: "Seleccionar" },
-  { id: "move", label: "Mover" },
-  { id: "pencil", label: "Lapiz" },
-  { id: "line", label: "Linea" },
-  { id: "arrow", label: "Flecha" },
-  { id: "cone", label: "Cono" },
-  { id: "zone", label: "Zona" },
-  { id: "text", label: "Texto" },
-  { id: "goal", label: "Porteria" },
-  { id: "mannequin", label: "Maniqui" },
-  { id: "pressureLine", label: "Linea de presion" },
-  { id: "ballRoute", label: "Ruta de balon" },
-  { id: "longPass", label: "Pase largo" },
-  { id: "cross", label: "Centro" },
-  { id: "shot", label: "Disparo" },
-  { id: "run", label: "Desmarque" },
-  { id: "block", label: "Bloque" },
-];
-
-const COLORS = [
-  "#f8fafc",
-  "#facc15",
-  "#ff5b2e",
-  "#1677ff",
-  "#22c55e",
-  "#8b5cf6",
-];
-const LINE_WIDTHS = [1, 2, 3];
-
-const formationPoints: Record<
-  string,
-  Array<{ x: number; y: number; role: string }>
-> = {
-  "4-4-2": [
-    { x: 8, y: 50, role: "Arquero" },
-    { x: 22, y: 18, role: "Lateral derecho" },
-    { x: 22, y: 38, role: "Central" },
-    { x: 22, y: 62, role: "Central" },
-    { x: 22, y: 82, role: "Lateral izquierdo" },
-    { x: 45, y: 20, role: "Volante derecho" },
-    { x: 45, y: 42, role: "Mediocentro" },
-    { x: 45, y: 58, role: "Mediocentro" },
-    { x: 45, y: 80, role: "Volante izquierdo" },
-    { x: 72, y: 42, role: "Delantero" },
-    { x: 72, y: 58, role: "Delantero" },
-  ],
-  "4-3-3": [
-    { x: 8, y: 50, role: "Arquero" },
-    { x: 22, y: 18, role: "Lateral derecho" },
-    { x: 22, y: 38, role: "Central" },
-    { x: 22, y: 62, role: "Central" },
-    { x: 22, y: 82, role: "Lateral izquierdo" },
-    { x: 43, y: 32, role: "Interior" },
-    { x: 40, y: 50, role: "Mediocentro" },
-    { x: 43, y: 68, role: "Interior" },
-    { x: 72, y: 22, role: "Extremo derecho" },
-    { x: 76, y: 50, role: "Delantero" },
-    { x: 72, y: 78, role: "Extremo izquierdo" },
-  ],
-  "4-2-3-1": [
-    { x: 8, y: 50, role: "Arquero" },
-    { x: 22, y: 18, role: "Lateral derecho" },
-    { x: 22, y: 38, role: "Central" },
-    { x: 22, y: 62, role: "Central" },
-    { x: 22, y: 82, role: "Lateral izquierdo" },
-    { x: 39, y: 42, role: "Doble pivote" },
-    { x: 39, y: 58, role: "Doble pivote" },
-    { x: 58, y: 24, role: "Extremo" },
-    { x: 60, y: 50, role: "Enganche" },
-    { x: 58, y: 76, role: "Extremo" },
-    { x: 77, y: 50, role: "Delantero" },
-  ],
-  "3-5-2": [
-    { x: 8, y: 50, role: "Arquero" },
-    { x: 24, y: 32, role: "Central" },
-    { x: 21, y: 50, role: "Central" },
-    { x: 24, y: 68, role: "Central" },
-    { x: 45, y: 16, role: "Carrilero" },
-    { x: 42, y: 38, role: "Interior" },
-    { x: 41, y: 50, role: "Mediocentro" },
-    { x: 42, y: 62, role: "Interior" },
-    { x: 45, y: 84, role: "Carrilero" },
-    { x: 72, y: 42, role: "Delantero" },
-    { x: 72, y: 58, role: "Delantero" },
-  ],
-  "3-4-3": [
-    { x: 8, y: 50, role: "Arquero" },
-    { x: 24, y: 32, role: "Central" },
-    { x: 21, y: 50, role: "Central" },
-    { x: 24, y: 68, role: "Central" },
-    { x: 44, y: 20, role: "Carrilero" },
-    { x: 42, y: 43, role: "Mediocentro" },
-    { x: 42, y: 57, role: "Mediocentro" },
-    { x: 44, y: 80, role: "Carrilero" },
-    { x: 72, y: 24, role: "Extremo" },
-    { x: 76, y: 50, role: "Delantero" },
-    { x: 72, y: 76, role: "Extremo" },
-  ],
-  "5-4-1": [
-    { x: 8, y: 50, role: "Arquero" },
-    { x: 20, y: 14, role: "Carrilero" },
-    { x: 22, y: 34, role: "Central" },
-    { x: 20, y: 50, role: "Central" },
-    { x: 22, y: 66, role: "Central" },
-    { x: 20, y: 86, role: "Carrilero" },
-    { x: 44, y: 22, role: "Volante" },
-    { x: 43, y: 43, role: "Mediocentro" },
-    { x: 43, y: 57, role: "Mediocentro" },
-    { x: 44, y: 78, role: "Volante" },
-    { x: 72, y: 50, role: "Delantero" },
-  ],
-};
-
-const emptyDraft: DraftPlayer = {
-  name: "",
-  position: "",
-  number: "",
-  traits: "",
-  team: "A",
-  role: "",
-  task: "",
-};
 
 export function TacticalBoardView() {
   const {
@@ -1633,240 +1503,6 @@ function ToolIcon({ tool }: { tool: BoardTool }) {
   );
 }
 
-function handleCanvasPress({
-  point,
-  tool,
-  scene,
-  color,
-  lineWidth,
-  drawStart,
-  setDrawStart,
-  commitScene,
-  updateSceneObjects,
-}: {
-  point: BoardPoint;
-  tool: BoardTool;
-  scene: BoardScene;
-  color: string;
-  lineWidth: number;
-  drawStart: BoardPoint | null;
-  setDrawStart: (point: BoardPoint | null) => void;
-  commitScene: (patch: Partial<BoardScene>, record?: boolean) => void;
-  updateSceneObjects: (objects: BoardObject[], record?: boolean) => void;
-}) {
-  const style = { color, tone: String(lineWidth) };
-  const arrowSemantic = semanticForTool(tool);
-  if (arrowSemantic) {
-    if (!drawStart) {
-      setDrawStart(point);
-      return;
-    }
-    const arrow = createSemanticArrow(
-      arrowSemantic,
-      { kind: "point", point: drawStart },
-      { kind: "point", point },
-      {
-        label: labelForTool(tool),
-        style,
-        tacticalMeaning: labelForTool(tool),
-      },
-    );
-    commitScene({ arrows: [...scene.arrows, arrow] });
-    setDrawStart(null);
-    return;
-  }
-  if (tool === "zone" || tool === "block") {
-    const zone = createTacticalZone(
-      tool === "block" ? "block" : "occupation",
-      clamp(point.x - 10, 1, 78),
-      clamp(point.y - 10, 1, 78),
-      20,
-      16,
-      {
-        label: tool === "block" ? "Bloque" : "Zona",
-        color,
-        tacticalMeaning:
-          tool === "block" ? "Bloque compacto" : "Zona de ocupacion",
-      },
-    );
-    commitScene({ zones: [...scene.zones, zone] });
-    return;
-  }
-  if (tool === "text") {
-    updateSceneObjects([
-      ...scene.objects,
-      makeEquipmentLikeObject("note", "Buscar pase entre lineas", point, color),
-    ]);
-    return;
-  }
-  if (tool === "cone" || tool === "mannequin" || tool === "goal") {
-    updateSceneObjects([
-      ...scene.objects,
-      makeEquipmentLikeObject(
-        "equipmentMarker",
-        labelForTool(tool),
-        point,
-        color,
-      ),
-    ]);
-  }
-}
-
-function makeEquipmentLikeObject(
-  type: "note" | "equipmentMarker",
-  label: string,
-  position: BoardPoint,
-  color: string,
-): BoardObject {
-  return {
-    id: createBoardId(type === "note" ? "note" : "equipment"),
-    type,
-    label,
-    position,
-    rotationDeg: 0,
-    style: { color },
-    tacticalMeaning: label,
-    visibility: "player",
-    locked: false,
-    isDangerPlayer: false,
-  };
-}
-
-function semanticForTool(tool: BoardTool): BoardArrowSemantic | null {
-  if (tool === "ballRoute" || tool === "longPass" || tool === "cross")
-    return "pass";
-  if (tool === "pressureLine") return "pressure";
-  if (tool === "run") return "run";
-  if (
-    tool === "line" ||
-    tool === "pencil" ||
-    tool === "arrow" ||
-    tool === "shot"
-  )
-    return "movement";
-  return null;
-}
-
-function labelForTool(tool: BoardTool) {
-  const found = TOOL_DEFS.find((item) => item.id === tool);
-  return found?.label ?? "Anotacion";
-}
-
-function tokenFromPlanningPlayer(
-  player: PlanningBoardPlayer,
-  position: BoardPoint,
-  role: string,
-  fallbackNumber: number,
-): BoardObject {
-  const number = Number.parseInt(String(player.number), 10);
-  return {
-    ...createPlayerToken(
-      null,
-      position,
-      role || player.position,
-      Number.isFinite(number) ? number : fallbackNumber,
-    ),
-    label: player.name,
-    number: Number.isFinite(number) ? number : fallbackNumber,
-    role: player.role || role || player.position,
-    note: [player.task, player.traits].filter(Boolean).join(" / "),
-    linkedPlayerId: player.id,
-    rosterLink: Number.isFinite(number)
-      ? {
-          playerId: player.id,
-          displayName: player.name,
-          number,
-          role: player.role || role || player.position,
-          linkedAt: new Date().toISOString(),
-        }
-      : undefined,
-  };
-}
-
-const exerciseFields: Array<{ key: keyof ExerciseBuilder; label: string }> = [
-  { key: "objective", label: "Objetivo" },
-  { key: "players", label: "Jugadores" },
-  { key: "space", label: "Espacio" },
-  { key: "duration", label: "Duracion" },
-  { key: "rule", label: "Regla" },
-  { key: "successCondition", label: "Condicion de exito" },
-  { key: "progression", label: "Progresion" },
-  { key: "coachCorrection", label: "Correccion DT" },
-];
-
-function endpointPoint(
-  endpoint: BoardArrow["from"],
-  objects: BoardObject[],
-): BoardPoint {
-  if (endpoint.kind === "point") return endpoint.point;
-  return (
-    objects.find((object) => object.id === endpoint.objectId)?.position ?? {
-      x: 50,
-      y: 50,
-    }
-  );
-}
-
-function pointFromSvgEvent(event: PointerEvent<SVGGElement>): BoardPoint {
-  const svg = event.currentTarget.ownerSVGElement;
-  if (!svg) return { x: 50, y: 50 };
-  const rect = svg.getBoundingClientRect();
-  return {
-    x: clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100),
-    y: clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100),
-  };
-}
-
-function layerVisibleForArrow(arrow: BoardArrow, layers: Set<string>) {
-  if (arrow.semantic === "pass") return layers.has("attack");
-  if (arrow.semantic === "pressure")
-    return layers.has("counterPress") || layers.has("defense");
-  if (arrow.semantic === "run")
-    return layers.has("offensiveTransition") || layers.has("attack");
-  return true;
-}
-
-function zoneVisible(semantic: BoardZoneSemantic, layers: Set<string>) {
-  if (semantic === "danger") return layers.has("defensiveTransition");
-  if (semantic === "press") return layers.has("counterPress");
-  if (semantic === "block")
-    return layers.has("midBlock") || layers.has("defense");
-  return true;
-}
-
-function scaleY(y: number) {
-  return (y / 100) * PITCH_H;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function distance(a: BoardPoint, b: BoardPoint) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function shortName(name: string) {
-  return name.split(" ")[0]?.slice(0, 8) ?? name.slice(0, 8);
-}
-
-function slug(value: string) {
-  return (
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "pizarra"
-  );
-}
-
-function blockTitle(block?: SessionBlock) {
-  return (
-    block?.notes?.split("\n")[0]?.replace(/^Problema:\s*/, "") ||
-    block?.exerciseId ||
-    "Bloque de sesion"
-  );
-}
-
 function readWorkspace(boardId: string): {
   roster: PlanningBoardPlayer[];
   problem: TacticalProblem;
@@ -1900,13 +1536,4 @@ function writeWorkspace(
     `${STORAGE_PREFIX}-${boardId}`,
     JSON.stringify(value),
   );
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }

@@ -5,7 +5,10 @@ export type BoardFilenameOptions = {
   extension?: "svg" | "png" | "html" | "pdf";
 };
 
-export function slugifyBoardFilenamePart(value: string, fallback = "board"): string {
+export function slugifyBoardFilenamePart(
+  value: string,
+  fallback = "board",
+): string {
   const slug = value
     .toLowerCase()
     .normalize("NFD")
@@ -17,7 +20,9 @@ export function slugifyBoardFilenamePart(value: string, fallback = "board"): str
   return slug || fallback;
 }
 
-export function formatBoardExportDate(value: string | Date = new Date()): string {
+export function formatBoardExportDate(
+  value: string | Date = new Date(),
+): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return value.slice(0, 10);
 }

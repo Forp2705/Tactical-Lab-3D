@@ -1,6 +1,6 @@
-import { z } from "zod";
 import type { Player } from "@/data";
 import type { WeeklyDecisionThread } from "@/state/weeklyDecisionThread";
+import { z } from "zod";
 
 export const BOARD_SCHEMA_VERSION = 2;
 
@@ -220,8 +220,12 @@ export const TacticalBoardSchema = z.object({
   opponent: z.object({
     formation: z.string().max(24).default("4-4-2"),
     block: z.enum(["high", "mid", "low"]).default("mid"),
-    strongSide: z.enum(["left", "right", "central", "unknown"]).default("unknown"),
-    weakSide: z.enum(["left", "right", "central", "unknown"]).default("unknown"),
+    strongSide: z
+      .enum(["left", "right", "central", "unknown"])
+      .default("unknown"),
+    weakSide: z
+      .enum(["left", "right", "central", "unknown"])
+      .default("unknown"),
     showRival: z.boolean().default(true),
   }),
   globalInstruction: z.string().max(420).default(""),
@@ -253,7 +257,10 @@ export type BoardSessionDraft = {
 let boardSeed = 0;
 
 export function createBoardId(prefix: string): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   boardSeed += 1;
@@ -269,7 +276,11 @@ export function createDefaultBoard(
     title.trim() ||
     options?.weeklyThread?.problem?.slice(0, 100) ||
     "Pizarra tactica";
-  const firstScene = createDefaultBoardScene("Respuesta inicial", "salida", options?.players ?? []);
+  const firstScene = createDefaultBoardScene(
+    "Respuesta inicial",
+    "salida",
+    options?.players ?? [],
+  );
   const objective =
     options?.weeklyThread?.sessionIntent?.objective ??
     "Modelar la respuesta tactica y convertirla en una consigna entrenable.";
@@ -324,19 +335,43 @@ export function createDefaultBoardScene(
     title,
     phaseLabel,
     phases: [
-      { id: `${sceneId}-setup`, type: phaseLabel, title: phaseLabel, durationMin: 2 },
-      { id: `${sceneId}-execute`, type: phaseLabel, title: "Ejecucion", durationMin: 4 },
-      { id: `${sceneId}-review`, type: phaseLabel, title: "Revision", durationMin: 2 },
+      {
+        id: `${sceneId}-setup`,
+        type: phaseLabel,
+        title: phaseLabel,
+        durationMin: 2,
+      },
+      {
+        id: `${sceneId}-execute`,
+        type: phaseLabel,
+        title: "Ejecucion",
+        durationMin: 4,
+      },
+      {
+        id: `${sceneId}-review`,
+        type: phaseLabel,
+        title: "Revision",
+        durationMin: 2,
+      },
     ],
-    objects: [createBall(), ...createOwnShape(players), ...createOpponentShape("4-4-2")],
+    objects: [
+      createBall(),
+      ...createOwnShape(players),
+      ...createOpponentShape("4-4-2"),
+    ],
     arrows: [],
     zones: [],
     notes: "",
     instructions: [
-      createInstruction("scene", "Consigna de escena", "Definir la conducta que debe aparecer en esta fase.", {
-        phase: phaseLabel,
-        visibility: "player",
-      }),
+      createInstruction(
+        "scene",
+        "Consigna de escena",
+        "Definir la conducta que debe aparecer en esta fase.",
+        {
+          phase: phaseLabel,
+          visibility: "player",
+        },
+      ),
     ],
   });
 }
@@ -345,7 +380,9 @@ export function createInstruction(
   scope: BoardInstructionScope,
   title: string,
   text: string,
-  patch: Partial<Omit<BoardInstruction, "id" | "scope" | "title" | "text">> = {},
+  patch: Partial<
+    Omit<BoardInstruction, "id" | "scope" | "title" | "text">
+  > = {},
 ): BoardInstruction {
   return BoardInstructionSchema.parse({
     id: createBoardId("instruction"),
@@ -361,7 +398,9 @@ export function createInstruction(
   });
 }
 
-export function createBall(position: BoardPoint = { x: 36, y: 50 }): BoardObject {
+export function createBall(
+  position: BoardPoint = { x: 36, y: 50 },
+): BoardObject {
   return BoardObjectSchema.parse({
     id: createBoardId("ball"),
     type: "ball",
@@ -448,7 +487,9 @@ export function createTacticalZone(
   y: number,
   w: number,
   h: number,
-  patch: Partial<Omit<BoardZone, "id" | "semantic" | "x" | "y" | "w" | "h">> = {},
+  patch: Partial<
+    Omit<BoardZone, "id" | "semantic" | "x" | "y" | "w" | "h">
+  > = {},
 ): BoardZone {
   return BoardZoneSchema.parse({
     id: createBoardId("zone"),
@@ -468,7 +509,10 @@ export function createTacticalZone(
   });
 }
 
-export function duplicateBoardScene(board: TacticalBoard, sceneId: string): TacticalBoard {
+export function duplicateBoardScene(
+  board: TacticalBoard,
+  sceneId: string,
+): TacticalBoard {
   const index = board.scenes.findIndex((scene) => scene.id === sceneId);
   if (index < 0) return board;
   const source = board.scenes[index];
@@ -503,7 +547,11 @@ export function duplicateBoardScene(board: TacticalBoard, sceneId: string): Tact
   ]);
 }
 
-export function reorderBoardScenes(board: TacticalBoard, fromIndex: number, toIndex: number): TacticalBoard {
+export function reorderBoardScenes(
+  board: TacticalBoard,
+  fromIndex: number,
+  toIndex: number,
+): TacticalBoard {
   if (
     fromIndex < 0 ||
     toIndex < 0 ||
@@ -569,13 +617,20 @@ export function summarizeBoardForAi(board: TacticalBoard) {
   };
 }
 
-export function generateBoardSessionDraft(board: TacticalBoard): BoardSessionDraft {
+export function generateBoardSessionDraft(
+  board: TacticalBoard,
+): BoardSessionDraft {
   const blocks = board.scenes.map((scene, index) => {
     const durationMin =
       scene.phases.reduce((sum, phase) => sum + phase.durationMin, 0) ||
       board.defaults.sceneDurationMin;
     const coachingCues = [
-      ...scene.instructions.filter((instruction) => instruction.coachingCue || instruction.visibility === "player").map((instruction) => instruction.text),
+      ...scene.instructions
+        .filter(
+          (instruction) =>
+            instruction.coachingCue || instruction.visibility === "player",
+        )
+        .map((instruction) => instruction.text),
       ...board.sessionCoachingPoints,
     ].slice(0, 4);
     return {
@@ -589,10 +644,12 @@ export function generateBoardSessionDraft(board: TacticalBoard): BoardSessionDra
         `Trabajar ${scene.title}`,
       organization: `${scene.objects.filter((object) => object.type === "playerToken").length || 11} propios vs ${scene.objects.filter((object) => object.type === "opponentToken").length} rivales. Fase: ${scene.phaseLabel}.`,
       coachingCues,
-      constraints: scene.notes || "Mantener referencias de rol, distancia y timing.",
+      constraints:
+        scene.notes || "Mantener referencias de rol, distancia y timing.",
       successSignal:
         board.successSignals[0] ||
-        scene.instructions.find((instruction) => instruction.desiredOutcome)?.desiredOutcome ||
+        scene.instructions.find((instruction) => instruction.desiredOutcome)
+          ?.desiredOutcome ||
         "El comportamiento aparece bajo oposicion.",
     };
   });
@@ -620,7 +677,12 @@ function createOwnShape(players: Player[]): BoardObject[] {
     ["RW", 70, 76],
   ] as const;
   return slots.map(([role, x, y], index) =>
-    createPlayerToken(players[index] ?? null, { x, y }, role, players[index]?.num ?? index + 1),
+    createPlayerToken(
+      players[index] ?? null,
+      { x, y },
+      role,
+      players[index]?.num ?? index + 1,
+    ),
   );
 }
 
@@ -634,7 +696,10 @@ export function createOpponentShape(formation: string): BoardObject[] {
 }
 
 function opponentSlots(formation: string) {
-  const shapes: Record<string, Array<{ role: string; x: number; y: number }>> = {
+  const shapes: Record<
+    string,
+    Array<{ role: string; x: number; y: number }>
+  > = {
     "4-4-2": [
       { role: "GK", x: 94, y: 50 },
       { role: "LB", x: 76, y: 80 },
@@ -686,16 +751,27 @@ function touchBoard(board: TacticalBoard, scenes: BoardScene[]): TacticalBoard {
   });
 }
 
-function remapEndpoint(endpoint: BoardArrowEndpoint, objectIdMap: ReadonlyMap<string, string>): BoardArrowEndpoint {
+function remapEndpoint(
+  endpoint: BoardArrowEndpoint,
+  objectIdMap: ReadonlyMap<string, string>,
+): BoardArrowEndpoint {
   if (endpoint.kind === "point") return endpoint;
-  return { ...endpoint, objectId: objectIdMap.get(endpoint.objectId) ?? endpoint.objectId };
+  return {
+    ...endpoint,
+    objectId: objectIdMap.get(endpoint.objectId) ?? endpoint.objectId,
+  };
 }
 
 function layerForArrow(semantic: BoardArrowSemantic): BoardLayer {
   if (semantic === "pressure") return "press";
   if (semantic === "cover") return "cover";
   if (semantic === "recovery") return "recovery";
-  if (semantic === "pass" || semantic === "run" || semantic === "movement" || semantic === "rotation") {
+  if (
+    semantic === "pass" ||
+    semantic === "run" ||
+    semantic === "movement" ||
+    semantic === "rotation"
+  ) {
     return "withBall";
   }
   return "notes";

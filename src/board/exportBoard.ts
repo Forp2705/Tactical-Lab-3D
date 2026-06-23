@@ -1,7 +1,10 @@
 import type { Exercise, Scene } from "@/data";
-import { buildBoardFilename } from "./filename";
 import type { BoardScene, TacticalBoard } from "./boardModel";
-import { renderTacticalBoardSvgMarkup, type TacticalBoardSvgOptions } from "./renderBoardSvg";
+import { buildBoardFilename } from "./filename";
+import {
+  type TacticalBoardSvgOptions,
+  renderTacticalBoardSvgMarkup,
+} from "./renderBoardSvg";
 
 export type BoardBriefingOptions = TacticalBoardSvgOptions & {
   title: string;
@@ -199,9 +202,13 @@ export function buildTacticalBoardBriefingExport(
     date,
     extension: "html",
   });
-  const title = isPlayer ? "Briefing imprimible jugadores" : "Briefing imprimible staff";
+  const title = isPlayer
+    ? "Briefing imprimible jugadores"
+    : "Briefing imprimible staff";
   const scenes = board.scenes.slice(0, isPlayer ? 2 : board.scenes.length);
-  const body = scenes.map((scene) => buildTacticalBoardBriefScene(board, scene, isPlayer)).join("");
+  const body = scenes
+    .map((scene) => buildTacticalBoardBriefScene(board, scene, isPlayer))
+    .join("");
   const linkedFocus = board.linkedWeeklyFocusId
     ? `<p><strong>Foco semanal:</strong> ${escapeHtml(board.linkedWeeklyFocusId)}</p>`
     : "";
@@ -216,16 +223,27 @@ export function buildTacticalBoardBriefingExport(
   };
 }
 
-function buildTacticalBoardBriefScene(board: TacticalBoard, scene: BoardScene, playerOnly: boolean) {
+function buildTacticalBoardBriefScene(
+  board: TacticalBoard,
+  scene: BoardScene,
+  playerOnly: boolean,
+) {
   const instructions = [...board.instructions, ...scene.instructions]
-    .filter((instruction) => !playerOnly || instruction.visibility === "player" || instruction.visibility === "export")
+    .filter(
+      (instruction) =>
+        !playerOnly ||
+        instruction.visibility === "player" ||
+        instruction.visibility === "export",
+    )
     .slice(0, playerOnly ? 4 : 10);
-  const sceneNotes = !playerOnly && scene.notes.trim()
-    ? `<p class="staff-note">${escapeHtml(scene.notes.trim())}</p>`
-    : "";
-  const coachingPoints = !playerOnly && board.sessionCoachingPoints.length
-    ? `<h3>Puntos de coaching</h3><ul>${board.sessionCoachingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}</ul>`
-    : "";
+  const sceneNotes =
+    !playerOnly && scene.notes.trim()
+      ? `<p class="staff-note">${escapeHtml(scene.notes.trim())}</p>`
+      : "";
+  const coachingPoints =
+    !playerOnly && board.sessionCoachingPoints.length
+      ? `<h3>Puntos de coaching</h3><ul>${board.sessionCoachingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}</ul>`
+      : "";
   const successSignals = board.successSignals.length
     ? `<h3>Senales de exito</h3><ul>${board.successSignals.map((signal) => `<li>${escapeHtml(signal)}</li>`).join("")}</ul>`
     : "";
@@ -237,7 +255,10 @@ function buildTacticalBoardBriefScene(board: TacticalBoard, scene: BoardScene, p
       ${sceneNotes}
       <ul>
         ${instructions
-          .map((instruction) => `<li><strong>${escapeHtml(instruction.title)}:</strong> ${escapeHtml(instruction.text)}</li>`)
+          .map(
+            (instruction) =>
+              `<li><strong>${escapeHtml(instruction.title)}:</strong> ${escapeHtml(instruction.text)}</li>`,
+          )
           .join("")}
       </ul>
       ${coachingPoints}
@@ -246,17 +267,40 @@ function buildTacticalBoardBriefScene(board: TacticalBoard, scene: BoardScene, p
   `;
 }
 
-export function tacticalBoardSceneSvgString(scene: BoardScene, playerOnly: boolean) {
-  const objects = scene.objects.filter((object) =>
-    !playerOnly || object.visibility === "player" || object.visibility === "export" || object.type === "ball",
+export function tacticalBoardSceneSvgString(
+  scene: BoardScene,
+  playerOnly: boolean,
+) {
+  const objects = scene.objects.filter(
+    (object) =>
+      !playerOnly ||
+      object.visibility === "player" ||
+      object.visibility === "export" ||
+      object.type === "ball",
   );
-  const arrows = scene.arrows.filter((arrow) =>
-    !playerOnly || arrow.visibility === "player" || arrow.visibility === "export",
+  const arrows = scene.arrows.filter(
+    (arrow) =>
+      !playerOnly ||
+      arrow.visibility === "player" ||
+      arrow.visibility === "export",
   );
-  const zones = scene.zones.filter((zone) =>
-    !playerOnly || zone.visibility === "player" || zone.visibility === "export",
+  const zones = scene.zones.filter(
+    (zone) =>
+      !playerOnly ||
+      zone.visibility === "player" ||
+      zone.visibility === "export",
   );
-  return `<svg viewBox="0 0 100 64" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="64" fill="#082015"/><g fill="none" stroke="rgba(232,255,247,.45)" stroke-width=".35"><rect x="2" y="2" width="96" height="60"/><line x1="50" y1="2" x2="50" y2="62"/><circle cx="50" cy="32" r="7.5"/></g>${zones.map((z) => `<rect x="${z.x}" y="${toSvgY(z.y)}" width="${z.w}" height="${(z.h / 100) * 64}" fill="${z.color}22" stroke="${z.color}"/>`).join("")}${arrows.map((a) => { const f = resolveBoardScenePoint(a.from, scene); const t = resolveBoardScenePoint(a.to, scene); return f && t ? `<line x1="${f.x}" y1="${toSvgY(f.y)}" x2="${t.x}" y2="${toSvgY(t.y)}" stroke="${a.semantic === "pressure" ? "#ff7474" : "#5eead4"}" stroke-width=".8"/>` : ""; }).join("")}${objects.map((o) => `<circle cx="${o.position.x}" cy="${toSvgY(o.position.y)}" r="${o.type === "ball" ? 1.4 : 2.8}" fill="${o.type === "opponentToken" ? "#ff7474" : o.type === "ball" ? "#fff" : "#5eead4"}"/>`).join("")}</svg>`;
+  return `<svg viewBox="0 0 100 64" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="64" fill="#082015"/><g fill="none" stroke="rgba(232,255,247,.45)" stroke-width=".35"><rect x="2" y="2" width="96" height="60"/><line x1="50" y1="2" x2="50" y2="62"/><circle cx="50" cy="32" r="7.5"/></g>${zones.map((z) => `<rect x="${z.x}" y="${toSvgY(z.y)}" width="${z.w}" height="${(z.h / 100) * 64}" fill="${z.color}22" stroke="${z.color}"/>`).join("")}${arrows
+    .map((a) => {
+      const f = resolveBoardScenePoint(a.from, scene);
+      const t = resolveBoardScenePoint(a.to, scene);
+      return f && t
+        ? `<line x1="${f.x}" y1="${toSvgY(f.y)}" x2="${t.x}" y2="${toSvgY(t.y)}" stroke="${a.semantic === "pressure" ? "#ff7474" : "#5eead4"}" stroke-width=".8"/>`
+        : "";
+    })
+    .join(
+      "",
+    )}${objects.map((o) => `<circle cx="${o.position.x}" cy="${toSvgY(o.position.y)}" r="${o.type === "ball" ? 1.4 : 2.8}" fill="${o.type === "opponentToken" ? "#ff7474" : o.type === "ball" ? "#fff" : "#5eead4"}"/>`).join("")}</svg>`;
 }
 
 function briefingSection(title: string, items: string[]): string {
@@ -289,5 +333,8 @@ function resolveBoardScenePoint(
   scene: BoardScene,
 ) {
   if (endpoint.kind === "point") return endpoint.point;
-  return scene.objects.find((object) => object.id === endpoint.objectId)?.position ?? null;
+  return (
+    scene.objects.find((object) => object.id === endpoint.objectId)?.position ??
+    null
+  );
 }

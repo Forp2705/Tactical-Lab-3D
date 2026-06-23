@@ -59,11 +59,15 @@ export function renderTacticalBoardSvgMarkup(
     actor,
     pos: actorPositionAt(actor, time),
   }));
-  const actorMap = new Map(poses.map((pose) => [pose.actor.id, pose.pos] as const));
+  const actorMap = new Map(
+    poses.map((pose) => [pose.actor.id, pose.pos] as const),
+  );
   const ball = ballPositionAt(scene.ball, time, actorMap);
   const phaseId = phaseAt(scene, time);
   const visibleZones = showZones
-    ? scene.zones.filter((zone) => isZoneVisible(zone, phaseId, options.activeLayers))
+    ? scene.zones.filter((zone) =>
+        isZoneVisible(zone, phaseId, options.activeLayers),
+      )
     : [];
   const visibleOverlays = showOverlays
     ? scene.overlays.filter((overlay) =>
@@ -97,7 +101,10 @@ export function renderTacticalBoardSvgMarkup(
 </svg>`;
 }
 
-export function getBoardActorPositions(scene: Scene, time = 0): Record<string, Vec2> {
+export function getBoardActorPositions(
+  scene: Scene,
+  time = 0,
+): Record<string, Vec2> {
   const t = clampTime(time, scene.duration);
   return Object.fromEntries(
     scene.actors.map((actor) => [actor.id, actorPositionAt(actor, t)]),
@@ -148,7 +155,9 @@ function renderActorPath({ actor }: ActorPose): string {
   const color = TEAM_COLORS[actor.team];
   const points = [actor.start, ...actor.path.map((frame) => frame.pos)];
   const d = points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${x(point.x)} ${y(point.y)}`)
+    .map(
+      (point, index) => `${index === 0 ? "M" : "L"}${x(point.x)} ${y(point.y)}`,
+    )
     .join(" ");
   return `<path data-board-layer="actor-path" data-board-id="${escapeXml(
     actor.id,
@@ -212,7 +221,11 @@ function actorPositionAt(actor: Actor, time: number): Vec2 {
     .filter((frame) => frame.t >= 0);
   if (!frames.length || time <= frames[0].t) {
     return frames.length
-      ? interpolateVec2(actor.start, frames[0].pos, frames[0].t ? time / frames[0].t : 1)
+      ? interpolateVec2(
+          actor.start,
+          frames[0].pos,
+          frames[0].t ? time / frames[0].t : 1,
+        )
       : actor.start;
   }
 
@@ -249,7 +262,11 @@ function ballPositionAt(
       if (carrier) return carrier;
     }
     return frames.length
-      ? interpolateVec2(start, frames[0].pos, frames[0].t ? time / frames[0].t : 1)
+      ? interpolateVec2(
+          start,
+          frames[0].pos,
+          frames[0].t ? time / frames[0].t : 1,
+        )
       : start;
   }
 
@@ -276,7 +293,8 @@ function ballPositionAt(
 
 function phaseAt(scene: Scene, time: number): string {
   return (
-    scene.phases.find((phase) => time >= phase.start && time <= phase.end)?.id ??
+    scene.phases.find((phase) => time >= phase.start && time <= phase.end)
+      ?.id ??
     scene.phases[0]?.id ??
     "setup"
   );
@@ -288,7 +306,9 @@ function isZoneVisible(
   activeLayers?: Partial<Record<Layer, boolean>>,
 ): boolean {
   if (activeLayers?.[zone.layer] === false) return false;
-  return zone.visibleInPhases.length === 0 || zone.visibleInPhases.includes(phaseId);
+  return (
+    zone.visibleInPhases.length === 0 || zone.visibleInPhases.includes(phaseId)
+  );
 }
 
 function isOverlayVisible(
@@ -304,7 +324,9 @@ function resolvePoint(
   endpoint: Overlay["from"],
   actorMap: ReadonlyMap<string, Vec2>,
 ): Vec2 | null {
-  return typeof endpoint === "string" ? actorMap.get(endpoint) ?? null : endpoint;
+  return typeof endpoint === "string"
+    ? (actorMap.get(endpoint) ?? null)
+    : endpoint;
 }
 
 function interpolateVec2(a: Vec2, b: Vec2, t: number): Vec2 {
@@ -330,11 +352,19 @@ function normalizeRect(rect: Zone["rect"]): Zone["rect"] {
 }
 
 function x(value: number): number {
-  return Math.round((Math.max(0, Math.min(100, value)) / 100) * BOARD_VIEWBOX_WIDTH * 100) / 100;
+  return (
+    Math.round(
+      (Math.max(0, Math.min(100, value)) / 100) * BOARD_VIEWBOX_WIDTH * 100,
+    ) / 100
+  );
 }
 
 function y(value: number): number {
-  return Math.round((Math.max(0, Math.min(100, value)) / 100) * BOARD_VIEWBOX_HEIGHT * 100) / 100;
+  return (
+    Math.round(
+      (Math.max(0, Math.min(100, value)) / 100) * BOARD_VIEWBOX_HEIGHT * 100,
+    ) / 100
+  );
 }
 
 function sanitizeColor(value: string, fallback: string): string {
