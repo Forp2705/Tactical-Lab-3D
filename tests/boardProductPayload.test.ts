@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   DEFAULT_BOARD_LAYERS,
@@ -90,13 +90,19 @@ describe("product tactical board payload", () => {
   });
 
   it("does not expose Animar jugada as the primary board CTA", () => {
-    const source = readFileSync(
-      join(process.cwd(), "src", "board", "TacticalBoardView.tsx"),
-      "utf8",
-    );
+    // The board UI is split across TacticalBoardView and its extracted
+    // subcomponents, so assert the CTA text across the whole board module.
+    const boardDir = join(process.cwd(), "src", "board");
+    const componentsDir = join(boardDir, "components");
+    const sources = [
+      readFileSync(join(boardDir, "TacticalBoardView.tsx"), "utf8"),
+      ...readdirSync(componentsDir).map((file) =>
+        readFileSync(join(componentsDir, file), "utf8"),
+      ),
+    ].join("\n");
 
-    expect(source).toContain("Generar secuencia desde pizarra");
-    expect(source).toContain("Enviar al generador");
-    expect(source).not.toContain("Animar jugada");
+    expect(sources).toContain("Generar secuencia desde pizarra");
+    expect(sources).toContain("Enviar al generador");
+    expect(sources).not.toContain("Animar jugada");
   });
 });
