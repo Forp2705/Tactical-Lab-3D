@@ -33,6 +33,11 @@ const AiView = lazy(() =>
 const PlayerView = lazy(() =>
   import("@/export/PlayerView").then((m) => ({ default: m.PlayerView })),
 );
+const TacticalBoardView = lazy(() =>
+  import("@/board/TacticalBoardView").then((m) => ({
+    default: m.TacticalBoardView,
+  })),
+);
 
 function ViewFallback() {
   return <div className="view-loading">Cargando modulo...</div>;
@@ -223,6 +228,9 @@ export function App() {
         libraryFavoriteIds: state.libraryFavoriteIds,
         libraryRecentOpens: state.libraryRecentOpens,
         sketches: state.sketches,
+        tacticalBoards: state.tacticalBoards,
+        activeBoardId: state.activeBoardId,
+        activeBoardSceneId: state.activeBoardSceneId,
         aiPrompt: state.aiPrompt,
       });
     };
@@ -250,6 +258,7 @@ export function App() {
         {view === "video" ? <VideoView /> : null}
         {view === "ai" ? <AiView /> : null}
         {view === "player" ? <PlayerView /> : null}
+        {view === "board" ? <TacticalBoardView /> : null}
       </Suspense>
     </AppShell>
   );

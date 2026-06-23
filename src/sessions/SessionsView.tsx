@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { memo, useMemo, useState } from "react";
+import type { TacticalBoard } from "@/board";
 import { computeMicrocycleAlerts } from "./MicrocycleAlerts";
 import { PitchSideView } from "./PitchSideView";
 import {
@@ -433,7 +434,12 @@ const SessionBlockCard = memo(function SessionBlockCard({
   const updateSketch = useAppStore((state) => state.updateSketch);
   const attachSketchToSessionBlock = useAppStore((state) => state.attachSketchToSessionBlock);
   const detachSketchFromSessionBlock = useAppStore((state) => state.detachSketchFromSessionBlock);
+  const tacticalBoards = useAppStore((state) => state.tacticalBoards);
+  const attachBoardToSessionBlock = useAppStore((state) => state.attachBoardToSessionBlock);
+  const detachBoardFromSessionBlock = useAppStore((state) => state.detachBoardFromSessionBlock);
+  const createSessionBlockFromBoardScene = useAppStore((state) => state.createSessionBlockFromBoardScene);
   const [pendingAttachId, setPendingAttachId] = useState("");
+  const [pendingBoardAttachId, setPendingBoardAttachId] = useState("");
   const [editingSketch, setEditingSketch] = useState<Sketch | null>(null);
   const exercise = catalog.find((item) => item.id === block?.exerciseId);
   const {
@@ -551,6 +557,19 @@ const SessionBlockCard = memo(function SessionBlockCard({
           const created = useAppStore.getState().sketches.find((entry) => entry.id === id);
           if (created) setEditingSketch(created);
         }}
+      />
+      <SessionBlockBoard
+        block={block}
+        boards={tacticalBoards}
+        pendingAttachId={pendingBoardAttachId}
+        onPendingAttachChange={setPendingBoardAttachId}
+        onAttach={(boardId, sceneId) => {
+          attachBoardToSessionBlock(block.id, boardId, sceneId);
+          setPendingBoardAttachId("");
+        }}
+        onDetach={() => detachBoardFromSessionBlock(block.id)}
+        onOpen={(boardId, sceneId) => useAppStore.getState().openTacticalBoard(boardId, sceneId)}
+        onCreateBlock={(boardId, sceneId) => createSessionBlockFromBoardScene(boardId, sceneId)}
       />
       {editingSketch && (
         <div className="session-sketch-editor">
@@ -674,6 +693,205 @@ function SessionBlockSketch({
         </div>
       )}
     </div>
+  );
+}
+
+type SessionBlockBoardProps = {
+  block: Session["blocks"][number];
+  boards: TacticalBoard[];
+  pendingAttachId: string;
+  onPendingAttachChange: (id: string) => void;
+  onAttach: (boardId: string, sceneId?: string) => void;
+  onDetach: () => void;
+  onOpen: (boardId: string, sceneId?: string) => void;
+  onCreateBlock: (boardId: string, sceneId: string) => void;
+};
+
+function SessionBlockBoard({
+  block,
+  boards,
+  pendingAttachId,
+  onPendingAttachChange,
+  onAttach,
+  onDetach,
+  onOpen,
+  onCreateBlock,
+}: SessionBlockBoardProps) {
+  const attachedBoard = block.boardId
+    ? boards.find((entry) => entry.id === block.boardId) ?? null
+    : null;
+  const attachedScene = attachedBoard && block.boardSceneId
+    ? attachedBoard.scenes.find((scene) => scene.id === block.boardSceneId) ?? null
+    : null;
+  const selectedPendingBoard = boards.find((entry) => entry.id === pendingAttachId) ?? null;
+  const [pendingSceneId, setPendingSceneId] = useState("");
+  const selectedPendingScene = selectedPendingBoard?.scenes.find((scene) => scene.id === pendingSceneId) ?? null;
+  const effectivePendingScene = selectedPendingScene ?? selectedPendingBoard?.scenes[0] ?? null;
+
+  return (
+    <div className="session-sketch-block session-board-block">
+      <div className="session-sketch-header">
+        <span>Pizarra tactica del bloque</span>
+        {attachedBoard ? (
+          <div className="session-sketch-actions">
+            <button
+              type="button"
+              className="link-btn"
+              disabled={!attachedScene}
+              onClick={() => attachedScene && onOpen(attachedBoard.id, attachedScene.id)}
+            >
+              Abrir
+            </button>
+            <button type="button" className="link-btn" onClick={onDetach}>
+              Quitar
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {attachedBoard ? (
+        <div className="session-board-preview-row">
+          {attachedScene ? <BoardMiniPreview board={attachedBoard} sceneId={attachedScene.id} /> : null}
+          <div className="session-sketch-meta">
+            <b>{attachedBoard.title}</b>
+            {attachedScene ? (
+              <>
+                <small className="muted">
+                  {attachedScene.title} - {attachedScene.phaseLabel}
+                </small>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => onCreateBlock(attachedBoard.id, attachedScene.id)}
+                >
+                  Crear bloque desde esta escena
+                </button>
+              </>
+            ) : (
+              <small className="muted">
+                La escena vinculada ya no existe. Elegi otra escena o quitá la pizarra.
+              </small>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="session-sketch-attach-row">
+          {boards.length ? (
+            <>
+              <select
+                value={pendingAttachId}
+                onChange={(event) => {
+                  onPendingAttachChange(event.target.value);
+                  setPendingSceneId("");
+                }}
+                aria-label="Elegir una pizarra tactica para adjuntar"
+              >
+                <option value="">Elegir pizarra tactica...</option>
+                {boards.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.title}
+                  </option>
+                ))}
+              </select>
+              {selectedPendingBoard ? (
+                <select
+                  value={effectivePendingScene?.id ?? ""}
+                  onChange={(event) => setPendingSceneId(event.currentTarget.value)}
+                  aria-label="Elegir escena de pizarra para adjuntar"
+                >
+                  {selectedPendingBoard.scenes.map((scene, index) => (
+                    <option key={scene.id} value={scene.id}>
+                      {index + 1}. {scene.title} - {scene.phaseLabel}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              <button
+                type="button"
+                className="secondary"
+                disabled={!selectedPendingBoard || !effectivePendingScene}
+                onClick={() =>
+                  selectedPendingBoard &&
+                  effectivePendingScene &&
+                  onAttach(selectedPendingBoard.id, effectivePendingScene.id)
+                }
+              >
+                Adjuntar
+              </button>
+            </>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>
+              No hay pizarras tacticas creadas todavia.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BoardMiniPreview({
+  board,
+  sceneId,
+}: {
+  board: TacticalBoard;
+  sceneId: string;
+}) {
+  const scene = board.scenes.find((entry) => entry.id === sceneId) ?? board.scenes[0];
+  if (!scene) return null;
+  return (
+    <svg className="session-board-thumb" viewBox="0 0 100 64" role="img" aria-label={`${board.title} ${scene.title}`}>
+      <rect width="100" height="64" rx="1.4" fill="#071b14" />
+      <g fill="none" stroke="rgba(229,255,247,.42)" strokeWidth=".4">
+        <rect x="2" y="2" width="96" height="60" />
+        <line x1="50" y1="2" x2="50" y2="62" />
+        <circle cx="50" cy="32" r="7.5" />
+      </g>
+      {scene.zones.slice(0, 4).map((zone) => (
+        <rect
+          key={zone.id}
+          x={zone.x}
+          y={(zone.y / 100) * 64}
+          width={zone.w}
+          height={(zone.h / 100) * 64}
+          rx="1"
+          fill={`${zone.color}33`}
+          stroke={zone.color}
+          strokeWidth=".5"
+        />
+      ))}
+      {scene.arrows.slice(0, 8).map((arrow) => {
+        const fromEndpoint = arrow.from;
+        const toEndpoint = arrow.to;
+        const from = fromEndpoint.kind === "point"
+          ? fromEndpoint.point
+          : scene.objects.find((object) => object.id === fromEndpoint.objectId)?.position;
+        const to = toEndpoint.kind === "point"
+          ? toEndpoint.point
+          : scene.objects.find((object) => object.id === toEndpoint.objectId)?.position;
+        if (!from || !to) return null;
+        return (
+          <line
+            key={arrow.id}
+            x1={from.x}
+            y1={(from.y / 100) * 64}
+            x2={to.x}
+            y2={(to.y / 100) * 64}
+            stroke={arrow.semantic === "pressure" ? "#ff7474" : "#5eead4"}
+            strokeWidth=".75"
+          />
+        );
+      })}
+      {scene.objects.map((object) => (
+        <circle
+          key={object.id}
+          cx={object.position.x}
+          cy={(object.position.y / 100) * 64}
+          r={object.type === "ball" ? 1.3 : 2.2}
+          fill={object.type === "opponentToken" ? "#ff7474" : object.type === "ball" ? "#ffffff" : "#5eead4"}
+        />
+      ))}
+    </svg>
   );
 }
 

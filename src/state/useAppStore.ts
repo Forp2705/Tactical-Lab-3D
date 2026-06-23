@@ -37,6 +37,16 @@ import {
 import { APP_SNAPSHOT_VERSION } from "./db";
 import { createBlankSketch, SketchSchema, type Sketch } from "@/sketch/sketchSchemas";
 import {
+  BoardSceneSchema,
+  TacticalBoardSchema,
+  createDefaultBoard,
+  duplicateBoardScene,
+  generateBoardSessionDraft,
+  reorderBoardScenes,
+  type BoardScene,
+  type TacticalBoard,
+} from "@/board";
+import {
   buildSessionPlanFromDiagnosis,
   buildSessionPlanFromWeeklyThread,
   materializeDiagnosisSession,
@@ -70,7 +80,8 @@ export type ViewId =
   | "sessions"
   | "video"
   | "ai"
-  | "player";
+  | "player"
+  | "board";
 export type CameraId = "top" | "iso" | "broadcast";
 export type ViewerQuality = "high" | "medium" | "low";
 export type AiMode = "coach" | "postMatch";
@@ -309,6 +320,9 @@ type AppState = {
   libraryFavoriteIds: string[];
   libraryRecentOpens: LibraryRecentOpen[];
   sketches: Sketch[];
+  tacticalBoards: TacticalBoard[];
+  activeBoardId: string | null;
+  activeBoardSceneId: string | null;
   setView: (view: ViewId) => void;
   setPresentationMode: (enabled: boolean) => void;
   setExportStatus: (status: ExportStatus | null) => void;
@@ -337,6 +351,17 @@ type AppState = {
   renameSketch: (id: string, title: string) => void;
   attachSketchToSessionBlock: (blockId: string, sketchId: string) => void;
   detachSketchFromSessionBlock: (blockId: string) => void;
+  createTacticalBoard: (options?: { title?: string }) => string;
+  createTacticalBoardFromWeeklyFocus: () => string;
+  openTacticalBoard: (boardId: string, sceneId?: string) => void;
+  updateTacticalBoard: (id: string, patch: Partial<TacticalBoard>) => void;
+  deleteTacticalBoard: (id: string) => void;
+  duplicateTacticalBoardScene: (boardId: string, sceneId: string) => void;
+  reorderTacticalBoardScenes: (boardId: string, fromIndex: number, toIndex: number) => void;
+  updateTacticalBoardScene: (boardId: string, sceneId: string, patch: Partial<BoardScene>) => void;
+  attachBoardToSessionBlock: (blockId: string, boardId: string, sceneId?: string) => void;
+  detachBoardFromSessionBlock: (blockId: string) => void;
+  createSessionBlockFromBoardScene: (boardId: string, sceneId: string) => boolean;
   setSearch: (value: string) => void;
   setFilter: (key: "phase" | "level" | "principle", value: string) => void;
   toggleLayer: (
@@ -711,6 +736,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   libraryFavoriteIds: [],
   libraryRecentOpens: [],
   sketches: [],
+  tacticalBoards: [],
+  activeBoardId: null,
+  activeBoardSceneId: null,
   setView: (view) =>
     set({
       view,
@@ -886,6 +914,194 @@ export const useAppStore = create<AppState>((set, get) => ({
         computed: recomputeSession(blocks, state.exerciseVariants),
       },
     });
+  },
+  createTacticalBoard: (options) => {
+    const board = createDefaultBoard(options?.title, { players: get().team.players });
+    set((state) => ({
+      tacticalBoards: [...state.tacticalBoards, board],
+      activeBoardId: board.id,
+      activeBoardSceneId: board.scenes[0]?.id ?? null,
+      view: "board",
+    }));
+    return board.id;
+  },
+  createTacticalBoardFromWeeklyFocus: () => {
+    const state = get();
+    const board = createDefaultBoard(
+      state.weeklyDecisionThread?.problem || "Pizarra desde foco semanal",
+      {
+        weeklyThread: state.weeklyDecisionThread,
+        players: state.team.players,
+      },
+    );
+    set({
+      tacticalBoards: [...state.tacticalBoards, board],
+      activeBoardId: board.id,
+      activeBoardSceneId: board.scenes[0]?.id ?? null,
+      view: "board",
+    });
+    return board.id;
+  },
+  openTacticalBoard: (boardId, sceneId) => {
+    const board = get().tacticalBoards.find((item) => item.id === boardId);
+    if (!board) {
+      set({
+        activeBoardId: null,
+        activeBoardSceneId: null,
+        view: "board",
+      });
+      return;
+    }
+
+    const activeBoardSceneId =
+      sceneId && board.scenes.some((scene) => scene.id === sceneId)
+        ? sceneId
+        : board.scenes[0]?.id ?? null;
+    set({
+      activeBoardId: board.id,
+      activeBoardSceneId,
+      view: "board",
+    });
+  },
+  updateTacticalBoard: (id, patch) =>
+    set((state) => ({
+      tacticalBoards: state.tacticalBoards.map((board) => {
+        if (board.id !== id) return board;
+        const next = {
+          ...board,
+          ...patch,
+          id: board.id,
+          updatedAt: new Date().toISOString(),
+        };
+        const parsed = TacticalBoardSchema.safeParse(next);
+        return parsed.success ? parsed.data : board;
+      }),
+    })),
+  deleteTacticalBoard: (id) =>
+    set((state) => ({
+      tacticalBoards: state.tacticalBoards.filter((board) => board.id !== id),
+      activeBoardId: state.activeBoardId === id ? null : state.activeBoardId,
+      activeBoardSceneId:
+        state.activeBoardId === id ? null : state.activeBoardSceneId,
+      session: {
+        ...state.session,
+        blocks: state.session.blocks.map((block) =>
+          block.boardId === id
+            ? { ...block, boardId: undefined, boardSceneId: undefined }
+            : block,
+        ),
+      },
+    })),
+  duplicateTacticalBoardScene: (boardId, sceneId) =>
+    set((state) => ({
+      tacticalBoards: state.tacticalBoards.map((board) =>
+        board.id === boardId ? duplicateBoardScene(board, sceneId) : board,
+      ),
+    })),
+  reorderTacticalBoardScenes: (boardId, fromIndex, toIndex) =>
+    set((state) => ({
+      tacticalBoards: state.tacticalBoards.map((board) =>
+        board.id === boardId ? reorderBoardScenes(board, fromIndex, toIndex) : board,
+      ),
+    })),
+  updateTacticalBoardScene: (boardId, sceneId, patch) =>
+    set((state) => ({
+      tacticalBoards: state.tacticalBoards.map((board) => {
+        if (board.id !== boardId) return board;
+        const scenes = board.scenes.map((scene) => {
+          if (scene.id !== sceneId) return scene;
+          const next = { ...scene, ...patch, id: scene.id };
+          const parsed = BoardSceneSchema.safeParse(next);
+          return parsed.success ? parsed.data : scene;
+        });
+        const parsed = TacticalBoardSchema.safeParse({
+          ...board,
+          scenes,
+          updatedAt: new Date().toISOString(),
+        });
+        return parsed.success ? parsed.data : board;
+      }),
+    })),
+  attachBoardToSessionBlock: (blockId, boardId, sceneId) => {
+    const state = get();
+    const board = state.tacticalBoards.find((item) => item.id === boardId);
+    if (!board) return;
+    const linkedScene = sceneId
+      ? board.scenes.find((scene) => scene.id === sceneId)
+      : null;
+    if (!linkedScene) return;
+    const blocks = state.session.blocks.map((block) =>
+      block.id === blockId
+        ? { ...block, boardId, boardSceneId: linkedScene.id }
+        : block,
+    );
+    set({
+      session: {
+        ...state.session,
+        blocks,
+        computed: recomputeSession(blocks, state.exerciseVariants),
+      },
+    });
+  },
+  detachBoardFromSessionBlock: (blockId) => {
+    const state = get();
+    const blocks = state.session.blocks.map((block) =>
+      block.id === blockId
+        ? { ...block, boardId: undefined, boardSceneId: undefined }
+        : block,
+    );
+    set({
+      session: {
+        ...state.session,
+        blocks,
+        computed: recomputeSession(blocks, state.exerciseVariants),
+      },
+    });
+  },
+  createSessionBlockFromBoardScene: (boardId, sceneId) => {
+    const state = get();
+    const board = state.tacticalBoards.find((item) => item.id === boardId);
+    const scene = board?.scenes.find((item) => item.id === sceneId);
+    if (!board || !scene) return false;
+    const draft = generateBoardSessionDraft({
+      ...board,
+      scenes: [scene],
+    });
+    const exercise = buildBlankExercise(
+      { title: draft.blocks[0]?.title ?? scene.title },
+      state.exerciseVariants,
+    );
+    const blockDraft = draft.blocks[0];
+    const notes = [
+      `Problema: ${board.description || state.weeklyDecisionThread?.problem || "Plan tactico desde pizarra"}`,
+      `Objetivo: ${blockDraft?.objective ?? board.globalInstruction}`,
+      `Organizacion: ${blockDraft?.organization ?? ""}`,
+      `Restricciones: ${blockDraft?.constraints ?? ""}`,
+      `Senal de exito: ${blockDraft?.successSignal ?? board.successSignals[0] ?? ""}`,
+      ...((blockDraft?.coachingCues ?? []).map((cue) => `Coaching: ${cue}`)),
+    ].filter(Boolean).join("\n");
+    const blocks = [
+      ...state.session.blocks,
+      {
+        id: makeEntityId("block"),
+        exerciseId: exercise.id,
+        durationMin: blockDraft?.durationMin ?? 8,
+        notes,
+        swappable: true,
+        boardId,
+        boardSceneId: sceneId,
+      },
+    ];
+    set({
+      exerciseVariants: [...state.exerciseVariants, exercise],
+      session: {
+        ...state.session,
+        blocks,
+        computed: recomputeSession(blocks, [...state.exerciseVariants, exercise]),
+      },
+      view: "sessions",
+    });
+    return true;
   },
   setSearch: (value) => set({ search: value }),
   setFilter: (key, value) =>

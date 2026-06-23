@@ -137,6 +137,15 @@ export function HomeView() {
           <button type="button" className="btn primary" onClick={nextAction.onClick}>
             {nextAction.cta}
           </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              useAppStore.getState().createTacticalBoardFromWeeklyFocus();
+            }}
+          >
+            Crear pizarra tactica
+          </button>
           <QuickSketchLauncher
             buttonClassName="secondary"
             buttonLabel="Boceto rapido"

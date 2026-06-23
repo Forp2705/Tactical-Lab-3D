@@ -13,10 +13,11 @@ import {
 } from "@/scout/opponentScout";
 import { TeamIdentitySetupSchema } from "@/data/teamIdentitySetup";
 import { SketchSchema } from "@/sketch/sketchSchemas";
+import { TacticalBoardSchema } from "@/board";
 import Dexie, { type Table } from "dexie";
 import { z } from "zod";
 
-export const APP_SNAPSHOT_VERSION = 6;
+export const APP_SNAPSHOT_VERSION = 8;
 
 const VideoMomentSchema = z.enum([
   "firstHalf",
@@ -154,6 +155,7 @@ const snapshotShape = {
     "video",
     "ai",
     "player",
+    "board",
   ]),
   camera: z.enum(["top", "iso", "broadcast"]),
   viewerQuality: z.enum(["high", "medium", "low"]).default("medium"),
@@ -205,12 +207,16 @@ const snapshotShape = {
   libraryFavoriteIds: z.array(z.string()).default([]),
   libraryRecentOpens: z.array(LibraryRecentOpenSnapshotSchema).default([]),
   sketches: z.array(SketchSchema).default([]),
+  tacticalBoards: z.array(TacticalBoardSchema).default([]),
+  activeBoardId: z.string().nullable().default(null),
+  activeBoardSceneId: z.string().nullable().default(null),
   aiPrompt: z.string(),
 } as const;
 
 const AppSnapshotSchema = z.object(snapshotShape).passthrough();
 
-export type AppSnapshot = z.infer<typeof AppSnapshotSchema>;
+type NormalizedAppSnapshot = z.infer<typeof AppSnapshotSchema>;
+export type AppSnapshot = z.input<typeof AppSnapshotSchema>;
 
 type SnapshotRow = { key: string; value: unknown; savedAt?: number };
 
@@ -332,6 +338,18 @@ const MIGRATIONS: Record<
     version: 6,
     sketches: Array.isArray(snap.sketches) ? snap.sketches : [],
   }),
+  6: (snap) => ({
+    ...snap,
+    version: 7,
+    tacticalBoards: Array.isArray(snap.tacticalBoards) ? snap.tacticalBoards : [],
+  }),
+  7: (snap) => ({
+    ...snap,
+    version: 8,
+    activeBoardId: typeof snap.activeBoardId === "string" ? snap.activeBoardId : null,
+    activeBoardSceneId:
+      typeof snap.activeBoardSceneId === "string" ? snap.activeBoardSceneId : null,
+  }),
 };
 
 function applyVersionMigrations<T extends Record<string, unknown>>(snap: T): T {
@@ -403,10 +421,10 @@ export async function loadBackupSnapshot(key = "latest") {
   return row?.value ?? null;
 }
 
-function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
+function migrateSnapshot(snapshot: NormalizedAppSnapshot): NormalizedAppSnapshot {
   const migrated = applyVersionMigrations(
     snapshot as unknown as Record<string, unknown>,
-  ) as unknown as AppSnapshot;
+  ) as unknown as NormalizedAppSnapshot;
   const teamId = migrated.team?.id || "team-real-default";
   return {
     ...migrated,
@@ -441,6 +459,9 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
     libraryFavoriteIds: migrated.libraryFavoriteIds ?? [],
     libraryRecentOpens: migrated.libraryRecentOpens ?? [],
     sketches: migrated.sketches ?? [],
+    tacticalBoards: migrated.tacticalBoards ?? [],
+    activeBoardId: migrated.activeBoardId ?? null,
+    activeBoardSceneId: migrated.activeBoardSceneId ?? null,
   };
 }
 
@@ -448,7 +469,7 @@ function migrateSnapshot(snapshot: AppSnapshot): AppSnapshot {
 // solo los que pasan. Los campos rotos se descartan y el store los completa con
 // sus valores por defecto. Devuelve null solo si no se pudo rescatar ningun
 // campo reconocible.
-function recoverSnapshot(value: unknown): Partial<AppSnapshot> | null {
+function recoverSnapshot(value: unknown): Partial<NormalizedAppSnapshot> | null {
   if (typeof value !== "object" || value === null) return null;
   const input = value as Record<string, unknown>;
   const recovered: Record<string, unknown> = {};
@@ -460,16 +481,16 @@ function recoverSnapshot(value: unknown): Partial<AppSnapshot> | null {
   }
 
   if (Object.keys(recovered).length === 0) return null;
-  return applyVersionMigrations(recovered) as Partial<AppSnapshot>;
+  return applyVersionMigrations(recovered) as Partial<NormalizedAppSnapshot>;
 }
 
-export function parseSnapshot(value: unknown): AppSnapshot | null {
+export function parseSnapshot(value: unknown): NormalizedAppSnapshot | null {
   const parsed = AppSnapshotSchema.safeParse(value);
   if (parsed.success) return migrateSnapshot(parsed.data);
   // En recuperacion tolerante devolvemos solo los campos rescatados; el store
   // completa el resto con sus defaults al hacer loadSnapshot. Se castea a
   // AppSnapshot por contrato: el consumidor (store) fusiona sobre el estado.
-  return recoverSnapshot(value) as AppSnapshot | null;
+  return recoverSnapshot(value) as NormalizedAppSnapshot | null;
 }
 
 function normalizeVideoTag(
