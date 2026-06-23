@@ -6,6 +6,17 @@ import type {
   ImpliedClaim,
   TacticalIntent,
 } from "@/ai/CoachSchemas";
+import {
+  type BoardScene,
+  BoardSceneSchema,
+  type BoardWorkspace,
+  type TacticalBoard,
+  TacticalBoardSchema,
+  createDefaultBoard,
+  duplicateBoardScene,
+  generateBoardSessionDraft,
+  reorderBoardScenes,
+} from "@/board";
 import type {
   Exercise,
   Layer,
@@ -16,6 +27,7 @@ import type {
   Session,
   Vec2,
 } from "@/data";
+import { ExerciseSchema, catalog, demoPlayers } from "@/data";
 import {
   DEFAULT_GAME_MODEL,
   EMPTY_GAME_MODEL,
@@ -23,54 +35,47 @@ import {
   normalizeGameModel,
 } from "@/data/gameModel";
 import {
+  type TeamIdentitySetup,
   createDemoTeamIdentitySetup,
   createEmptyTeamIdentitySetup,
   isTeamIdentityConfigured,
   summarizeTeamIdentity,
-  type TeamIdentitySetup,
 } from "@/data/teamIdentitySetup";
-import {
-  DEFAULT_OPPONENT_SCOUT,
-  type OpponentScout,
-  normalizeOpponentScout,
-} from "@/scout/opponentScout";
-import { APP_SNAPSHOT_VERSION } from "./db";
-import { createBlankSketch, SketchSchema, type Sketch } from "@/sketch/sketchSchemas";
-import {
-  BoardSceneSchema,
-  TacticalBoardSchema,
-  createDefaultBoard,
-  duplicateBoardScene,
-  generateBoardSessionDraft,
-  reorderBoardScenes,
-  type BoardScene,
-  type TacticalBoard,
-} from "@/board";
-import {
-  buildSessionPlanFromDiagnosis,
-  buildSessionPlanFromWeeklyThread,
-  materializeDiagnosisSession,
-} from "@/sessions/diagnosisSession";
-import { catalog, demoPlayers, ExerciseSchema } from "@/data";
 import {
   PILOT_DIAGNOSIS_PROMPT,
   PILOT_SESSION_BLOCKS,
   PILOT_SESSION_NOTES,
 } from "@/demo/pilotState";
 import {
-  buildPendingPostMatchImport,
-  buildThreadFromCoachResponse,
-  buildThreadFromObservation,
-  buildThreadFromPostMatchReport,
-  buildSessionIntentFromProblem,
-  evolveThreadStatus,
+  DEFAULT_OPPONENT_SCOUT,
+  type OpponentScout,
+  normalizeOpponentScout,
+} from "@/scout/opponentScout";
+import {
+  buildSessionPlanFromDiagnosis,
+  buildSessionPlanFromWeeklyThread,
+  materializeDiagnosisSession,
+} from "@/sessions/diagnosisSession";
+import {
+  type Sketch,
+  SketchSchema,
+  createBlankSketch,
+} from "@/sketch/sketchSchemas";
+import {
   type PendingPostMatchImport,
   type WeeklyDecisionSessionIntent,
   type WeeklyDecisionThread,
   type WeeklyDecisionThreadProgress,
   type WeeklyDecisionThreadReportInput,
+  buildPendingPostMatchImport,
+  buildSessionIntentFromProblem,
+  buildThreadFromCoachResponse,
+  buildThreadFromObservation,
+  buildThreadFromPostMatchReport,
+  evolveThreadStatus,
 } from "@/state/weeklyDecisionThread";
 import { create } from "zustand";
+import { APP_SNAPSHOT_VERSION } from "./db";
 
 export type ViewId =
   | "home"
@@ -148,7 +153,10 @@ type VideoTrackInput = Omit<VideoTrack, "id" | "moment"> & {
   moment?: VideoMoment;
 };
 
-type ManualObservationInput = Omit<ManualObservation, "id" | "createdAt" | "teamId"> & {
+type ManualObservationInput = Omit<
+  ManualObservation,
+  "id" | "createdAt" | "teamId"
+> & {
   teamId?: string;
   id?: string;
   createdAt?: string;
@@ -226,7 +234,12 @@ export type CoachSavedTransitionSummary = {
   notes?: string;
 };
 
-export type LabShapePhase = "attack" | "defense" | "transition" | "buildup" | "abp";
+export type LabShapePhase =
+  | "attack"
+  | "defense"
+  | "transition"
+  | "buildup"
+  | "abp";
 
 export type LineupLabShape = {
   id: string;
@@ -346,7 +359,10 @@ type AppState = {
   toggleLibraryFavorite: (exerciseId: string) => void;
   recordLibraryOpen: (exerciseId: string) => void;
   createSketch: (options?: { title?: string }) => string;
-  updateSketch: (id: string, patch: Partial<Omit<Sketch, "id" | "createdAt">>) => void;
+  updateSketch: (
+    id: string,
+    patch: Partial<Omit<Sketch, "id" | "createdAt">>,
+  ) => void;
   deleteSketch: (id: string) => void;
   renameSketch: (id: string, title: string) => void;
   attachSketchToSessionBlock: (blockId: string, sketchId: string) => void;
@@ -355,13 +371,29 @@ type AppState = {
   createTacticalBoardFromWeeklyFocus: () => string;
   openTacticalBoard: (boardId: string, sceneId?: string) => void;
   updateTacticalBoard: (id: string, patch: Partial<TacticalBoard>) => void;
+  updateBoardWorkspace: (id: string, workspace: BoardWorkspace) => void;
   deleteTacticalBoard: (id: string) => void;
   duplicateTacticalBoardScene: (boardId: string, sceneId: string) => void;
-  reorderTacticalBoardScenes: (boardId: string, fromIndex: number, toIndex: number) => void;
-  updateTacticalBoardScene: (boardId: string, sceneId: string, patch: Partial<BoardScene>) => void;
-  attachBoardToSessionBlock: (blockId: string, boardId: string, sceneId?: string) => void;
+  reorderTacticalBoardScenes: (
+    boardId: string,
+    fromIndex: number,
+    toIndex: number,
+  ) => void;
+  updateTacticalBoardScene: (
+    boardId: string,
+    sceneId: string,
+    patch: Partial<BoardScene>,
+  ) => void;
+  attachBoardToSessionBlock: (
+    blockId: string,
+    boardId: string,
+    sceneId?: string,
+  ) => void;
   detachBoardFromSessionBlock: (blockId: string) => void;
-  createSessionBlockFromBoardScene: (boardId: string, sceneId: string) => boolean;
+  createSessionBlockFromBoardScene: (
+    boardId: string,
+    sceneId: string,
+  ) => boolean;
   setSearch: (value: string) => void;
   setFilter: (key: "phase" | "level" | "principle", value: string) => void;
   toggleLayer: (
@@ -481,7 +513,10 @@ const initialCoachInterview: CoachInterviewRuntimeState = {
   skipped: false,
 };
 
-function buildThreadSessionIntentFromSession(session: Session, problem: string) {
+function buildThreadSessionIntentFromSession(
+  session: Session,
+  problem: string,
+) {
   return buildSessionIntentFromProblem(problem, {
     objective:
       extractTaggedValue(session.staffNotes, "Objetivo tactico") ||
@@ -495,7 +530,10 @@ function buildThreadSessionIntentFromSession(session: Session, problem: string) 
   });
 }
 
-function isSessionLinkedToThread(session: Session, thread: WeeklyDecisionThread) {
+function isSessionLinkedToThread(
+  session: Session,
+  thread: WeeklyDecisionThread,
+) {
   const text = normalizeObservationText(
     [
       session.staffNotes,
@@ -504,7 +542,9 @@ function isSessionLinkedToThread(session: Session, thread: WeeklyDecisionThread)
   );
   return (
     text.includes(normalizeObservationText(thread.problem)) ||
-    text.includes(normalizeObservationText(thread.sessionIntent?.objective ?? ""))
+    text.includes(
+      normalizeObservationText(thread.sessionIntent?.objective ?? ""),
+    )
   );
 }
 
@@ -686,7 +726,10 @@ function ensureTeamState(team?: Partial<TeamState> | null): TeamState {
   };
 }
 
-function inferWorkspaceModeFromSnapshot(snapshot: Partial<AppState>, team: TeamState) {
+function inferWorkspaceModeFromSnapshot(
+  snapshot: Partial<AppState>,
+  team: TeamState,
+) {
   if (snapshot.workspaceMode === "demo" || snapshot.workspaceMode === "real") {
     return snapshot.workspaceMode;
   }
@@ -862,7 +905,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       sketches: state.sketches.map((sketch) => {
         if (sketch.id !== id) return sketch;
-        const next = { ...sketch, ...patch, updatedAt: new Date().toISOString() };
+        const next = {
+          ...sketch,
+          ...patch,
+          updatedAt: new Date().toISOString(),
+        };
         const parsed = SketchSchema.safeParse(next);
         return parsed.success ? parsed.data : sketch;
       }),
@@ -883,7 +930,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       sketches: state.sketches.map((sketch) =>
         sketch.id === id
-          ? { ...sketch, title: trimmed.slice(0, 80), updatedAt: new Date().toISOString() }
+          ? {
+              ...sketch,
+              title: trimmed.slice(0, 80),
+              updatedAt: new Date().toISOString(),
+            }
           : sketch,
       ),
     }));
@@ -916,7 +967,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
   createTacticalBoard: (options) => {
-    const board = createDefaultBoard(options?.title, { players: get().team.players });
+    const board = createDefaultBoard(options?.title, {
+      players: get().team.players,
+    });
     set((state) => ({
       tacticalBoards: [...state.tacticalBoards, board],
       activeBoardId: board.id,
@@ -956,7 +1009,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const activeBoardSceneId =
       sceneId && board.scenes.some((scene) => scene.id === sceneId)
         ? sceneId
-        : board.scenes[0]?.id ?? null;
+        : (board.scenes[0]?.id ?? null);
     set({
       activeBoardId: board.id,
       activeBoardSceneId,
@@ -971,6 +1024,19 @@ export const useAppStore = create<AppState>((set, get) => ({
           ...board,
           ...patch,
           id: board.id,
+          updatedAt: new Date().toISOString(),
+        };
+        const parsed = TacticalBoardSchema.safeParse(next);
+        return parsed.success ? parsed.data : board;
+      }),
+    })),
+  updateBoardWorkspace: (id, workspace) =>
+    set((state) => ({
+      tacticalBoards: state.tacticalBoards.map((board) => {
+        if (board.id !== id) return board;
+        const next = {
+          ...board,
+          workspace,
           updatedAt: new Date().toISOString(),
         };
         const parsed = TacticalBoardSchema.safeParse(next);
@@ -1001,7 +1067,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   reorderTacticalBoardScenes: (boardId, fromIndex, toIndex) =>
     set((state) => ({
       tacticalBoards: state.tacticalBoards.map((board) =>
-        board.id === boardId ? reorderBoardScenes(board, fromIndex, toIndex) : board,
+        board.id === boardId
+          ? reorderBoardScenes(board, fromIndex, toIndex)
+          : board,
       ),
     })),
   updateTacticalBoardScene: (boardId, sceneId, patch) =>
@@ -1078,8 +1146,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       `Organizacion: ${blockDraft?.organization ?? ""}`,
       `Restricciones: ${blockDraft?.constraints ?? ""}`,
       `Senal de exito: ${blockDraft?.successSignal ?? board.successSignals[0] ?? ""}`,
-      ...((blockDraft?.coachingCues ?? []).map((cue) => `Coaching: ${cue}`)),
-    ].filter(Boolean).join("\n");
+      ...(blockDraft?.coachingCues ?? []).map((cue) => `Coaching: ${cue}`),
+    ]
+      .filter(Boolean)
+      .join("\n");
     const blocks = [
       ...state.session.blocks,
       {
@@ -1097,7 +1167,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       session: {
         ...state.session,
         blocks,
-        computed: recomputeSession(blocks, [...state.exerciseVariants, exercise]),
+        computed: recomputeSession(blocks, [
+          ...state.exerciseVariants,
+          exercise,
+        ]),
       },
       view: "sessions",
     });
@@ -1174,7 +1247,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...state.manualObservations.filter(
           (item) =>
             item.teamId !== (observation.teamId || state.team.id) ||
-            normalizeObservationText(item.text) !== normalizeObservationText(text),
+            normalizeObservationText(item.text) !==
+              normalizeObservationText(text),
         ),
       ].slice(0, 12),
     }));
@@ -1410,7 +1484,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const players = state.team.players.filter((player) => player.id !== id);
       const selectedPlayerId =
         state.team.selectedPlayerId === id
-          ? players[0]?.id ?? ""
+          ? (players[0]?.id ?? "")
           : state.team.selectedPlayerId;
       return {
         team: {
@@ -1480,7 +1554,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const thread = state.weeklyDecisionThread;
     if (!thread) return false;
 
-    if (isSessionLinkedToThread(state.session, thread) && state.session.blocks.length) {
+    if (
+      isSessionLinkedToThread(state.session, thread) &&
+      state.session.blocks.length
+    ) {
       set({
         view: "sessions",
         weeklyDecisionThread: {
@@ -1496,11 +1573,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...catalog,
       ...state.exerciseVariants,
     ]);
-    const nextSession = materializeDiagnosisSession(
-      state.session,
-      plan,
-      [...catalog, ...state.exerciseVariants],
-    );
+    const nextSession = materializeDiagnosisSession(state.session, plan, [
+      ...catalog,
+      ...state.exerciseVariants,
+    ]);
     const nextThread = syncThreadWithSessionPlan(thread, plan);
     set({
       session: nextSession,
@@ -1518,18 +1594,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         state.aiPrompt,
         state.team.id,
         state.weeklyDecisionThread,
-      ) ??
-      state.weeklyDecisionThread;
+      ) ?? state.weeklyDecisionThread;
     if (!nextThread) return false;
     const plan = buildSessionPlanFromDiagnosis(response.advice, [
       ...catalog,
       ...state.exerciseVariants,
     ]);
-    const nextSession = materializeDiagnosisSession(
-      state.session,
-      plan,
-      [...catalog, ...state.exerciseVariants],
-    );
+    const nextSession = materializeDiagnosisSession(state.session, plan, [
+      ...catalog,
+      ...state.exerciseVariants,
+    ]);
     if (!nextSession.blocks.length) return false;
     set({
       session: nextSession,
@@ -1582,13 +1656,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
   markInitialized: () => set({ initialized: true }),
-  setAiMode: (aiMode) =>
-    set({ aiMode, coachInterview: initialCoachInterview }),
+  setAiMode: (aiMode) => set({ aiMode, coachInterview: initialCoachInterview }),
   setAiPrompt: (prompt) =>
     set((state) => ({
       aiPrompt: prompt,
       coachInterview:
-        prompt === state.aiPrompt ? state.coachInterview : initialCoachInterview,
+        prompt === state.aiPrompt
+          ? state.coachInterview
+          : initialCoachInterview,
     })),
   recordCoachAnswer: (answer) =>
     set((state) => {
@@ -1624,8 +1699,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           state.aiPrompt,
           state.team.id,
           state.weeklyDecisionThread,
-        ) ??
-        state.weeklyDecisionThread;
+        ) ?? state.weeklyDecisionThread;
       if (response.mode === "question") {
         return {
           coachInterview: {
@@ -1720,9 +1794,7 @@ function extractTaggedValue(notes: string | undefined, label: string) {
   if (!notes?.trim()) return "";
   const line = notes
     .split(/\r?\n/)
-    .find((entry) =>
-      entry.toLowerCase().startsWith(`${label.toLowerCase()}:`),
-    );
+    .find((entry) => entry.toLowerCase().startsWith(`${label.toLowerCase()}:`));
   return line?.split(":").slice(1).join(":").trim() ?? "";
 }
 
@@ -1894,9 +1966,7 @@ function buildExerciseFromShape(
 
   return {
     id: `shape-exercise-${shape.id}-${Date.now()}`,
-    title:
-      options?.title?.trim() ||
-      `Ejercicio desde shape: ${shape.name}`,
+    title: options?.title?.trim() || `Ejercicio desde shape: ${shape.name}`,
     phase: phaseFromShape(shape.phase),
     principle: "shape táctico",
     level: "intermedio",

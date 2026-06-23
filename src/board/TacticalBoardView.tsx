@@ -69,8 +69,7 @@ import {
   buildBoardPayload,
   inferAiInterpretation,
 } from "./productBoardTypes";
-
-const STORAGE_PREFIX = "romboiq-planning-board";
+import { useBoardEditor } from "./useBoardEditor";
 
 export function TacticalBoardView() {
   const {
@@ -84,6 +83,7 @@ export function TacticalBoardView() {
     createTacticalBoardFromWeeklyFocus,
     openTacticalBoard,
     updateTacticalBoard,
+    updateBoardWorkspace,
     updateTacticalBoardScene,
     duplicateTacticalBoardScene,
     reorderTacticalBoardScenes,
@@ -106,21 +106,10 @@ export function TacticalBoardView() {
   const [tool, setTool] = useState<BoardTool>("move");
   const [color, setColor] = useState("#1677ff");
   const [lineWidth, setLineWidth] = useState(2);
-  const [currentView, setCurrentView] = useState<CurrentBoardView>("Ataque");
-  const [teamAFormation, setTeamAFormation] = useState("4-3-3");
   const [zoom, setZoom] = useState(100);
   const [selection, setSelection] = useState<Selection>(null);
-  const [roster, setRoster] = useState<PlanningBoardPlayer[]>([]);
   const [draft, setDraft] = useState<DraftPlayer>(emptyDraft);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
-  const [problem, setProblem] = useState<TacticalProblem>(
-    DEFAULT_TACTICAL_PROBLEM,
-  );
-  const [exercise, setExercise] = useState<ExerciseBuilder>(
-    DEFAULT_EXERCISE_BUILDER,
-  );
-  const [layers, setLayers] =
-    useState<PlanningBoardLayer[]>(DEFAULT_BOARD_LAYERS);
   const [drawStart, setDrawStart] = useState<BoardPoint | null>(null);
   const [drag, setDrag] = useState<{
     id: string;
@@ -134,64 +123,31 @@ export function TacticalBoardView() {
   const [attachBlockId, setAttachBlockId] = useState("");
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  useEffect(() => {
-    if (!board) return;
-    const saved = readWorkspace(board.id);
-    const seededRoster: PlanningBoardPlayer[] = team.players.map((player) => ({
-      id: player.id,
-      name: player.name,
-      position: player.positions[0] ?? "Sin puesto",
-      number: player.num,
-      traits: player.profile,
-      team: "A",
-    }));
-    setRoster(saved?.roster?.length ? saved.roster : seededRoster);
-    setProblem(
-      saved?.problem ?? {
-        problem:
-          board.description ||
-          weeklyDecisionThread?.problem ||
-          DEFAULT_TACTICAL_PROBLEM.problem,
-        objective:
-          board.globalInstruction || DEFAULT_TACTICAL_PROBLEM.objective,
-      },
-    );
-    setExercise(saved?.exercise ?? DEFAULT_EXERCISE_BUILDER);
-    setLayers(saved?.layers ?? DEFAULT_BOARD_LAYERS);
-    setCurrentView(saved?.currentView ?? "Ataque");
-    setTeamAFormation(saved?.teamAFormation ?? "4-3-3");
-    setSelection(null);
-    setPayload(null);
-  }, [
-    board?.id,
-    team.players,
-    weeklyDecisionThread,
-    board?.description,
-    board?.globalInstruction,
-    board,
-  ]);
-
-  useEffect(() => {
-    if (!board) return;
-    writeWorkspace(board.id, {
-      roster,
-      problem,
-      exercise,
-      layers,
-      currentView,
-      teamAFormation,
-    });
-    setStatus("Guardado automaticamente");
-  }, [
-    board?.id,
+  const {
     roster,
     problem,
     exercise,
     layers,
     currentView,
     teamAFormation,
-    board,
-  ]);
+    setRoster,
+    setProblem,
+    setExercise,
+    setLayers,
+    setCurrentView,
+    setTeamAFormation,
+  } = useBoardEditor(board, team.players, {
+    persistWorkspace: updateBoardWorkspace,
+    onPersist: () => setStatus("Guardado automaticamente"),
+  });
+
+  // Reset transient selection/payload when switching boards (the workspace
+  // itself is hydrated by useBoardEditor).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally re-runs only when the active board changes
+  useEffect(() => {
+    setSelection(null);
+    setPayload(null);
+  }, [board?.id]);
 
   const selectedObject =
     selection?.kind === "object"
@@ -1500,40 +1456,5 @@ function ToolIcon({ tool }: { tool: BoardTool }) {
       <title>{labelForTool(tool)}</title>
       <circle cx="12" cy="12" r="7" />
     </svg>
-  );
-}
-
-function readWorkspace(boardId: string): {
-  roster: PlanningBoardPlayer[];
-  problem: TacticalProblem;
-  exercise: ExerciseBuilder;
-  layers: PlanningBoardLayer[];
-  currentView: CurrentBoardView;
-  teamAFormation: string;
-} | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(`${STORAGE_PREFIX}-${boardId}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeWorkspace(
-  boardId: string,
-  value: {
-    roster: PlanningBoardPlayer[];
-    problem: TacticalProblem;
-    exercise: ExerciseBuilder;
-    layers: PlanningBoardLayer[];
-    currentView: CurrentBoardView;
-    teamAFormation: string;
-  },
-) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    `${STORAGE_PREFIX}-${boardId}`,
-    JSON.stringify(value),
   );
 }
