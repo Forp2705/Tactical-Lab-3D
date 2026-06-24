@@ -21,7 +21,7 @@ import type {
   MemoryCandidate,
   SavedPostMatchReport,
 } from "@/ai/post-match/schemas";
-import { catalog, type Exercise, type Player } from "@/data";
+import { type Exercise, getSelectableCatalog, type Player } from "@/data";
 import { buildSessionPlanFromDiagnosis } from "@/sessions/diagnosisSession";
 import { exportCoachDiagnosisHtml } from "@/export/premiumExports";
 import {
@@ -1090,7 +1090,7 @@ function AdviceResult({
   const shapes = useAppStore((state) => state.lineupLab.shapes);
   const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const allExercises = useMemo(
-    () => [...catalog, ...exerciseVariants],
+    () => [...getSelectableCatalog(), ...exerciseVariants],
     [exerciseVariants],
   );
   const actionGroups = useMemo(
