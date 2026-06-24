@@ -5514,12 +5514,15 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   stroke-width: 0.22;
 }
 
-/* Libre: aro hueco punteado "flotante" (el extremo riesgoso, sin anclar). El
-   punteado refuerza la lectura de provisional frente al dot solido. */
+/* Libre: aro hueco punteado "flotante" (el extremo riesgoso, sin anclar). Es la
+   senal del fallo silencioso de anclaje, asi que tiene que saltar incluso
+   pegado a un token: anillo grueso + halo oscuro que lo separa de fichas
+   brillantes, sobre fill oscuro. El punteado refuerza "provisional". */
 .board-endpoint.free {
   fill: rgba(7, 19, 13, 0.92);
-  stroke-width: 0.32;
-  stroke-dasharray: 0.7 0.5;
+  stroke-width: 0.5;
+  stroke-dasharray: 0.9 0.55;
+  filter: drop-shadow(0 0 0.45px rgba(2, 6, 23, 0.95));
 }
 
 .token {
