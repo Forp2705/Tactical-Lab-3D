@@ -109,7 +109,10 @@ describe("boardTools — handleCanvasPress", () => {
       commitScene,
       updateSceneObjects,
     });
-    expect(setDrawStart).toHaveBeenCalledWith({ x: 10, y: 10 });
+    expect(setDrawStart).toHaveBeenCalledWith({
+      kind: "point",
+      point: { x: 10, y: 10 },
+    });
     expect(commitScene).not.toHaveBeenCalled();
   });
 
@@ -123,7 +126,7 @@ describe("boardTools — handleCanvasPress", () => {
       scene,
       color: "#fff",
       lineWidth: 2,
-      drawStart: { x: 10, y: 10 },
+      drawStart: { kind: "point", point: { x: 10, y: 10 } },
       setDrawStart,
       commitScene,
       updateSceneObjects: vi.fn(),
@@ -132,6 +135,47 @@ describe("boardTools — handleCanvasPress", () => {
     const patch = commitScene.mock.calls[0][0];
     expect(patch.arrows).toHaveLength(scene.arrows.length + 1);
     expect(setDrawStart).toHaveBeenCalledWith(null);
+  });
+
+  it("anchors the start endpoint to a token when the first click hits one", () => {
+    const setDrawStart = vi.fn();
+    handleCanvasPress({
+      point: { x: 40, y: 50 },
+      tool: "pass",
+      targetId: "player-5",
+      scene: freshScene(),
+      color: "#fff",
+      lineWidth: 2,
+      drawStart: null,
+      setDrawStart,
+      commitScene: vi.fn(),
+      updateSceneObjects: vi.fn(),
+    });
+    expect(setDrawStart).toHaveBeenCalledWith({
+      kind: "object",
+      objectId: "player-5",
+    });
+  });
+
+  it("commits a token->token anchored arrow on the second targeted click", () => {
+    const commitScene = vi.fn();
+    const scene = freshScene();
+    handleCanvasPress({
+      point: { x: 60, y: 50 },
+      tool: "pass",
+      targetId: "player-2",
+      scene,
+      color: "#fff",
+      lineWidth: 2,
+      drawStart: { kind: "object", objectId: "player-5" },
+      setDrawStart: vi.fn(),
+      commitScene,
+      updateSceneObjects: vi.fn(),
+    });
+    const arrow = commitScene.mock.calls[0][0].arrows.at(-1);
+    expect(arrow.from).toEqual({ kind: "object", objectId: "player-5" });
+    expect(arrow.to).toEqual({ kind: "object", objectId: "player-2" });
+    expect(arrow.semantic).toBe("pass");
   });
 
   it("zone tool appends a zone", () => {

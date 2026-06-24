@@ -1,6 +1,7 @@
 import { type BoardTool, TOOL_DEFS } from "./boardConstants";
 import { clamp } from "./boardGeometry";
 import type {
+  BoardArrowEndpoint,
   BoardArrowSemantic,
   BoardObject,
   BoardPoint,
@@ -82,6 +83,7 @@ export function tokenFromPlanningPlayer(
 export function handleCanvasPress({
   point,
   tool,
+  targetId,
   scene,
   color,
   lineWidth,
@@ -92,31 +94,34 @@ export function handleCanvasPress({
 }: {
   point: BoardPoint;
   tool: BoardTool;
+  // Id del token bajo el click, si lo hubo. v1: anclaje por click-sobre-token.
+  targetId?: string;
   scene: BoardScene;
   color: string;
   lineWidth: number;
-  drawStart: BoardPoint | null;
-  setDrawStart: (point: BoardPoint | null) => void;
+  drawStart: BoardArrowEndpoint | null;
+  setDrawStart: (endpoint: BoardArrowEndpoint | null) => void;
   commitScene: (patch: Partial<BoardScene>, record?: boolean) => void;
   updateSceneObjects: (objects: BoardObject[], record?: boolean) => void;
 }) {
   const style = { color, tone: String(lineWidth) };
   const arrowSemantic = semanticForTool(tool);
   if (arrowSemantic) {
+    // Click sobre token -> endpoint anclado al objeto; sobre vacio -> punto
+    // libre (la excepcion). El seguimiento al mover el token ya lo resuelve el
+    // render via endpointPoint/resolveBoardScenePoint.
+    const endpoint: BoardArrowEndpoint = targetId
+      ? { kind: "object", objectId: targetId }
+      : { kind: "point", point };
     if (!drawStart) {
-      setDrawStart(point);
+      setDrawStart(endpoint);
       return;
     }
-    const arrow = createSemanticArrow(
-      arrowSemantic,
-      { kind: "point", point: drawStart },
-      { kind: "point", point },
-      {
-        label: labelForTool(tool),
-        style,
-        tacticalMeaning: labelForTool(tool),
-      },
-    );
+    const arrow = createSemanticArrow(arrowSemantic, drawStart, endpoint, {
+      label: labelForTool(tool),
+      style,
+      tacticalMeaning: labelForTool(tool),
+    });
     commitScene({ arrows: [...scene.arrows, arrow] });
     setDrawStart(null);
     return;

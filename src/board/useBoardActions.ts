@@ -16,6 +16,7 @@ import {
 } from "./boardGeometry";
 import type {
   BoardArrow,
+  BoardArrowEndpoint,
   BoardObject,
   BoardPoint,
   BoardScene,
@@ -75,7 +76,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const [selection, setSelection] = useState<Selection>(null);
   const [draft, setDraft] = useState<DraftPlayer>(emptyDraft);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
-  const [drawStart, setDrawStart] = useState<BoardPoint | null>(null);
+  const [drawStart, setDrawStart] = useState<BoardArrowEndpoint | null>(null);
   const [drag, setDrag] = useState<{
     id: string;
     before: BoardPoint;
@@ -423,9 +424,12 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   };
 
   const onCanvasPointerDown = (point: BoardPoint, targetId?: string) => {
-    if (targetId) {
+    // move/select sobre un token -> arrancar drag (y cancelar cualquier draw
+    // en curso). Comportamiento existente.
+    if (targetId && (tool === "move" || tool === "select")) {
       const object = scene.objects.find((item) => item.id === targetId);
-      if (object && (tool === "move" || tool === "select")) {
+      if (object) {
+        setDrawStart(null);
         setSelection({ kind: "object", id: targetId });
         setDrag({
           id: targetId,
@@ -438,9 +442,13 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       }
       return;
     }
+    // Flechas/zonas/equipamiento: targetId se pasa a handleCanvasPress. Las
+    // flechas lo usan para anclar al token; zona/equipamiento lo ignoran y
+    // crean en el punto.
     handleCanvasPress({
       point,
       tool,
+      targetId,
       scene,
       color,
       lineWidth,
