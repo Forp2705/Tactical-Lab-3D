@@ -115,6 +115,16 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setPayload(null);
   }, [board.id]);
 
+  // Esc cancela un anclaje en curso (gesto de salida del estado draw-en-curso).
+  useEffect(() => {
+    if (!drawStart) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDrawStart(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawStart]);
+
   const { selectedObject, selectedArrow, selectedZone } = resolveBoardSelection(
     selection,
     scene,
@@ -138,6 +148,9 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   );
 
   const activeLayers = getActiveLayers(layers);
+  // Token origen del anclaje en curso (para resaltarlo en el canvas).
+  const anchorOriginId =
+    drawStart?.kind === "object" ? drawStart.objectId : undefined;
 
   const pushHistory = (snapshot = board) => {
     setHistory((items) => [...items.slice(-24), snapshot]);
@@ -423,6 +436,13 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setStatus(`Escena vinculada a ${blockTitle(block)}`);
   };
 
+  // Seleccionar (zona/flecha/objeto) a mitad de un draw lo cancela, para no
+  // dejar drawStart colgado en medio-estado.
+  const onCanvasSelect = (next: Selection) => {
+    if (drawStart) setDrawStart(null);
+    setSelection(next);
+  };
+
   const onCanvasPointerDown = (point: BoardPoint, targetId?: string) => {
     // move/select sobre un token -> arrancar drag (y cancelar cualquier draw
     // en curso). Comportamiento existente.
@@ -539,6 +559,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     selectedArrow,
     selectedZone,
     activeLayers,
+    anchorOriginId,
     aiInterpretation,
     readiness,
     projectLabel: boardProjectLabel(weeklyDecisionThread?.problem),
@@ -566,6 +587,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     exportImage,
     exportBrief,
     attachToBlock,
+    onCanvasSelect,
     onCanvasPointerDown,
     onCanvasPointerMove,
     onCanvasPointerUp,

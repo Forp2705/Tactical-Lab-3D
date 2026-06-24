@@ -1,4 +1,5 @@
 import type { Exercise, Scene } from "@/data";
+import { arrowStyle } from "./boardActionStyle";
 import type { BoardScene, TacticalBoard } from "./boardModel";
 import { buildBoardFilename } from "./filename";
 import {
@@ -295,7 +296,7 @@ export function tacticalBoardSceneSvgString(
       const f = resolveBoardScenePoint(a.from, scene);
       const t = resolveBoardScenePoint(a.to, scene);
       return f && t
-        ? `<line x1="${f.x}" y1="${toSvgY(f.y)}" x2="${t.x}" y2="${toSvgY(t.y)}" stroke="${a.semantic === "pressure" ? "#ff7474" : "#5eead4"}" stroke-width=".8"/>`
+        ? `<line x1="${f.x}" y1="${toSvgY(f.y)}" x2="${t.x}" y2="${toSvgY(t.y)}" stroke="${arrowStyle(a.semantic).color}" stroke-width=".8"/>`
         : "";
     })
     .join(

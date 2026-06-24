@@ -94,12 +94,13 @@ function TacticalBoardWorkspace({
           zoom={a.zoom}
           teamAFormation={a.teamAFormation}
           opponentFormation={board.opponent.formation}
+          anchorOriginId={a.anchorOriginId}
           keyInstructions={{
             objective: a.problem.objective,
             rule: a.exercise.rule,
             successCondition: a.exercise.successCondition,
           }}
-          onSelect={a.setSelection}
+          onSelect={a.onCanvasSelect}
           onPointerDown={a.onCanvasPointerDown}
           onPointerMove={a.onCanvasPointerMove}
           onPointerUp={a.onCanvasPointerUp}

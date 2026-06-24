@@ -117,6 +117,15 @@ export function handleCanvasPress({
       setDrawStart(endpoint);
       return;
     }
+    // Gesto de cancelar: segundo click sobre el mismo token origen.
+    if (
+      drawStart.kind === "object" &&
+      endpoint.kind === "object" &&
+      drawStart.objectId === endpoint.objectId
+    ) {
+      setDrawStart(null);
+      return;
+    }
     const arrow = createSemanticArrow(arrowSemantic, drawStart, endpoint, {
       label: labelForTool(tool),
       style,

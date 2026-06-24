@@ -1,6 +1,7 @@
 import type { Player } from "@/data";
 import type { WeeklyDecisionThread } from "@/state/weeklyDecisionThread";
 import { z } from "zod";
+import { zoneStyle } from "./boardActionStyle";
 
 export const BOARD_SCHEMA_VERSION = 2;
 
@@ -153,6 +154,10 @@ export const BoardArrowSchema = z.object({
   // Intencion tactica corta y zona objetivo de la accion (aditivos, opcionales).
   // La fase se sigue leyendo de `linkedPhase` (no se duplica con un `phase`).
   intent: z.string().max(220).optional(),
+  // TODO(P0.4): cablear targetZoneId. Hoy ninguna interaccion lo setea (deferral
+  // CONSCIENTE de P0.3). Se conecta en P0.4 via selector "zona objetivo" del
+  // inspector + segundo-click-sobre-zona (necesita que el canvas reporte la
+  // zona al flujo de dibujo). No dejar huerfano.
   targetZoneId: z.string().optional(),
   visibility: BoardVisibilitySchema.default("staff"),
   linkedPlayerId: z.string().optional(),
@@ -923,13 +928,7 @@ function labelForZone(semantic: BoardZoneSemantic) {
 }
 
 function colorForZone(semantic: BoardZoneSemantic) {
-  return {
-    press: "#ff7474",
-    occupation: "#5eead4",
-    freeSpace: "#60a5fa",
-    danger: "#f8d66d",
-    block: "#c7df5f",
-    channel: "#a7f3d0",
-    custom: "#d8b4fe",
-  }[semantic];
+  // Single-source: el color por semantica vive en boardActionStyle (lo
+  // comparten canvas y export).
+  return zoneStyle(semantic).color;
 }

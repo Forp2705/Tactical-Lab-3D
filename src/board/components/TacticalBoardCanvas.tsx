@@ -15,6 +15,7 @@ import {
   shortName,
   zoneVisible,
 } from "../boardGeometry";
+import { arrowStyle } from "../boardActionStyle";
 import type { BoardObject, BoardPoint, BoardScene } from "../boardModel";
 
 type TacticalBoardCanvasProps = {
@@ -28,6 +29,8 @@ type TacticalBoardCanvasProps = {
   zoom: number;
   teamAFormation: string;
   opponentFormation: string;
+  // Token origen de un anclaje en curso (se resalta mientras se dibuja).
+  anchorOriginId?: string;
   keyInstructions: {
     objective: string;
     rule: string;
@@ -52,6 +55,7 @@ export function TacticalBoardCanvas({
   zoom,
   teamAFormation,
   opponentFormation,
+  anchorOriginId,
   keyInstructions,
   onSelect,
   onPointerDown,
@@ -89,6 +93,7 @@ export function TacticalBoardCanvas({
         tool={tool}
         activeLayers={activeLayers}
         zoom={zoom}
+        anchorOriginId={anchorOriginId}
         onSelect={onSelect}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -115,6 +120,7 @@ function TacticalPitch({
   tool,
   activeLayers,
   zoom,
+  anchorOriginId,
   onSelect,
   onPointerDown,
   onPointerMove,
@@ -128,6 +134,7 @@ function TacticalPitch({
   tool: BoardTool;
   activeLayers: Set<string>;
   zoom: number;
+  anchorOriginId?: string;
   onSelect: (selection: Selection) => void;
   onPointerDown: (point: BoardPoint, targetId?: string) => void;
   onPointerMove: (point: BoardPoint) => void;
@@ -231,9 +238,10 @@ function TacticalPitch({
       {visibleArrows.map((arrow) => {
         const start = endpointPoint(arrow.from, scene.objects);
         const end = endpointPoint(arrow.to, scene.objects);
-        const curved =
-          arrow.semantic === "run" || arrow.semantic === "rotation";
-        const d = curved
+        const style = arrowStyle(arrow.semantic);
+        // Override del usuario gana; si no, color por semantica (tabla compartida).
+        const stroke = arrow.style?.color ?? style.color;
+        const d = style.curved
           ? `M${start.x} ${scaleY(start.y)} Q${(start.x + end.x) / 2} ${scaleY(start.y - 16)} ${end.x} ${scaleY(end.y)}`
           : `M${start.x} ${scaleY(start.y)} L${end.x} ${scaleY(end.y)}`;
         return (
@@ -248,9 +256,22 @@ function TacticalPitch({
             <path
               d={d}
               className={`board-arrow ${arrow.semantic}`}
-              stroke={arrow.style?.color ?? color}
+              stroke={stroke}
               strokeWidth={lineWidth * 0.35}
+              strokeDasharray={style.dashed ? "1.4 1" : undefined}
               markerEnd="url(#rombo-arrow-head)"
+            />
+            <EndpointMarker
+              x={start.x}
+              y={start.y}
+              anchored={arrow.from.kind === "object"}
+              color={stroke}
+            />
+            <EndpointMarker
+              x={end.x}
+              y={end.y}
+              anchored={arrow.to.kind === "object"}
+              color={stroke}
             />
             {arrow.label ? (
               <text
@@ -269,7 +290,10 @@ function TacticalPitch({
         <BoardObjectNode
           key={object.id}
           object={object}
-          selected={selected?.kind === "object" && selected.id === object.id}
+          selected={
+            (selected?.kind === "object" && selected.id === object.id) ||
+            object.id === anchorOriginId
+          }
           onSelect={(id) => onSelect({ kind: "object", id })}
           onPointerDown={(event, id) => {
             event.stopPropagation();
@@ -278,6 +302,32 @@ function TacticalPitch({
         />
       ))}
     </svg>
+  );
+}
+
+// Marca el estado de cada extremo: anclado (punto fijo) vs libre (aro hueco).
+// El contraste entre extremos es la senal de que el anclaje tomo o no. La
+// forma (relleno vs hueco) la define el CSS via .anchored/.free; el color sale
+// de la tabla arrowStyle (inline `color` -> currentColor en CSS).
+function EndpointMarker({
+  x,
+  y,
+  anchored,
+  color,
+}: {
+  x: number;
+  y: number;
+  anchored: boolean;
+  color: string;
+}) {
+  return (
+    <circle
+      cx={x}
+      cy={scaleY(y)}
+      r={0.95}
+      className={`board-endpoint ${anchored ? "anchored" : "free"}`}
+      style={{ color }}
+    />
   );
 }
 
