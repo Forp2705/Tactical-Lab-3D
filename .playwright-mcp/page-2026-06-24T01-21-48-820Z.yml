@@ -1,0 +1,40 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img "RomboIQ" [ref=e6]
+      - heading "RomboIQ" [level=1] [ref=e8]
+    - navigation [ref=e9]:
+      - generic [ref=e10]: Flujo semanal
+      - button "Sala" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12]: Sala
+      - button "Diagnostico" [ref=e13] [cursor=pointer]:
+        - generic [ref=e14]: Diagnostico
+      - button "Sesion" [ref=e15] [cursor=pointer]:
+        - generic [ref=e16]: Sesion
+      - button "Post-partido" [ref=e17] [cursor=pointer]:
+        - generic [ref=e18]: Post-partido
+      - button "Evolucion" [ref=e19] [cursor=pointer]:
+        - generic [ref=e20]: Evolucion
+      - group [ref=e21]:
+        - generic "Avanzado" [ref=e22] [cursor=pointer]
+  - main [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e27]: Cancha
+        - heading "Visor tactico 3D" [level=2] [ref=e28]
+        - paragraph [ref=e29]: Reproduccion 3D con camaras, capas tacticas y fases.
+      - generic "Resumen operativo" [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e32]: Bloques
+          - text: "2"
+        - generic [ref=e33]:
+          - generic [ref=e34]: Actual
+          - generic [ref=e35]: 10v
+        - generic [ref=e36]:
+          - generic [ref=e37]: Modo
+          - text: PLAN
+      - generic [ref=e38]:
+        - generic [ref=e39]: Proyecto local
+        - button "Modo presentacion" [ref=e41] [cursor=pointer]
+        - button "Exportar PNG" [ref=e42] [cursor=pointer]
+    - generic [ref=e43]: Cargando modulo...

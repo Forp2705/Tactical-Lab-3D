@@ -1,0 +1,6 @@
+Total messages: 85 (Errors: 3, Warnings: 70)
+Returning 3 messages for level "error"
+
+[ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177

@@ -1,0 +1,512 @@
+[     374ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-LUWFAP7Z.js?v=6593f1f4:21608
+[     718ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[     728ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[     752ms] [ERROR] The above error occurred in the <primitive> component:
+
+    at primitive
+    at primitive
+    at Line4 (http://localhost:5173/node_modules/.vite/deps/@react-three_drei.js?v=6593f1f4:9430:3)
+    at group
+    at group
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782263828192:41:32)
+    at Suspense
+    at ErrorBoundary (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16501:5)
+    at FiberProvider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18181:21)
+    at Provider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:17790:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[     752ms] [ERROR] The above error occurred in the <primitive> component:
+
+    at primitive
+    at primitive
+    at Line4 (http://localhost:5173/node_modules/.vite/deps/@react-three_drei.js?v=6593f1f4:9430:3)
+    at group
+    at group
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782263828192:41:32)
+    at Suspense
+    at ErrorBoundary (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16501:5)
+    at FiberProvider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18181:21)
+    at Provider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:17790:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[     753ms] TypeError: Cannot read properties of undefined (reading 'transparent')
+    at http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16725:50
+    at Array.reduce (<anonymous>)
+    at applyProps$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16725:25)
+    at createInstance (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16233:28)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:8416:34)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13696:24)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13678:13)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+    at recoverFromConcurrentError (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13176:28)
+[     755ms] TypeError: Cannot read properties of undefined (reading 'transparent')
+    at http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16725:50
+    at Array.reduce (<anonymous>)
+    at applyProps$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16725:25)
+    at createInstance (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16233:28)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:8416:34)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13696:24)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13678:13)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+    at recoverFromConcurrentError (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13176:28)
+[     756ms] [ERROR] The above error occurred in the <ForwardRef(Canvas)> component:
+
+    at Canvas (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18247:3)
+    at FiberProvider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18181:21)
+    at CanvasWrapper
+    at Scene3D (http://localhost:5173/src/viewer/Scene3D.tsx?t=1782263828206:50:3)
+    at div
+    at div
+    at section
+    at ViewerWorkspace (http://localhost:5173/src/app/App.tsx?t=1782263828206:304:30)
+    at Suspense
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/ui/AppShell.tsx:50:28)
+    at App (http://localhost:5173/src/app/App.tsx?t=1782263828206:167:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[     755ms] TypeError: Cannot read properties of undefined (reading 'transparent')
+    at http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16725:50
+    at Array.reduce (<anonymous>)
+    at applyProps$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16725:25)
+    at createInstance (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16233:28)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:8416:34)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13696:24)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13678:13)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+    at recoverFromConcurrentError (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13176:28)
+[    1263ms] [LOG] THREE.WebGLRenderer: Context Lost. @ http://localhost:5173/node_modules/.vite/deps/chunk-X3OALDEH.js?v=6593f1f4:30481
+[   53733ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10591:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10616:24)
+    at invokeGuardedCallback (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10648:39)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14206:15)
+[   53738ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   53745ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10591:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10616:24)
+    at invokeGuardedCallback (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10648:39)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14206:15)
+[   53749ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   53749ms] [ERROR] The above error occurred in the <OverlayLayer> component:
+
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:41:32)
+    at Suspense
+    at ErrorBoundary (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16501:5)
+    at FiberProvider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18181:21)
+    at Provider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:17790:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   53749ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14194:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13670:20)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+[   53750ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14194:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13670:20)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+[   53751ms] [ERROR] The above error occurred in the <ForwardRef(Canvas)> component:
+
+    at Canvas (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18247:3)
+    at FiberProvider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18181:21)
+    at CanvasWrapper
+    at Scene3D (http://localhost:5173/src/viewer/Scene3D.tsx?t=1782263828206:50:3)
+    at div
+    at div
+    at section
+    at ViewerWorkspace (http://localhost:5173/src/app/App.tsx?t=1782263828206:304:30)
+    at Suspense
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/ui/AppShell.tsx:50:28)
+    at App (http://localhost:5173/src/app/App.tsx?t=1782263828206:167:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   53750ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264009595:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14194:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13670:20)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+[   54271ms] [LOG] THREE.WebGLRenderer: Context Lost. @ http://localhost:5173/node_modules/.vite/deps/chunk-X3OALDEH.js?v=6593f1f4:30481
+[   79104ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10591:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10616:24)
+    at invokeGuardedCallback (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10648:39)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14206:15)
+[   79109ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   79115ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10591:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10616:24)
+    at invokeGuardedCallback (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10648:39)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14206:15)
+[   79118ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   79119ms] [ERROR] The above error occurred in the <OverlayLayer> component:
+
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:41:32)
+    at Suspense
+    at ErrorBoundary (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:16501:5)
+    at FiberProvider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18181:21)
+    at Provider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:17790:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   79119ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14194:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13670:20)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+[   79119ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14194:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13670:20)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+[   79120ms] [ERROR] The above error occurred in the <ForwardRef(Canvas)> component:
+
+    at Canvas (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18247:3)
+    at FiberProvider (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18181:21)
+    at CanvasWrapper
+    at Scene3D (http://localhost:5173/src/viewer/Scene3D.tsx?t=1782263828206:50:3)
+    at div
+    at div
+    at section
+    at ViewerWorkspace (http://localhost:5173/src/app/App.tsx?t=1782263828206:304:30)
+    at Suspense
+    at main
+    at div
+    at AppShell (http://localhost:5173/src/ui/AppShell.tsx:50:28)
+    at App (http://localhost:5173/src/app/App.tsx?t=1782263828206:167:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   79120ms] ReferenceError: setLineOverlayMaterial is not defined
+    at http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:64:16
+    at Array.map (<anonymous>)
+    at OverlayLayer (http://localhost:5173/src/viewer/Overlays.tsx?t=1782264034679:47:63)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:5894:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:9377:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:10360:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:14194:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13670:20)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13610:13)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:13589:15)
+[   79629ms] [LOG] THREE.WebGLRenderer: Context Lost. @ http://localhost:5173/node_modules/.vite/deps/chunk-X3OALDEH.js?v=6593f1f4:30481
+[   86785ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   86789ms] [ERROR] Please enable the NormalPass in the EffectComposer in order to use SSAO. @ http://localhost:5173/node_modules/.vite/deps/chunk-XSFUSL6O.js?v=6593f1f4:18177
+[   87160ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87311ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87395ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87450ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87506ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87562ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87621ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87683ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87745ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87803ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87862ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87919ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   87977ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88027ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88078ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88128ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88181ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88229ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88283ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88343ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88401ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88457ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88512ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88564ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88618ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88674ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88730ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88792ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88850ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88900ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   88954ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89004ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89056ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89104ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89147ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89203ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89255ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89303ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89355ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89408ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89456ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89508ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89562ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89617ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89666ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89720ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89774ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89831ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89882ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89929ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   89985ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90034ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90082ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90133ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90189ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90242ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90291ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90338ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90387ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90440ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90492ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90545ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90601ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90655ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90711ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90759ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90810ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90860ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90907ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   90962ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91022ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91072ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91124ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91177ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91231ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91285ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91339ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91391ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91441ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91497ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91548ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91600ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91650ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91704ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91750ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91803ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91853ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91905ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   91961ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92014ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92067ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92117ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92170ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92220ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92270ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92319ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92370ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92425ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92480ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92529ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92579ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92630ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92685ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92737ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92791ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92846ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92898ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   92948ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93001ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93048ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93105ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93161ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93209ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93255ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93310ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93366ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93418ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93475ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93537ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93598ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93656ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93709ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93765ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93810ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93862ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93920ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   93970ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94019ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94073ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94122ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94175ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94224ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94275ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94326ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94375ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94424ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94472ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94524ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94580ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94631ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94677ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94728ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94779ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94830ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94880ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94932ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   94984ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95032ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95086ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95139ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95188ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95242ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95291ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95340ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95389ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95443ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95492ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95544ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95598ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95646ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95698ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95750ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95798ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95849ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95898ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   95954ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96005ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96055ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96109ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96158ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96206ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96257ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96315ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96372ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96429ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96479ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96528ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96577ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96624ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96677ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96731ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96779ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96829ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96879ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96929ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   96985ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97040ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97086ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97138ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97188ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97238ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97289ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97338ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97393ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97446ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97497ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97547ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97591ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97646ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97697ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97747ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97803ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97854ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97909ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   97957ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98010ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98057ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98106ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98154ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98201ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98248ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98298ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98346ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98394ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98444ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98497ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98549ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98600ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98650ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98709ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98771ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98826ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98886ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98946ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   98993ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99044ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99100ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99147ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99195ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99248ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99299ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99348ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99398ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99453ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99504ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99557ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99607ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99660ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99709ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99759ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99812ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99862ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99914ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[   99958ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100013ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100063ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100114ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100164ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100215ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100264ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100314ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100365ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100412ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100467ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100518ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100570ms] [WARNING] [.WebGL-0x34bc00140200] GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image. @ http://localhost:5173/:0
+[  100570ms] [WARNING] WebGL: too many errors, no more errors will be reported to the console for this context. @ http://localhost:5173/:0
