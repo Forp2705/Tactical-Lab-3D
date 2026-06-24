@@ -12,6 +12,7 @@
     "coach:test": "tsx src/ai/testCoachAgent.ts",
     "coach:eval": "tsx scripts/runCoachEval.ts",
     "rag:build": "tsx scripts/buildCoachRagIndex.ts",
+    "exercises:audit": "tsx scripts/auditExercises.ts",
     "type-check": "tsc --noEmit",
     "format": "biome format --write .",
     "lint": "biome check .",

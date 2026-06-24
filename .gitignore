@@ -36,6 +36,11 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
+
+# QA artifacts (Playwright MCP captures, screenshots) — never commit
+.playwright-mcp/
+/fix-*.png
+/viewer-*.png
 QUICK_SKETCH_MVP_DELIVERABLE.md
 ROMBOIQ_PRODUCT_BENCHMARK_2026-06.md
 FLUENCY_PASS_REPORT.md

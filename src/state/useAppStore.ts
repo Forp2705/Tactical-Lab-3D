@@ -41,7 +41,12 @@ import {
   buildSessionPlanFromWeeklyThread,
   materializeDiagnosisSession,
 } from "@/sessions/diagnosisSession";
-import { catalog, demoPlayers, ExerciseSchema } from "@/data";
+import {
+  catalog,
+  demoPlayers,
+  ExerciseSchema,
+  getSelectableCatalog,
+} from "@/data";
 import {
   PILOT_DIAGNOSIS_PROMPT,
   PILOT_SESSION_BLOCKS,
@@ -1277,13 +1282,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const plan = buildSessionPlanFromWeeklyThread(thread, [
-      ...catalog,
+      ...getSelectableCatalog(),
       ...state.exerciseVariants,
     ]);
     const nextSession = materializeDiagnosisSession(
       state.session,
       plan,
-      [...catalog, ...state.exerciseVariants],
+      [...getSelectableCatalog(), ...state.exerciseVariants],
     );
     const nextThread = syncThreadWithSessionPlan(thread, plan);
     set({
@@ -1306,13 +1311,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       state.weeklyDecisionThread;
     if (!nextThread) return false;
     const plan = buildSessionPlanFromDiagnosis(response.advice, [
-      ...catalog,
+      ...getSelectableCatalog(),
       ...state.exerciseVariants,
     ]);
     const nextSession = materializeDiagnosisSession(
       state.session,
       plan,
-      [...catalog, ...state.exerciseVariants],
+      [...getSelectableCatalog(), ...state.exerciseVariants],
     );
     if (!nextSession.blocks.length) return false;
     set({
