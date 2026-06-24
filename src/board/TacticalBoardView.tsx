@@ -126,9 +126,22 @@ function TacticalBoardWorkspace({
             selectedObject={a.selectedObject}
             selectedArrow={a.selectedArrow}
             selectedZone={a.selectedZone}
+            zones={scene.zones.map((zone) => ({
+              id: zone.id,
+              label: zone.label,
+            }))}
+            sceneSummary={{
+              title: scene.title,
+              phase: scene.phaseLabel,
+              problem: a.problem.problem,
+            }}
             onUpdateObject={a.updateSelectedObject}
             onUpdateArrow={a.updateSelectedArrow}
             onUpdateZone={a.updateSelectedZone}
+            onSetArrowSemantic={a.setArrowSemantic}
+            onSetArrowTargetZone={a.setArrowTargetZone}
+            onSetZoneSemantic={a.setZoneSemantic}
+            onDelete={a.deleteSelection}
           />
 
           <TacticalBoardProblemPanel

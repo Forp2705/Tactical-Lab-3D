@@ -17,6 +17,7 @@ import {
 import type {
   BoardArrow,
   BoardArrowEndpoint,
+  BoardArrowSemantic,
   BoardObject,
   BoardPoint,
   BoardScene,
@@ -24,10 +25,13 @@ import type {
   TacticalBoard,
 } from "./boardModel";
 import {
+  arrowSemanticPatch,
+  arrowTargetZonePatch,
   createBoardId,
   createDefaultBoardScene,
   createOpponentShape,
   createPlayerToken,
+  zoneSemanticPatch,
 } from "./boardModel";
 import { handleCanvasPress, tokenFromPlanningPlayer } from "./boardTools";
 import {
@@ -387,6 +391,28 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     });
   };
 
+  // Cambiar el tipo de la flecha (re-deriva tacticalMeaning si estaba default).
+  const setArrowSemantic = (semantic: BoardArrowSemantic) => {
+    if (!selectedArrow) return;
+    updateSelectedArrow(arrowSemanticPatch(selectedArrow, semantic));
+  };
+
+  // Zona objetivo de la flecha (edit affordance). Mutuamente excluyente con un
+  // `to` anclado a objeto. La creacion nativa via segundo-click es P0.4b.
+  const setArrowTargetZone = (zoneId: string | null) => {
+    if (!selectedArrow) return;
+    const zone = zoneId
+      ? (scene.zones.find((item) => item.id === zoneId) ?? null)
+      : null;
+    updateSelectedArrow(arrowTargetZonePatch(zone));
+  };
+
+  // Cambiar el tipo de la zona (re-deriva color/label si estaban default).
+  const setZoneSemantic = (semantic: BoardZoneSemantic) => {
+    if (!selectedZone) return;
+    updateSelectedZone(zoneSemanticPatch(selectedZone, semantic));
+  };
+
   const deleteSelection = () => {
     if (!selection) return;
     if (selection.kind === "object") {
@@ -583,6 +609,9 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     updateSelectedObject,
     updateSelectedArrow,
     updateSelectedZone,
+    setArrowSemantic,
+    setArrowTargetZone,
+    setZoneSemantic,
     deleteSelection,
     exportImage,
     exportBrief,

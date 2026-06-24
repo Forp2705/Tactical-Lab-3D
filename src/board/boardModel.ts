@@ -896,7 +896,7 @@ function layerForArrow(semantic: BoardArrowSemantic): BoardLayer {
   return "notes";
 }
 
-function labelForArrow(semantic: BoardArrowSemantic) {
+export function labelForArrow(semantic: BoardArrowSemantic) {
   return {
     movement: "Movimiento",
     pass: "Pase",
@@ -915,7 +915,7 @@ function labelForArrow(semantic: BoardArrowSemantic) {
   }[semantic];
 }
 
-function labelForZone(semantic: BoardZoneSemantic) {
+export function labelForZone(semantic: BoardZoneSemantic) {
   return {
     press: "Zona de presion",
     occupation: "Ocupacion",
@@ -925,6 +925,53 @@ function labelForZone(semantic: BoardZoneSemantic) {
     channel: "Carril",
     custom: "Zona",
   }[semantic];
+}
+
+// --- Patches puros del inspector (P0.4). Logica testeable; el hook solo cablea.
+
+// Cambio de tipo de flecha: re-deriva el tacticalMeaning SOLO si estaba en el
+// default del tipo viejo (no pisa un texto que el usuario edito). El color de
+// la flecha no se guarda: sigue solo via arrowStyle en render.
+export function arrowSemanticPatch(
+  arrow: BoardArrow,
+  semantic: BoardArrowSemantic,
+): Partial<BoardArrow> {
+  const patch: Partial<BoardArrow> = { semantic };
+  if (arrow.tacticalMeaning === labelForArrow(arrow.semantic)) {
+    patch.tacticalMeaning = labelForArrow(semantic);
+  }
+  return patch;
+}
+
+// Destino de la accion: `targetZoneId` y un `to` anclado a objeto son
+// MUTUAMENTE EXCLUYENTES (una sola fuente de verdad). Setear zona objetivo
+// mueve `to` al centroide de la zona (snapshot) y rompe el anclaje a objeto;
+// limpiar zona objetivo borra el campo. (Seguir a la zona si se mueve = P0.4b.)
+export function arrowTargetZonePatch(zone: BoardZone | null): Partial<BoardArrow> {
+  if (!zone) return { targetZoneId: undefined };
+  return {
+    targetZoneId: zone.id,
+    to: {
+      kind: "point",
+      point: { x: zone.x + zone.w / 2, y: zone.y + zone.h / 2 },
+    },
+  };
+}
+
+// Cambio de tipo de zona: re-deriva color/label SOLO si estaban en default.
+export function zoneSemanticPatch(
+  zone: BoardZone,
+  semantic: BoardZoneSemantic,
+): { semantic: BoardZoneSemantic; color?: string; label?: string } {
+  const patch: { semantic: BoardZoneSemantic; color?: string; label?: string } =
+    { semantic };
+  if (zone.color === colorForZone(zone.semantic)) {
+    patch.color = colorForZone(semantic);
+  }
+  if (zone.label === labelForZone(zone.semantic)) {
+    patch.label = labelForZone(semantic);
+  }
+  return patch;
 }
 
 function colorForZone(semantic: BoardZoneSemantic) {
