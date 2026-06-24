@@ -16,6 +16,8 @@ import {
 } from "./boardGeometry";
 import type {
   BoardArrow,
+  BoardArrowEndpoint,
+  BoardArrowSemantic,
   BoardObject,
   BoardPoint,
   BoardScene,
@@ -23,10 +25,13 @@ import type {
   TacticalBoard,
 } from "./boardModel";
 import {
+  arrowSemanticPatch,
+  arrowTargetZonePatch,
   createBoardId,
   createDefaultBoardScene,
   createOpponentShape,
   createPlayerToken,
+  zoneSemanticPatch,
 } from "./boardModel";
 import { handleCanvasPress, tokenFromPlanningPlayer } from "./boardTools";
 import {
@@ -75,7 +80,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const [selection, setSelection] = useState<Selection>(null);
   const [draft, setDraft] = useState<DraftPlayer>(emptyDraft);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
-  const [drawStart, setDrawStart] = useState<BoardPoint | null>(null);
+  const [drawStart, setDrawStart] = useState<BoardArrowEndpoint | null>(null);
   const [drag, setDrag] = useState<{
     id: string;
     before: BoardPoint;
@@ -114,6 +119,16 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setPayload(null);
   }, [board.id]);
 
+  // Esc cancela un anclaje en curso (gesto de salida del estado draw-en-curso).
+  useEffect(() => {
+    if (!drawStart) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDrawStart(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawStart]);
+
   const { selectedObject, selectedArrow, selectedZone } = resolveBoardSelection(
     selection,
     scene,
@@ -122,13 +137,12 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const aiInterpretation = useMemo(
     () =>
       inferAiInterpretation({
-        tacticalProblem: problem,
         players: roster,
+        objects: scene.objects,
         arrows: scene.arrows,
         zones: scene.zones,
-        exercise,
       }),
-    [problem, roster, scene, exercise],
+    [roster, scene],
   );
 
   const readiness = useMemo(
@@ -137,6 +151,9 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   );
 
   const activeLayers = getActiveLayers(layers);
+  // Token origen del anclaje en curso (para resaltarlo en el canvas).
+  const anchorOriginId =
+    drawStart?.kind === "object" ? drawStart.objectId : undefined;
 
   const pushHistory = (snapshot = board) => {
     setHistory((items) => [...items.slice(-24), snapshot]);
@@ -373,6 +390,28 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     });
   };
 
+  // Cambiar el tipo de la flecha (re-deriva tacticalMeaning si estaba default).
+  const setArrowSemantic = (semantic: BoardArrowSemantic) => {
+    if (!selectedArrow) return;
+    updateSelectedArrow(arrowSemanticPatch(selectedArrow, semantic));
+  };
+
+  // Zona objetivo de la flecha (edit affordance). Mutuamente excluyente con un
+  // `to` anclado a objeto. La creacion nativa via segundo-click es P0.4b.
+  const setArrowTargetZone = (zoneId: string | null) => {
+    if (!selectedArrow) return;
+    const zone = zoneId
+      ? (scene.zones.find((item) => item.id === zoneId) ?? null)
+      : null;
+    updateSelectedArrow(arrowTargetZonePatch(zone));
+  };
+
+  // Cambiar el tipo de la zona (re-deriva color/label si estaban default).
+  const setZoneSemantic = (semantic: BoardZoneSemantic) => {
+    if (!selectedZone) return;
+    updateSelectedZone(zoneSemanticPatch(selectedZone, semantic));
+  };
+
   const deleteSelection = () => {
     if (!selection) return;
     if (selection.kind === "object") {
@@ -422,10 +461,20 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setStatus(`Escena vinculada a ${blockTitle(block)}`);
   };
 
+  // Seleccionar (zona/flecha/objeto) a mitad de un draw lo cancela, para no
+  // dejar drawStart colgado en medio-estado.
+  const onCanvasSelect = (next: Selection) => {
+    if (drawStart) setDrawStart(null);
+    setSelection(next);
+  };
+
   const onCanvasPointerDown = (point: BoardPoint, targetId?: string) => {
-    if (targetId) {
+    // move/select sobre un token -> arrancar drag (y cancelar cualquier draw
+    // en curso). Comportamiento existente.
+    if (targetId && (tool === "move" || tool === "select")) {
       const object = scene.objects.find((item) => item.id === targetId);
-      if (object && (tool === "move" || tool === "select")) {
+      if (object) {
+        setDrawStart(null);
         setSelection({ kind: "object", id: targetId });
         setDrag({
           id: targetId,
@@ -438,9 +487,13 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       }
       return;
     }
+    // Flechas/zonas/equipamiento: targetId se pasa a handleCanvasPress. Las
+    // flechas lo usan para anclar al token; zona/equipamiento lo ignoran y
+    // crean en el punto.
     handleCanvasPress({
       point,
       tool,
+      targetId,
       scene,
       color,
       lineWidth,
@@ -531,6 +584,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     selectedArrow,
     selectedZone,
     activeLayers,
+    anchorOriginId,
     aiInterpretation,
     readiness,
     projectLabel: boardProjectLabel(weeklyDecisionThread?.problem),
@@ -554,10 +608,14 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     updateSelectedObject,
     updateSelectedArrow,
     updateSelectedZone,
+    setArrowSemantic,
+    setArrowTargetZone,
+    setZoneSemantic,
     deleteSelection,
     exportImage,
     exportBrief,
     attachToBlock,
+    onCanvasSelect,
     onCanvasPointerDown,
     onCanvasPointerMove,
     onCanvasPointerUp,

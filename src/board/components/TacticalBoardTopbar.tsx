@@ -10,8 +10,6 @@ type TacticalBoardTopbarProps = {
   onUndo: () => void;
   onRedo: () => void;
   onCurrentViewChange: (view: CurrentBoardView) => void;
-  onConvertToTraining: () => void;
-  onExportPayload: () => void;
   onSaveBoard: () => void;
 };
 
@@ -24,8 +22,6 @@ export function TacticalBoardTopbar({
   onUndo,
   onRedo,
   onCurrentViewChange,
-  onConvertToTraining,
-  onExportPayload,
   onSaveBoard,
 }: TacticalBoardTopbarProps) {
   return (
@@ -59,17 +55,6 @@ export function TacticalBoardTopbar({
           ))}
         </select>
       </label>
-      <button
-        type="button"
-        className="rombo-primary-cta"
-        onClick={onConvertToTraining}
-      >
-        Llevar al entrenamiento
-        <span>Crea un bloque entrenable en tu sesion</span>
-      </button>
-      <button type="button" onClick={onExportPayload}>
-        Exportar payload (JSON)
-      </button>
       <button type="button" className="rombo-save" onClick={onSaveBoard}>
         Guardar
       </button>

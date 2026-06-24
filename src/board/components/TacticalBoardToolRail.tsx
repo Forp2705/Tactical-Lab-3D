@@ -1,8 +1,9 @@
 import {
   type BoardTool,
   COLORS,
+  EQUIPMENT_TOOLS,
   LINE_WIDTHS,
-  TOOL_DEFS,
+  TOOL_GROUPS,
 } from "../boardConstants";
 import { labelForTool } from "../boardTools";
 
@@ -28,17 +29,36 @@ export function TacticalBoardToolRail({
   return (
     <aside className="rombo-toolrail" aria-label="Herramientas">
       <h2>Herramientas</h2>
-      {TOOL_DEFS.map((item) => (
-        <button
-          type="button"
-          key={item.id}
-          className={tool === item.id ? "active" : ""}
-          onClick={() => onToolChange(item.id)}
-        >
-          <ToolIcon tool={item.id} />
-          <span>{item.label}</span>
-        </button>
+      {TOOL_GROUPS.map((group) => (
+        <div className="rombo-tool-group" key={group.label}>
+          <h3>{group.label}</h3>
+          {group.tools.map((id) => (
+            <button
+              type="button"
+              key={id}
+              className={tool === id ? "active" : ""}
+              onClick={() => onToolChange(id)}
+            >
+              <ToolIcon tool={id} />
+              <span>{labelForTool(id)}</span>
+            </button>
+          ))}
+        </div>
       ))}
+      <details className="rombo-tool-group rombo-equipment">
+        <summary>Equipamiento</summary>
+        {EQUIPMENT_TOOLS.map((id) => (
+          <button
+            type="button"
+            key={id}
+            className={tool === id ? "active" : ""}
+            onClick={() => onToolChange(id)}
+          >
+            <ToolIcon tool={id} />
+            <span>{labelForTool(id)}</span>
+          </button>
+        ))}
+      </details>
       <div className="rombo-tool-group">
         <h3>Color y grosor</h3>
         <div className="rombo-color-row">
@@ -103,24 +123,7 @@ function ToolIcon({ tool }: { tool: BoardTool }) {
       </svg>
     );
   }
-  if (tool === "pencil") {
-    return (
-      <svg {...common}>
-        <title>{labelForTool(tool)}</title>
-        <path d="M4 20l4.2-1 10-10a2.2 2.2 0 0 0-3.1-3.1l-10 10z" />
-        <path d="M13.8 7.2l3 3" />
-      </svg>
-    );
-  }
-  if (tool === "line") {
-    return (
-      <svg {...common}>
-        <title>{labelForTool(tool)}</title>
-        <path d="M5 19L19 5" />
-      </svg>
-    );
-  }
-  if (tool === "arrow" || tool === "longPass" || tool === "cross") {
+  if (tool === "longPass" || tool === "cross") {
     return (
       <svg {...common}>
         <title>{labelForTool(tool)}</title>
@@ -129,7 +132,7 @@ function ToolIcon({ tool }: { tool: BoardTool }) {
       </svg>
     );
   }
-  if (tool === "ballRoute") {
+  if (tool === "pass") {
     return (
       <svg {...common}>
         <title>{labelForTool(tool)}</title>
@@ -147,7 +150,7 @@ function ToolIcon({ tool }: { tool: BoardTool }) {
       </svg>
     );
   }
-  if (tool === "pressureLine") {
+  if (tool === "pressure") {
     return (
       <svg {...common}>
         <title>{labelForTool(tool)}</title>
@@ -162,14 +165,6 @@ function ToolIcon({ tool }: { tool: BoardTool }) {
         <title>{labelForTool(tool)}</title>
         <rect x="4" y="6" width="16" height="12" rx="2" />
         {tool === "block" ? <path d="M8 10h8M8 14h8" /> : null}
-      </svg>
-    );
-  }
-  if (tool === "text") {
-    return (
-      <svg {...common}>
-        <title>{labelForTool(tool)}</title>
-        <path d="M5 6h14M12 6v12M9 18h6" />
       </svg>
     );
   }

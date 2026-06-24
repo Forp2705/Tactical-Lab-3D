@@ -5441,6 +5441,24 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   stroke: #f87171;
 }
 
+/* Marcadores de extremo de flecha. El color sale de `style.color` (tabla
+   arrowStyle) via currentColor; la forma la define el modificador. */
+.board-endpoint {
+  color: #5eead4;
+  stroke: currentColor;
+  stroke-width: 0.3;
+}
+
+/* Anclado a un token: punto lleno (anclaje tomo). */
+.board-endpoint.anchored {
+  fill: currentColor;
+}
+
+/* Libre: aro hueco "flotante" (el extremo riesgoso, sin anclar). */
+.board-endpoint.free {
+  fill: rgba(7, 19, 13, 0.9);
+}
+
 .token {
   stroke: #ffffff;
   stroke-width: 0.35;

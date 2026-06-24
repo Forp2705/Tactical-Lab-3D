@@ -14,14 +14,18 @@ import {
 } from "../src/board/boardTools";
 
 describe("boardTools — tool semantics", () => {
-  it("maps drawing tools to their arrow semantic", () => {
-    expect(semanticForTool("ballRoute")).toBe("pass");
-    expect(semanticForTool("longPass")).toBe("pass");
-    expect(semanticForTool("cross")).toBe("pass");
-    expect(semanticForTool("pressureLine")).toBe("pressure");
+  it("drawing tools are 1:1 with the arrow semantic (no lossy collapse)", () => {
+    expect(semanticForTool("pass")).toBe("pass");
+    expect(semanticForTool("longPass")).toBe("longPass");
+    expect(semanticForTool("cross")).toBe("cross");
+    expect(semanticForTool("switch")).toBe("switch");
+    expect(semanticForTool("carry")).toBe("carry");
+    expect(semanticForTool("support")).toBe("support");
+    expect(semanticForTool("pressure")).toBe("pressure");
+    expect(semanticForTool("mark")).toBe("mark");
     expect(semanticForTool("run")).toBe("run");
-    expect(semanticForTool("arrow")).toBe("movement");
-    expect(semanticForTool("shot")).toBe("movement");
+    expect(semanticForTool("movement")).toBe("movement");
+    expect(semanticForTool("shot")).toBe("shot");
   });
 
   it("returns null for non-arrow tools", () => {
@@ -32,7 +36,7 @@ describe("boardTools — tool semantics", () => {
   });
 
   it("labelForTool resolves human labels", () => {
-    expect(labelForTool("arrow")).toBe("Flecha");
+    expect(labelForTool("pass")).toBe("Pase");
     expect(labelForTool("block")).toBe("Bloque");
   });
 });
@@ -96,7 +100,7 @@ describe("boardTools — handleCanvasPress", () => {
     const updateSceneObjects = vi.fn();
     handleCanvasPress({
       point: { x: 10, y: 10 },
-      tool: "arrow",
+      tool: "pass",
       scene: freshScene(),
       color: "#fff",
       lineWidth: 2,
@@ -105,7 +109,10 @@ describe("boardTools — handleCanvasPress", () => {
       commitScene,
       updateSceneObjects,
     });
-    expect(setDrawStart).toHaveBeenCalledWith({ x: 10, y: 10 });
+    expect(setDrawStart).toHaveBeenCalledWith({
+      kind: "point",
+      point: { x: 10, y: 10 },
+    });
     expect(commitScene).not.toHaveBeenCalled();
   });
 
@@ -115,11 +122,11 @@ describe("boardTools — handleCanvasPress", () => {
     const scene = freshScene();
     handleCanvasPress({
       point: { x: 30, y: 30 },
-      tool: "arrow",
+      tool: "pass",
       scene,
       color: "#fff",
       lineWidth: 2,
-      drawStart: { x: 10, y: 10 },
+      drawStart: { kind: "point", point: { x: 10, y: 10 } },
       setDrawStart,
       commitScene,
       updateSceneObjects: vi.fn(),
@@ -128,6 +135,47 @@ describe("boardTools — handleCanvasPress", () => {
     const patch = commitScene.mock.calls[0][0];
     expect(patch.arrows).toHaveLength(scene.arrows.length + 1);
     expect(setDrawStart).toHaveBeenCalledWith(null);
+  });
+
+  it("anchors the start endpoint to a token when the first click hits one", () => {
+    const setDrawStart = vi.fn();
+    handleCanvasPress({
+      point: { x: 40, y: 50 },
+      tool: "pass",
+      targetId: "player-5",
+      scene: freshScene(),
+      color: "#fff",
+      lineWidth: 2,
+      drawStart: null,
+      setDrawStart,
+      commitScene: vi.fn(),
+      updateSceneObjects: vi.fn(),
+    });
+    expect(setDrawStart).toHaveBeenCalledWith({
+      kind: "object",
+      objectId: "player-5",
+    });
+  });
+
+  it("commits a token->token anchored arrow on the second targeted click", () => {
+    const commitScene = vi.fn();
+    const scene = freshScene();
+    handleCanvasPress({
+      point: { x: 60, y: 50 },
+      tool: "pass",
+      targetId: "player-2",
+      scene,
+      color: "#fff",
+      lineWidth: 2,
+      drawStart: { kind: "object", objectId: "player-5" },
+      setDrawStart: vi.fn(),
+      commitScene,
+      updateSceneObjects: vi.fn(),
+    });
+    const arrow = commitScene.mock.calls[0][0].arrows.at(-1);
+    expect(arrow.from).toEqual({ kind: "object", objectId: "player-5" });
+    expect(arrow.to).toEqual({ kind: "object", objectId: "player-2" });
+    expect(arrow.semantic).toBe("pass");
   });
 
   it("zone tool appends a zone", () => {

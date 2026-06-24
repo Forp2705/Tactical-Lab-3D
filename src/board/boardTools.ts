@@ -1,12 +1,14 @@
 import { type BoardTool, TOOL_DEFS } from "./boardConstants";
 import { clamp } from "./boardGeometry";
 import type {
+  BoardArrowEndpoint,
   BoardArrowSemantic,
   BoardObject,
   BoardPoint,
   BoardScene,
 } from "./boardModel";
 import {
+  BoardArrowSemanticSchema,
   createBoardId,
   createPlayerToken,
   createSemanticArrow,
@@ -14,19 +16,12 @@ import {
 } from "./boardModel";
 import type { PlanningBoardPlayer } from "./productBoardTypes";
 
+// Las tools de dibujo SON semanticas: la conversion es 1:1, sin colapso. La
+// lista de semanticas valida sale del propio schema (una sola fuente de verdad).
+const ARROW_SEMANTICS = new Set<string>(BoardArrowSemanticSchema.options);
+
 export function semanticForTool(tool: BoardTool): BoardArrowSemantic | null {
-  if (tool === "ballRoute" || tool === "longPass" || tool === "cross")
-    return "pass";
-  if (tool === "pressureLine") return "pressure";
-  if (tool === "run") return "run";
-  if (
-    tool === "line" ||
-    tool === "pencil" ||
-    tool === "arrow" ||
-    tool === "shot"
-  )
-    return "movement";
-  return null;
+  return ARROW_SEMANTICS.has(tool) ? (tool as BoardArrowSemantic) : null;
 }
 
 export function labelForTool(tool: BoardTool) {
@@ -88,6 +83,7 @@ export function tokenFromPlanningPlayer(
 export function handleCanvasPress({
   point,
   tool,
+  targetId,
   scene,
   color,
   lineWidth,
@@ -98,31 +94,43 @@ export function handleCanvasPress({
 }: {
   point: BoardPoint;
   tool: BoardTool;
+  // Id del token bajo el click, si lo hubo. v1: anclaje por click-sobre-token.
+  targetId?: string;
   scene: BoardScene;
   color: string;
   lineWidth: number;
-  drawStart: BoardPoint | null;
-  setDrawStart: (point: BoardPoint | null) => void;
+  drawStart: BoardArrowEndpoint | null;
+  setDrawStart: (endpoint: BoardArrowEndpoint | null) => void;
   commitScene: (patch: Partial<BoardScene>, record?: boolean) => void;
   updateSceneObjects: (objects: BoardObject[], record?: boolean) => void;
 }) {
   const style = { color, tone: String(lineWidth) };
   const arrowSemantic = semanticForTool(tool);
   if (arrowSemantic) {
+    // Click sobre token -> endpoint anclado al objeto; sobre vacio -> punto
+    // libre (la excepcion). El seguimiento al mover el token ya lo resuelve el
+    // render via endpointPoint/resolveBoardScenePoint.
+    const endpoint: BoardArrowEndpoint = targetId
+      ? { kind: "object", objectId: targetId }
+      : { kind: "point", point };
     if (!drawStart) {
-      setDrawStart(point);
+      setDrawStart(endpoint);
       return;
     }
-    const arrow = createSemanticArrow(
-      arrowSemantic,
-      { kind: "point", point: drawStart },
-      { kind: "point", point },
-      {
-        label: labelForTool(tool),
-        style,
-        tacticalMeaning: labelForTool(tool),
-      },
-    );
+    // Gesto de cancelar: segundo click sobre el mismo token origen.
+    if (
+      drawStart.kind === "object" &&
+      endpoint.kind === "object" &&
+      drawStart.objectId === endpoint.objectId
+    ) {
+      setDrawStart(null);
+      return;
+    }
+    const arrow = createSemanticArrow(arrowSemantic, drawStart, endpoint, {
+      label: labelForTool(tool),
+      style,
+      tacticalMeaning: labelForTool(tool),
+    });
     commitScene({ arrows: [...scene.arrows, arrow] });
     setDrawStart(null);
     return;
@@ -142,13 +150,6 @@ export function handleCanvasPress({
       },
     );
     commitScene({ zones: [...scene.zones, zone] });
-    return;
-  }
-  if (tool === "text") {
-    updateSceneObjects([
-      ...scene.objects,
-      makeEquipmentLikeObject("note", "Buscar pase entre lineas", point, color),
-    ]);
     return;
   }
   if (tool === "cone" || tool === "mannequin" || tool === "goal") {

@@ -61,8 +61,6 @@ function TacticalBoardWorkspace({
         onUndo={a.undo}
         onRedo={a.redo}
         onCurrentViewChange={a.setCurrentView}
-        onConvertToTraining={a.createSessionBlock}
-        onExportPayload={a.createPayload}
         onSaveBoard={a.saveBoard}
       />
 
@@ -94,12 +92,13 @@ function TacticalBoardWorkspace({
           zoom={a.zoom}
           teamAFormation={a.teamAFormation}
           opponentFormation={board.opponent.formation}
+          anchorOriginId={a.anchorOriginId}
           keyInstructions={{
             objective: a.problem.objective,
             rule: a.exercise.rule,
             successCondition: a.exercise.successCondition,
           }}
-          onSelect={a.setSelection}
+          onSelect={a.onCanvasSelect}
           onPointerDown={a.onCanvasPointerDown}
           onPointerMove={a.onCanvasPointerMove}
           onPointerUp={a.onCanvasPointerUp}
@@ -125,9 +124,22 @@ function TacticalBoardWorkspace({
             selectedObject={a.selectedObject}
             selectedArrow={a.selectedArrow}
             selectedZone={a.selectedZone}
+            zones={scene.zones.map((zone) => ({
+              id: zone.id,
+              label: zone.label,
+            }))}
+            sceneSummary={{
+              title: scene.title,
+              phase: scene.phaseLabel,
+              problem: a.problem.problem,
+            }}
             onUpdateObject={a.updateSelectedObject}
             onUpdateArrow={a.updateSelectedArrow}
             onUpdateZone={a.updateSelectedZone}
+            onSetArrowSemantic={a.setArrowSemantic}
+            onSetArrowTargetZone={a.setArrowTargetZone}
+            onSetZoneSemantic={a.setZoneSemantic}
+            onDelete={a.deleteSelection}
           />
 
           <TacticalBoardProblemPanel

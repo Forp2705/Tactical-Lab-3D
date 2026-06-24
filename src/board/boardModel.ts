@@ -1,6 +1,7 @@
 import type { Player } from "@/data";
 import type { WeeklyDecisionThread } from "@/state/weeklyDecisionThread";
 import { z } from "zod";
+import { zoneStyle } from "./boardActionStyle";
 
 export const BOARD_SCHEMA_VERSION = 2;
 
@@ -62,6 +63,15 @@ export const BoardArrowSemanticSchema = z.enum([
   "recovery",
   "run",
   "rotation",
+  // Vocabulario futbolero ampliado (aditivo: boards viejos siguen parseando).
+  // La tool rail elige una de estas semanticas directo, sin capa lossy.
+  "longPass",
+  "cross",
+  "switch",
+  "carry",
+  "support",
+  "mark",
+  "shot",
 ]);
 export type BoardArrowSemantic = z.infer<typeof BoardArrowSemanticSchema>;
 
@@ -141,6 +151,14 @@ export const BoardArrowSchema = z.object({
   label: z.string().max(80).optional(),
   style: BoardStyleSchema.default({}),
   tacticalMeaning: z.string().max(220).optional(),
+  // Intencion tactica corta y zona objetivo de la accion (aditivos, opcionales).
+  // La fase se sigue leyendo de `linkedPhase` (no se duplica con un `phase`).
+  intent: z.string().max(220).optional(),
+  // Destino-zona de la accion. Cableado en P0.4 via el selector "zona objetivo"
+  // del inspector (edit affordance; ver arrowTargetZonePatch). Mutuamente
+  // excluyente con un `to` anclado a objeto. TODO(P0.4b): creacion NATIVA por
+  // segundo-click-sobre-zona (necesita que el canvas reporte la zona al draw).
+  targetZoneId: z.string().optional(),
   visibility: BoardVisibilitySchema.default("staff"),
   linkedPlayerId: z.string().optional(),
   linkedObjectId: z.string().optional(),
@@ -859,20 +877,26 @@ function remapEndpoint(
 
 function layerForArrow(semantic: BoardArrowSemantic): BoardLayer {
   if (semantic === "pressure") return "press";
-  if (semantic === "cover") return "cover";
+  if (semantic === "cover" || semantic === "mark") return "cover";
   if (semantic === "recovery") return "recovery";
   if (
     semantic === "pass" ||
     semantic === "run" ||
     semantic === "movement" ||
-    semantic === "rotation"
+    semantic === "rotation" ||
+    semantic === "longPass" ||
+    semantic === "cross" ||
+    semantic === "carry" ||
+    semantic === "support" ||
+    semantic === "switch" ||
+    semantic === "shot"
   ) {
     return "withBall";
   }
   return "notes";
 }
 
-function labelForArrow(semantic: BoardArrowSemantic) {
+export function labelForArrow(semantic: BoardArrowSemantic) {
   return {
     movement: "Movimiento",
     pass: "Pase",
@@ -881,10 +905,17 @@ function labelForArrow(semantic: BoardArrowSemantic) {
     recovery: "Repliegue",
     run: "Ruptura",
     rotation: "Rotacion",
+    longPass: "Pase largo",
+    cross: "Centro",
+    switch: "Cambio de orientacion",
+    carry: "Conduccion",
+    support: "Apoyo",
+    mark: "Marca",
+    shot: "Disparo",
   }[semantic];
 }
 
-function labelForZone(semantic: BoardZoneSemantic) {
+export function labelForZone(semantic: BoardZoneSemantic) {
   return {
     press: "Zona de presion",
     occupation: "Ocupacion",
@@ -896,14 +927,55 @@ function labelForZone(semantic: BoardZoneSemantic) {
   }[semantic];
 }
 
-function colorForZone(semantic: BoardZoneSemantic) {
+// --- Patches puros del inspector (P0.4). Logica testeable; el hook solo cablea.
+
+// Cambio de tipo de flecha: re-deriva el tacticalMeaning SOLO si estaba en el
+// default del tipo viejo (no pisa un texto que el usuario edito). El color de
+// la flecha no se guarda: sigue solo via arrowStyle en render.
+export function arrowSemanticPatch(
+  arrow: BoardArrow,
+  semantic: BoardArrowSemantic,
+): Partial<BoardArrow> {
+  const patch: Partial<BoardArrow> = { semantic };
+  if (arrow.tacticalMeaning === labelForArrow(arrow.semantic)) {
+    patch.tacticalMeaning = labelForArrow(semantic);
+  }
+  return patch;
+}
+
+// Destino de la accion: `targetZoneId` y un `to` anclado a objeto son
+// MUTUAMENTE EXCLUYENTES (una sola fuente de verdad). Setear zona objetivo
+// mueve `to` al centroide de la zona (snapshot) y rompe el anclaje a objeto;
+// limpiar zona objetivo borra el campo. (Seguir a la zona si se mueve = P0.4b.)
+export function arrowTargetZonePatch(zone: BoardZone | null): Partial<BoardArrow> {
+  if (!zone) return { targetZoneId: undefined };
   return {
-    press: "#ff7474",
-    occupation: "#5eead4",
-    freeSpace: "#60a5fa",
-    danger: "#f8d66d",
-    block: "#c7df5f",
-    channel: "#a7f3d0",
-    custom: "#d8b4fe",
-  }[semantic];
+    targetZoneId: zone.id,
+    to: {
+      kind: "point",
+      point: { x: zone.x + zone.w / 2, y: zone.y + zone.h / 2 },
+    },
+  };
+}
+
+// Cambio de tipo de zona: re-deriva color/label SOLO si estaban en default.
+export function zoneSemanticPatch(
+  zone: BoardZone,
+  semantic: BoardZoneSemantic,
+): { semantic: BoardZoneSemantic; color?: string; label?: string } {
+  const patch: { semantic: BoardZoneSemantic; color?: string; label?: string } =
+    { semantic };
+  if (zone.color === colorForZone(zone.semantic)) {
+    patch.color = colorForZone(semantic);
+  }
+  if (zone.label === labelForZone(zone.semantic)) {
+    patch.label = labelForZone(semantic);
+  }
+  return patch;
+}
+
+function colorForZone(semantic: BoardZoneSemantic) {
+  // Single-source: el color por semantica vive en boardActionStyle (lo
+  // comparten canvas y export).
+  return zoneStyle(semantic).color;
 }
