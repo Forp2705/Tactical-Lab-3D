@@ -3,8 +3,9 @@ import { loadSnapshot, saveSnapshot } from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { AppShell } from "@/ui/AppShell";
 import { ViewerCanvasHud } from "@/viewer/ViewerCanvasHud";
+import { getMatchFrame } from "@/viewer/lib/matchEngine";
 import { useViewerKeyboard } from "@/viewer/useKeyboard";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useMemo } from "react";
 import "./theme.css";
 import "./tactical-ui.css";
 import "@/ui/tacticalPrimitives.css";
@@ -295,6 +296,12 @@ function ViewerWorkspace() {
     { id: "showPress", active: showPress },
     { id: "personalSpace", active: personalSpace },
   ] as const;
+  // Unico call-site del match engine en el viewer: se computa aca y se inyecta
+  // a Scene3D y al HUD (antes cada uno lo recalculaba por su cuenta, 2x/frame).
+  const frame = useMemo(
+    () => getMatchFrame(selectedExercise, time, { personalSpace }),
+    [selectedExercise, time, personalSpace],
+  );
 
   return (
     <section className="viewer-layout">
@@ -359,7 +366,7 @@ function ViewerWorkspace() {
             showPasses={showPasses}
             showPress={showPress}
             layers={layers}
-            personalSpace={personalSpace}
+            frame={frame}
           />
           <Scene3D
             exercise={selectedExercise}
@@ -371,7 +378,7 @@ function ViewerWorkspace() {
             showPasses={showPasses}
             showPress={showPress}
             layers={layers}
-            personalSpace={personalSpace}
+            frame={frame}
           />
         </div>
         <ViewerInsightStrip exercise={selectedExercise} phase={phase} />

@@ -9,6 +9,7 @@ import {
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 import { Scene3D } from "@/viewer/Scene3D";
+import { getMatchFrame } from "@/viewer/lib/matchEngine";
 import { readSessionBlockIntent, readSessionIntent } from "@/sessions/SessionsView";
 import { useMemo, useState } from "react";
 
@@ -69,6 +70,13 @@ export function PlayerView() {
     () => buildWeeklyDecisionCardModel({ thread: weeklyDecisionThread }),
     [weeklyDecisionThread],
   );
+  // Preview estatico: el frame se computa aca y se inyecta a Scene3D (mismo
+  // contrato de prop que el viewer principal tras el dedup de getMatchFrame).
+  const previewTime = Math.min(1.2, focusExercise.scene.duration);
+  const previewFrame = useMemo(
+    () => getMatchFrame(focusExercise, previewTime, { personalSpace: false }),
+    [focusExercise, previewTime],
+  );
 
   return (
     <section className="team-card" style={{ maxWidth: 1080, margin: "0 auto" }}>
@@ -90,13 +98,14 @@ export function PlayerView() {
       <div className="canvas-wrap" style={{ height: 420, marginTop: 12 }}>
         <Scene3D
           exercise={focusExercise}
-          time={Math.min(1.2, focusExercise.scene.duration)}
+          time={previewTime}
           cameraMode="iso"
           showZones={false}
           showRuns
           showPasses
           showPress
           layers={PLAYER_LAYERS}
+          frame={previewFrame}
         />
       </div>
       <div className="toolbar" style={{ marginTop: 12 }}>
