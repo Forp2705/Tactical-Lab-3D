@@ -269,6 +269,12 @@ function annotationFromArrow(arrow: BoardArrow): BoardAnnotation {
     recovery: "arrow",
     run: "run",
     rotation: "arrow",
+    longPass: "ballRoute",
+    cross: "cross",
+    switch: "ballRoute",
+    carry: "arrow",
+    support: "arrow",
+    mark: "pressureLine",
   };
   return {
     id: arrow.id,

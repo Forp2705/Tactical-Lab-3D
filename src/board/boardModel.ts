@@ -62,6 +62,14 @@ export const BoardArrowSemanticSchema = z.enum([
   "recovery",
   "run",
   "rotation",
+  // Vocabulario futbolero ampliado (aditivo: boards viejos siguen parseando).
+  // La tool rail elige una de estas semanticas directo, sin capa lossy.
+  "longPass",
+  "cross",
+  "switch",
+  "carry",
+  "support",
+  "mark",
 ]);
 export type BoardArrowSemantic = z.infer<typeof BoardArrowSemanticSchema>;
 
@@ -141,6 +149,10 @@ export const BoardArrowSchema = z.object({
   label: z.string().max(80).optional(),
   style: BoardStyleSchema.default({}),
   tacticalMeaning: z.string().max(220).optional(),
+  // Intencion tactica corta y zona objetivo de la accion (aditivos, opcionales).
+  // La fase se sigue leyendo de `linkedPhase` (no se duplica con un `phase`).
+  intent: z.string().max(220).optional(),
+  targetZoneId: z.string().optional(),
   visibility: BoardVisibilitySchema.default("staff"),
   linkedPlayerId: z.string().optional(),
   linkedObjectId: z.string().optional(),
@@ -859,13 +871,18 @@ function remapEndpoint(
 
 function layerForArrow(semantic: BoardArrowSemantic): BoardLayer {
   if (semantic === "pressure") return "press";
-  if (semantic === "cover") return "cover";
+  if (semantic === "cover" || semantic === "mark") return "cover";
   if (semantic === "recovery") return "recovery";
   if (
     semantic === "pass" ||
     semantic === "run" ||
     semantic === "movement" ||
-    semantic === "rotation"
+    semantic === "rotation" ||
+    semantic === "longPass" ||
+    semantic === "cross" ||
+    semantic === "carry" ||
+    semantic === "support" ||
+    semantic === "switch"
   ) {
     return "withBall";
   }
@@ -881,6 +898,12 @@ function labelForArrow(semantic: BoardArrowSemantic) {
     recovery: "Repliegue",
     run: "Ruptura",
     rotation: "Rotacion",
+    longPass: "Pase largo",
+    cross: "Centro",
+    switch: "Cambio de orientacion",
+    carry: "Conduccion",
+    support: "Apoyo",
+    mark: "Marca",
   }[semantic];
 }
 
