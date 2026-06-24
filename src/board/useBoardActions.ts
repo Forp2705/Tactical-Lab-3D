@@ -169,7 +169,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       aiInterpretation,
     });
     setPayload(nextPayload);
-    setStatus("Payload estructurado listo para el generador");
+    setStatus("Payload JSON copiado al portapapeles");
     await navigator.clipboard
       ?.writeText(JSON.stringify(nextPayload, null, 2))
       .catch(() => undefined);

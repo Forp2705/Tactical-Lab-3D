@@ -61,7 +61,8 @@ function TacticalBoardWorkspace({
         onUndo={a.undo}
         onRedo={a.redo}
         onCurrentViewChange={a.setCurrentView}
-        onCreatePayload={a.createPayload}
+        onConvertToTraining={a.createSessionBlock}
+        onExportPayload={a.createPayload}
         onSaveBoard={a.saveBoard}
       />
 
@@ -144,7 +145,7 @@ function TacticalBoardWorkspace({
             sessionBlocks={a.sessionBlocks}
             canDeleteScene={board.scenes.length >= 2}
             onToggleLayer={a.toggleLayer}
-            onCreatePayload={a.createPayload}
+            onExportPayload={a.createPayload}
             onExportImage={a.exportImage}
             onExportBrief={a.exportBrief}
             onDuplicateScene={a.duplicateScene}

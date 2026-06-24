@@ -89,7 +89,7 @@ describe("product tactical board payload", () => {
     expect(findings).toContain("La presion necesita cobertura inmediata.");
   });
 
-  it("does not expose Animar jugada as the primary board CTA", () => {
+  it("uses an honest training CTA, not a fake generator/animation promise", () => {
     // The board UI is split across TacticalBoardView and its extracted
     // subcomponents, so assert the CTA text across the whole board module.
     const boardDir = join(process.cwd(), "src", "board");
@@ -101,8 +101,13 @@ describe("product tactical board payload", () => {
       ),
     ].join("\n");
 
-    expect(sources).toContain("Generar secuencia desde pizarra");
-    expect(sources).toContain("Enviar al generador");
+    // The hero action turns the board into a trainable session block.
+    expect(sources).toContain("Llevar al entrenamiento");
+    // The JSON payload export stays, but only as a secondary action.
+    expect(sources).toContain("Exportar payload (JSON)");
+    // The fake "generator"/animation promises are retired as primary CTAs.
     expect(sources).not.toContain("Animar jugada");
+    expect(sources).not.toContain("Enviar al generador");
+    expect(sources).not.toContain("Generar secuencia desde pizarra");
   });
 });

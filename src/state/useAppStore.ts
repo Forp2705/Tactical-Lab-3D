@@ -12,9 +12,9 @@ import {
   type BoardWorkspace,
   type TacticalBoard,
   TacticalBoardSchema,
+  buildBoardTrainingDraft,
   createDefaultBoard,
   duplicateBoardScene,
-  generateBoardSessionDraft,
   reorderBoardScenes,
 } from "@/board";
 import type {
@@ -1131,32 +1131,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     const board = state.tacticalBoards.find((item) => item.id === boardId);
     const scene = board?.scenes.find((item) => item.id === sceneId);
     if (!board || !scene) return false;
-    const draft = generateBoardSessionDraft({
-      ...board,
-      scenes: [scene],
-    });
-    const exercise = buildBlankExercise(
-      { title: draft.blocks[0]?.title ?? scene.title },
+    const draft = buildBoardTrainingDraft(board, scene);
+    const base = buildBlankExercise(
+      { title: draft.title },
       state.exerciseVariants,
     );
-    const blockDraft = draft.blocks[0];
-    const notes = [
-      `Problema: ${board.description || state.weeklyDecisionThread?.problem || "Plan tactico desde pizarra"}`,
-      `Objetivo: ${blockDraft?.objective ?? board.globalInstruction}`,
-      `Organizacion: ${blockDraft?.organization ?? ""}`,
-      `Restricciones: ${blockDraft?.constraints ?? ""}`,
-      `Senal de exito: ${blockDraft?.successSignal ?? board.successSignals[0] ?? ""}`,
-      ...(blockDraft?.coachingCues ?? []).map((cue) => `Coaching: ${cue}`),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const exercise: Exercise = {
+      ...base,
+      objective: { ...base.objective, primary: draft.objectivePrimary },
+      organization: draft.organization || base.organization,
+      space: draft.space || base.space,
+      rules: draft.rules.length ? draft.rules : base.rules,
+      coaching: draft.coaching.length ? draft.coaching : base.coaching,
+      success: draft.success || base.success,
+      progressions: draft.progressions.length
+        ? draft.progressions
+        : base.progressions,
+      duration: draft.durationMin,
+    };
     const blocks = [
       ...state.session.blocks,
       {
         id: makeEntityId("block"),
         exerciseId: exercise.id,
-        durationMin: blockDraft?.durationMin ?? 8,
-        notes,
+        durationMin: draft.durationMin,
+        notes: draft.notes,
         swappable: true,
         boardId,
         boardSceneId: sceneId,

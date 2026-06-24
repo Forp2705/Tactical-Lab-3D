@@ -39,7 +39,7 @@ export function TacticalBoardFooter({
         +
       </button>
       <span>Pizarra de planificacion</span>
-      <strong>Anotaciones para generar secuencias</strong>
+      <strong>Anotaciones que se convierten en entrenamiento</strong>
       <span>{status}</span>
       <button type="button" onClick={onZoomOut}>
         -

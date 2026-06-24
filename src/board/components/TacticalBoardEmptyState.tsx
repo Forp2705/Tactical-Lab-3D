@@ -19,8 +19,8 @@ export function TacticalBoardEmptyState({
             : "Crear pizarra de planificacion"}
         </h2>
         <p>
-          La pizarra convierte un problema tactico en anotaciones, ejercicio
-          entrenable y payload para el generador.
+          La pizarra convierte un problema tactico en anotaciones y un bloque
+          entrenable para tu sesion.
         </p>
         <div className="rombo-board-empty-actions">
           <button

@@ -61,6 +61,12 @@ export {
 } from "./boardModel";
 
 export {
+  buildBoardTrainingDraft,
+  parseDurationMinutes,
+  type BoardTrainingDraft,
+} from "./boardTraining";
+
+export {
   buildBoardFilename,
   formatBoardExportDate,
   slugifyBoardFilenamePart,

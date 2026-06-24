@@ -10,7 +10,7 @@ type TacticalBoardAiPanelProps = {
   sessionBlocks: SessionBlock[];
   canDeleteScene: boolean;
   onToggleLayer: (layerId: string) => void;
-  onCreatePayload: () => void;
+  onExportPayload: () => void;
   onExportImage: () => void;
   onExportBrief: (audience: "player" | "staff") => void;
   onDuplicateScene: () => void;
@@ -28,7 +28,7 @@ export function TacticalBoardAiPanel({
   sessionBlocks,
   canDeleteScene,
   onToggleLayer,
-  onCreatePayload,
+  onExportPayload,
   onExportImage,
   onExportBrief,
   onDuplicateScene,
@@ -69,9 +69,9 @@ export function TacticalBoardAiPanel({
         <button
           type="button"
           className="rombo-primary-cta compact"
-          onClick={onCreatePayload}
+          onClick={onCreateSessionBlock}
         >
-          Enviar al generador
+          Llevar al entrenamiento
         </button>
         <button type="button" onClick={onExportImage}>
           Exportar imagen
@@ -110,8 +110,8 @@ export function TacticalBoardAiPanel({
         >
           Vincular escena
         </button>
-        <button type="button" onClick={onCreateSessionBlock}>
-          Crear bloque desde escena
+        <button type="button" onClick={onExportPayload}>
+          Exportar payload (JSON)
         </button>
       </section>
 
