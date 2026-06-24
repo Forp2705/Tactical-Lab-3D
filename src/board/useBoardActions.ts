@@ -137,13 +137,12 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const aiInterpretation = useMemo(
     () =>
       inferAiInterpretation({
-        tacticalProblem: problem,
         players: roster,
+        objects: scene.objects,
         arrows: scene.arrows,
         zones: scene.zones,
-        exercise,
       }),
-    [problem, roster, scene, exercise],
+    [roster, scene],
   );
 
   const readiness = useMemo(

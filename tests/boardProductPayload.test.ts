@@ -70,7 +70,7 @@ describe("product tactical board payload", () => {
     expect(payload.aiInterpretation.length).toBeGreaterThan(0);
   });
 
-  it("keeps AI interpretation deterministic and non-mutating", () => {
+  it("degrades honestly and stays verdict-free with no anchored actions", () => {
     const arrows = [
       createSemanticArrow(
         "pressure",
@@ -78,15 +78,61 @@ describe("product tactical board payload", () => {
         { kind: "point", point: { x: 72, y: 48 } },
       ),
     ];
+    const input = { players: [], objects: [], arrows, zones: [] };
+    const a = inferAiInterpretation(input);
+    const b = inferAiInterpretation(input);
+    expect(a).toEqual(b); // deterministico
+    // Flecha point->point: sin antecedente anclado -> dice que falta, no inventa.
+    expect(a.join(" ")).toContain("ninguna anclada");
+    // Hechos, no veredictos.
+    expect(a.join(" ").toLowerCase()).not.toMatch(/ventaja|superioridad/);
+  });
+
+  it("reads anchored player-to-player relations from the graph", () => {
+    const board = createDefaultBoard("Relacion");
+    const objects = board.scenes[0].objects;
+    const [first, second] = objects.filter(
+      (object) => object.type === "playerToken",
+    );
+    const arrows = [
+      createSemanticArrow(
+        "pass",
+        { kind: "object", objectId: first.id },
+        { kind: "object", objectId: second.id },
+      ),
+    ];
     const findings = inferAiInterpretation({
-      tacticalProblem: DEFAULT_TACTICAL_PROBLEM,
       players: [],
+      objects,
       arrows,
       zones: [],
-      exercise: DEFAULT_EXERCISE_BUILDER,
     });
+    // El finding nombra a ambos jugadores: hecho estructural (la flecha existe).
+    expect(
+      findings.some(
+        (finding) =>
+          finding.includes(`el ${first.number}`) &&
+          finding.includes(`el ${second.number}`),
+      ),
+    ).toBe(true);
+  });
 
-    expect(findings).toContain("La presion necesita cobertura inmediata.");
+  it("reports positional token counts per zone as a fact", () => {
+    const board = createDefaultBoard("Posicional");
+    const objects = board.scenes[0].objects;
+    const ownCount = objects.filter(
+      (object) => object.type === "playerToken",
+    ).length;
+    const zone = createTacticalZone("danger", 0, 0, 100, 100);
+    const findings = inferAiInterpretation({
+      players: [],
+      objects,
+      arrows: [],
+      zones: [zone],
+    });
+    expect(
+      findings.some((finding) => finding.includes(`${ownCount} propios`)),
+    ).toBe(true);
   });
 
   it("uses an honest training CTA, not a fake generator/animation promise", () => {

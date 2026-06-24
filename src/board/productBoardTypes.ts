@@ -1,5 +1,6 @@
 import type {
   BoardArrow,
+  BoardArrowSemantic,
   BoardObject,
   BoardScene,
   BoardZone,
@@ -133,11 +134,10 @@ export function buildBoardPayload(
   const aiInterpretation =
     options.aiInterpretation ??
     inferAiInterpretation({
-      tacticalProblem: options.tacticalProblem,
       players,
+      objects: scene.objects,
       arrows: scene.arrows,
       zones: scene.zones,
-      exercise: options.exercise,
     });
 
   return {
@@ -157,72 +157,149 @@ export function buildBoardPayload(
   };
 }
 
+// Lectura deterministica de la escena. Cada finding tiene antecedente
+// ESTRUCTURAL en el grafo (una flecha real, una zona, posiciones de fichas).
+// Reporta HECHOS que el DT interpreta, no veredictos que la herramienta
+// asevera: "3 propios vs 2 rivales en X" (posicional, defendible) en vez de
+// "tenemos ventaja" (cualitativo, que un board estatico no sostiene). Si la
+// escena no da para leer, lo dice en vez de inventar. Sin LLM.
 export function inferAiInterpretation({
-  tacticalProblem,
   players,
+  objects,
   arrows,
   zones,
-  exercise,
 }: {
-  tacticalProblem: TacticalProblem;
   players: PlanningBoardPlayer[];
+  objects: BoardObject[];
   arrows: BoardArrow[];
   zones: BoardZone[];
-  exercise: ExerciseBuilder;
 }): string[] {
   const findings: string[] = [];
-  const connector =
-    players.find((player) =>
-      `${player.position} ${player.role ?? ""} ${player.task ?? ""}`
-        .toLowerCase()
-        .includes("enganche"),
-    ) ??
-    players.find((player) =>
-      `${player.position} ${player.role ?? ""} ${player.task ?? ""}`
-        .toLowerCase()
-        .includes("medio"),
-    );
 
-  if (connector) {
-    findings.push(`El ${connector.number} es el conector principal.`);
+  // 1) Relaciones jugador->jugador: hecho estructural (existe una flecha real
+  //    anclada de objeto a objeto). Nada de plantillas keyed a un semantic.
+  const anchoredLinks = arrows.filter(
+    (arrow) => arrow.from.kind === "object" && arrow.to.kind === "object",
+  );
+  for (const arrow of anchoredLinks.slice(0, 3)) {
+    const from = resolveBoardActor(arrow.from, objects, players);
+    const to = resolveBoardActor(arrow.to, objects, players);
+    if (from && to) {
+      findings.push(
+        `${labelBoardActor(from)} ${RELATION_VERB[arrow.semantic]} ${labelBoardActor(to)}.`,
+      );
+    }
   }
-  if (
-    /interior|tercer hombre|dentro|central/i.test(
-      `${tacticalProblem.objective} ${exercise.rule}`,
-    )
-  ) {
-    findings.push("Se busca progresar por dentro.");
-  }
-  if (
-    zones.some(
-      (zone) => zone.semantic === "danger" || zone.semantic === "freeSpace",
-    )
-  ) {
-    findings.push("Hay una zona critica que debe protegerse tras perdida.");
-  }
-  if (
-    arrows.some(
-      (arrow) =>
-        arrow.semantic === "pressure" || /presion/i.test(arrow.label ?? ""),
-    )
-  ) {
-    findings.push("La presion necesita cobertura inmediata.");
-  }
-  if (
-    !arrows.some(
-      (arrow) => arrow.semantic === "cover" || arrow.semantic === "recovery",
-    )
-  ) {
-    findings.push("Falta cobertura inmediata tras perdida.");
-  }
-  if (findings.length === 0) {
+
+  // 2) Acciones orientadas a una zona (targetZoneId).
+  for (const arrow of arrows.filter((arrow) => arrow.targetZoneId).slice(0, 2)) {
+    const zone = zones.find((item) => item.id === arrow.targetZoneId);
+    if (!zone) continue;
+    const from = resolveBoardActor(arrow.from, objects, players);
     findings.push(
-      "La pizarra define una intencion, pero necesita mas roles o anotaciones para generar una secuencia precisa.",
+      `${from ? labelBoardActor(from) : "Una accion"} se orienta hacia ${zone.label}.`,
     );
+  }
+
+  // 3) Hechos posicionales por zona: conteo de fichas reales, NO veredicto.
+  for (const zone of zones.slice(0, 2)) {
+    const inside = objects.filter(
+      (object) =>
+        (object.type === "playerToken" || object.type === "opponentToken") &&
+        isInsideZoneRect(object.position, zone),
+    );
+    const own = inside.filter((object) => object.type === "playerToken").length;
+    const rival = inside.filter(
+      (object) => object.type === "opponentToken",
+    ).length;
+    if (own + rival > 0) {
+      findings.push(`En ${zone.label}: ${own} propios vs ${rival} rivales.`);
+    }
+  }
+
+  // 4) Degradar con honestidad: decir QUE FALTA en vez de inventar.
+  if (findings.length === 0) {
+    if (arrows.length === 0) {
+      findings.push(
+        "La pizarra todavia no tiene acciones. Dibuja flechas ancladas a jugadores para leer relaciones.",
+      );
+    } else if (anchoredLinks.length === 0) {
+      findings.push(
+        "Hay acciones, pero ninguna anclada de jugador a jugador. Ancla origen y destino para leer relaciones concretas.",
+      );
+    } else {
+      findings.push(
+        "Faltan numeros o roles en las fichas para describir la relacion con precision.",
+      );
+    }
   }
 
   return findings.slice(0, 4);
 }
+
+type BoardActorRef = {
+  num?: number;
+  role?: string;
+  label: string;
+  rival: boolean;
+};
+
+function resolveBoardActor(
+  endpoint: BoardArrow["from"],
+  objects: BoardObject[],
+  players: PlanningBoardPlayer[],
+): BoardActorRef | null {
+  if (endpoint.kind !== "object") return null;
+  const object = objects.find((item) => item.id === endpoint.objectId);
+  if (!object) return null;
+  const role =
+    object.role ||
+    players.find((player) => player.id === object.linkedPlayerId)?.position;
+  return {
+    num: object.number,
+    role,
+    label: object.label,
+    rival: object.type === "opponentToken",
+  };
+}
+
+function labelBoardActor(actor: BoardActorRef): string {
+  const id = actor.num ? `el ${actor.num}` : actor.label;
+  const side = actor.rival ? " rival" : "";
+  const role = actor.role ? ` (${actor.role})` : "";
+  return `${id}${side}${role}`;
+}
+
+function isInsideZoneRect(
+  position: { x: number; y: number },
+  zone: BoardZone,
+): boolean {
+  return (
+    position.x >= zone.x &&
+    position.x <= zone.x + zone.w &&
+    position.y >= zone.y &&
+    position.y <= zone.y + zone.h
+  );
+}
+
+// Verbo relacional por semantica: describe la accion DIBUJADA (no es un
+// veredicto). Record => el compilador exige una entrada por semantica nueva.
+const RELATION_VERB: Record<BoardArrowSemantic, string> = {
+  pass: "le pasa a",
+  longPass: "le pasa largo a",
+  switch: "cambia el juego a",
+  cross: "centra a",
+  carry: "conduce hacia",
+  movement: "se desmarca para",
+  run: "rompe para",
+  support: "da apoyo a",
+  rotation: "rota con",
+  shot: "remata asistido por",
+  pressure: "presiona a",
+  mark: "marca a",
+  cover: "cubre a",
+  recovery: "repliega cubriendo a",
+};
 
 function collectPayloadPlayers(
   objects: BoardObject[],

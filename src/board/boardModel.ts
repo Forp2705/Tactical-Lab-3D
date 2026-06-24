@@ -154,10 +154,10 @@ export const BoardArrowSchema = z.object({
   // Intencion tactica corta y zona objetivo de la accion (aditivos, opcionales).
   // La fase se sigue leyendo de `linkedPhase` (no se duplica con un `phase`).
   intent: z.string().max(220).optional(),
-  // TODO(P0.4): cablear targetZoneId. Hoy ninguna interaccion lo setea (deferral
-  // CONSCIENTE de P0.3). Se conecta en P0.4 via selector "zona objetivo" del
-  // inspector + segundo-click-sobre-zona (necesita que el canvas reporte la
-  // zona al flujo de dibujo). No dejar huerfano.
+  // Destino-zona de la accion. Cableado en P0.4 via el selector "zona objetivo"
+  // del inspector (edit affordance; ver arrowTargetZonePatch). Mutuamente
+  // excluyente con un `to` anclado a objeto. TODO(P0.4b): creacion NATIVA por
+  // segundo-click-sobre-zona (necesita que el canvas reporte la zona al draw).
   targetZoneId: z.string().optional(),
   visibility: BoardVisibilitySchema.default("staff"),
   linkedPlayerId: z.string().optional(),
