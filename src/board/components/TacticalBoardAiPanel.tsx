@@ -40,7 +40,9 @@ export function TacticalBoardAiPanel({
   return (
     <>
       <section>
-        <h2>Que entiende la IA</h2>
+        {/* La lectura del board es lo principal del panel: que ENTIENDE RomboIQ
+            de la escena, no un payload para alimentar un generador. */}
+        <h2>Que entiende RomboIQ</h2>
         <ul className="rombo-ai-list">
           {aiInterpretation.map((item) => (
             <li key={item}>{item}</li>
@@ -73,15 +75,6 @@ export function TacticalBoardAiPanel({
         >
           Llevar al entrenamiento
         </button>
-        <button type="button" onClick={onExportImage}>
-          Exportar imagen
-        </button>
-        <button type="button" onClick={() => onExportBrief("staff")}>
-          Exportar brief imprimible
-        </button>
-        <button type="button" onClick={() => onExportBrief("player")}>
-          Brief jugadores
-        </button>
         <button type="button" onClick={onDuplicateScene}>
           Duplicar escena
         </button>
@@ -110,17 +103,31 @@ export function TacticalBoardAiPanel({
         >
           Vincular escena
         </button>
+      </section>
+
+      {/* Exports y payload JSON viven internamente, no dominan el panel. Los
+          handlers siguen funcionando, solo dejan de ser prominentes. */}
+      <details className="rombo-advanced">
+        <summary>Avanzado</summary>
+        <button type="button" onClick={onExportImage}>
+          Exportar imagen
+        </button>
+        <button type="button" onClick={() => onExportBrief("staff")}>
+          Exportar brief imprimible
+        </button>
+        <button type="button" onClick={() => onExportBrief("player")}>
+          Brief jugadores
+        </button>
         <button type="button" onClick={onExportPayload}>
           Exportar payload (JSON)
         </button>
-      </section>
-
-      {payload ? (
-        <section className="rombo-payload">
-          <h2>Payload listo</h2>
-          <pre>{JSON.stringify(payload, null, 2)}</pre>
-        </section>
-      ) : null}
+        {payload ? (
+          <section className="rombo-payload">
+            <h2>Payload listo</h2>
+            <pre>{JSON.stringify(payload, null, 2)}</pre>
+          </section>
+        ) : null}
+      </details>
     </>
   );
 }

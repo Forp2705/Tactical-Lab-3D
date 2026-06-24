@@ -234,6 +234,9 @@ export function inferAiInterpretation({
     }
   }
 
+  // TODO(P0.7): al topear (los slice de arriba y este), priorizar por
+  // importancia -zonas danger/risk y links anclados- en vez de por orden de
+  // insercion del array, para que una zona relevante no quede afuera.
   return findings.slice(0, 4);
 }
 
@@ -270,6 +273,9 @@ function labelBoardActor(actor: BoardActorRef): string {
   return `${id}${side}${role}`;
 }
 
+// Aproxima toda zona como rectangulo: una zona "circle" se cuenta por su
+// bounding-box. Suficiente para lectura tactica. TODO(P0.7): conteo exacto en
+// zonas circulares si algun conteo se ve raro.
 function isInsideZoneRect(
   position: { x: number; y: number },
   zone: BoardZone,

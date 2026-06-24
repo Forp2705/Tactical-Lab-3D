@@ -149,7 +149,10 @@ describe("product tactical board payload", () => {
 
     // The hero action turns the board into a trainable session block.
     expect(sources).toContain("Llevar al entrenamiento");
-    // The JSON payload export stays, but only as a secondary action.
+    // P0.5b: la lectura es lo principal ("Que entiende RomboIQ"); el payload
+    // JSON sigue accesible pero vive en "Avanzado", no domina el panel.
+    expect(sources).toContain("Que entiende RomboIQ");
+    expect(sources).toContain("Avanzado");
     expect(sources).toContain("Exportar payload (JSON)");
     // The fake "generator"/animation promises are retired as primary CTAs.
     expect(sources).not.toContain("Animar jugada");
