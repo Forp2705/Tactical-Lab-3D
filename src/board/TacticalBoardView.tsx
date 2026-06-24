@@ -61,8 +61,6 @@ function TacticalBoardWorkspace({
         onUndo={a.undo}
         onRedo={a.redo}
         onCurrentViewChange={a.setCurrentView}
-        onConvertToTraining={a.createSessionBlock}
-        onExportPayload={a.createPayload}
         onSaveBoard={a.saveBoard}
       />
 

@@ -25,31 +25,33 @@ type NavItem = {
   onSelect?: () => void;
 };
 
+// Pizarra primero: es la experiencia principal del producto. El resto del
+// flujo semanal sigue accesible; sesiones/biblioteca pasan a Avanzado.
 const LOOP_NAV: NavItem[] = [
-  { view: "home", code: "01", label: "Sala" },
+  { view: "board", code: "01", label: "Pizarra" },
+  { view: "home", code: "02", label: "Sala" },
   {
     view: "ai",
-    code: "02",
+    code: "03",
     label: "Diagnostico",
     isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("coach"),
   },
-  { view: "board", code: "03", label: "Pizarra" },
-  { view: "sessions", code: "04", label: "Sesion" },
   {
     view: "ai",
-    code: "05",
+    code: "04",
     label: "Post-partido",
     isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("postMatch"),
   },
-  { view: "team", code: "06", label: "Evolucion" },
+  { view: "team", code: "05", label: "Evolucion" },
 ];
 
 const ADVANCED_NAV: NavItem[] = [
+  { view: "sessions", code: "SES", label: "Sesion" },
+  { view: "library", code: "LIB", label: "Biblioteca" },
   { view: "viewer", code: "3D", label: "Cancha 3D" },
   { view: "video", code: "VID", label: "Video" },
-  { view: "library", code: "LIB", label: "Biblioteca" },
   { view: "player", code: "PL", label: "Briefing" },
 ];
 
@@ -82,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <nav className="nav">
-            <span className="nav-section-label">Flujo semanal</span>
+            <span className="nav-section-label">Principal</span>
             {LOOP_NAV.map((item) => (
               <NavButton
                 key={`${item.code}-${item.label}`}
