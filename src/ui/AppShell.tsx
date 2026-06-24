@@ -14,7 +14,8 @@ type NavView =
   | "sessions"
   | "video"
   | "ai"
-  | "player";
+  | "player"
+  | "board";
 
 type NavItem = {
   code: string;
@@ -33,15 +34,16 @@ const LOOP_NAV: NavItem[] = [
     isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("coach"),
   },
-  { view: "sessions", code: "03", label: "Sesion" },
+  { view: "board", code: "03", label: "Pizarra" },
+  { view: "sessions", code: "04", label: "Sesion" },
   {
     view: "ai",
-    code: "04",
+    code: "05",
     label: "Post-partido",
     isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("postMatch"),
   },
-  { view: "team", code: "05", label: "Evolucion" },
+  { view: "team", code: "06", label: "Evolucion" },
 ];
 
 const ADVANCED_NAV: NavItem[] = [
@@ -232,6 +234,7 @@ function metaFor(view: string) {
       video: ["Observacion"],
       ai: ["Coach"],
       player: ["Briefing"],
+      board: ["Pizarra"],
     }[view] ?? ["RomboIQ"]
   );
 }
@@ -247,6 +250,7 @@ function titleFor(view: string) {
       video: "Video y evidencia",
       ai: "Diagnostico y post-partido",
       player: "Briefing para jugadores",
+      board: "Pizarra tactica",
     }[view] ?? "RomboIQ"
   );
 }
@@ -263,6 +267,7 @@ function subtitleFor(view: string) {
       video: "Tagging manual y evidencia asistida para revisar partidos.",
       ai: "Decision tactica, evidencia visible y siguiente accion.",
       player: "Vista limpia para presentar ideas a jugadores y staff.",
+      board: "Modelar la respuesta tactica y conectarla al foco semanal.",
     }[view] ?? ""
   );
 }
@@ -358,6 +363,9 @@ function snapshotFromState(state: ReturnType<typeof useAppStore.getState>) {
     libraryFavoriteIds: state.libraryFavoriteIds,
     libraryRecentOpens: state.libraryRecentOpens,
     sketches: state.sketches,
+    tacticalBoards: state.tacticalBoards,
+    activeBoardId: state.activeBoardId,
+    activeBoardSceneId: state.activeBoardSceneId,
     aiPrompt: state.aiPrompt,
   };
 }

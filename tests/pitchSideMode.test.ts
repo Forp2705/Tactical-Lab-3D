@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { catalog } from "../src/data";
 import type { Session, SessionBlock } from "../src/data/schemas";
+import { createDefaultBoard } from "../src/board";
+import { resolvePitchSideBoardScene } from "../src/sessions/PitchSideView";
 import { readSessionBlockIntent, readSessionIntent } from "../src/sessions/SessionsView";
 import { getExerciseById, useAppStore } from "../src/state/useAppStore";
 
@@ -135,6 +137,37 @@ describe("Pitch-side Mode — navigation bounds", () => {
     expect(clampIndex(2, 3)).toBe(2);
     expect(clampIndex(5, 3)).toBe(2);
     expect(clampIndex(1, 0)).toBe(0);
+  });
+});
+
+describe("Pitch-side Mode — linked board scene correctness", () => {
+  it("starts from the linked board scene instead of the first scene", () => {
+    const board = createDefaultBoard("Plan cancha");
+    const withThreeScenes = {
+      ...board,
+      scenes: [
+        { ...board.scenes[0], id: "scene-1", title: "Escena 1" },
+        { ...board.scenes[0], id: "scene-2", title: "Escena 2" },
+        { ...board.scenes[0], id: "scene-3", title: "Escena 3" },
+      ],
+    };
+
+    const resolved = resolvePitchSideBoardScene(withThreeScenes, "scene-3", null);
+    expect(resolved.index).toBe(2);
+    expect(resolved.scene?.id).toBe("scene-3");
+
+    const previous = resolvePitchSideBoardScene(withThreeScenes, "scene-3", resolved.index - 1);
+    expect(previous.index).toBe(1);
+    expect(previous.scene?.id).toBe("scene-2");
+  });
+
+  it("falls back safely when the linked scene is missing", () => {
+    const board = createDefaultBoard("Plan con escena borrada");
+    const resolved = resolvePitchSideBoardScene(board, "missing-scene", null);
+
+    expect(resolved.index).toBe(0);
+    expect(resolved.scene?.id).toBe(board.scenes[0].id);
+    expect(resolved.missingLinkedScene).toBe(true);
   });
 });
 

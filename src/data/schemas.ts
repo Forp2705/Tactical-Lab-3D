@@ -231,6 +231,14 @@ export const SessionBlockSchema = z.object({
    */
   sketchId: z.string().optional(),
   /**
+   * Optional reference to a structured Tactical Board (`TacticalBoard.id`, see
+   * src/board/). This is additive and independent from `sketchId`: Quick
+   * Sketch remains the fast/disposable surface, while boardId/boardSceneId
+   * links a reusable semantic board or one specific scene to the block.
+   */
+  boardId: z.string().optional(),
+  boardSceneId: z.string().optional(),
+  /**
    * Optional "marked as done" flag, set from Pitch-side Mode while running a
    * session on the field (see `src/sessions/PitchSideView.tsx`). Purely a UI
    * checkbox for the coach during training — additive/backward-compatible,
