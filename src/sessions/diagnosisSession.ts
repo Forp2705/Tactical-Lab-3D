@@ -2,6 +2,7 @@ import type { CoachMatchAdvice } from "@/ai/CoachSchemas";
 import { inferDomainsFromText, matchExercisesForDiagnosis } from "@/ai/exerciseMatching";
 import type { Exercise, Session } from "@/data";
 import type { WeeklyDecisionThread } from "@/state/weeklyDecisionThread";
+import type { ProblemTemplate } from "./problemTemplates";
 
 export type DiagnosisSessionPlan = {
   title: string;
@@ -148,6 +149,69 @@ export function buildSessionPlanFromWeeklyThread(
       `Objetivo tactico: ${intent?.objective || `Ajustar el comportamiento asociado a: ${thread.problem}`}`,
       `Senales del sabado: ${successSignal}`,
       `Test de miercoles: ${reviewFocus}`,
+    ].join("\n"),
+  };
+}
+
+// Quick Start: convierte un problema curado (ProblemTemplate) en un plan de
+// sesion, reusando el mismo motor que el flujo semanal. Deterministico y sin
+// LLM: `domains` viene fijado por el template y la seleccion baja por
+// `buildWeeklyThreadExerciseIds` (mismas IDs en cada llamada).
+export function buildSessionPlanFromProblemTemplate(
+  template: ProblemTemplate,
+  exercises: Exercise[],
+): DiagnosisSessionPlan {
+  const text = [
+    template.description,
+    template.objective,
+    template.seed,
+    template.successSignal,
+  ].join(" ");
+  const matchedIds = matchExercisesForDiagnosis({
+    domains: template.domains.length
+      ? template.domains
+      : inferDomainsFromText(text),
+    query: template.seed || text,
+    exercises,
+    limit: 8,
+  }).map((match) => match.exercise.id);
+  const exerciseIds = buildWeeklyThreadExerciseIds(matchedIds, exercises);
+  const selected = exerciseIds.flatMap((id) => {
+    const exercise = exercises.find((item) => item.id === id);
+    return exercise ? [exercise] : [];
+  });
+  const estimatedDuration = selected.reduce(
+    (sum, exercise) => sum + exercise.duration,
+    0,
+  );
+  const estimatedLoad = selected.reduce(
+    (sum, exercise) => sum + exercise.duration * exercise.rpe,
+    0,
+  );
+
+  return {
+    title: `Quick Start - ${shortTitle(template.chipLabel)}`,
+    problemStatement: template.description,
+    tacticalObjective: template.objective,
+    reviewFocus: template.successSignal,
+    exerciseIds,
+    estimatedDuration,
+    estimatedLoad,
+    coachingPoints: unique([
+      template.objective,
+      ...selected.flatMap((exercise) => exercise.coaching.slice(0, 2)),
+    ]).slice(0, 8),
+    errorsToCorrect: unique([
+      ...selected.flatMap((exercise) => exercise.errors.slice(0, 2)),
+    ]).slice(0, 8),
+    saturdaySignals: unique([
+      template.successSignal,
+      ...selected.map((exercise) => exercise.success),
+    ]).slice(0, 6),
+    staffNotes: [
+      `Problema: ${template.description}`,
+      `Objetivo tactico: ${template.objective}`,
+      `Senal de exito: ${template.successSignal}`,
     ].join("\n"),
   };
 }

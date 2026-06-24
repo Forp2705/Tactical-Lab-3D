@@ -24,6 +24,7 @@ import {
   PitchViz,
 } from "@/ui/tacticalPrimitives";
 import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
+import { PROBLEM_TEMPLATES } from "@/sessions/problemTemplates";
 import {
   isTeamIdentityBootstrapped,
   isTeamIdentityConfigured,
@@ -234,6 +235,8 @@ export function HomeView() {
           </div>
         </div>
       </section>
+      <QuickStartPanel sessionHasBlocks={session.blocks.length > 0} />
+
       {workspaceMode === "real" && !isTeamIdentityBootstrapped(teamIdentity) ? (
         <section className="home-onboarding-strip">
           <RealCoachOnboarding identity={teamIdentity} />
@@ -456,6 +459,57 @@ type NextAction = {
   cta: string;
   onClick: () => void;
 };
+
+const QuickStartPanel = memo(function QuickStartPanel({
+  sessionHasBlocks,
+}: {
+  sessionHasBlocks: boolean;
+}) {
+  function start(templateId: string) {
+    if (
+      sessionHasBlocks &&
+      !window.confirm(
+        "Ya tenes una sesion armada. Quick Start la va a reemplazar por una nueva. Continuar?",
+      )
+    ) {
+      return;
+    }
+    useAppStore.getState().startFromProblemTemplate(templateId);
+  }
+
+  return (
+    <section className="home-action-block quick-start-block">
+      <div className="section-title home-action-head">
+        <div>
+          <span className="panel-eyebrow">Quick Start</span>
+          <h3>Que te esta costando esta semana?</h3>
+        </div>
+      </div>
+      <p className="muted-panel">
+        Elegi un problema y RomboIQ arma una sesion entrenable al instante, con
+        ejercicios reales del catalogo. Sin configurar plantel ni esperar al
+        coach.
+      </p>
+      <div className="home-action-strip quick-start-strip">
+        {PROBLEM_TEMPLATES.map((template) => (
+          <button
+            type="button"
+            className="home-action quick-start-chip"
+            key={template.id}
+            onClick={() => start(template.id)}
+            title={template.objective}
+          >
+            <div className="lr-icon">QS</div>
+            <div>
+              <b>{template.chipLabel}</b>
+              <small>{template.description}</small>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+});
 
 const WeeklyWorkflowPanel = memo(function WeeklyWorkflowPanel({
   activeDiagnosis,

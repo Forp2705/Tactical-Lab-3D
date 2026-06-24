@@ -58,9 +58,11 @@ import {
 } from "@/scout/opponentScout";
 import {
   buildSessionPlanFromDiagnosis,
+  buildSessionPlanFromProblemTemplate,
   buildSessionPlanFromWeeklyThread,
   materializeDiagnosisSession,
 } from "@/sessions/diagnosisSession";
+import { getProblemTemplate } from "@/sessions/problemTemplates";
 import {
   type Sketch,
   SketchSchema,
@@ -440,6 +442,7 @@ type AppState = {
   updateGameModel: (patch: Partial<GameModel>) => void;
   updateOpponentScout: (patch: Partial<OpponentScout>) => void;
   createSessionFromWeeklyThread: () => boolean;
+  startFromProblemTemplate: (templateId: string) => boolean;
   createSessionFromCoachAdvice: (response: CoachResponse) => boolean;
   syncWeeklyThreadFromPostMatchReport: (
     report: WeeklyDecisionThreadReportInput,
@@ -1586,6 +1589,26 @@ export const useAppStore = create<AppState>((set, get) => ({
       session: nextSession,
       view: "sessions",
       weeklyDecisionThread: nextThread,
+    });
+    return true;
+  },
+  startFromProblemTemplate: (templateId) => {
+    const template = getProblemTemplate(templateId);
+    if (!template) return false;
+    const state = get();
+    const exercises = [...getSelectableCatalog(), ...state.exerciseVariants];
+    const plan = buildSessionPlanFromProblemTemplate(template, exercises);
+    const nextSession = materializeDiagnosisSession(
+      state.session,
+      plan,
+      exercises,
+    );
+    if (!nextSession.blocks.length) return false;
+    set({
+      session: nextSession,
+      // No pisar un problema que el usuario ya escribio a mano.
+      aiPrompt: state.aiPrompt.trim() ? state.aiPrompt : template.description,
+      view: "sessions",
     });
     return true;
   },
