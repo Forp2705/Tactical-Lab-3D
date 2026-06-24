@@ -3552,16 +3552,29 @@ textarea:focus {
   top: 18px;
 }
 
-.viewer-hud-callout {
+.viewer-hud-lower {
   position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.viewer-hud-callout {
+  position: relative;
   display: grid;
-  gap: 8px;
-  width: min(270px, calc(100% - 48px));
-  padding: 14px 16px;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 340px;
+  padding: 10px 14px;
   border: 1px solid rgba(241, 232, 210, 0.12);
-  border-radius: 16px;
-  background: rgba(5, 12, 16, 0.72);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
+  border-radius: 14px;
+  background: rgba(5, 12, 16, 0.62);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(10px);
 }
 
@@ -3580,14 +3593,20 @@ textarea:focus {
   line-height: 1.5;
 }
 
-.viewer-hud-why {
-  top: 26px;
-  right: 24px;
+.viewer-hud-why b {
+  font-size: 13px;
 }
 
-.viewer-hud-intent {
-  top: 166px;
-  right: 24px;
+.viewer-hud-why p,
+.viewer-hud-intent p {
+  font-size: 12px;
+}
+
+/* La intencion del movimiento es secundaria: ocupa menos en pantallas chicas. */
+@media (max-width: 900px) {
+  .viewer-hud-intent {
+    display: none;
+  }
 }
 
 .viewer-insight-strip {
