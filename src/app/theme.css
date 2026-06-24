@@ -5190,6 +5190,41 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   resize: vertical;
 }
 
+/* Controles acordes al tema: nada de chrome nativo dentro de la pizarra.
+   El select pierde la flecha del sistema y usa un chevron propio. */
+.rombo-board-shell select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+
+.rombo-board-shell select:hover,
+.rombo-board-shell input:hover,
+.rombo-board-shell textarea:hover {
+  border-color: rgba(148, 163, 184, 0.38);
+}
+
+.rombo-board-shell button:focus-visible,
+.rombo-board-shell select:focus-visible,
+.rombo-board-shell input:focus-visible,
+.rombo-board-shell textarea:focus-visible {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.7);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.32);
+}
+
+.rombo-board-shell input[type="number"]::-webkit-inner-spin-button,
+.rombo-board-shell input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
 .rombo-primary-cta {
   display: grid;
   min-width: 230px;
@@ -5323,6 +5358,27 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   border-top: 1px solid rgba(148, 163, 184, 0.16);
 }
 
+/* El primer grupo va pegado al header "Herramientas": sin separador doble. */
+.rombo-tool-group:first-of-type {
+  margin-top: 4px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.rombo-toolrail h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rombo-toolrail h3::before {
+  content: "";
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: rgba(74, 222, 128, 0.5);
+}
+
 .rombo-color-row,
 .rombo-width-row {
   display: flex;
@@ -5381,7 +5437,7 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-pitch-toolbar select {
   width: 118px;
-  background: rgba(2, 6, 23, 0.84);
+  background-color: rgba(2, 6, 23, 0.84);
 }
 
 .rombo-pitch-svg {
@@ -5446,17 +5502,24 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .board-endpoint {
   color: #5eead4;
   stroke: currentColor;
-  stroke-width: 0.3;
+  stroke-width: 0.35;
+  paint-order: stroke;
 }
 
-/* Anclado a un token: punto lleno (anclaje tomo). */
+/* Anclado a un token: punto lleno con borde oscuro fino para que recorte
+   limpio sobre el cesped (anclaje tomo). */
 .board-endpoint.anchored {
   fill: currentColor;
+  stroke: rgba(2, 6, 23, 0.85);
+  stroke-width: 0.22;
 }
 
-/* Libre: aro hueco "flotante" (el extremo riesgoso, sin anclar). */
+/* Libre: aro hueco punteado "flotante" (el extremo riesgoso, sin anclar). El
+   punteado refuerza la lectura de provisional frente al dot solido. */
 .board-endpoint.free {
-  fill: rgba(7, 19, 13, 0.9);
+  fill: rgba(7, 19, 13, 0.92);
+  stroke-width: 0.32;
+  stroke-dasharray: 0.7 0.5;
 }
 
 .token {
@@ -5590,7 +5653,75 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-inspector {
   display: grid;
-  gap: 8px;
+  gap: 9px;
+}
+
+/* Pill de tipo de elemento seleccionado (Jugador propio / Rival / Accion /
+   Zona): chip compacto, no texto suelto. */
+.rombo-inspector-kind {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: rgba(37, 99, 235, 0.16);
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  color: #bfdbfe;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Labels del inspector como filas de property panel: label chico arriba,
+   control debajo, sin margen suelto (el gap del grid manda). */
+.rombo-inspector label {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: #93a3b6;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Filas de solo lectura (Origen / Destino / Escena / Fase / Problema):
+   label a la izquierda, valor a la derecha, como inspector denso. */
+.rombo-inspector-readonly {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: rgba(15, 28, 44, 0.55);
+}
+
+.rombo-inspector-readonly span {
+  color: #8b9bb0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rombo-inspector-readonly b {
+  color: #e8f2ff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.rombo-inspector .danger {
+  margin-top: 2px;
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.34);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.rombo-inspector-summary .muted-panel {
+  margin: 2px 0 0;
+  font-size: 12px;
 }
 
 .rombo-ai-list {
@@ -5613,8 +5744,35 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   margin: 0;
 }
 
-.rombo-layer-list input {
-  width: auto;
+.rombo-layer-list input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  margin: 0;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(2, 6, 23, 0.6);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+.rombo-layer-list input[type="checkbox"]:checked {
+  background: rgba(34, 197, 94, 0.9);
+  border-color: rgba(74, 222, 128, 0.6);
+}
+
+.rombo-layer-list input[type="checkbox"]:checked::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid #06210f;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .rombo-right-panel section:last-child,
@@ -5630,6 +5788,75 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   background: rgba(2, 6, 23, 0.72);
   color: #bfdbfe;
   font-size: 11px;
+}
+
+/* "Avanzado" del panel derecho: seccion plegable estilada (card + chevron),
+   no el disclosure nativo del navegador. Ocupa todo el ancho del grid. */
+.rombo-advanced {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: rgba(8, 18, 31, 0.64);
+  overflow: hidden;
+}
+
+.rombo-advanced > summary,
+.rombo-equipment > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rombo-advanced > summary::-webkit-details-marker,
+.rombo-equipment > summary::-webkit-details-marker {
+  display: none;
+}
+
+.rombo-advanced > summary::after,
+.rombo-equipment > summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: translateY(-1px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.rombo-advanced[open] > summary::after,
+.rombo-equipment[open] > summary::after {
+  transform: translateY(1px) rotate(-135deg);
+}
+
+.rombo-advanced > summary:hover,
+.rombo-equipment > summary:hover {
+  color: #cbd5e1;
+}
+
+/* Contenido del Avanzado: botones a lo ancho con padding interno propio. */
+.rombo-advanced > *:not(summary) {
+  margin: 0 12px 8px;
+}
+
+.rombo-advanced > button {
+  display: block;
+  width: calc(100% - 24px);
+}
+
+.rombo-equipment[open] > summary {
+  margin-bottom: 6px;
 }
 
 .rombo-board-footer {
