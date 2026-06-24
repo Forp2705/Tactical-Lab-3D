@@ -110,11 +110,7 @@ export function Scene3D({
         topFocus={topFocus}
         actionFocus={actionFocus}
       />
-      <hemisphereLight
-        intensity={0.92}
-        color="#dff4ff"
-        groundColor="#214c2d"
-      />
+      <hemisphereLight intensity={0.92} color="#dff4ff" groundColor="#214c2d" />
       <ambientLight intensity={0.42} color="#f4fbff" />
       <directionalLight
         position={[18, 38, 14]}
@@ -125,7 +121,11 @@ export function Scene3D({
         shadow-radius={renderSettings.shadowRadius}
         shadow-bias={-0.0001}
       />
-      <directionalLight position={[-24, 28, -16]} intensity={0.3} color="#8dd6ff" />
+      <directionalLight
+        position={[-24, 28, -16]}
+        intensity={0.3}
+        color="#8dd6ff"
+      />
       <Pitch3D mode={mode} />
       {renderSettings.contactShadows ? (
         <ContactShadows
@@ -363,46 +363,58 @@ function SceneCamera({
   topFocus: TopFocus;
   actionFocus: { x: number; z: number };
 }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const lookTarget = useMemo(() => new Vector3(), []);
   const nextPosition = useMemo(() => new Vector3(), []);
+  const targetLook = useMemo(() => new Vector3(), []);
   const preset = useMemo(
     () => cameraPreset(mode, cameraMode),
     [cameraMode, mode],
   );
-  useEffect(() => {
-    if (cameraMode === "top") return;
-
-    camera.position.set(
+  const direction = useMemo(() => {
+    const v = new Vector3(
       preset.position[0],
       preset.position[1],
       preset.position[2],
     );
-    camera.lookAt(0, 0, 0);
-  }, [camera, cameraMode, preset]);
+    return v.lengthSq() > 0 ? v.normalize() : new Vector3(0, 1, 1).normalize();
+  }, [preset]);
+
+  // Encuadre por bounds de la accion (no de la cancha entera): asi la jugada
+  // llena el viewport en vez de quedar chica y arrinconada arriba.
+  const topZoom = computeTopZoom(topFocus, size);
+  const span = Math.max(topFocus.spanX, topFocus.spanZ);
+  const distance = framingDistance(span, preset.fov);
+
+  useEffect(() => {
+    if (cameraMode === "top") return;
+    camera.position.set(
+      actionFocus.x + direction.x * distance,
+      direction.y * distance,
+      actionFocus.z + direction.z * distance,
+    );
+    camera.lookAt(actionFocus.x, LOOK_LIFT, actionFocus.z);
+  }, [camera, cameraMode, direction, distance, actionFocus.x, actionFocus.z]);
 
   useFrame((_state, delta) => {
     if (cameraMode === "top") {
       camera.position.set(topFocus.x, preset.position[1], topFocus.z + 0.01);
       camera.rotation.set(-Math.PI / 2, 0, 0);
       if ("zoom" in camera) {
-        camera.zoom = topFocus.zoom;
+        camera.zoom = topZoom;
         camera.updateProjectionMatrix();
       }
       return;
     }
 
-    const focusOffset = cameraFocusOffset(actionFocus, cameraMode, mode);
     nextPosition.set(
-      preset.position[0] + focusOffset.x,
-      preset.position[1],
-      preset.position[2] + focusOffset.z,
+      actionFocus.x + direction.x * distance,
+      direction.y * distance,
+      actionFocus.z + direction.z * distance,
     );
     camera.position.lerp(nextPosition, Math.min(1, delta * 2.2));
-    lookTarget.lerp(
-      new Vector3(focusOffset.x * 0.9, 0, focusOffset.z * 0.82),
-      Math.min(1, delta * 3),
-    );
+    targetLook.set(actionFocus.x, LOOK_LIFT, actionFocus.z);
+    lookTarget.lerp(targetLook, Math.min(1, delta * 3));
     camera.lookAt(lookTarget);
   });
 
@@ -411,7 +423,7 @@ function SceneCamera({
       <OrthographicCamera
         makeDefault
         position={[topFocus.x, preset.position[1], topFocus.z + 0.01]}
-        zoom={topFocus.zoom}
+        zoom={topZoom}
         rotation={[-Math.PI / 2, 0, 0]}
       />
     );
@@ -424,6 +436,26 @@ function SceneCamera({
       fov={preset.fov}
     />
   );
+}
+
+const LOOK_LIFT = 1.1;
+
+function computeTopZoom(
+  focus: TopFocus,
+  size: { width: number; height: number },
+) {
+  const spanX = Math.max(8, focus.spanX);
+  const spanZ = Math.max(8, focus.spanZ);
+  const zoomX = (size.width * 0.82) / spanX;
+  const zoomZ = (size.height * 0.8) / spanZ;
+  return clamp(Math.min(zoomX, zoomZ), 9, 34);
+}
+
+function framingDistance(span: number, fov: number) {
+  const half = Math.max(7, span * 0.5 + 3);
+  const fovRad = (fov * Math.PI) / 180;
+  const raw = half / Math.tan(fovRad / 2);
+  return clamp(raw * 0.82, 22, 200);
 }
 
 function ActorNode({
@@ -484,6 +516,9 @@ function TopActorNode({
   );
 }
 
+// Ficha tipo "poker-chip" plana: disco con borde oscuro y el numero impreso
+// encima. Sin billboard flotante para que, con 10-12 jugadores juntos, las
+// fichas no se tapen entre si con etiquetas ruidosas.
 function TopActorMarker({
   actor,
   position,
@@ -492,37 +527,25 @@ function TopActorMarker({
   return (
     <group position={position}>
       <mesh position={[0, 0.13, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.68, 42]} />
-        <meshBasicMaterial color={color} transparent opacity={0.95} />
+        <ringGeometry args={[1.24, 1.46, 40]} />
+        <meshBasicMaterial color="#061018" transparent opacity={0.85} />
       </mesh>
-      <mesh position={[0, 0.145, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.7, 1.95, 42]} />
-        <meshBasicMaterial color="#061018" transparent opacity={0.78} />
+      <mesh position={[0, 0.135, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[1.26, 40]} />
+        <meshBasicMaterial color={color} transparent opacity={0.96} />
       </mesh>
-      <Billboard position={[0, 1.75, 0]}>
-        <mesh position={[0, 0, -0.01]}>
-          <planeGeometry args={[2.65, 1.15]} />
-          <meshBasicMaterial color="#061018" transparent opacity={0.9} />
-        </mesh>
-        <Text
-          position={[0, 0.2, 0]}
-          fontSize={0.58}
-          color="#f8fafc"
-          anchorX="center"
-          anchorY="middle"
-        >
-          {actor.num}
-        </Text>
-        <Text
-          position={[0, -0.3, 0]}
-          fontSize={0.26}
-          color="#7ddfd7"
-          anchorX="center"
-          anchorY="middle"
-        >
-          {actor.role.toUpperCase()}
-        </Text>
-      </Billboard>
+      <Text
+        position={[0, 0.16, 0.06]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={1.18}
+        color="#061018"
+        anchorX="center"
+        anchorY="middle"
+        outlineColor="#f8fafc"
+        outlineWidth={0.04}
+      >
+        {actor.num}
+      </Text>
     </group>
   );
 }
@@ -577,24 +600,24 @@ function cameraPreset(
 
   if (cameraMode === "broadcast") {
     return {
-      position: [0, 27 * scale + 11, 48 * scale + 19] as [
+      position: [0, 26 * scale + 14, 38 * scale + 13] as [
         number,
         number,
         number,
       ],
       zoom: 1,
-      fov: 19,
+      fov: 32,
     };
   }
 
   return {
-    position: [16 * scale + 7, 34 * scale + 11, 44 * scale + 10] as [
+    position: [15 * scale + 7, 32 * scale + 12, 40 * scale + 10] as [
       number,
       number,
       number,
     ],
     zoom: 1,
-    fov: 20,
+    fov: 34,
   };
 }
 
@@ -607,8 +630,12 @@ function playerScale(mode: PitchMode) {
 type TopFocus = {
   x: number;
   z: number;
-  zoom: number;
+  spanX: number;
+  spanZ: number;
 };
+
+// Margen para que las fichas y sus etiquetas no queden pegadas al borde.
+const FOCUS_PADDING = 10;
 
 function getTopFocus(frame: MatchFrame, mode: PitchMode): TopFocus {
   const points = frame.actors.map((pose) => {
@@ -621,47 +648,24 @@ function getTopFocus(frame: MatchFrame, mode: PitchMode): TopFocus {
   );
   points.push({ x: ballWorld[0], z: ballWorld[2] });
 
-  if (points.length === 0) return { x: 0, z: 0, zoom: 7.4 };
+  if (points.length === 0) return { x: 0, z: 0, spanX: 40, spanZ: 26 };
 
   const minX = Math.min(...points.map((point) => point.x));
   const maxX = Math.max(...points.map((point) => point.x));
   const minZ = Math.min(...points.map((point) => point.z));
   const maxZ = Math.max(...points.map((point) => point.z));
-  const spanX = Math.max(1, maxX - minX);
-  const spanZ = Math.max(1, maxZ - minZ);
-  const desiredHeight = Math.max(spanZ + 20, (spanX + 24) / 1.9, 38);
-  const zoom = Math.max(8.9, Math.min(15.8, 660 / desiredHeight));
+  const { length, width } = pitchDimensions(mode);
 
   return {
-    x: clamp((minX + maxX) / 2, -34, 34),
-    z: clamp((minZ + maxZ) / 2, -22, 22),
-    zoom,
+    x: clamp((minX + maxX) / 2, -length / 2, length / 2),
+    z: clamp((minZ + maxZ) / 2, -width / 2, width / 2),
+    spanX: Math.max(6, maxX - minX) + FOCUS_PADDING,
+    spanZ: Math.max(6, maxZ - minZ) + FOCUS_PADDING,
   };
 }
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
-}
-
-function cameraFocusOffset(
-  focus: { x: number; z: number },
-  cameraMode: "top" | "iso" | "broadcast",
-  mode: PitchMode,
-) {
-  const { width } = pitchDimensions(mode);
-  const lateralClamp = width * 0.18;
-
-  if (cameraMode === "broadcast") {
-    return {
-      x: clamp(focus.x * 0.5, -18, 18),
-      z: clamp(focus.z * 0.2, -lateralClamp, lateralClamp),
-    };
-  }
-
-  return {
-    x: clamp(focus.x * 0.38, -14, 14),
-    z: clamp(focus.z * 0.34, -lateralClamp, lateralClamp),
-  };
 }
 
 function teamColorFor(team: Actor["team"]) {
