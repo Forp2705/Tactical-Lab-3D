@@ -1,27 +1,22 @@
+import type { BoardArrowSemantic } from "./boardModel";
 import type {
   CurrentBoardView,
   ExerciseBuilder,
   PlanningBoardPlayer,
 } from "./productBoardTypes";
 
-export type BoardTool =
+// Las herramientas de dibujo SON semanticas de accion (sin capa lossy: la tool
+// elegida es directamente el `semantic` de la flecha). Lo demas son tools
+// especiales: navegacion, zonas tipadas y equipamiento.
+export type BoardSpecialTool =
   | "select"
   | "move"
-  | "pencil"
-  | "line"
-  | "arrow"
-  | "cone"
   | "zone"
-  | "text"
+  | "block"
+  | "cone"
   | "goal"
-  | "mannequin"
-  | "pressureLine"
-  | "ballRoute"
-  | "longPass"
-  | "cross"
-  | "shot"
-  | "run"
-  | "block";
+  | "mannequin";
+export type BoardTool = BoardSpecialTool | BoardArrowSemantic;
 
 export type DraftPlayer = Omit<PlanningBoardPlayer, "id" | "team"> & {
   team: "A" | "B";
@@ -53,22 +48,43 @@ export const VIEW_OPTIONS: CurrentBoardView[] = [
 export const TOOL_DEFS: Array<{ id: BoardTool; label: string }> = [
   { id: "select", label: "Seleccionar" },
   { id: "move", label: "Mover" },
-  { id: "pencil", label: "Lapiz" },
-  { id: "line", label: "Linea" },
-  { id: "arrow", label: "Flecha" },
-  { id: "cone", label: "Cono" },
-  { id: "zone", label: "Zona" },
-  { id: "text", label: "Texto" },
-  { id: "goal", label: "Porteria" },
-  { id: "mannequin", label: "Maniqui" },
-  { id: "pressureLine", label: "Linea de presion" },
-  { id: "ballRoute", label: "Ruta de balon" },
+  // Balon
+  { id: "pass", label: "Pase" },
   { id: "longPass", label: "Pase largo" },
   { id: "cross", label: "Centro" },
+  { id: "switch", label: "Cambio de orientacion" },
+  { id: "carry", label: "Conduccion" },
   { id: "shot", label: "Disparo" },
+  // Jugador
+  { id: "movement", label: "Movimiento" },
   { id: "run", label: "Desmarque" },
+  { id: "support", label: "Apoyo" },
+  { id: "rotation", label: "Rotacion" },
+  // Defensa
+  { id: "pressure", label: "Presion" },
+  { id: "mark", label: "Marca" },
+  { id: "cover", label: "Cobertura" },
+  { id: "recovery", label: "Repliegue" },
+  // Zonas
+  { id: "zone", label: "Zona" },
   { id: "block", label: "Bloque" },
+  // Equipamiento (submenu plegado, fuera del rail principal)
+  { id: "cone", label: "Cono" },
+  { id: "goal", label: "Porteria" },
+  { id: "mannequin", label: "Maniqui" },
 ];
+
+// El rail principal se arma por grupos de accion. El equipamiento vive aparte
+// en un submenu plegable para no contaminar el vocabulario tactico.
+export const TOOL_GROUPS: Array<{ label: string; tools: BoardTool[] }> = [
+  { label: "Navegacion", tools: ["select", "move"] },
+  { label: "Balon", tools: ["pass", "longPass", "cross", "switch", "carry", "shot"] },
+  { label: "Jugador", tools: ["movement", "run", "support", "rotation"] },
+  { label: "Defensa", tools: ["pressure", "mark", "cover", "recovery"] },
+  { label: "Zonas", tools: ["zone", "block"] },
+];
+
+export const EQUIPMENT_TOOLS: BoardTool[] = ["cone", "goal", "mannequin"];
 
 export const COLORS = [
   "#f8fafc",

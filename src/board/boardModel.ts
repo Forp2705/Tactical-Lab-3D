@@ -70,6 +70,7 @@ export const BoardArrowSemanticSchema = z.enum([
   "carry",
   "support",
   "mark",
+  "shot",
 ]);
 export type BoardArrowSemantic = z.infer<typeof BoardArrowSemanticSchema>;
 
@@ -882,7 +883,8 @@ function layerForArrow(semantic: BoardArrowSemantic): BoardLayer {
     semantic === "cross" ||
     semantic === "carry" ||
     semantic === "support" ||
-    semantic === "switch"
+    semantic === "switch" ||
+    semantic === "shot"
   ) {
     return "withBall";
   }
@@ -904,6 +906,7 @@ function labelForArrow(semantic: BoardArrowSemantic) {
     carry: "Conduccion",
     support: "Apoyo",
     mark: "Marca",
+    shot: "Disparo",
   }[semantic];
 }
 

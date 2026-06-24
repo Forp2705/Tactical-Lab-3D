@@ -7,6 +7,7 @@ import type {
   BoardScene,
 } from "./boardModel";
 import {
+  BoardArrowSemanticSchema,
   createBoardId,
   createPlayerToken,
   createSemanticArrow,
@@ -14,19 +15,12 @@ import {
 } from "./boardModel";
 import type { PlanningBoardPlayer } from "./productBoardTypes";
 
+// Las tools de dibujo SON semanticas: la conversion es 1:1, sin colapso. La
+// lista de semanticas valida sale del propio schema (una sola fuente de verdad).
+const ARROW_SEMANTICS = new Set<string>(BoardArrowSemanticSchema.options);
+
 export function semanticForTool(tool: BoardTool): BoardArrowSemantic | null {
-  if (tool === "ballRoute" || tool === "longPass" || tool === "cross")
-    return "pass";
-  if (tool === "pressureLine") return "pressure";
-  if (tool === "run") return "run";
-  if (
-    tool === "line" ||
-    tool === "pencil" ||
-    tool === "arrow" ||
-    tool === "shot"
-  )
-    return "movement";
-  return null;
+  return ARROW_SEMANTICS.has(tool) ? (tool as BoardArrowSemantic) : null;
 }
 
 export function labelForTool(tool: BoardTool) {
@@ -142,13 +136,6 @@ export function handleCanvasPress({
       },
     );
     commitScene({ zones: [...scene.zones, zone] });
-    return;
-  }
-  if (tool === "text") {
-    updateSceneObjects([
-      ...scene.objects,
-      makeEquipmentLikeObject("note", "Buscar pase entre lineas", point, color),
-    ]);
     return;
   }
   if (tool === "cone" || tool === "mannequin" || tool === "goal") {

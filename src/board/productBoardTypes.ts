@@ -275,6 +275,7 @@ function annotationFromArrow(arrow: BoardArrow): BoardAnnotation {
     carry: "arrow",
     support: "arrow",
     mark: "pressureLine",
+    shot: "shot",
   };
   return {
     id: arrow.id,
