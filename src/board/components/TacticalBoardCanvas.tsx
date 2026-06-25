@@ -17,6 +17,7 @@ import {
 } from "../boardGeometry";
 import { arrowStyle } from "../boardActionStyle";
 import type { BoardObject, BoardPoint, BoardScene } from "../boardModel";
+import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 
 type TacticalBoardCanvasProps = {
   svgRef: MutableRefObject<SVGSVGElement | null>;
@@ -31,6 +32,10 @@ type TacticalBoardCanvasProps = {
   opponentFormation: string;
   // Token origen de un anclaje en curso (se resalta mientras se dibuja).
   anchorOriginId?: string;
+  // Proyeccion efimera de RomboIQ (preview); su geometria es identica a la que
+  // se commitea al aceptar — solo cambia el estilo (ghost/punteado) para senalar
+  // que todavia no es parte de la escena.
+  consequenceOverlay: ConsequenceOverlay | null;
   keyInstructions: {
     objective: string;
     rule: string;
@@ -56,6 +61,7 @@ export function TacticalBoardCanvas({
   teamAFormation,
   opponentFormation,
   anchorOriginId,
+  consequenceOverlay,
   keyInstructions,
   onSelect,
   onPointerDown,
@@ -94,6 +100,7 @@ export function TacticalBoardCanvas({
         activeLayers={activeLayers}
         zoom={zoom}
         anchorOriginId={anchorOriginId}
+        consequenceOverlay={consequenceOverlay}
         onSelect={onSelect}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -121,6 +128,7 @@ function TacticalPitch({
   activeLayers,
   zoom,
   anchorOriginId,
+  consequenceOverlay,
   onSelect,
   onPointerDown,
   onPointerMove,
@@ -135,6 +143,7 @@ function TacticalPitch({
   activeLayers: Set<string>;
   zoom: number;
   anchorOriginId?: string;
+  consequenceOverlay: ConsequenceOverlay | null;
   onSelect: (selection: Selection) => void;
   onPointerDown: (point: BoardPoint, targetId?: string) => void;
   onPointerMove: (point: BoardPoint) => void;
@@ -212,24 +221,28 @@ function TacticalPitch({
           {zone.shape === "circle" ? (
             <ellipse
               cx={zone.x + zone.w / 2}
-              cy={zone.y + zone.h / 2}
+              cy={scaleY(zone.y + zone.h / 2)}
               rx={zone.w / 2}
-              ry={zone.h / 2}
+              ry={scaleY(zone.h) / 2}
               fill={zone.color}
               className="board-zone"
             />
           ) : (
             <rect
               x={zone.x}
-              y={zone.y}
+              y={scaleY(zone.y)}
               width={zone.w}
-              height={zone.h}
+              height={scaleY(zone.h)}
               rx="1.2"
               fill={zone.color}
               className="board-zone"
             />
           )}
-          <text x={zone.x + 1.2} y={zone.y + 3.2} className="board-zone-label">
+          <text
+            x={zone.x + 1.2}
+            y={scaleY(zone.y) + 3.2}
+            className="board-zone-label"
+          >
             {zone.label}
           </text>
         </g>
@@ -285,6 +298,45 @@ function TacticalPitch({
           </g>
         );
       })}
+
+      {consequenceOverlay ? (
+        <g className="board-overlay" data-board-overlay>
+          {consequenceOverlay.zones.map((zone, index) => (
+            <rect
+              key={`overlay-zone-${index}`}
+              x={zone.x}
+              y={scaleY(zone.y)}
+              width={zone.w}
+              height={scaleY(zone.h)}
+              rx="1.2"
+              className="board-overlay-zone"
+              fill="none"
+              stroke="#c7df5f"
+              strokeDasharray="1.6 1.2"
+              strokeWidth={0.7}
+            />
+          ))}
+          {consequenceOverlay.arrows.map((arrow, index) => {
+            const start = endpointPoint(arrow.from, scene.objects);
+            const end = endpointPoint(arrow.to, scene.objects);
+            return (
+              <path
+                key={`overlay-arrow-${index}`}
+                d={`M${start.x} ${scaleY(start.y)} L${end.x} ${scaleY(end.y)}`}
+                className="board-overlay-arrow"
+                fill="none"
+                stroke="#c7df5f"
+                strokeDasharray="1.6 1.2"
+                strokeWidth={0.5}
+                markerEnd="url(#rombo-arrow-head)"
+              />
+            );
+          })}
+          <text x="2" y="4" className="board-overlay-label" fontSize="3">
+            Proyección de RomboIQ
+          </text>
+        </g>
+      ) : null}
 
       {visibleObjects.map((object) => (
         <BoardObjectNode

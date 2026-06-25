@@ -93,6 +93,7 @@ function TacticalBoardWorkspace({
           teamAFormation={a.teamAFormation}
           opponentFormation={board.opponent.formation}
           anchorOriginId={a.anchorOriginId}
+          consequenceOverlay={a.consequenceOverlay}
           keyInstructions={{
             objective: a.problem.objective,
             rule: a.exercise.rule,
@@ -156,6 +157,10 @@ function TacticalBoardWorkspace({
             attachBlockId={a.attachBlockId}
             sessionBlocks={a.sessionBlocks}
             canDeleteScene={board.scenes.length >= 2}
+            consequenceOverlay={a.consequenceOverlay}
+            onRunScenario={a.runScenario}
+            onCommitOverlay={a.commitOverlay}
+            onDiscardOverlay={a.discardOverlay}
             onToggleLayer={a.toggleLayer}
             onExportPayload={a.createPayload}
             onExportImage={a.exportImage}

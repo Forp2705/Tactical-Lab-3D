@@ -5920,3 +5920,73 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Scenario sandbox (slice 1) ────────────────────────────────────────────
+   Proyeccion efimera de RomboIQ: el draw-back se previsualiza como overlay
+   ghost/punteada sobre el board y se lee en el panel. El estilo ghost senala
+   que todavia no es parte de la escena (commit explicito por "Aceptar"). */
+.board-overlay-label {
+  fill: #c7df5f;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 0.12;
+}
+
+.board-overlay-zone,
+.board-overlay-arrow {
+  pointer-events: none;
+}
+
+.rombo-scenario .rombo-scenario-run {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(199, 223, 95, 0.5);
+  background: rgba(199, 223, 95, 0.12);
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rombo-scenario .rombo-scenario-run:hover {
+  background: rgba(199, 223, 95, 0.2);
+}
+
+.rombo-scenario-readout {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.rombo-scenario-readout .rombo-scenario-evidence {
+  opacity: 0.75;
+  font-size: 0.78rem;
+}
+
+.rombo-scenario-rival,
+.rombo-scenario-notes {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.rombo-scenario-notes {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.rombo-scenario-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.rombo-scenario-actions button {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
