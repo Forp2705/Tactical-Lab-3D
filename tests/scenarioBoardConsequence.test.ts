@@ -69,6 +69,17 @@ function raiseBlockMultiRivalScene(dirMirror = false) {
   ]);
 }
 
+function raiseBlockThreeRivalScene() {
+  return sceneWith([
+    createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+    createPlayerToken(cbA, { x: 20, y: 40 }, "CB", 4),
+    createPlayerToken(cbB, { x: 20, y: 60 }, "CB", 5),
+    createOpponentToken({ x: 80, y: 50 }, "ST", 9), // passer
+    createOpponentToken({ x: 40, y: 48 }, "AM", 10), // runner
+    createOpponentToken({ x: 55, y: 12 }, "LW", 11), // wide
+  ]);
+}
+
 function raiseBlockSim() {
   return simulateScenario({
     scenarioId: "raise-block",
@@ -234,6 +245,20 @@ describe("buildConsequenceOverlay (raise-block)", () => {
       overlay.zones.some((z) => z.semantic === "danger" || z.semantic === "freeSpace"),
     ).toBe(true);
     expect(overlay.zones.some((z) => z.semantic === "press")).toBe(true);
+  });
+
+  it("3 rivals: adds a second run (channel) on layer rival, distinct from the primary run target", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockThreeRivalScene());
+    const runs = overlay.arrows.filter(
+      (a) => a.semantic === "run" && a.patch?.layer === "rival",
+    );
+    expect(runs.length).toBe(2);
+    const targets = runs.map(
+      (r) => (r.to as { kind: "point"; point: { x: number; y: number } }).point,
+    );
+    expect(
+      Math.hypot(targets[0].x - targets[1].x, targets[0].y - targets[1].y),
+    ).toBeGreaterThan(0);
   });
 
   it("notes missing centre-backs instead of drawing a phantom gap", () => {

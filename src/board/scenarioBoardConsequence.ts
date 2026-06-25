@@ -286,6 +286,20 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
         } else {
           notes.push("Solo 1 rival: no puedo mostrar la corrida coordinada.");
         }
+
+        if (actors.wide) {
+          // Same behind-the-line depth as the gap, but in the wide actor's lane.
+          const channelY = actors.wide.position.y < 50 ? gap.y : gap.y + gap.h;
+          arrows.push({
+            semantic: "run",
+            from: { kind: "object", objectId: actors.wide.id },
+            to: {
+              kind: "point",
+              point: { x: gapTarget.x, y: Math.max(0, Math.min(100, channelY)) },
+            },
+            patch: { label: "Ataca el carril", layer: "rival" },
+          });
+        }
       }
     }
 
