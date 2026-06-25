@@ -35,21 +35,37 @@ function centroidX(objects: BoardObject[]): number | null {
  * Tier 2 (fallback): own centroid vs rival centroid. Own behind → attack
  *   toward the rival side.
  * Tier 3 (floor): no GK and no rival → dir 1 with an honest note.
+ *
+ * Cross-check (Tier 1 ↔ Tier 2): when both the GK and a rival exist, the
+ *   centroid is an independent mass signal. If it contradicts the GK, the lone
+ *   GK token is the suspect (one stray token shouldn't flip the whole reading
+ *   in silence) → prefer the centroid and emit a note. Non-circular: the
+ *   centroid uses mass-vs-rival, never "depth" — the quantity being derived.
  */
 export function detectAttackDir(scene: BoardScene): { dir: 1 | -1; note?: string } {
   const own = scene.objects.filter(isOwnPlayerToken);
   const rival = scene.objects.filter((o) => o.type === "opponentToken");
 
+  const ownX = centroidX(own);
+  const rivalX = centroidX(rival);
+  const centroidDir: 1 | -1 | null =
+    ownX !== null && rivalX !== null ? (ownX <= rivalX ? 1 : -1) : null;
+
   const gk = own.find(isOwnGoalkeeper);
   if (gk) {
     // GK on the left half (x < 50) → own goal is left → attack toward +x.
-    return { dir: gk.position.x < 50 ? 1 : -1 };
+    const gkDir: 1 | -1 = gk.position.x < 50 ? 1 : -1;
+    if (centroidDir !== null && centroidDir !== gkDir) {
+      return {
+        dir: centroidDir,
+        note: "El arquero contradice la masa del equipo respecto al rival; uso el centroide para fijar la orientación.",
+      };
+    }
+    return { dir: gkDir };
   }
 
-  const ownX = centroidX(own);
-  const rivalX = centroidX(rival);
-  if (ownX !== null && rivalX !== null) {
-    return { dir: ownX <= rivalX ? 1 : -1 };
+  if (centroidDir !== null) {
+    return { dir: centroidDir };
   }
 
   return {

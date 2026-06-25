@@ -88,6 +88,23 @@ describe("detectAttackDir", () => {
     expect(result.dir).toBe(1);
     expect(result.note).toMatch(/orientación asumida/i);
   });
+
+  it("Cross-check: a stray GK on the wrong side is overruled by the centroid (dir 1 + note)", () => {
+    // Messy real board: GK misplaced at x=62 while the own mass sits at x=22
+    // and the rival is ahead at x=80. Tier-1 alone flips to dir -1 silently;
+    // the centroid (mass-based, robust to one stray token) must win AND warn.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 62, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 22, y: 40 }, "CB", 4),
+      createPlayerToken(null, { x: 22, y: 60 }, "CB", 5),
+      createOpponentToken({ x: 80, y: 50 }, "ST", 9),
+    ]);
+    const result = detectAttackDir(scene);
+    expect(result.dir).toBe(1);
+    // The contradiction must no longer be silent: the note names the centroid
+    // path uniquely (Tier-3's note says "sin arquero", so /centroide/ can't leak).
+    expect(result.note).toMatch(/centroide/i);
+  });
 });
 
 describe("buildConsequenceOverlay (raise-block)", () => {
