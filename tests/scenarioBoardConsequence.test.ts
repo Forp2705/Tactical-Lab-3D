@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildConsequenceOverlay,
   detectAttackDir,
+  resolveRivalActors,
 } from "@/board/scenarioBoardConsequence";
 import {
   createDefaultBoardScene,
@@ -164,5 +165,55 @@ describe("buildConsequenceOverlay (raise-block)", () => {
       overlay.zones.some((z) => z.semantic === "danger" || z.semantic === "freeSpace"),
     ).toBe(false);
     expect(overlay.notes.join(" ")).toMatch(/no pude ubicar los centrales/i);
+  });
+});
+
+describe("resolveRivalActors", () => {
+  it("dir 1: passer = max x (deep rival side), runner = min x (advanced)", () => {
+    const scene = sceneWith([
+      createOpponentToken({ x: 80, y: 50 }, "ST", 9),
+      createOpponentToken({ x: 40, y: 45 }, "AM", 10),
+    ]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.count).toBe(2);
+    expect(a.passer?.position.x).toBe(80);
+    expect(a.runner?.position.x).toBe(40);
+    expect(a.wide).toBeNull();
+  });
+
+  it("dir -1: mirrored — passer = min x, runner = max x", () => {
+    const scene = sceneWith([
+      createOpponentToken({ x: 20, y: 50 }, "ST", 9),
+      createOpponentToken({ x: 60, y: 45 }, "AM", 10),
+    ]);
+    const a = resolveRivalActors(scene, -1);
+    expect(a.passer?.position.x).toBe(20);
+    expect(a.runner?.position.x).toBe(60);
+  });
+
+  it("1 rival: passer set, runner null (cannot be both)", () => {
+    const scene = sceneWith([createOpponentToken({ x: 80, y: 50 }, "ST", 9)]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.count).toBe(1);
+    expect(a.passer).not.toBeNull();
+    expect(a.runner).toBeNull();
+  });
+
+  it("0 rivals: all null", () => {
+    const scene = sceneWith([createPlayerToken(null, { x: 20, y: 50 }, "CB", 4)]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.count).toBe(0);
+    expect(a.passer).toBeNull();
+    expect(a.runner).toBeNull();
+  });
+
+  it("3 rivals: wide = the widest of the remaining (max |y-50|)", () => {
+    const scene = sceneWith([
+      createOpponentToken({ x: 80, y: 50 }, "ST", 9), // passer
+      createOpponentToken({ x: 40, y: 48 }, "AM", 10), // runner
+      createOpponentToken({ x: 55, y: 12 }, "LW", 11), // wide
+    ]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.wide?.position.x).toBe(55);
   });
 });

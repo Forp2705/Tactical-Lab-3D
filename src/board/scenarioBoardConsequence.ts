@@ -83,6 +83,42 @@ export function detectAttackDir(scene: BoardScene): { dir: 1 | -1; note?: string
   };
 }
 
+export type RivalActors = {
+  passer: BoardObject | null;
+  runner: BoardObject | null;
+  wide: BoardObject | null;
+  count: number;
+};
+
+/**
+ * Rivals attack toward -dir (mirror of own). depth = dir * x → higher means
+ * deeper on the rival's build-up side. NOT resolveCentreBacks (that is own,
+ * relative to dir). passer = deepest; runner = most advanced; wide = widest
+ * of the rest (only meaningful with a 3rd rival to spend on a channel run).
+ */
+export function resolveRivalActors(scene: BoardScene, dir: 1 | -1): RivalActors {
+  const rivals = scene.objects.filter((o) => o.type === "opponentToken");
+  const count = rivals.length;
+  if (count === 0) return { passer: null, runner: null, wide: null, count };
+
+  const depth = (o: BoardObject) => dir * o.position.x;
+  const sorted = [...rivals].sort((a, b) => depth(b) - depth(a)); // deepest first
+  const passer = sorted[0];
+  if (count === 1) return { passer, runner: null, wide: null, count };
+
+  const runner = sorted[sorted.length - 1]; // most advanced toward own goal
+  let wide: BoardObject | null = null;
+  if (count >= 3) {
+    const rest = sorted.slice(1, sorted.length - 1); // exclude passer & runner
+    wide = rest.reduce(
+      (best, o) =>
+        Math.abs(o.position.y - 50) > Math.abs(best.position.y - 50) ? o : best,
+      rest[0],
+    );
+  }
+  return { passer, runner, wide, count };
+}
+
 // Patch aliases = the factory param types verbatim (single source of truth).
 export type OverlayZonePatch = Partial<
   Omit<BoardZone, "id" | "semantic" | "x" | "y" | "w" | "h">
