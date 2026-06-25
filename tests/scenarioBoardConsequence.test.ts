@@ -53,6 +53,20 @@ function raiseBlockScene(dirMirror = false) {
   ]);
 }
 
+function raiseBlockMultiRivalScene(dirMirror = false) {
+  const gkX = dirMirror ? 92 : 8;
+  const cbX = dirMirror ? 80 : 20;
+  const passerX = dirMirror ? 20 : 80; // deep on rival side
+  const runnerX = dirMirror ? 60 : 40; // advanced toward own goal
+  return sceneWith([
+    createPlayerToken(null, { x: gkX, y: 50 }, "GK", 1),
+    createPlayerToken(cbA, { x: cbX, y: 40 }, "CB", 4),
+    createPlayerToken(cbB, { x: cbX, y: 60 }, "CB", 5),
+    createOpponentToken({ x: passerX, y: 50 }, "ST", 9),
+    createOpponentToken({ x: runnerX, y: 45 }, "AM", 10),
+  ]);
+}
+
 function raiseBlockSim() {
   return simulateScenario({
     scenarioId: "raise-block",
@@ -156,6 +170,19 @@ describe("buildConsequenceOverlay (raise-block)", () => {
     const joined = overlay.rivalFacts.join(" ");
     expect(joined).toContain("Tomás");
     expect(joined).toContain("Diego");
+  });
+
+  it("draws a coordinated rival response: longPass + run on layer rival, anchored to real rival ids", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockMultiRivalScene(false));
+    const rivalArrows = overlay.arrows.filter((a) => a.patch?.layer === "rival");
+    expect(rivalArrows.length).toBeGreaterThanOrEqual(2);
+
+    const longPass = overlay.arrows.find((a) => a.semantic === "longPass");
+    const run = overlay.arrows.find((a) => a.semantic === "run");
+    expect(longPass).toBeDefined();
+    expect(run).toBeDefined();
+    expect(longPass!.from.kind).toBe("object");
+    expect(run!.from.kind).toBe("object");
   });
 
   it("notes missing centre-backs instead of drawing a phantom gap", () => {

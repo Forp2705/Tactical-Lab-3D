@@ -261,16 +261,32 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
           : `detrás quedan ${covering} cobertura(s) → riesgo atenuado en esa espalda`;
       rivalFacts.push(`(lectura del modelo) Tus centrales ${names} suben; ${tail}.`);
 
-      // 7) Threat arrow: longPass into the gap, anchored to a rival token if any.
-      const rival = scene.objects.find((o) => o.type === "opponentToken");
-      const from: BoardArrowEndpoint = rival
-        ? { kind: "object", objectId: rival.id }
-        : { kind: "point", point: { x: dir === 1 ? 100 - ZONE_W : ZONE_W, y: 50 } };
-      const to: BoardArrowEndpoint = {
-        kind: "point",
-        point: { x: gap.x + gap.w / 2, y: gap.y + gap.h / 2 },
-      };
-      arrows.push({ semantic: "longPass", from, to, patch: { label: "Diagonal a la espalda" } });
+      // 7) Coordinated rival response. Single source of truth for the target:
+      //    longPass (ball) and primary run (player) both resolve to gapTarget.
+      const gapTarget = { x: gap.x + gap.w / 2, y: gap.y + gap.h / 2 };
+      const actors = resolveRivalActors(scene, dir);
+
+      if (actors.count === 0) {
+        notes.push("Sin rivales en la escena: no puedo proyectar la respuesta.");
+      } else if (actors.passer) {
+        arrows.push({
+          semantic: "longPass",
+          from: { kind: "object", objectId: actors.passer.id },
+          to: { kind: "point", point: gapTarget },
+          patch: { label: "Diagonal a la espalda", layer: "rival" },
+        });
+
+        if (actors.runner) {
+          arrows.push({
+            semantic: "run",
+            from: { kind: "object", objectId: actors.runner.id },
+            to: { kind: "point", point: gapTarget },
+            patch: { label: "Ataca tu espalda", layer: "rival" },
+          });
+        } else {
+          notes.push("Solo 1 rival: no puedo mostrar la corrida coordinada.");
+        }
+      }
     }
 
     return {
