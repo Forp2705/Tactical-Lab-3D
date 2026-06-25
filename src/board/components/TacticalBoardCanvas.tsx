@@ -221,24 +221,28 @@ function TacticalPitch({
           {zone.shape === "circle" ? (
             <ellipse
               cx={zone.x + zone.w / 2}
-              cy={zone.y + zone.h / 2}
+              cy={scaleY(zone.y + zone.h / 2)}
               rx={zone.w / 2}
-              ry={zone.h / 2}
+              ry={scaleY(zone.h) / 2}
               fill={zone.color}
               className="board-zone"
             />
           ) : (
             <rect
               x={zone.x}
-              y={zone.y}
+              y={scaleY(zone.y)}
               width={zone.w}
-              height={zone.h}
+              height={scaleY(zone.h)}
               rx="1.2"
               fill={zone.color}
               className="board-zone"
             />
           )}
-          <text x={zone.x + 1.2} y={zone.y + 3.2} className="board-zone-label">
+          <text
+            x={zone.x + 1.2}
+            y={scaleY(zone.y) + 3.2}
+            className="board-zone-label"
+          >
             {zone.label}
           </text>
         </g>
@@ -301,9 +305,9 @@ function TacticalPitch({
             <rect
               key={`overlay-zone-${index}`}
               x={zone.x}
-              y={zone.y}
+              y={scaleY(zone.y)}
               width={zone.w}
-              height={zone.h}
+              height={scaleY(zone.h)}
               rx="1.2"
               className="board-overlay-zone"
               fill="none"
