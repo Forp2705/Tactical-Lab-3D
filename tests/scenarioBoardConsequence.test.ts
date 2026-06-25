@@ -105,6 +105,27 @@ describe("detectAttackDir", () => {
     // path uniquely (Tier-3's note says "sin arquero", so /centroide/ can't leak).
     expect(result.note).toMatch(/centroide/i);
   });
+
+  it("Cross-check: tied centroids are too weak to override the GK (GK stands, no note)", () => {
+    // GK x=62 → gkDir -1. Own mass (GK 62, CB 38) centroid = 50; rival = 50.
+    // A tie is no separation signal: the árbitro must not flip Tier-1 here.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 62, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 38, y: 50 }, "CB", 4),
+      createOpponentToken({ x: 50, y: 50 }, "ST", 9),
+    ]);
+    const result = detectAttackDir(scene);
+    expect(result.dir).toBe(-1);
+    expect(result.note).toBeUndefined();
+  });
+
+  it("Cross-check guard: a coherent board (GK + rival agree) keeps Tier-1 without a note", () => {
+    // raiseBlockScene(false): GK x=8 → dir 1; own centroid x≈16 behind rival x=80
+    // → centroid also dir 1. Agreement must NOT make every GK inference ambiguous.
+    const result = detectAttackDir(raiseBlockScene(false));
+    expect(result.dir).toBe(1);
+    expect(result.note).toBeUndefined();
+  });
 });
 
 describe("buildConsequenceOverlay (raise-block)", () => {

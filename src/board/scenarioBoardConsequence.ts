@@ -41,7 +41,14 @@ function centroidX(objects: BoardObject[]): number | null {
  *   GK token is the suspect (one stray token shouldn't flip the whole reading
  *   in silence) → prefer the centroid and emit a note. Non-circular: the
  *   centroid uses mass-vs-rival, never "depth" — the quantity being derived.
+ *   Guard: a near-tie between the centroids carries no separation signal, so it
+ *   is too weak to override Tier-1 — the GK stands (no degrading a real signal
+ *   with a non-signal). The weak centroid still serves the no-GK Tier-2 path.
  */
+// Normalized pitch units; below this the own/rival centroids are effectively
+// co-located → no usable separation to arbitrate orientation with.
+const CENTROID_EPSILON = 1;
+
 export function detectAttackDir(scene: BoardScene): { dir: 1 | -1; note?: string } {
   const own = scene.objects.filter(isOwnPlayerToken);
   const rival = scene.objects.filter((o) => o.type === "opponentToken");
@@ -50,14 +57,16 @@ export function detectAttackDir(scene: BoardScene): { dir: 1 | -1; note?: string
   const rivalX = centroidX(rival);
   const centroidDir: 1 | -1 | null =
     ownX !== null && rivalX !== null ? (ownX <= rivalX ? 1 : -1) : null;
+  const centroidStrong =
+    ownX !== null && rivalX !== null && Math.abs(ownX - rivalX) >= CENTROID_EPSILON;
 
   const gk = own.find(isOwnGoalkeeper);
   if (gk) {
     // GK on the left half (x < 50) → own goal is left → attack toward +x.
     const gkDir: 1 | -1 = gk.position.x < 50 ? 1 : -1;
-    if (centroidDir !== null && centroidDir !== gkDir) {
+    if (centroidStrong && centroidDir !== gkDir) {
       return {
-        dir: centroidDir,
+        dir: centroidDir as 1 | -1,
         note: "El arquero contradice la masa del equipo respecto al rival; uso el centroide para fijar la orientación.",
       };
     }
