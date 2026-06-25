@@ -9,7 +9,9 @@ import {
   createOpponentToken,
   createPlayerToken,
   type BoardObject,
+  type BoardZone,
 } from "@/board/boardModel";
+import { isInsideZoneRect } from "@/board/productBoardTypes";
 import { simulateScenario } from "@/ai/scenarioSimulator";
 import { DEFAULT_GAME_MODEL } from "@/data/gameModel";
 import type { Player } from "@/data";
@@ -183,6 +185,29 @@ describe("buildConsequenceOverlay (raise-block)", () => {
     expect(run).toBeDefined();
     expect(longPass!.from.kind).toBe("object");
     expect(run!.from.kind).toBe("object");
+  });
+
+  it("coordination invariant: longPass and primary run resolve to one gap inside the danger zone", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockMultiRivalScene(false));
+    const longPass = overlay.arrows.find((a) => a.semantic === "longPass");
+    const run = overlay.arrows.find((a) => a.semantic === "run");
+    expect(longPass).toBeDefined();
+    expect(run).toBeDefined();
+    expect(longPass!.to.kind).toBe("point");
+    expect(run!.to.kind).toBe("point");
+
+    const lp = (longPass!.to as { kind: "point"; point: { x: number; y: number } }).point;
+    const rn = (run!.to as { kind: "point"; point: { x: number; y: number } }).point;
+    // same gapTarget by construction (single source) → distance ~0
+    expect(Math.hypot(lp.x - rn.x, lp.y - rn.y)).toBeLessThan(0.001);
+
+    const gap = overlay.zones.find(
+      (z) => z.semantic === "danger" || z.semantic === "freeSpace",
+    );
+    expect(gap).toBeDefined();
+    const gapRect = { x: gap!.x, y: gap!.y, w: gap!.w, h: gap!.h } as unknown as BoardZone;
+    expect(isInsideZoneRect(lp, gapRect)).toBe(true);
+    expect(isInsideZoneRect(rn, gapRect)).toBe(true);
   });
 
   it("notes missing centre-backs instead of drawing a phantom gap", () => {
