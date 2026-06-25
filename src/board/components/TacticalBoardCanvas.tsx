@@ -309,6 +309,13 @@ function TacticalPitch({
 // El contraste entre extremos es la senal de que el anclaje tomo o no. La
 // forma (relleno vs hueco) la define el CSS via .anchored/.free; el color sale
 // de la tabla arrowStyle (inline `color` -> currentColor en CSS).
+//
+// Asimetria deliberada de tamano: el dot anclado vive en el centro del token y
+// el token (r=2.15) se pinta encima, asi que casi siempre queda tapado en uso
+// real -> no necesita prominencia (la linea entrando limpia al token ya es la
+// pista del exito). El aro LIBRE es la senal del fallo silencioso: cuando
+// quisiste anclar y erraste, ese aro queda flotando al lado del token. Tiene
+// que saltar a la vista, asi que va mas grande que el anclado.
 function EndpointMarker({
   x,
   y,
@@ -324,7 +331,7 @@ function EndpointMarker({
     <circle
       cx={x}
       cy={scaleY(y)}
-      r={0.95}
+      r={anchored ? 0.85 : 1.5}
       className={`board-endpoint ${anchored ? "anchored" : "free"}`}
       style={{ color }}
     />
