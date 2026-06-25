@@ -1,6 +1,8 @@
 import type { SessionBlock } from "@/data";
+import type { ScenarioId } from "@/ai/scenarioSimulator";
 import { blockTitle } from "../boardGeometry";
 import type { BoardPayload, PlanningBoardLayer } from "../productBoardTypes";
+import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 
 type TacticalBoardAiPanelProps = {
   aiInterpretation: string[];
@@ -9,6 +11,10 @@ type TacticalBoardAiPanelProps = {
   attachBlockId: string;
   sessionBlocks: SessionBlock[];
   canDeleteScene: boolean;
+  consequenceOverlay: ConsequenceOverlay | null;
+  onRunScenario: (scenarioId: ScenarioId) => void;
+  onCommitOverlay: () => void;
+  onDiscardOverlay: () => void;
   onToggleLayer: (layerId: string) => void;
   onExportPayload: () => void;
   onExportImage: () => void;
@@ -27,6 +33,10 @@ export function TacticalBoardAiPanel({
   attachBlockId,
   sessionBlocks,
   canDeleteScene,
+  consequenceOverlay,
+  onRunScenario,
+  onCommitOverlay,
+  onDiscardOverlay,
   onToggleLayer,
   onExportPayload,
   onExportImage,
@@ -48,6 +58,56 @@ export function TacticalBoardAiPanel({
             <li key={item}>{item}</li>
           ))}
         </ul>
+      </section>
+
+      <section className="rombo-scenario">
+        {/* El DT plantea una situacion y elige un ajuste; RomboIQ proyecta la
+            consecuencia deterministica de vuelta al board (overlay efimera). */}
+        <h2>Probar un ajuste</h2>
+        <button
+          type="button"
+          className="rombo-scenario-run"
+          onClick={() => onRunScenario("raise-block")}
+        >
+          Subir el bloque
+        </button>
+
+        {consequenceOverlay ? (
+          <div className="rombo-scenario-readout">
+            <p className="rombo-scenario-benefit">
+              {consequenceOverlay.readout.expectedBenefit}
+            </p>
+            <p className="rombo-scenario-risk">
+              {consequenceOverlay.readout.mainRisk}
+            </p>
+            <p className="rombo-scenario-evidence">
+              Confianza: {consequenceOverlay.readout.confidence} · Evidencia:{" "}
+              {consequenceOverlay.readout.evidenceLevel}
+            </p>
+            {consequenceOverlay.rivalFacts.length > 0 ? (
+              <ul className="rombo-scenario-rival">
+                {consequenceOverlay.rivalFacts.map((fact) => (
+                  <li key={fact}>{fact}</li>
+                ))}
+              </ul>
+            ) : null}
+            {consequenceOverlay.notes.length > 0 ? (
+              <ul className="rombo-scenario-notes">
+                {consequenceOverlay.notes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="rombo-scenario-actions">
+              <button type="button" onClick={onCommitOverlay}>
+                Aceptar
+              </button>
+              <button type="button" onClick={onDiscardOverlay}>
+                Descartar
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section>
