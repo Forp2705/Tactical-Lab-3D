@@ -276,7 +276,7 @@ function labelBoardActor(actor: BoardActorRef): string {
 // Aproxima toda zona como rectangulo: una zona "circle" se cuenta por su
 // bounding-box. Suficiente para lectura tactica. TODO(P0.7): conteo exacto en
 // zonas circulares si algun conteo se ve raro.
-function isInsideZoneRect(
+export function isInsideZoneRect(
   position: { x: number; y: number },
   zone: BoardZone,
 ): boolean {
