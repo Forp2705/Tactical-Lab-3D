@@ -31,8 +31,18 @@ import {
   createDefaultBoardScene,
   createOpponentShape,
   createPlayerToken,
+  createSemanticArrow,
+  createTacticalZone,
   zoneSemanticPatch,
 } from "./boardModel";
+import { catalog } from "@/data";
+import type { ScenarioId } from "@/ai/scenarioSimulator";
+import { simulateScenario } from "@/ai/scenarioSimulator";
+import { buildScenarioInput } from "./scenarioBridge";
+import {
+  type ConsequenceOverlay,
+  buildConsequenceOverlay,
+} from "./scenarioBoardConsequence";
 import { handleCanvasPress, tokenFromPlanningPlayer } from "./boardTools";
 import {
   boardProjectLabel,
@@ -58,9 +68,25 @@ import { useBoardEditor } from "./useBoardEditor";
  * full set of board action handlers. Domain logic lives here; the view only
  * wires the returned bag to presentational components.
  */
+/**
+ * Preview ≡ commit: map the overlay 1:1 to real board items via the existing
+ * factories. Zero recompute — if this re-derived geometry it would reintroduce
+ * two sources of truth.
+ */
+export function overlayToBoardItems(overlay: ConsequenceOverlay) {
+  const zones = overlay.zones.map((z) =>
+    createTacticalZone(z.semantic, z.x, z.y, z.w, z.h, z.patch),
+  );
+  const arrows = overlay.arrows.map((a) =>
+    createSemanticArrow(a.semantic, a.from, a.to, a.patch),
+  );
+  return { zones, arrows };
+}
+
 export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const {
     team,
+    gameModel,
     session,
     weeklyDecisionThread,
     openTacticalBoard,
@@ -91,6 +117,9 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const [status, setStatus] = useState("Guardado automaticamente");
   const [payload, setPayload] = useState<BoardPayload | null>(null);
   const [attachBlockId, setAttachBlockId] = useState("");
+  const [consequenceOverlay, setConsequenceOverlay] =
+    useState<ConsequenceOverlay | null>(null);
+  const committingOverlayRef = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const {
@@ -167,8 +196,20 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
 
   const commitScene = (patch: Partial<BoardScene>, record = true) => {
     if (record) pushHistory();
+    // A scene mutation invalidates any pending projection — it was computed
+    // for this exact scene state and anchored to its objectIds (spec §5.4).
+    // The overlay's own accept path sets committingOverlayRef to skip this.
+    if (!committingOverlayRef.current) {
+      setConsequenceOverlay((prev) => (prev ? null : prev));
+    }
     updateTacticalBoardScene(board.id, scene.id, patch);
   };
+
+  // Discard a pending overlay when the active scene changes — it is anchored to
+  // objectIds of the scene it was computed for (spec §5.4).
+  useEffect(() => {
+    setConsequenceOverlay(null);
+  }, [scene.id]);
 
   const updateSceneObjects = (objects: BoardObject[], record = true) =>
     commitScene({ objects }, record);
@@ -550,6 +591,33 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const zoomOut = () => setZoom((value) => Math.max(80, value - 10));
   const zoomIn = () => setZoom((value) => Math.min(130, value + 10));
 
+  const runScenario = (scenarioId: ScenarioId) => {
+    const { input } = buildScenarioInput(
+      scene,
+      team.players,
+      gameModel,
+      catalog,
+      scenarioId,
+      problem,
+    );
+    const simulation = simulateScenario(input);
+    setConsequenceOverlay(buildConsequenceOverlay(simulation, scene));
+  };
+
+  const commitOverlay = () => {
+    if (!consequenceOverlay) return;
+    const { zones, arrows } = overlayToBoardItems(consequenceOverlay);
+    committingOverlayRef.current = true;
+    commitScene({
+      zones: [...scene.zones, ...zones],
+      arrows: [...scene.arrows, ...arrows],
+    });
+    committingOverlayRef.current = false;
+    setConsequenceOverlay(null);
+  };
+
+  const discardOverlay = () => setConsequenceOverlay(null);
+
   return {
     // transient UI state
     tool,
@@ -625,5 +693,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     createSessionBlock,
     zoomOut,
     zoomIn,
+    // scenario sandbox
+    consequenceOverlay,
+    runScenario,
+    commitOverlay,
+    discardOverlay,
   };
 }
