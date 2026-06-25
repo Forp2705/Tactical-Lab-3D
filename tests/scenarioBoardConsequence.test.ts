@@ -210,6 +210,32 @@ describe("buildConsequenceOverlay (raise-block)", () => {
     expect(isInsideZoneRect(rn, gapRect)).toBe(true);
   });
 
+  it("degradation 1 rival: longPass only, partial note, NO run on layer rival", () => {
+    // raiseBlockScene(false) has exactly one opponent token.
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockScene(false));
+    expect(overlay.arrows.some((a) => a.semantic === "longPass")).toBe(true);
+    const rivalRuns = overlay.arrows.filter(
+      (a) => a.semantic === "run" && a.patch?.layer === "rival",
+    );
+    expect(rivalRuns.length).toBe(0);
+    expect(overlay.notes.join(" ")).toMatch(/solo 1 rival/i);
+  });
+
+  it("degradation 0 rivals: no rival-layer arrows + note, gap zone and press still drawn", () => {
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(cbA, { x: 20, y: 40 }, "CB", 4),
+      createPlayerToken(cbB, { x: 20, y: 60 }, "CB", 5),
+    ]);
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), scene);
+    expect(overlay.arrows.some((a) => a.patch?.layer === "rival")).toBe(false);
+    expect(overlay.notes.join(" ")).toMatch(/sin rivales/i);
+    expect(
+      overlay.zones.some((z) => z.semantic === "danger" || z.semantic === "freeSpace"),
+    ).toBe(true);
+    expect(overlay.zones.some((z) => z.semantic === "press")).toBe(true);
+  });
+
   it("notes missing centre-backs instead of drawing a phantom gap", () => {
     const scene = sceneWith([createPlayerToken(null, { x: 8, y: 50 }, "GK", 1)]);
     const overlay = buildConsequenceOverlay(raiseBlockSim(), scene);
