@@ -76,10 +76,16 @@ escenario.
 5. **Táctica `raise-block`:** verticalidad primero → `longPass` (balón) + `run`
    a la espalda + segundo `run`/canal. `dropReceive` entre líneas **no** es
    default.
-6. **Densidad:** las flechas rivales van en `layer: "rival"` (ya existe en
-   `BoardLayer`) → el toggle de capas existente (`activeLayers` +
-   `layerVisibleForArrow` en `TacticalBoardCanvas`) las muestra/oculta. **No se
-   borra el pase** para reducir densidad; se togglea la capa.
+6. **Densidad / visibilidad:** `layer: "rival"` es **marca de agrupación**, no un
+   toggle por sí solo. Hoy `layerVisibleForArrow` (`boardGeometry.ts:61-68`)
+   clasifica por `arrow.semantic`, **no** por `arrow.layer` → un `run` rival
+   quedaría atado a tu capa de ataque (`offensiveTransition || attack`) y un
+   `longPass` rival siempre visible (mis-clasificación, no solo "no togglea").
+   Fix: rama temprana `if (arrow.layer === "rival") return true;`. Sin layer de
+   workspace nueva, sin mapear `rival` a `defense`, sin prometer toggle
+   post-accept. Durante el **preview** el grupo se controla por el lifecycle del
+   overlay (aparece en preview, se va en `discard`, se vuelve board real en
+   `accept`). **No se borra el pase** para reducir densidad.
 
 ## 5. Autoría y selección determinística de actores
 
@@ -96,16 +102,26 @@ const gapTarget = { x: gap.x + gap.w / 2, y: gap.y + gap.h / 2 };
 Tanto la `longPass` como el `run` primario referencian `gapTarget`. La coherencia
 se garantiza **por construcción**, no por convención.
 
-**Selección dir-aware (geometría, igual que `resolveCentreBacks`):**
+**Selección dir-aware (geometría).** ⚠️ Los rivales atacan hacia `-dir` (opuesto
+a los propios), así que **NO** se puede copiar `resolveCentreBacks` —ese helper
+selecciona tokens **propios** relativos a `dir`; la profundidad rival es la
+imagen espejada. Fijado sin margen:
 
-- **Passer (`longPass`):** el rival **más profundo** relativo a `dir` (el que
-  tiene la pelota en el build-up). `from` = ese rival; `to` = `gapTarget`.
-- **Runner primario (`run`, attackBack):** el rival **más adelantado** relativo
-  a `dir` (ataca el espacio concedido). `from` = ese rival; `to` = `gapTarget`.
-- **Segundo run / canal (`run`, opcional):** el rival **más abierto**
-  (`max |y - 50|`) entre los restantes. `from` = ese rival; `to` = un punto en
-  el **mismo banda detrás de la línea** que el gap pero en el carril lateral
-  (geométricamente compatible, no idéntico). Solo si hay ≥3 rivales.
+- `dir === 1` (vos atacás +x, el rival ataca -x): **passer/build-up = mayor `x`**;
+  **runner adelantado = menor `x`**.
+- `dir === -1` (vos atacás -x, el rival ataca +x): **passer = menor `x`**;
+  **runner adelantado = mayor `x`**.
+
+Con esa orientación:
+
+- **Passer (`longPass`):** el rival en build-up (con la pelota, lado profundo
+  rival). `from` = ese rival; `to` = `gapTarget`.
+- **Runner primario (`run`, attackBack):** el rival más adelantado hacia tu arco
+  (ataca el espacio concedido). `from` = ese rival; `to` = `gapTarget`.
+- **Segundo run / canal (`run`, opcional, solo ≥3 rivales):** el rival **más
+  abierto** (`max |y - 50|`) entre los restantes. `from` = ese rival; `to` = un
+  punto en la **misma banda detrás de la línea** que el gap pero en el carril
+  lateral (geométricamente compatible, no idéntico).
 
 Todas las flechas se crean con `createSemanticArrow(...)`, `layer: "rival"`,
 `label`/`tacticalMeaning` explicando la lectura ("(lectura del modelo) El más
@@ -117,9 +133,10 @@ El patrón vertical completo (passer + runner distintos) necesita **≥2 rivales
 
 - **0 rivales:** sin flechas rivales; `note` "Sin rivales en la escena: no puedo
   proyectar la respuesta." (la zona del hueco y el press se siguen dibujando).
-- **1 rival:** passer y runner colapsan en el mismo token. Se dibuja la
-  `longPass` (como slice 1) y **una** `run` desde ese token al `gapTarget`;
-  `note` "Solo hay 1 rival: respuesta coordinada parcial."
+- **1 rival:** un solo token no puede ser passer y runner a la vez (serían dos
+  flechas del **mismo origen al mismo `gapTarget`**, incoherente). Se dibuja
+  **solo** la `longPass` (balón a la espalda, como slice 1); `note` "Solo 1
+  rival: no puedo mostrar la corrida coordinada." **Sin** `run` redundante.
 - **≥2 rivales:** passer ≠ runner. Segundo run solo con ≥3.
 
 Sin tokens rivales ficticios. El panel dice qué falta (mismo patrón que P0.5 /
@@ -152,8 +169,9 @@ Nuevos:
    `point` o distancia `< epsilon`), **y** ambos caen dentro de la zona
    `danger`/`freeSpace` del overlay (vía `isInsideZoneRect`). Si se desacoplan,
    falla.
-3. **Degradación 1 rival:** escena con 1 rival → `longPass` + 1 `run` desde el
-   mismo token + `note` de respuesta parcial.
+3. **Degradación 1 rival:** escena con 1 rival → `longPass` presente + `note`
+   parcial + assert que **NO** hay ninguna `run` en `layer: "rival"` (el token
+   único no se dibuja como corredor redundante).
 4. **Degradación 0 rivales:** sin rivales → sin flechas `layer: "rival"` +
    `note`; la zona del hueco y el press se siguen dibujando.
 5. **Layer:** las flechas rivales llevan `layer: "rival"` (para que el toggle
@@ -174,6 +192,13 @@ Nuevos:
 
 - `src/board/scenarioBoardConsequence.ts` — nueva función autora + absorción de
   la `longPass`; sin cambios de tipos públicos (reusa `OverlayArrow`).
+- `src/board/boardGeometry.ts` — **una línea**: rama `if (arrow.layer ===
+  "rival") return true;` al inicio de `layerVisibleForArrow` (Patch visibilidad,
+  §4 dec. 6).
 - `tests/scenarioBoardConsequence.test.ts` — tests §8.
-- (Sin cambios en el model, store, persistencia ni en el flujo UI: `layer:
-  "rival"` y el toggle ya existen.)
+- (Sin cambios en model, store ni persistencia.)
+
+> **A confirmar en implementación:** si el preview de la overlay pasa por
+> `layerVisibleForArrow` o tiene render ghost propio. Si es ghost propio, la rama
+> `rival` protege sobre todo el estado **post-accept** (cuando las flechas ya son
+> board real y entran al pipeline de capas).
