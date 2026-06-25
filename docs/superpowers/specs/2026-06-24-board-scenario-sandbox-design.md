@@ -195,6 +195,7 @@ El panel dice **qué falta**, no muestra vacío:
 
 ## 9. Slices futuras (fuera de este spec)
 
+- **Follow-up #1 — `detectAttackDir` cross-check entre tiers (hardening, no nice-to-have).** En el primer board real (smoke en vivo, slice 1) un arquero suelto (GK x=62, centrales x=22) ganó por Tier-1 y devolvió `dir=-1` **en silencio, con confianza, sin note** → presión del lado equivocado. Fix concreto y **no circular**: Tier-1 (arquero por role) vs Tier-2 (centroide propio vs rival). Coinciden → alta confianza. Se contradicen → el arquero es el sospechoso (un solo token); preferí el centroide (basado en masa, robusto al token suelto) y emití una `note` ("el arquero contradice la línea/rival, uso el centroide"). No es circular porque masa-propia-vs-rival no usa "profundidad" (la dirección que se calcula). Un token no debe voltear toda la proyección en silencio. Meta-lección: el spec asumió boards geométricamente coherentes; los reales son messy — el cross-check endurece contra una falla ya observada.
 - Autorar los otros 10 escenarios (cada uno, su draw-back).
 - Reacción rival dibujada/anclada (token movement) con grounding.
 - Puente board→CoachAgent (LLM propone mutaciones validadas).
