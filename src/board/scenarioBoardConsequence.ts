@@ -1,4 +1,5 @@
 import type { ScenarioId, ScenarioSimulation } from "@/ai/scenarioSimulator";
+import { bumpEvidenceLevel, gradeConfidence } from "@/ai/scenarioSimulator";
 import type {
   BoardArrow,
   BoardArrowEndpoint,
@@ -8,7 +9,8 @@ import type {
   BoardZone,
   BoardZoneSemantic,
 } from "@/board/boardModel";
-import { isInsideZoneRect } from "@/board/productBoardTypes";
+import { countTokensInZone, type ZoneRect } from "@/board/productBoardTypes";
+import { computeScenarioGrounding, type ScenarioGrounding } from "@/board/scenarioGrounding";
 
 const GK_ROLE = /\b(gk|arquero|portero|golero)\b/i;
 const CB_ROLE = /\b(cb|dfc|central|centre[-\s]?back|center[-\s]?back)\b/i;
@@ -154,6 +156,7 @@ export type ConsequenceOverlay = {
     exposedPlayers: string[];
     confidence: "low" | "medium" | "high";
     evidenceLevel: "none" | "weak" | "partial" | "sufficient";
+    grounding: ScenarioGrounding;
   };
   notes: string[];
 };
@@ -195,6 +198,7 @@ function baseReadout(simulation: ScenarioSimulation): ConsequenceOverlay["readou
     exposedPlayers: simulation.exposedPlayers,
     confidence: simulation.confidence,
     evidenceLevel: simulation.evidenceLevel,
+    grounding: { zones: [], hasGroundedMetrics: false },
   };
 }
 
@@ -211,6 +215,12 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
     const press = clampRect(pressX, 35, ZONE_W, ZONE_H);
     const zones: OverlayZone[] = [
       { semantic: "press", ...press, patch: { label: "Presión alta", layer: "press" } },
+    ];
+
+    // Grounding draws from the SAME authored rects (press always; gap when the
+    // CB line is resolvable). No recomputed "equivalent" rects — same refs.
+    const groundingZones: Array<{ label: string; rect: ZoneRect }> = [
+      { label: "Presión alta", rect: press },
     ];
 
     const { backs, usedFallback } = resolveCentreBacks(scene, dir);
@@ -233,25 +243,14 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
         ...gap,
         patch: { label: "Espacio a la espalda", layer: "notes" },
       });
+      groundingZones.push({ label: "Espacio a la espalda", rect: gap });
 
-      // 5) Exposure check: own tokens covering the gap.
-      const gapZoneRect = {
-        ...gap,
-        id: "tmp",
-        semantic: "danger",
-        label: "",
-        shape: "rectangle",
-        layer: "notes",
-        color: "#000",
-        style: {},
-        visibility: "staff",
-      } as unknown as BoardZone;
-      const covering = scene.objects.filter(
-        (o) =>
-          isOwnPlayerToken(o) &&
-          !backs.includes(o) &&
-          isInsideZoneRect(o.position, gapZoneRect),
-      ).length;
+      // 5) Exposure check: own tokens (excluding the CBs that vacated the line)
+      //    covering the gap — routed through the single membership counter.
+      const ownBehind = scene.objects.filter(
+        (o) => isOwnPlayerToken(o) && !backs.includes(o),
+      );
+      const covering = countTokensInZone(ownBehind, gap).own;
 
       // 6) Composed rival fact (real names + real count, "lectura del modelo").
       const names = backs.map((b) => b.label).join(" y ");
@@ -303,13 +302,28 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
       }
     }
 
+    // Re-grade with board-derived superiority over the SAME drawn rects. The
+    // simulator already graded "low" (metrics null); grounding is the one extra
+    // evidence source the board can honestly supply. Lift ONLY when a zone
+    // counted real tokens — empty/outside rects keep confidence low + no lift.
+    const grounding = computeScenarioGrounding(scene.objects, groundingZones);
+    const riskCount = simulation.fitFindings.filter((f) => f.level === "risk").length;
+    const evidenceLevel = grounding.hasGroundedMetrics
+      ? bumpEvidenceLevel(simulation.evidenceLevel, 1) // grounding = exactly one source
+      : simulation.evidenceLevel;
+    const confidence = gradeConfidence({
+      hasGroundedMetrics: grounding.hasGroundedMetrics,
+      evidenceLevel,
+      riskCount,
+    });
+
     return {
       scenarioId: "raise-block",
       title: simulation.title,
       zones,
       arrows,
       rivalFacts,
-      readout: baseReadout(simulation),
+      readout: { ...baseReadout(simulation), confidence, evidenceLevel, grounding },
       notes,
     };
   },

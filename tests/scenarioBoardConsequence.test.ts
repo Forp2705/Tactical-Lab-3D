@@ -12,7 +12,11 @@ import {
   type BoardZone,
 } from "@/board/boardModel";
 import { isInsideZoneRect } from "@/board/productBoardTypes";
-import { simulateScenario } from "@/ai/scenarioSimulator";
+import {
+  bumpEvidenceLevel,
+  simulateScenario,
+  type ScenarioSimulation,
+} from "@/ai/scenarioSimulator";
 import { DEFAULT_GAME_MODEL } from "@/data/gameModel";
 import type { Player } from "@/data";
 
@@ -268,6 +272,56 @@ describe("buildConsequenceOverlay (raise-block)", () => {
       overlay.zones.some((z) => z.semantic === "danger" || z.semantic === "freeSpace"),
     ).toBe(false);
     expect(overlay.notes.join(" ")).toMatch(/no pude ubicar los centrales/i);
+  });
+});
+
+describe("buildConsequenceOverlay grounding (re-grade)", () => {
+  // Re-grade reads ONLY evidenceLevel + fitFindings off the sim; pin both so the
+  // assertions are deterministic. Base sim confidence is "low" (metrics null).
+  function partialSim(): ScenarioSimulation {
+    return { ...raiseBlockSim(), evidenceLevel: "partial", fitFindings: [] };
+  }
+
+  it("empty board: ungrounded → hasGroundedMetrics false, confidence low, evidence NOT lifted", () => {
+    const sim = partialSim();
+    const overlay = buildConsequenceOverlay(sim, sceneWith([]));
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(false);
+    expect(overlay.readout.confidence).toBe("low");
+    expect(overlay.readout.evidenceLevel).toBe(sim.evidenceLevel);
+  });
+
+  it("tokens outside both rects: ungrounded → false, confidence low, no lift", () => {
+    const sim = partialSim();
+    // press + gap bands live at y 35-65; these tokens sit at y<35 → outside both.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 10 }, "GK", 1),
+      createPlayerToken(cbA, { x: 20, y: 5 }, "CB", 4),
+      createPlayerToken(cbB, { x: 20, y: 15 }, "CB", 5),
+      createOpponentToken({ x: 80, y: 10 }, "ST", 9),
+    ]);
+    const overlay = buildConsequenceOverlay(sim, scene);
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(false);
+    expect(overlay.readout.confidence).toBe("low");
+    expect(overlay.readout.evidenceLevel).toBe(sim.evidenceLevel);
+  });
+
+  it("tokens inside zones: grounded → true, confidence not low, evidence lifted EXACTLY one step, dual-face rows", () => {
+    const sim = partialSim();
+    const overlay = buildConsequenceOverlay(sim, raiseBlockScene(false));
+    const g = overlay.readout.grounding;
+    expect(g.hasGroundedMetrics).toBe(true);
+    // dual-face: one row per drawn band (press benefit + gap risk/cover).
+    expect(g.zones.length).toBe(2);
+    const press = g.zones.find((z) => z.label === "Presión alta");
+    const gap = g.zones.find((z) => z.label === "Espacio a la espalda");
+    expect(press).toBeDefined();
+    expect(gap).toBeDefined();
+    // signed delta = own - rival on both rows.
+    expect(press!.delta).toBe(press!.own - press!.rival);
+    expect(gap!.delta).toBe(gap!.own - gap!.rival);
+    expect(overlay.readout.confidence).not.toBe("low");
+    // bounded to ONE source: partial → sufficient, never two tiers.
+    expect(overlay.readout.evidenceLevel).toBe(bumpEvidenceLevel(sim.evidenceLevel, 1));
   });
 });
 

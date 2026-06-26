@@ -31,6 +31,7 @@ const overlay: ConsequenceOverlay = {
     exposedPlayers: [],
     confidence: "low",
     evidenceLevel: "none",
+    grounding: { zones: [], hasGroundedMetrics: false },
   },
 };
 
