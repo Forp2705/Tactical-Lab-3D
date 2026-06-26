@@ -380,7 +380,9 @@ export function computeScenarioGrounding(
     const { own, rival } = countTokensInZone(objects, rect);
     return { label, own, rival, delta: own - rival, populated: own + rival > 0 };
   });
-  return { zones: rows, hasGroundedMetrics: rows.some((z) => z.populated) };
+  // Grounding atom is EXACTLY "a zone counted real tokens" — never
+  // zones.length > 0, never requiredZoneCount, never "rects were authored".
+  return { zones: rows, hasGroundedMetrics: rows.some((z) => z.own + z.rival > 0) };
 }
 
 // Partial-grounding note derived from per-zone populated flags (no standalone
@@ -431,6 +433,8 @@ describe("raise-block grounding → confidence", () => {
     const overlay = buildConsequenceOverlay(sim, scene);
     expect(overlay.readout.grounding.hasGroundedMetrics).toBe(false);
     expect(overlay.readout.confidence).toBe("low");
+    // Guard BOTH signals: grounding must not lift evidenceLevel either.
+    expect(overlay.readout.evidenceLevel).toBe(sim.evidenceLevel);
   });
 
   it("LOCK 2 (end-to-end): grounded scene exposes grounding and lifts off the floor", () => {
