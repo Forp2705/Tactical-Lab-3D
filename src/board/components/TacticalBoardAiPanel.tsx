@@ -3,6 +3,7 @@ import type { ScenarioId } from "@/ai/scenarioSimulator";
 import { blockTitle } from "../boardGeometry";
 import type { BoardPayload, PlanningBoardLayer } from "../productBoardTypes";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
+import { groundingSummary } from "@/board/scenarioGrounding";
 
 type TacticalBoardAiPanelProps = {
   aiInterpretation: string[];
@@ -84,6 +85,23 @@ export function TacticalBoardAiPanel({
               Confianza: {consequenceOverlay.readout.confidence} · Evidencia:{" "}
               {consequenceOverlay.readout.evidenceLevel}
             </p>
+            {consequenceOverlay.readout.grounding.zones.length > 0 ? (
+              <ul className="rombo-scenario-grounding">
+                {consequenceOverlay.readout.grounding.zones.map((zone) => (
+                  <li key={zone.label}>
+                    {zone.populated
+                      ? `${zone.label}: ${zone.own} propios vs ${zone.rival} rival (${zone.delta >= 0 ? "+" : ""}${zone.delta})`
+                      : `${zone.label}: sin fichas en la zona`}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {(() => {
+              const summary = groundingSummary(consequenceOverlay.readout.grounding);
+              return summary ? (
+                <p className="rombo-scenario-partial">{summary}</p>
+              ) : null;
+            })()}
             {consequenceOverlay.rivalFacts.length > 0 ? (
               <ul className="rombo-scenario-rival">
                 {consequenceOverlay.rivalFacts.map((fact) => (
