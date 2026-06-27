@@ -203,15 +203,7 @@ export function inferAiInterpretation({
 
   // 3) Hechos posicionales por zona: conteo de fichas reales, NO veredicto.
   for (const zone of zones.slice(0, 2)) {
-    const inside = objects.filter(
-      (object) =>
-        (object.type === "playerToken" || object.type === "opponentToken") &&
-        isInsideZoneRect(object.position, zone),
-    );
-    const own = inside.filter((object) => object.type === "playerToken").length;
-    const rival = inside.filter(
-      (object) => object.type === "opponentToken",
-    ).length;
+    const { own, rival } = countTokensInZone(objects, zone);
     if (own + rival > 0) {
       findings.push(`En ${zone.label}: ${own} propios vs ${rival} rivales.`);
     }
@@ -276,9 +268,11 @@ function labelBoardActor(actor: BoardActorRef): string {
 // Aproxima toda zona como rectangulo: una zona "circle" se cuenta por su
 // bounding-box. Suficiente para lectura tactica. TODO(P0.7): conteo exacto en
 // zonas circulares si algun conteo se ve raro.
+export type ZoneRect = Pick<BoardZone, "x" | "y" | "w" | "h">;
+
 export function isInsideZoneRect(
   position: { x: number; y: number },
-  zone: BoardZone,
+  zone: ZoneRect,
 ): boolean {
   return (
     position.x >= zone.x &&
@@ -286,6 +280,26 @@ export function isInsideZoneRect(
     position.y >= zone.y &&
     position.y <= zone.y + zone.h
   );
+}
+
+// El UNICO contador de "propios vs rivales en un rectangulo". Wrapper fino
+// sobre isInsideZoneRect: ningun otro lugar debe reimplementar la membresia.
+// Asi la lectura en pantalla y cualquier conteo futuro consumen la misma
+// fuente y no pueden divergir.
+export function countTokensInZone(
+  objects: BoardObject[],
+  rect: ZoneRect,
+): { own: number; rival: number } {
+  let own = 0;
+  let rival = 0;
+  for (const object of objects) {
+    if (object.type !== "playerToken" && object.type !== "opponentToken")
+      continue;
+    if (!isInsideZoneRect(object.position, rect)) continue;
+    if (object.type === "playerToken") own += 1;
+    else rival += 1;
+  }
+  return { own, rival };
 }
 
 // Verbo relacional por semantica: describe la accion DIBUJADA (no es un

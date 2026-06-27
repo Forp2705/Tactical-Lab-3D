@@ -197,7 +197,11 @@ export function listScenarios() {
   }));
 }
 
-export function simulateScenario(input: ScenarioInput): ScenarioSimulation {
+export function simulateScenario(
+  input: ScenarioInput,
+  options?: { includeMissingShapeCaveat?: boolean },
+): ScenarioSimulation {
+  const includeMissingShapeCaveat = options?.includeMissingShapeCaveat ?? true;
   const scenario = SCENARIOS[input.scenarioId];
   const fitFindings = analyzePlayerFit(input.players, [scenario.adjustment]);
   const textContext = [
@@ -226,7 +230,7 @@ export function simulateScenario(input: ScenarioInput): ScenarioSimulation {
     scenarioId: input.scenarioId,
     title: scenario.title,
     expectedBenefit: scenario.benefit,
-    mainRisk: enrichRiskWithMetrics(scenario.risk, input.metrics),
+    mainRisk: enrichRiskWithMetrics(scenario.risk, input.metrics, includeMissingShapeCaveat),
     lineImpact: {
       defense: scenario.defense,
       midfield: scenario.midfield,
@@ -266,31 +270,63 @@ function computeGameModelCompatibility(
   return "conditional";
 }
 
-function computeEvidenceLevel(input: ScenarioInput): ScenarioSimulation["evidenceLevel"] {
+export type EvidenceLevel = ScenarioSimulation["evidenceLevel"];
+export type Confidence = ScenarioSimulation["confidence"];
+
+const EVIDENCE_ORDER: EvidenceLevel[] = ["none", "weak", "partial", "sufficient"];
+
+export function gradeEvidenceLevel(sourceCount: number): EvidenceLevel {
+  if (sourceCount >= 3) return "sufficient";
+  if (sourceCount === 2) return "partial";
+  if (sourceCount === 1) return "weak";
+  return "none";
+}
+
+export function gradeConfidence(args: {
+  hasGroundedMetrics: boolean;
+  evidenceLevel: EvidenceLevel;
+  riskCount: number;
+}): Confidence {
+  const { hasGroundedMetrics, evidenceLevel, riskCount } = args;
+  if (!hasGroundedMetrics || evidenceLevel === "none" || riskCount >= 2) return "low";
+  if (evidenceLevel === "sufficient" && riskCount === 0) return "high";
+  return "medium";
+}
+
+export function bumpEvidenceLevel(level: EvidenceLevel, steps: number): EvidenceLevel {
+  const i = EVIDENCE_ORDER.indexOf(level);
+  const next = Math.max(0, Math.min(EVIDENCE_ORDER.length - 1, i + steps));
+  return EVIDENCE_ORDER[next];
+}
+
+function computeEvidenceLevel(input: ScenarioInput): EvidenceLevel {
   const sources = [
     input.metrics ? "metrics" : "",
     input.evidenceText?.trim() ? "evidence" : "",
     input.patterns?.length ? "patterns" : "",
   ].filter(Boolean).length;
-  if (sources >= 3) return "sufficient";
-  if (sources === 2) return "partial";
-  if (sources === 1) return "weak";
-  return "none";
+  return gradeEvidenceLevel(sources);
 }
 
 function computeConfidence(
   metrics: CoachShapeMetrics | null | undefined,
-  evidenceLevel: ScenarioSimulation["evidenceLevel"],
+  evidenceLevel: EvidenceLevel,
   findings: PlayerFitFinding[],
-): ScenarioSimulation["confidence"] {
+): Confidence {
   const riskCount = findings.filter((finding) => finding.level === "risk").length;
-  if (!metrics || evidenceLevel === "none" || riskCount >= 2) return "low";
-  if (evidenceLevel === "sufficient" && riskCount === 0) return "high";
-  return "medium";
+  return gradeConfidence({ hasGroundedMetrics: !!metrics, evidenceLevel, riskCount });
 }
 
-function enrichRiskWithMetrics(risk: string, metrics?: CoachShapeMetrics | null) {
-  if (!metrics) return `${risk} Confianza baja: no hay shape activo publicado.`;
+function enrichRiskWithMetrics(
+  risk: string,
+  metrics?: CoachShapeMetrics | null,
+  includeMissingShapeCaveat = true,
+) {
+  if (!metrics) {
+    return includeMissingShapeCaveat
+      ? `${risk} Confianza baja: no hay shape activo publicado.`
+      : risk;
+  }
   const alerts = [];
   if (metrics.compactness > 24) alerts.push("compacidad alta");
   if ((metrics.lineDistances.defenseToMidfield ?? 0) > 20) {

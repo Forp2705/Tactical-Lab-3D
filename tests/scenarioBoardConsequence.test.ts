@@ -12,7 +12,11 @@ import {
   type BoardZone,
 } from "@/board/boardModel";
 import { isInsideZoneRect } from "@/board/productBoardTypes";
-import { simulateScenario } from "@/ai/scenarioSimulator";
+import {
+  bumpEvidenceLevel,
+  simulateScenario,
+  type ScenarioSimulation,
+} from "@/ai/scenarioSimulator";
 import { DEFAULT_GAME_MODEL } from "@/data/gameModel";
 import type { Player } from "@/data";
 
@@ -270,6 +274,143 @@ describe("buildConsequenceOverlay (raise-block)", () => {
     expect(overlay.notes.join(" ")).toMatch(/no pude ubicar los centrales/i);
   });
 });
+
+describe("buildConsequenceOverlay grounding (re-grade)", () => {
+  // Re-grade reads ONLY evidenceLevel + fitFindings off the sim; pin both so the
+  // assertions are deterministic. Base sim confidence is "low" (metrics null).
+  function partialSim(): ScenarioSimulation {
+    return { ...raiseBlockSim(), evidenceLevel: "partial", fitFindings: [] };
+  }
+
+  it("empty board: ungrounded → hasGroundedMetrics false, confidence low, evidence NOT lifted", () => {
+    const sim = partialSim();
+    const overlay = buildConsequenceOverlay(sim, sceneWith([]));
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(false);
+    expect(overlay.readout.confidence).toBe("low");
+    expect(overlay.readout.evidenceLevel).toBe(sim.evidenceLevel);
+  });
+
+  it("tokens outside both rects: ungrounded → false, confidence low, no lift", () => {
+    const sim = partialSim();
+    // press + gap bands live at y 35-65; these tokens sit at y<35 → outside both.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 10 }, "GK", 1),
+      createPlayerToken(cbA, { x: 20, y: 5 }, "CB", 4),
+      createPlayerToken(cbB, { x: 20, y: 15 }, "CB", 5),
+      createOpponentToken({ x: 80, y: 10 }, "ST", 9),
+    ]);
+    const overlay = buildConsequenceOverlay(sim, scene);
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(false);
+    expect(overlay.readout.confidence).toBe("low");
+    expect(overlay.readout.evidenceLevel).toBe(sim.evidenceLevel);
+  });
+
+  it("tokens inside zones: grounded → true, confidence not low, evidence lifted EXACTLY one step, dual-face rows", () => {
+    const sim = partialSim();
+    const overlay = buildConsequenceOverlay(sim, raiseBlockScene(false));
+    const g = overlay.readout.grounding;
+    expect(g.hasGroundedMetrics).toBe(true);
+    // dual-face: one row per drawn band (press benefit + gap risk/cover).
+    expect(g.zones.length).toBe(2);
+    const press = g.zones.find((z) => z.label === "Presión alta");
+    const gap = g.zones.find((z) => z.label === "Espacio a la espalda");
+    expect(press).toBeDefined();
+    expect(gap).toBeDefined();
+    // signed delta = own - rival on both rows.
+    expect(press!.delta).toBe(press!.own - press!.rival);
+    expect(gap!.delta).toBe(gap!.own - gap!.rival);
+    expect(overlay.readout.confidence).not.toBe("low");
+    // bounded to ONE source: partial → sufficient, never two tiers.
+    expect(overlay.readout.evidenceLevel).toBe(bumpEvidenceLevel(sim.evidenceLevel, 1));
+  });
+});
+
+describe("board readout caveat suppression (Task 6)", () => {
+  // Mirror how useBoardActions builds the sim: metrics null + flag false.
+  // Override evidence/findings for a deterministic re-grade (medium when grounded).
+  function boardSim(): ScenarioSimulation {
+    const sim = simulateScenario(
+      {
+        scenarioId: "raise-block",
+        metrics: null,
+        gameModel: DEFAULT_GAME_MODEL,
+        players: [cbA, cbB],
+        exercises: [],
+      },
+      { includeMissingShapeCaveat: false },
+    );
+    return { ...sim, evidenceLevel: "weak", fitFindings: [] };
+  }
+
+  it("grounded board: no caveat in mainRisk AND confidence medium (no contradiction)", () => {
+    const overlay = buildConsequenceOverlay(boardSim(), raiseBlockScene(false));
+    expect(overlay.readout.mainRisk).not.toContain("no hay shape activo publicado");
+    expect(overlay.readout.mainRisk).toContain("Espalda de centrales expuesta");
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(true);
+    expect(overlay.readout.confidence).toBe("medium");
+  });
+
+  it("ungrounded board (empty scene): confidence low AND no caveat (reason carried by grounding rows)", () => {
+    const overlay = buildConsequenceOverlay(boardSim(), sceneWith([]));
+    expect(overlay.readout.mainRisk).not.toContain("no hay shape activo publicado");
+    expect(overlay.readout.confidence).toBe("low");
+  });
+});
+
+describe("buildConsequenceOverlay tacticalRows (Task 7: single visible gap count)", () => {
+  // MANDATORY fixture — a centre-back sits INSIDE the gap rect.
+  // dir = 1, both CBs at x = 30 → lineX = 30 → gap = x∈[4,30], y∈[35,65].
+  // CBs at (30,48) and (30,52) land on the gap's inclusive right edge → inside.
+  // The GK is parked at y = 10 (OUTSIDE the gap band) so it does not leak into
+  // `covering` (only the backs are excluded from ownBehind, not the GK).
+  function cbInsideGapScene() {
+    return sceneWith([
+      createPlayerToken(null, { x: 8, y: 10 }, "GK", 1), // dir 1, outside gap
+      createPlayerToken(cbA, { x: 30, y: 48 }, "CB", 4),
+      createPlayerToken(cbB, { x: 30, y: 52 }, "CB", 5),
+    ]);
+  }
+
+  it("CB-in-gap: all-token grounds the gap, but the visible gap row is coverage=0 (backs excluded)", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), cbInsideGapScene());
+    // all-token grounding still fires — the backs sit inside the rect.
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(true);
+
+    const rows = overlay.readout.tacticalRows;
+    const gapRow = rows.find(
+      (r) => r.kind === "coverage" && r.label === "Espacio a la espalda",
+    );
+    expect(gapRow).toEqual({
+      kind: "coverage",
+      label: "Espacio a la espalda",
+      covering: 0,
+    });
+
+    // The gap appears ONCE, as coverage only — no competing all-token superiority row.
+    expect(
+      rows.some((r) => r.kind === "superiority" && r.label === "Espacio a la espalda"),
+    ).toBe(false);
+  });
+
+  it("press row stays raw own/rival superiority, matching grounding.zones[0]", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockScene(false));
+    const rows = overlay.readout.tacticalRows;
+    const press = grounding0(overlay);
+    expect(rows[0].kind).toBe("superiority");
+    expect(rows[0]).toEqual({
+      kind: "superiority",
+      label: press.label,
+      own: press.own,
+      rival: press.rival,
+      delta: press.delta,
+      populated: press.populated,
+    });
+  });
+});
+
+function grounding0(overlay: ReturnType<typeof buildConsequenceOverlay>) {
+  return overlay.readout.grounding.zones[0];
+}
 
 describe("resolveRivalActors", () => {
   it("dir 1: passer = max x (deep rival side), runner = min x (advanced)", () => {

@@ -600,7 +600,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       scenarioId,
       problem,
     );
-    const simulation = simulateScenario(input);
+    const simulation = simulateScenario(input, { includeMissingShapeCaveat: false });
     setConsequenceOverlay(buildConsequenceOverlay(simulation, scene));
   };
 
