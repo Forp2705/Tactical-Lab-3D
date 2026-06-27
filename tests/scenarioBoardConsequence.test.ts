@@ -357,6 +357,61 @@ describe("board readout caveat suppression (Task 6)", () => {
   });
 });
 
+describe("buildConsequenceOverlay tacticalRows (Task 7: single visible gap count)", () => {
+  // MANDATORY fixture — a centre-back sits INSIDE the gap rect.
+  // dir = 1, both CBs at x = 30 → lineX = 30 → gap = x∈[4,30], y∈[35,65].
+  // CBs at (30,48) and (30,52) land on the gap's inclusive right edge → inside.
+  // The GK is parked at y = 10 (OUTSIDE the gap band) so it does not leak into
+  // `covering` (only the backs are excluded from ownBehind, not the GK).
+  function cbInsideGapScene() {
+    return sceneWith([
+      createPlayerToken(null, { x: 8, y: 10 }, "GK", 1), // dir 1, outside gap
+      createPlayerToken(cbA, { x: 30, y: 48 }, "CB", 4),
+      createPlayerToken(cbB, { x: 30, y: 52 }, "CB", 5),
+    ]);
+  }
+
+  it("CB-in-gap: all-token grounds the gap, but the visible gap row is coverage=0 (backs excluded)", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), cbInsideGapScene());
+    // all-token grounding still fires — the backs sit inside the rect.
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(true);
+
+    const rows = overlay.readout.tacticalRows;
+    const gapRow = rows.find(
+      (r) => r.kind === "coverage" && r.label === "Espacio a la espalda",
+    );
+    expect(gapRow).toEqual({
+      kind: "coverage",
+      label: "Espacio a la espalda",
+      covering: 0,
+    });
+
+    // The gap appears ONCE, as coverage only — no competing all-token superiority row.
+    expect(
+      rows.some((r) => r.kind === "superiority" && r.label === "Espacio a la espalda"),
+    ).toBe(false);
+  });
+
+  it("press row stays raw own/rival superiority, matching grounding.zones[0]", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockScene(false));
+    const rows = overlay.readout.tacticalRows;
+    const press = grounding0(overlay);
+    expect(rows[0].kind).toBe("superiority");
+    expect(rows[0]).toEqual({
+      kind: "superiority",
+      label: press.label,
+      own: press.own,
+      rival: press.rival,
+      delta: press.delta,
+      populated: press.populated,
+    });
+  });
+});
+
+function grounding0(overlay: ReturnType<typeof buildConsequenceOverlay>) {
+  return overlay.readout.grounding.zones[0];
+}
+
 describe("resolveRivalActors", () => {
   it("dir 1: passer = max x (deep rival side), runner = min x (advanced)", () => {
     const scene = sceneWith([

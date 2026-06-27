@@ -85,13 +85,15 @@ export function TacticalBoardAiPanel({
               Confianza: {consequenceOverlay.readout.confidence} · Evidencia:{" "}
               {consequenceOverlay.readout.evidenceLevel}
             </p>
-            {consequenceOverlay.readout.grounding.zones.length > 0 ? (
+            {consequenceOverlay.readout.tacticalRows.length > 0 ? (
               <ul className="rombo-scenario-grounding">
-                {consequenceOverlay.readout.grounding.zones.map((zone) => (
-                  <li key={zone.label}>
-                    {zone.populated
-                      ? `${zone.label}: ${zone.own} propios vs ${zone.rival} rival (${zone.delta >= 0 ? "+" : ""}${zone.delta})`
-                      : `${zone.label}: sin fichas en la zona`}
+                {consequenceOverlay.readout.tacticalRows.map((row) => (
+                  <li key={`${row.kind}:${row.label}`}>
+                    {row.kind === "superiority"
+                      ? row.populated
+                        ? `${row.label}: ${row.own} propios vs ${row.rival} rival (${row.delta >= 0 ? "+" : ""}${row.delta})`
+                        : `${row.label}: sin fichas en la zona`
+                      : `${row.label}: ${row.covering} cobertura${row.covering === 1 ? "" : "s"}`}
                   </li>
                 ))}
               </ul>

@@ -32,6 +32,7 @@ const overlay: ConsequenceOverlay = {
     confidence: "low",
     evidenceLevel: "none",
     grounding: { zones: [], hasGroundedMetrics: false },
+    tacticalRows: [],
   },
 };
 

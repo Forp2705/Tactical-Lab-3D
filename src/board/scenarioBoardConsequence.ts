@@ -144,6 +144,14 @@ export type OverlayArrow = {
   patch?: OverlayArrowPatch;
 };
 
+// The VISIBLE tactical rows. Press is a raw own/rival superiority read; the gap
+// is coverage-oriented (own EXCLUDING the vacated backs), so the all-token gap
+// count never reaches the screen — it stays internal to `grounding` for the
+// hasGroundedMetrics atom + the partial note.
+export type TacticalReadoutRow =
+  | { kind: "superiority"; label: string; own: number; rival: number; delta: number; populated: boolean }
+  | { kind: "coverage"; label: string; covering: number };
+
 export type ConsequenceOverlay = {
   scenarioId: ScenarioId;
   title: string;
@@ -157,6 +165,7 @@ export type ConsequenceOverlay = {
     confidence: "low" | "medium" | "high";
     evidenceLevel: "none" | "weak" | "partial" | "sufficient";
     grounding: ScenarioGrounding;
+    tacticalRows: TacticalReadoutRow[];
   };
   notes: string[];
 };
@@ -199,6 +208,7 @@ function baseReadout(simulation: ScenarioSimulation): ConsequenceOverlay["readou
     confidence: simulation.confidence,
     evidenceLevel: simulation.evidenceLevel,
     grounding: { zones: [], hasGroundedMetrics: false },
+    tacticalRows: [],
   };
 }
 
@@ -230,6 +240,9 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
 
     const rivalFacts: string[] = [];
     const arrows: OverlayArrow[] = [];
+    // Lifted so the coverage row can be assembled after grounding. null = the
+    // gap row was never drawn (no resolvable CB line) → no coverage row.
+    let covering: number | null = null;
 
     if (backs.length < 2) {
       notes.push("No pude ubicar los centrales en la escena.");
@@ -250,7 +263,7 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
       const ownBehind = scene.objects.filter(
         (o) => isOwnPlayerToken(o) && !backs.includes(o),
       );
-      const covering = countTokensInZone(ownBehind, gap).own;
+      covering = countTokensInZone(ownBehind, gap).own;
 
       // 6) Composed rival fact (real names + real count, "lectura del modelo").
       const names = backs.map((b) => b.label).join(" y ");
@@ -317,13 +330,25 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
       riskCount,
     });
 
+    // VISIBLE rows. Press (grounding.zones[0], always pushed first) is a raw
+    // superiority read; the gap is coverage-oriented from `covering` (own
+    // excluding the vacated backs) — the all-token gap count never surfaces.
+    const tacticalRows: TacticalReadoutRow[] = [];
+    const pressRow = grounding.zones[0];
+    if (pressRow) {
+      tacticalRows.push({ kind: "superiority", ...pressRow });
+    }
+    if (covering !== null) {
+      tacticalRows.push({ kind: "coverage", label: "Espacio a la espalda", covering });
+    }
+
     return {
       scenarioId: "raise-block",
       title: simulation.title,
       zones,
       arrows,
       rivalFacts,
-      readout: { ...baseReadout(simulation), confidence, evidenceLevel, grounding },
+      readout: { ...baseReadout(simulation), confidence, evidenceLevel, grounding, tacticalRows },
       notes,
     };
   },
