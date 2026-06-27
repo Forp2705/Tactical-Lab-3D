@@ -20,27 +20,29 @@
 
 ---
 
-### Task 1: Packet types & contract
+### Task 1: Packet types & contract (Zod-first)
+
+**HARD GATE (PO):** `BoardFactualClaimSchema` is a Zod **discriminated union on `kind`**; `BoardEvidencePacketSchema` is a Zod object; TS types are **inferred from Zod** (single source of truth). The module is **shared / client-safe — NO server-only imports** (no `CoachAgent`, no `api/*`, no `node:*`). Tests cover **valid AND invalid** packet parsing. (The runtime schema is what Task 6's API uses to reject a malformed packet instead of silently dropping it.)
 
 **Files:**
 - Create: `src/board/boardEvidencePacket.ts`
 - Test: `tests/boardEvidencePacket.test.ts`
 
 **Interfaces:**
-- Consumes: `ScenarioId` from `@/ai/scenarioSimulator`; `Confidence`, `EvidenceLevel` from `@/ai/scenarioSimulator` (exported by slice 3).
+- Consumes: nothing server-only. (Confidence/evidence enums are inlined as `z.enum` to keep the module decoupled and client-safe; `scenarioId` is `z.string().min(1)`.)
 - Produces:
-  - `BoardFactualClaim` (discriminated union, every member has `id` + `kind`)
-  - `BoardEvidencePacket`
+  - `BoardFactualClaimSchema` (z.discriminatedUnion on `"kind"`) + inferred `BoardFactualClaim`
+  - `BoardEvidencePacketSchema` (z.object) + inferred `BoardEvidencePacket`
   - `isBoardFactualClaimId(packet, id): boolean` (existence helper used by the guard)
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test (valid + invalid parse)**
 
 ```ts
 // tests/boardEvidencePacket.test.ts
 import { describe, it, expect } from "vitest";
-import { isBoardFactualClaimId, type BoardEvidencePacket } from "@/board/boardEvidencePacket";
+import { BoardEvidencePacketSchema, isBoardFactualClaimId, type BoardEvidencePacket } from "@/board/boardEvidencePacket";
 
-const packet: BoardEvidencePacket = {
+const validPacket: BoardEvidencePacket = {
   source: "boardScenario",
   scope: "drawnSituation",
   scenarioId: "raise-block",
@@ -57,11 +59,24 @@ const packet: BoardEvidencePacket = {
   },
 };
 
-describe("BoardEvidencePacket contract", () => {
+describe("BoardEvidencePacket schema + contract", () => {
+  it("parses a valid packet", () => {
+    expect(BoardEvidencePacketSchema.safeParse(validPacket).success).toBe(true);
+  });
+
+  it("rejects a malformed claim (unknown discriminant kind)", () => {
+    const bad = { ...validPacket, boardEvidence: { ...validPacket.boardEvidence, factualClaims: [{ id: "x", kind: "bogus" }] } };
+    expect(BoardEvidencePacketSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("rejects a packet missing required fields", () => {
+    expect(BoardEvidencePacketSchema.safeParse({ source: "boardScenario" }).success).toBe(false);
+  });
+
   it("isBoardFactualClaimId finds existing ids and rejects unknown", () => {
-    expect(isBoardFactualClaimId(packet, "press")).toBe(true);
-    expect(isBoardFactualClaimId(packet, "gap")).toBe(true);
-    expect(isBoardFactualClaimId(packet, "nope")).toBe(false);
+    expect(isBoardFactualClaimId(validPacket, "press")).toBe(true);
+    expect(isBoardFactualClaimId(validPacket, "gap")).toBe(true);
+    expect(isBoardFactualClaimId(validPacket, "nope")).toBe(false);
   });
 });
 ```
@@ -71,30 +86,57 @@ describe("BoardEvidencePacket contract", () => {
 Run: `npm test -- --run tests/boardEvidencePacket.test.ts`
 Expected: FAIL — module `@/board/boardEvidencePacket` not found.
 
-- [ ] **Step 3: Write the types + helper**
+- [ ] **Step 3: Write the Zod schemas + inferred types + helper**
 
 ```ts
-// src/board/boardEvidencePacket.ts
-import type { ScenarioId, Confidence, EvidenceLevel } from "@/ai/scenarioSimulator";
+// src/board/boardEvidencePacket.ts — client-safe; NO server-only imports.
+import { z } from "zod";
 
-export type BoardFactualClaim =
-  | { id: string; kind: "zone-count"; zoneLabel: string; own: number; rival: number; delta: number; grounded: boolean }
-  | { id: string; kind: "coverage"; zoneId: string; zoneLabel: string; covering: number; grounded: boolean; excludes: "backs" };
+const EvidenceLevelEnum = z.enum(["none", "weak", "partial", "sufficient"]);
 
-export type BoardEvidencePacket = {
-  source: "boardScenario";
-  scope: "drawnSituation";
-  scenarioId: ScenarioId;
-  title: string;
-  readout: { confidence: Confidence; evidenceLevel: EvidenceLevel; expectedBenefit: string; mainRisk: string };
-  boardEvidence: {
-    authority: "high";
-    evidenceStrength: EvidenceLevel;
-    hasGroundedMetrics: boolean;
-    factualClaims: BoardFactualClaim[];
-    summary?: string;
-  };
-};
+export const BoardFactualClaimSchema = z.discriminatedUnion("kind", [
+  z.object({
+    id: z.string().min(1),
+    kind: z.literal("zone-count"),
+    zoneLabel: z.string().min(1),
+    own: z.number(),
+    rival: z.number(),
+    delta: z.number(),
+    grounded: z.boolean(),
+  }),
+  z.object({
+    id: z.string().min(1),
+    kind: z.literal("coverage"),
+    zoneId: z.string().min(1),
+    zoneLabel: z.string().min(1),
+    covering: z.number(),
+    grounded: z.boolean(),
+    excludes: z.literal("backs"),
+  }),
+]);
+
+export const BoardEvidencePacketSchema = z.object({
+  source: z.literal("boardScenario"),
+  scope: z.literal("drawnSituation"),
+  scenarioId: z.string().min(1),
+  title: z.string(),
+  readout: z.object({
+    confidence: z.enum(["low", "medium", "high"]),
+    evidenceLevel: EvidenceLevelEnum,
+    expectedBenefit: z.string(),
+    mainRisk: z.string(),
+  }),
+  boardEvidence: z.object({
+    authority: z.literal("high"),
+    evidenceStrength: EvidenceLevelEnum,
+    hasGroundedMetrics: z.boolean(),
+    factualClaims: z.array(BoardFactualClaimSchema),
+    summary: z.string().optional(),
+  }),
+});
+
+export type BoardFactualClaim = z.infer<typeof BoardFactualClaimSchema>;
+export type BoardEvidencePacket = z.infer<typeof BoardEvidencePacketSchema>;
 
 export function isBoardFactualClaimId(packet: BoardEvidencePacket, id: string): boolean {
   return packet.boardEvidence.factualClaims.some((claim) => claim.id === id);
@@ -104,7 +146,7 @@ export function isBoardFactualClaimId(packet: BoardEvidencePacket, id: string): 
 - [ ] **Step 4: Run test to verify it passes + type-check**
 
 Run: `npm test -- --run tests/boardEvidencePacket.test.ts && npm run type-check`
-Expected: PASS, tsc clean.
+Expected: PASS (4/4), tsc clean. Confirm no server-only import crept in (`grep -nE "CoachAgent|node:|api/" src/board/boardEvidencePacket.ts` → no matches).
 
 - [ ] **Step 5: Commit**
 
@@ -581,16 +623,25 @@ git commit -m "feat(bridge): thread optional one-shot packet through runCoachTur
 
 ### Task 6: Wiring / entry point (button → client → API → guard)
 
+**HARD GATE (PO):** the API must parse `body.boardEvidence` with `BoardEvidencePacketSchema`.
+- **absent** (`undefined`/`null`) → existing path, no-op (no board evidence).
+- **present & valid** → forward the parsed packet.
+- **present & malformed** → **explicit reject (HTTP 400)**. It is **FORBIDDEN to silently degrade a malformed packet to "no packet"** — that would make the answer look board-grounded when it isn't (an honesty failure, not just a validation one). Test: a malformed packet does NOT reach the coach as a normal request.
+
 **Files:**
-- Modify: `api/coach-agent.ts` (accept `body.boardEvidence`, pass to `runCoachTurn`)
+- Modify: `src/board/boardEvidencePacket.ts` (add pure `parseIncomingBoardEvidence` gate — client-safe, no server imports)
+- Modify: `api/coach-agent.ts` (use the gate; reject malformed with 400; pass valid packet to `runCoachTurn`)
 - Modify: `src/ai/coachAgentClient.ts` (add `boardEvidence` to the request body; new helper `requestBoardScenarioTurn`)
 - Modify: `src/ai/CoachAgentPrompt.ts` (firewall instruction: when a board packet is present, the model must cite board facts only via `supportingFacts` referencing packet claim ids, must not invent numbers, and must use `limitation`/`questionTrigger` when `grounded:false`)
 - Modify: `src/board/components/TacticalBoardAiPanel.tsx` (the "Consultar al coach sobre este ajuste" button on the scenario readout)
-- Test: `tests/coachAgentBoardWiring.test.ts`
+- Test: `tests/coachAgentBoardWiring.test.ts`, `tests/boardEvidenceApiGate.test.ts`
 
 **Interfaces:**
-- Consumes: `buildBoardEvidencePacket` (Task 2), `requestCoachTurn` pattern (existing client).
-- Produces: `requestBoardScenarioTurn(input: string, packet: BoardEvidencePacket, coachContext?): Promise<CoachResponse>`; `api/coach-agent` parses `boardEvidence` and forwards it.
+- Consumes: `buildBoardEvidencePacket` (Task 2), `BoardEvidencePacketSchema` (Task 1), `requestCoachTurn` pattern (existing client).
+- Produces:
+  - `parseIncomingBoardEvidence(raw: unknown): { status: "absent" } | { status: "ok"; packet: BoardEvidencePacket } | { status: "malformed" }`
+  - `requestBoardScenarioTurn(input: string, packet: BoardEvidencePacket, coachContext?): Promise<CoachResponse>`
+  - `api/coach-agent` rejects malformed packets (400) and forwards valid ones.
 
 - [ ] **Step 1: Write the failing wiring test (client sends packet in body, one-shot)**
 
@@ -619,10 +670,36 @@ describe("requestBoardScenarioTurn", () => {
 });
 ```
 
+```ts
+// tests/boardEvidenceApiGate.test.ts — the honesty gate: malformed ≠ absent
+import { describe, it, expect } from "vitest";
+import { parseIncomingBoardEvidence } from "@/board/boardEvidencePacket";
+// `validPacket` as in Task 1.
+
+describe("parseIncomingBoardEvidence (API honesty gate)", () => {
+  it("absent packet → status 'absent' (existing path, no-op)", () => {
+    expect(parseIncomingBoardEvidence(undefined).status).toBe("absent");
+    expect(parseIncomingBoardEvidence(null).status).toBe("absent");
+  });
+
+  it("valid packet → status 'ok' with the parsed packet", () => {
+    expect(parseIncomingBoardEvidence(validPacket).status).toBe("ok");
+  });
+
+  it("malformed packet → status 'malformed', NEVER 'absent' (no silent downgrade)", () => {
+    const out = parseIncomingBoardEvidence({ source: "boardScenario", boardEvidence: {} });
+    expect(out.status).toBe("malformed");
+    expect(out.status).not.toBe("absent"); // a dropped packet would make a non-grounded answer look grounded
+  });
+});
+```
+
+The API handler turns `status: "malformed"` into a 400 **before** `runCoachTurn` — a malformed packet never reaches the coach as a normal request.
+
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `npm test -- --run tests/coachAgentBoardWiring.test.ts`
-Expected: FAIL — `requestBoardScenarioTurn` not exported.
+Run: `npm test -- --run tests/coachAgentBoardWiring.test.ts tests/boardEvidenceApiGate.test.ts`
+Expected: FAIL — `requestBoardScenarioTurn` / `parseIncomingBoardEvidence` not exported.
 
 - [ ] **Step 3: Implement client + API + prompt instruction + button**
 
@@ -648,9 +725,27 @@ export async function requestBoardScenarioTurn(
 }
 ```
 
-API (`api/coach-agent.ts`): after parsing `coachContext`, add
+Gate helper (`src/board/boardEvidencePacket.ts`, append — pure, client-safe):
 ```ts
-const boardEvidence = body.boardEvidence ?? null; // explicit isolated path; validated shape-wise downstream
+export function parseIncomingBoardEvidence(
+  raw: unknown,
+): { status: "absent" } | { status: "ok"; packet: BoardEvidencePacket } | { status: "malformed" } {
+  if (raw === undefined || raw === null) return { status: "absent" };
+  const parsed = BoardEvidencePacketSchema.safeParse(raw);
+  return parsed.success ? { status: "ok", packet: parsed.data } : { status: "malformed" };
+}
+```
+
+API (`api/coach-agent.ts`): after parsing `coachContext`, gate the packet — **malformed is rejected, never silently dropped**:
+```ts
+import { parseIncomingBoardEvidence } from "../src/board/boardEvidencePacket.js";
+// ...
+const board = parseIncomingBoardEvidence(body.boardEvidence);
+if (board.status === "malformed") {
+  badRequest(res, "Invalid boardEvidence packet"); // 400 — NOT a silent downgrade to a normal request
+  return;
+}
+const boardEvidence = board.status === "ok" ? board.packet : null; // explicit isolated path
 // ...
 const response = await runCoachTurn({ input, coachContext, collectedEvidence, interviewState, skipInterview, boardEvidence });
 ```
@@ -667,15 +762,15 @@ with an `onAskCoach` prop wired by the parent to `requestBoardScenarioTurn(quest
 
 - [ ] **Step 4: Run wiring test + full suite + type-check + build**
 
-Run: `npm test -- --run tests/coachAgentBoardWiring.test.ts && npm run type-check && npm run build`
+Run: `npm test -- --run tests/coachAgentBoardWiring.test.ts tests/boardEvidenceApiGate.test.ts && npm run type-check && npm run build`
 Then: `git checkout -- src/ai/generated/coach-observability.jsonl`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add api/coach-agent.ts src/ai/coachAgentClient.ts src/ai/CoachAgentPrompt.ts src/board/components/TacticalBoardAiPanel.tsx tests/coachAgentBoardWiring.test.ts
-git commit -m "feat(bridge): board 'consultar al coach' button → one-shot packet via /api (slice 4 task 6)"
+git add src/board/boardEvidencePacket.ts api/coach-agent.ts src/ai/coachAgentClient.ts src/ai/CoachAgentPrompt.ts src/board/components/TacticalBoardAiPanel.tsx tests/coachAgentBoardWiring.test.ts tests/boardEvidenceApiGate.test.ts
+git commit -m "feat(bridge): board button → one-shot packet via /api; malformed packet rejected (400), never silently dropped (slice 4 task 6)"
 ```
 
 ---
