@@ -99,6 +99,18 @@ describe("boardGeometry — layer visibility", () => {
     expect(layerVisibleForArrow(arrow("movement"), new Set())).toBe(true);
   });
 
+  it("a rival-layer arrow is visible as a group, regardless of its semantic", () => {
+    // A run normally ties to attack/offensiveTransition; on layer "rival" the
+    // whole group is controlled by the overlay lifecycle, not the attack layer.
+    const rivalRun = createSemanticArrow(
+      "run",
+      { kind: "point", point: { x: 40, y: 45 } },
+      { kind: "point", point: { x: 12, y: 50 } },
+      { layer: "rival" },
+    );
+    expect(layerVisibleForArrow(rivalRun, new Set<string>())).toBe(true);
+  });
+
   it("zoneVisible gates danger/press/block and lets occupation through", () => {
     expect(zoneVisible("danger", new Set(["defensiveTransition"]))).toBe(true);
     expect(zoneVisible("danger", new Set())).toBe(false);

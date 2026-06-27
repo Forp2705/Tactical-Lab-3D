@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   buildConsequenceOverlay,
   detectAttackDir,
+  resolveRivalActors,
 } from "@/board/scenarioBoardConsequence";
 import {
   createDefaultBoardScene,
   createOpponentToken,
   createPlayerToken,
   type BoardObject,
+  type BoardZone,
 } from "@/board/boardModel";
+import { isInsideZoneRect } from "@/board/productBoardTypes";
 import { simulateScenario } from "@/ai/scenarioSimulator";
 import { DEFAULT_GAME_MODEL } from "@/data/gameModel";
 import type { Player } from "@/data";
@@ -49,6 +52,31 @@ function raiseBlockScene(dirMirror = false) {
     createPlayerToken(cbA, { x: cbX, y: 40 }, "CB", 4),
     createPlayerToken(cbB, { x: cbX, y: 60 }, "CB", 5),
     createOpponentToken({ x: dirMirror ? 20 : 80, y: 50 }, "ST", 9),
+  ]);
+}
+
+function raiseBlockMultiRivalScene(dirMirror = false) {
+  const gkX = dirMirror ? 92 : 8;
+  const cbX = dirMirror ? 80 : 20;
+  const passerX = dirMirror ? 20 : 80; // deep on rival side
+  const runnerX = dirMirror ? 60 : 40; // advanced toward own goal
+  return sceneWith([
+    createPlayerToken(null, { x: gkX, y: 50 }, "GK", 1),
+    createPlayerToken(cbA, { x: cbX, y: 40 }, "CB", 4),
+    createPlayerToken(cbB, { x: cbX, y: 60 }, "CB", 5),
+    createOpponentToken({ x: passerX, y: 50 }, "ST", 9),
+    createOpponentToken({ x: runnerX, y: 45 }, "AM", 10),
+  ]);
+}
+
+function raiseBlockThreeRivalScene() {
+  return sceneWith([
+    createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+    createPlayerToken(cbA, { x: 20, y: 40 }, "CB", 4),
+    createPlayerToken(cbB, { x: 20, y: 60 }, "CB", 5),
+    createOpponentToken({ x: 80, y: 50 }, "ST", 9), // passer
+    createOpponentToken({ x: 40, y: 48 }, "AM", 10), // runner
+    createOpponentToken({ x: 55, y: 12 }, "LW", 11), // wide
   ]);
 }
 
@@ -157,6 +185,82 @@ describe("buildConsequenceOverlay (raise-block)", () => {
     expect(joined).toContain("Diego");
   });
 
+  it("draws a coordinated rival response: longPass + run on layer rival, anchored to real rival ids", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockMultiRivalScene(false));
+    const rivalArrows = overlay.arrows.filter((a) => a.patch?.layer === "rival");
+    expect(rivalArrows.length).toBeGreaterThanOrEqual(2);
+
+    const longPass = overlay.arrows.find((a) => a.semantic === "longPass");
+    const run = overlay.arrows.find((a) => a.semantic === "run");
+    expect(longPass).toBeDefined();
+    expect(run).toBeDefined();
+    expect(longPass!.from.kind).toBe("object");
+    expect(run!.from.kind).toBe("object");
+  });
+
+  it("coordination invariant: longPass and primary run resolve to one gap inside the danger zone", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockMultiRivalScene(false));
+    const longPass = overlay.arrows.find((a) => a.semantic === "longPass");
+    const run = overlay.arrows.find((a) => a.semantic === "run");
+    expect(longPass).toBeDefined();
+    expect(run).toBeDefined();
+    expect(longPass!.to.kind).toBe("point");
+    expect(run!.to.kind).toBe("point");
+
+    const lp = (longPass!.to as { kind: "point"; point: { x: number; y: number } }).point;
+    const rn = (run!.to as { kind: "point"; point: { x: number; y: number } }).point;
+    // same gapTarget by construction (single source) → distance ~0
+    expect(Math.hypot(lp.x - rn.x, lp.y - rn.y)).toBeLessThan(0.001);
+
+    const gap = overlay.zones.find(
+      (z) => z.semantic === "danger" || z.semantic === "freeSpace",
+    );
+    expect(gap).toBeDefined();
+    const gapRect = { x: gap!.x, y: gap!.y, w: gap!.w, h: gap!.h } as unknown as BoardZone;
+    expect(isInsideZoneRect(lp, gapRect)).toBe(true);
+    expect(isInsideZoneRect(rn, gapRect)).toBe(true);
+  });
+
+  it("degradation 1 rival: longPass only, partial note, NO run on layer rival", () => {
+    // raiseBlockScene(false) has exactly one opponent token.
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockScene(false));
+    expect(overlay.arrows.some((a) => a.semantic === "longPass")).toBe(true);
+    const rivalRuns = overlay.arrows.filter(
+      (a) => a.semantic === "run" && a.patch?.layer === "rival",
+    );
+    expect(rivalRuns.length).toBe(0);
+    expect(overlay.notes.join(" ")).toMatch(/solo 1 rival/i);
+  });
+
+  it("degradation 0 rivals: no rival-layer arrows + note, gap zone and press still drawn", () => {
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(cbA, { x: 20, y: 40 }, "CB", 4),
+      createPlayerToken(cbB, { x: 20, y: 60 }, "CB", 5),
+    ]);
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), scene);
+    expect(overlay.arrows.some((a) => a.patch?.layer === "rival")).toBe(false);
+    expect(overlay.notes.join(" ")).toMatch(/sin rivales/i);
+    expect(
+      overlay.zones.some((z) => z.semantic === "danger" || z.semantic === "freeSpace"),
+    ).toBe(true);
+    expect(overlay.zones.some((z) => z.semantic === "press")).toBe(true);
+  });
+
+  it("3 rivals: adds a second run (channel) on layer rival, distinct from the primary run target", () => {
+    const overlay = buildConsequenceOverlay(raiseBlockSim(), raiseBlockThreeRivalScene());
+    const runs = overlay.arrows.filter(
+      (a) => a.semantic === "run" && a.patch?.layer === "rival",
+    );
+    expect(runs.length).toBe(2);
+    const targets = runs.map(
+      (r) => (r.to as { kind: "point"; point: { x: number; y: number } }).point,
+    );
+    expect(
+      Math.hypot(targets[0].x - targets[1].x, targets[0].y - targets[1].y),
+    ).toBeGreaterThan(0);
+  });
+
   it("notes missing centre-backs instead of drawing a phantom gap", () => {
     const scene = sceneWith([createPlayerToken(null, { x: 8, y: 50 }, "GK", 1)]);
     const overlay = buildConsequenceOverlay(raiseBlockSim(), scene);
@@ -164,5 +268,55 @@ describe("buildConsequenceOverlay (raise-block)", () => {
       overlay.zones.some((z) => z.semantic === "danger" || z.semantic === "freeSpace"),
     ).toBe(false);
     expect(overlay.notes.join(" ")).toMatch(/no pude ubicar los centrales/i);
+  });
+});
+
+describe("resolveRivalActors", () => {
+  it("dir 1: passer = max x (deep rival side), runner = min x (advanced)", () => {
+    const scene = sceneWith([
+      createOpponentToken({ x: 80, y: 50 }, "ST", 9),
+      createOpponentToken({ x: 40, y: 45 }, "AM", 10),
+    ]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.count).toBe(2);
+    expect(a.passer?.position.x).toBe(80);
+    expect(a.runner?.position.x).toBe(40);
+    expect(a.wide).toBeNull();
+  });
+
+  it("dir -1: mirrored — passer = min x, runner = max x", () => {
+    const scene = sceneWith([
+      createOpponentToken({ x: 20, y: 50 }, "ST", 9),
+      createOpponentToken({ x: 60, y: 45 }, "AM", 10),
+    ]);
+    const a = resolveRivalActors(scene, -1);
+    expect(a.passer?.position.x).toBe(20);
+    expect(a.runner?.position.x).toBe(60);
+  });
+
+  it("1 rival: passer set, runner null (cannot be both)", () => {
+    const scene = sceneWith([createOpponentToken({ x: 80, y: 50 }, "ST", 9)]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.count).toBe(1);
+    expect(a.passer).not.toBeNull();
+    expect(a.runner).toBeNull();
+  });
+
+  it("0 rivals: all null", () => {
+    const scene = sceneWith([createPlayerToken(null, { x: 20, y: 50 }, "CB", 4)]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.count).toBe(0);
+    expect(a.passer).toBeNull();
+    expect(a.runner).toBeNull();
+  });
+
+  it("3 rivals: wide = the widest of the remaining (max |y-50|)", () => {
+    const scene = sceneWith([
+      createOpponentToken({ x: 80, y: 50 }, "ST", 9), // passer
+      createOpponentToken({ x: 40, y: 48 }, "AM", 10), // runner
+      createOpponentToken({ x: 55, y: 12 }, "LW", 11), // wide
+    ]);
+    const a = resolveRivalActors(scene, 1);
+    expect(a.wide?.position.x).toBe(55);
   });
 });

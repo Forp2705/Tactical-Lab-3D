@@ -83,6 +83,42 @@ export function detectAttackDir(scene: BoardScene): { dir: 1 | -1; note?: string
   };
 }
 
+export type RivalActors = {
+  passer: BoardObject | null;
+  runner: BoardObject | null;
+  wide: BoardObject | null;
+  count: number;
+};
+
+/**
+ * Rivals attack toward -dir (mirror of own). depth = dir * x → higher means
+ * deeper on the rival's build-up side. NOT resolveCentreBacks (that is own,
+ * relative to dir). passer = deepest; runner = most advanced; wide = widest
+ * of the rest (only meaningful with a 3rd rival to spend on a channel run).
+ */
+export function resolveRivalActors(scene: BoardScene, dir: 1 | -1): RivalActors {
+  const rivals = scene.objects.filter((o) => o.type === "opponentToken");
+  const count = rivals.length;
+  if (count === 0) return { passer: null, runner: null, wide: null, count };
+
+  const depth = (o: BoardObject) => dir * o.position.x;
+  const sorted = [...rivals].sort((a, b) => depth(b) - depth(a)); // deepest first
+  const passer = sorted[0];
+  if (count === 1) return { passer, runner: null, wide: null, count };
+
+  const runner = sorted[sorted.length - 1]; // most advanced toward own goal
+  let wide: BoardObject | null = null;
+  if (count >= 3) {
+    const rest = sorted.slice(1, sorted.length - 1); // exclude passer & runner
+    wide = rest.reduce(
+      (best, o) =>
+        Math.abs(o.position.y - 50) > Math.abs(best.position.y - 50) ? o : best,
+      rest[0],
+    );
+  }
+  return { passer, runner, wide, count };
+}
+
 // Patch aliases = the factory param types verbatim (single source of truth).
 export type OverlayZonePatch = Partial<
   Omit<BoardZone, "id" | "semantic" | "x" | "y" | "w" | "h">
@@ -225,16 +261,46 @@ const REGISTRY: Partial<Record<ScenarioId, DrawBack>> = {
           : `detrás quedan ${covering} cobertura(s) → riesgo atenuado en esa espalda`;
       rivalFacts.push(`(lectura del modelo) Tus centrales ${names} suben; ${tail}.`);
 
-      // 7) Threat arrow: longPass into the gap, anchored to a rival token if any.
-      const rival = scene.objects.find((o) => o.type === "opponentToken");
-      const from: BoardArrowEndpoint = rival
-        ? { kind: "object", objectId: rival.id }
-        : { kind: "point", point: { x: dir === 1 ? 100 - ZONE_W : ZONE_W, y: 50 } };
-      const to: BoardArrowEndpoint = {
-        kind: "point",
-        point: { x: gap.x + gap.w / 2, y: gap.y + gap.h / 2 },
-      };
-      arrows.push({ semantic: "longPass", from, to, patch: { label: "Diagonal a la espalda" } });
+      // 7) Coordinated rival response. Single source of truth for the target:
+      //    longPass (ball) and primary run (player) both resolve to gapTarget.
+      const gapTarget = { x: gap.x + gap.w / 2, y: gap.y + gap.h / 2 };
+      const actors = resolveRivalActors(scene, dir);
+
+      if (actors.count === 0) {
+        notes.push("Sin rivales en la escena: no puedo proyectar la respuesta.");
+      } else if (actors.passer) {
+        arrows.push({
+          semantic: "longPass",
+          from: { kind: "object", objectId: actors.passer.id },
+          to: { kind: "point", point: gapTarget },
+          patch: { label: "Diagonal a la espalda", layer: "rival" },
+        });
+
+        if (actors.runner) {
+          arrows.push({
+            semantic: "run",
+            from: { kind: "object", objectId: actors.runner.id },
+            to: { kind: "point", point: gapTarget },
+            patch: { label: "Ataca tu espalda", layer: "rival" },
+          });
+        } else {
+          notes.push("Solo 1 rival: no puedo mostrar la corrida coordinada.");
+        }
+
+        if (actors.wide) {
+          // Same behind-the-line depth as the gap, but in the wide actor's lane.
+          const channelY = actors.wide.position.y < 50 ? gap.y : gap.y + gap.h;
+          arrows.push({
+            semantic: "run",
+            from: { kind: "object", objectId: actors.wide.id },
+            to: {
+              kind: "point",
+              point: { x: gapTarget.x, y: Math.max(0, Math.min(100, channelY)) },
+            },
+            patch: { label: "Ataca el carril", layer: "rival" },
+          });
+        }
+      }
     }
 
     return {

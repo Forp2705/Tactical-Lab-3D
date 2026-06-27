@@ -59,6 +59,7 @@ export function pointFromSvgEvent(
 }
 
 export function layerVisibleForArrow(arrow: BoardArrow, layers: Set<string>) {
+  if (arrow.layer === "rival") return true;
   if (arrow.semantic === "pass") return layers.has("attack");
   if (arrow.semantic === "pressure")
     return layers.has("counterPress") || layers.has("defense");
