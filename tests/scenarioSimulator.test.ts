@@ -67,6 +67,34 @@ describe("scenario graders (Enfoque A)", () => {
   });
 });
 
+describe("enrichRiskWithMetrics caveat flag (Task 6)", () => {
+  function noMetricsSim(options?: { includeMissingShapeCaveat?: boolean }) {
+    return simulateScenario(
+      {
+        scenarioId: "raise-block",
+        gameModel: DEFAULT_GAME_MODEL,
+        players: [player()],
+        exercises: catalog,
+        metrics: null,
+      },
+      options,
+    );
+  }
+
+  it("default (no options), metrics null → keeps the 'no shape' caveat (LineupLab non-regression)", () => {
+    const result = noMetricsSim();
+    expect(result.mainRisk).toContain("no hay shape activo publicado");
+    // base risk still present
+    expect(result.mainRisk).toContain("Espalda de centrales expuesta");
+  });
+
+  it("includeMissingShapeCaveat: false, metrics null → drops the caveat, keeps the base risk", () => {
+    const result = noMetricsSim({ includeMissingShapeCaveat: false });
+    expect(result.mainRisk).not.toContain("no hay shape activo publicado");
+    expect(result.mainRisk).toContain("Espalda de centrales expuesta");
+  });
+});
+
 function player(): Player {
   return {
     id: "p1",

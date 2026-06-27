@@ -325,6 +325,38 @@ describe("buildConsequenceOverlay grounding (re-grade)", () => {
   });
 });
 
+describe("board readout caveat suppression (Task 6)", () => {
+  // Mirror how useBoardActions builds the sim: metrics null + flag false.
+  // Override evidence/findings for a deterministic re-grade (medium when grounded).
+  function boardSim(): ScenarioSimulation {
+    const sim = simulateScenario(
+      {
+        scenarioId: "raise-block",
+        metrics: null,
+        gameModel: DEFAULT_GAME_MODEL,
+        players: [cbA, cbB],
+        exercises: [],
+      },
+      { includeMissingShapeCaveat: false },
+    );
+    return { ...sim, evidenceLevel: "weak", fitFindings: [] };
+  }
+
+  it("grounded board: no caveat in mainRisk AND confidence medium (no contradiction)", () => {
+    const overlay = buildConsequenceOverlay(boardSim(), raiseBlockScene(false));
+    expect(overlay.readout.mainRisk).not.toContain("no hay shape activo publicado");
+    expect(overlay.readout.mainRisk).toContain("Espalda de centrales expuesta");
+    expect(overlay.readout.grounding.hasGroundedMetrics).toBe(true);
+    expect(overlay.readout.confidence).toBe("medium");
+  });
+
+  it("ungrounded board (empty scene): confidence low AND no caveat (reason carried by grounding rows)", () => {
+    const overlay = buildConsequenceOverlay(boardSim(), sceneWith([]));
+    expect(overlay.readout.mainRisk).not.toContain("no hay shape activo publicado");
+    expect(overlay.readout.confidence).toBe("low");
+  });
+});
+
 describe("resolveRivalActors", () => {
   it("dir 1: passer = max x (deep rival side), runner = min x (advanced)", () => {
     const scene = sceneWith([

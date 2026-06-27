@@ -197,7 +197,11 @@ export function listScenarios() {
   }));
 }
 
-export function simulateScenario(input: ScenarioInput): ScenarioSimulation {
+export function simulateScenario(
+  input: ScenarioInput,
+  options?: { includeMissingShapeCaveat?: boolean },
+): ScenarioSimulation {
+  const includeMissingShapeCaveat = options?.includeMissingShapeCaveat ?? true;
   const scenario = SCENARIOS[input.scenarioId];
   const fitFindings = analyzePlayerFit(input.players, [scenario.adjustment]);
   const textContext = [
@@ -226,7 +230,7 @@ export function simulateScenario(input: ScenarioInput): ScenarioSimulation {
     scenarioId: input.scenarioId,
     title: scenario.title,
     expectedBenefit: scenario.benefit,
-    mainRisk: enrichRiskWithMetrics(scenario.risk, input.metrics),
+    mainRisk: enrichRiskWithMetrics(scenario.risk, input.metrics, includeMissingShapeCaveat),
     lineImpact: {
       defense: scenario.defense,
       midfield: scenario.midfield,
@@ -313,8 +317,16 @@ function computeConfidence(
   return gradeConfidence({ hasGroundedMetrics: !!metrics, evidenceLevel, riskCount });
 }
 
-function enrichRiskWithMetrics(risk: string, metrics?: CoachShapeMetrics | null) {
-  if (!metrics) return `${risk} Confianza baja: no hay shape activo publicado.`;
+function enrichRiskWithMetrics(
+  risk: string,
+  metrics?: CoachShapeMetrics | null,
+  includeMissingShapeCaveat = true,
+) {
+  if (!metrics) {
+    return includeMissingShapeCaveat
+      ? `${risk} Confianza baja: no hay shape activo publicado.`
+      : risk;
+  }
   const alerts = [];
   if (metrics.compactness > 24) alerts.push("compacidad alta");
   if ((metrics.lineDistances.defenseToMidfield ?? 0) > 20) {
