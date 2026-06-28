@@ -63,6 +63,7 @@ describe("coach response parsing", () => {
         insufficientEvidence: [],
       },
       playerFitWarnings: [],
+      supportingFacts: [],
     });
   });
 
