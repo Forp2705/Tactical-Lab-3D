@@ -42,9 +42,11 @@ import {
 } from "./retrievalScoring.js"
 import { queryCoachRagIndex } from "./ragIndex.js"
 import {
+  applyBoardFactFirewall,
   assessCoachAdviceTrust,
   guardCoachAdvice,
 } from "./coachOutputGuard.js"
+import type { BoardEvidencePacket } from "../board/boardEvidencePacket.js"
 import { recordCoachObservabilityEvent } from "./coachObservability.js"
 import {
   buildCoachPipelineTrace,
@@ -411,7 +413,31 @@ function buildRetrievalQuery(
   return answers.length ? [input, ...answers].join(". ") : input
 }
 
-export async function runCoachTurn({
+/**
+ * Thin public boundary for a coach turn. The board-evidence path is EXPLICIT and
+ * ISOLATED here — it is NOT routed through the ambient `coachContext`. The firewall
+ * is a single choke point that runs ONLY when a packet is present; absent → the
+ * core result is returned byte-identical.
+ */
+export async function runCoachTurn(
+  args: Parameters<typeof runCoachTurnCore>[0] & {
+    // PRECONDITION: `boardEvidence` is ALWAYS a SCHEMA-VALIDATED packet. The ONLY
+    // validated entry point is `parseIncomingBoardEvidence` (the API gate in
+    // api/coach-agent.ts). Any future caller passing a packet MUST parse it with
+    // `BoardEvidencePacketSchema` first. No duplicate-id (or other) check is added
+    // here — the API-parse + unique-id superRefine chain guarantees a unique, valid
+    // input; this precondition makes a future bypass a MARKED contract violation,
+    // not a silent reopening.
+    boardEvidence?: BoardEvidencePacket | null
+  },
+): Promise<CoachResponse> {
+  const { boardEvidence, ...rest } = args
+  const response = await runCoachTurnCore(rest)
+  if (!boardEvidence) return response
+  return applyBoardFactFirewall(response, boardEvidence).response
+}
+
+async function runCoachTurnCore({
   input,
   coachContext,
   collectedEvidence = [],

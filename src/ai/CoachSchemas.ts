@@ -64,6 +64,29 @@ export const CoachAlternativeAdjustmentSchema = z.object({
   tradeoff: z.string().min(1),
 });
 
+const CoachCopiedValuesSchema = z
+  .object({
+    own: z.number().optional(),
+    rival: z.number().optional(),
+    delta: z.number().optional(),
+    covering: z.number().optional(),
+  })
+  .strict()
+  .refine(
+    (v) =>
+      v.own !== undefined ||
+      v.rival !== undefined ||
+      v.delta !== undefined ||
+      v.covering !== undefined,
+    { message: "copiedValues, when present, must carry at least one numeric field" },
+  );
+
+export const CoachBoardClaimReferenceSchema = z.object({
+  boardClaimId: z.string().min(1),
+  use: z.enum(["supportingFact", "limitation", "questionTrigger"]),
+  copiedValues: CoachCopiedValuesSchema.optional(),
+});
+
 export const CoachMatchAdviceSchema = z.object({
   tacticalReading: z.string(),
   problemBreakdown: CoachProblemBreakdownSchema,
@@ -96,6 +119,7 @@ export const CoachMatchAdviceSchema = z.object({
       insufficientEvidence: [],
     }),
   playerFitWarnings: z.array(z.string()).default([]),
+  supportingFacts: z.array(CoachBoardClaimReferenceSchema).default([]),
 });
 
 export const TacticalDomainSchema = z.enum([
@@ -310,6 +334,9 @@ export type CoachEvidenceCitation = z.infer<typeof CoachEvidenceCitationSchema>;
 export type CoachProblemBreakdown = z.infer<typeof CoachProblemBreakdownSchema>;
 export type CoachAlternativeAdjustment = z.infer<
   typeof CoachAlternativeAdjustmentSchema
+>;
+export type CoachBoardClaimReference = z.infer<
+  typeof CoachBoardClaimReferenceSchema
 >;
 export type CoachMatchAdvice = z.infer<typeof CoachMatchAdviceSchema>;
 export type TacticalDomain = z.infer<typeof TacticalDomainSchema>;

@@ -429,6 +429,7 @@ function makeAdvice(
       insufficientEvidence: [],
     },
     playerFitWarnings: [],
+    supportingFacts: [],
   };
 }
 

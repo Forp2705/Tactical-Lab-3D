@@ -4,6 +4,9 @@ import { blockTitle } from "../boardGeometry";
 import type { BoardPayload, PlanningBoardLayer } from "../productBoardTypes";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 import { groundingSummary } from "@/board/scenarioGrounding";
+import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
+import type { CoachResponse } from "@/ai/CoachSchemas";
+import { renderableBoardFacts } from "@/board/boardFactPresentation";
 
 type TacticalBoardAiPanelProps = {
   aiInterpretation: string[];
@@ -13,7 +16,11 @@ type TacticalBoardAiPanelProps = {
   sessionBlocks: SessionBlock[];
   canDeleteScene: boolean;
   consequenceOverlay: ConsequenceOverlay | null;
+  coachLoading: boolean;
+  coachError: string | null;
+  coachAnswer: { response: CoachResponse; packet: BoardEvidencePacket } | null;
   onRunScenario: (scenarioId: ScenarioId) => void;
+  onAskCoach: () => void;
   onCommitOverlay: () => void;
   onDiscardOverlay: () => void;
   onToggleLayer: (layerId: string) => void;
@@ -35,7 +42,11 @@ export function TacticalBoardAiPanel({
   sessionBlocks,
   canDeleteScene,
   consequenceOverlay,
+  coachLoading,
+  coachError,
+  coachAnswer,
   onRunScenario,
+  onAskCoach,
   onCommitOverlay,
   onDiscardOverlay,
   onToggleLayer,
@@ -125,6 +136,55 @@ export function TacticalBoardAiPanel({
               <button type="button" onClick={onDiscardOverlay}>
                 Descartar
               </button>
+            </div>
+
+            {/* Puente al coach: manda este ajuste (paquete estructurado, one-shot)
+                via /api. Render rico de la respuesta es Task 7; aca el estado es
+                honesto y minimo (cargando / error / placeholder de respuesta). */}
+            <div className="rombo-scenario-coach">
+              <button
+                type="button"
+                className="rombo-scenario-ask-coach"
+                onClick={onAskCoach}
+                disabled={coachLoading}
+              >
+                {coachLoading
+                  ? "Consultando al coach..."
+                  : "Consultar al coach sobre este ajuste"}
+              </button>
+              {coachError ? (
+                <p className="rombo-scenario-coach-error" role="alert">
+                  {coachError}
+                </p>
+              ) : null}
+              {coachAnswer ? (
+                <div className="rombo-scenario-coach-answer">
+                  {/* Board-fact rows come ONLY from the authoritative packet claims
+                      via renderableBoardFacts — never from coach prose. Question
+                      mode has no supportingFacts, so no board-fact rows render. */}
+                  {coachAnswer.response.mode !== "question"
+                    ? (() => {
+                        const facts = renderableBoardFacts(
+                          coachAnswer.packet,
+                          coachAnswer.response.advice.supportingFacts,
+                        );
+                        return facts.length > 0 ? (
+                          <ul className="rombo-scenario-board-facts">
+                            {facts.map((fact) => (
+                              <li key={fact.id}>{fact.text}</li>
+                            ))}
+                          </ul>
+                        ) : null;
+                      })()
+                    : null}
+                  {/* Coach prose renders SEPARATELY from the board-fact rows. */}
+                  <pre className="rombo-scenario-coach-prose">
+                    {coachAnswer.response.mode === "question"
+                      ? JSON.stringify(coachAnswer.response, null, 2)
+                      : coachAnswer.response.advice.tacticalReading}
+                  </pre>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}

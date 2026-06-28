@@ -97,6 +97,7 @@ function response(): CoachResponse {
         insufficientEvidence: ["Falta frecuencia completa."],
       },
       playerFitWarnings: [],
+      supportingFacts: [],
     },
   };
 }

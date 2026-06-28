@@ -180,6 +180,7 @@ function baselineAdviceForCase(evalCase: CoachEvalCase): CoachMatchAdvice {
       insufficientEvidence: [],
     },
     playerFitWarnings: [],
+    supportingFacts: [],
   };
 }
 

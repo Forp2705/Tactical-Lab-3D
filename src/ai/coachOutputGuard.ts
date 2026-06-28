@@ -1,4 +1,14 @@
-import type { CoachMatchAdvice, TacticalDomain } from "./CoachSchemas.js";
+import {
+  isBoardFactualClaimId,
+  type BoardEvidencePacket,
+  type BoardFactualClaim,
+} from "../board/boardEvidencePacket.js";
+import type {
+  CoachBoardClaimReference,
+  CoachMatchAdvice,
+  CoachResponse,
+  TacticalDomain,
+} from "./CoachSchemas.js";
 import { inferDomainsFromText } from "./exerciseMatching.js";
 
 export type GuardEvidence = {
@@ -177,4 +187,329 @@ export function assessCoachAdviceTrust(
 
 function appendNote(current: string, note: string) {
   return current.trim() ? `${current.trim()} ${note}` : note;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Board fact firewall (slice 4 task 4)
+//
+// Structure-vs-claim ONLY. Every decision is a lookup by `boardClaimId` against
+// the packet's `factualClaims`, then field checks. ZERO prose parsing here.
+// `copiedValues` only makes sense for positive support — that asymmetry is the
+// spine of the whole guard.
+// ────────────────────────────────────────────────────────────────────────────
+
+export type BoardFactAuditReason =
+  | "unknown-id"
+  | "ungrounded-support"
+  | "field-incompatible"
+  | "value-mismatch"
+  | "missing-copied-values"
+  | "ignored-values-on-limitation";
+
+export type BoardFactAudit = {
+  boardClaimId: string;
+  use: CoachBoardClaimReference["use"];
+  reason: BoardFactAuditReason;
+  // true ONLY for an invalidated use:"supportingFact" ref → drove the downgrade.
+  invalidatedSupport: boolean;
+};
+
+export type BoardFactFirewallResult = {
+  // SANITIZED: invalid refs stripped, limitation values stripped, downgrade
+  // ALREADY APPLIED (lowered confidence/cap is part of THIS object).
+  response: CoachResponse;
+  audit: BoardFactAudit[];
+  // convenience flag === (any supportingFact invalidated)
+  downgraded: boolean;
+};
+
+const DOWNGRADE_CONFIDENCE = 0.3;
+
+type CopiedValues = NonNullable<CoachBoardClaimReference["copiedValues"]>;
+
+// The numeric fields that legitimately belong to each claim kind. Anything else
+// present in `copiedValues` — a typed foreign field OR an unknown junk key — is
+// incompatible. Kept as readonly string[] so we can test by membership.
+const ZONE_COUNT_FIELDS: readonly string[] = ["own", "rival", "delta"];
+const COVERAGE_FIELDS: readonly string[] = ["covering"];
+
+function compatibleFieldsFor(claim: BoardFactualClaim): readonly string[] {
+  return claim.kind === "zone-count" ? ZONE_COUNT_FIELDS : COVERAGE_FIELDS;
+}
+
+// Any present key that is NOT a compatible field for the claim's kind. We iterate
+// the keys ACTUALLY present at runtime (not the TS type), so adversarial junk like
+// `ghost` is caught — never rely on the static type to exclude unknown keys.
+function isFieldIncompatible(
+  claim: BoardFactualClaim,
+  copiedValues: CopiedValues,
+): boolean {
+  const allowed = compatibleFieldsFor(claim);
+  const present = copiedValues as Record<string, unknown>;
+  return Object.keys(present).some(
+    (key) => present[key] !== undefined && !allowed.includes(key),
+  );
+}
+
+// At least one kind-compatible field is actually present (and defined). Covers the
+// `{}` case and a copiedValues whose only keys are compatible-but-undefined.
+function hasCompatibleField(
+  claim: BoardFactualClaim,
+  copiedValues: CopiedValues,
+): boolean {
+  const present = copiedValues as Record<string, unknown>;
+  return compatibleFieldsFor(claim).some((key) => present[key] !== undefined);
+}
+
+// Rebuild copiedValues FRESH from the AUTHORITATIVE claim: include only the
+// compatible fields the ref attempted to copy, each value sourced FROM THE CLAIM.
+// The ref's own numbers are never passed through. Precondition: not incompatible,
+// ≥1 compatible field present, no value mismatch — so the result is always a
+// schema-clean copiedValues (≥1 numeric key, no foreign keys).
+function reconstructCopiedValues(
+  claim: BoardFactualClaim,
+  copiedValues: CopiedValues,
+): CopiedValues {
+  const present = copiedValues as Record<string, unknown>;
+  const out: CopiedValues = {};
+  if (claim.kind === "zone-count") {
+    if (present.own !== undefined) out.own = claim.own;
+    if (present.rival !== undefined) out.rival = claim.rival;
+    if (present.delta !== undefined) out.delta = claim.delta;
+    return out;
+  }
+  if (present.covering !== undefined) out.covering = claim.covering;
+  return out;
+}
+
+// Only kind-compatible present fields are checked; each must equal the source.
+function hasValueMismatch(
+  claim: BoardFactualClaim,
+  copiedValues: CopiedValues,
+): boolean {
+  if (claim.kind === "zone-count") {
+    if (copiedValues.own !== undefined && copiedValues.own !== claim.own) return true;
+    if (copiedValues.rival !== undefined && copiedValues.rival !== claim.rival) return true;
+    if (copiedValues.delta !== undefined && copiedValues.delta !== claim.delta) return true;
+    return false;
+  }
+  return copiedValues.covering !== undefined && copiedValues.covering !== claim.covering;
+}
+
+function findClaim(
+  packet: BoardEvidencePacket,
+  id: string,
+): BoardFactualClaim | undefined {
+  return packet.boardEvidence.factualClaims.find((claim) => claim.id === id);
+}
+
+// Outcome for a single reference: either keep a (possibly trimmed) ref, or strip
+// it; optionally emit one audit entry.
+type RefOutcome = {
+  keep?: CoachBoardClaimReference;
+  audit?: BoardFactAudit;
+};
+
+// Build the FRESH kept ref for any keep-path — never reuse the input reference
+// object. This makes "no ref-sourced branch" a structural property, not an
+// incidental one:
+//   - limitation: values are ignored entirely → fresh `{ boardClaimId, use }`.
+//   - questionTrigger (and other claim-backed keeps): if the ref attempted ≥1
+//     compatible field with no foreign key, rebuild copiedValues FROM THE CLAIM,
+//     whitelisted to those attempted fields (drops junk like `ghost`, even
+//     `ghost: undefined`); otherwise keep NO copiedValues.
+// The ref's own numbers are never passed through.
+function keepWhitelisted(
+  ref: CoachBoardClaimReference,
+  claim?: BoardFactualClaim,
+): CoachBoardClaimReference {
+  if (
+    ref.use !== "limitation" &&
+    claim &&
+    ref.copiedValues !== undefined &&
+    !isFieldIncompatible(claim, ref.copiedValues) &&
+    hasCompatibleField(claim, ref.copiedValues)
+  ) {
+    return {
+      boardClaimId: ref.boardClaimId,
+      use: ref.use,
+      copiedValues: reconstructCopiedValues(claim, ref.copiedValues),
+    };
+  }
+  return { boardClaimId: ref.boardClaimId, use: ref.use };
+}
+
+function evaluateSupportingFact(
+  ref: CoachBoardClaimReference,
+  packet: BoardEvidencePacket,
+): RefOutcome {
+  const id = ref.boardClaimId;
+  const invalid = (reason: BoardFactAuditReason): RefOutcome => ({
+    audit: { boardClaimId: id, use: "supportingFact", reason, invalidatedSupport: true },
+  });
+
+  // Deterministic priority order — first failure decides the reason.
+  // 1. unknown id.
+  if (!isBoardFactualClaimId(packet, id)) return invalid("unknown-id");
+  const claim = findClaim(packet, id);
+  // claim is guaranteed present (isBoardFactualClaimId passed) — narrow for TS.
+  if (!claim) return invalid("unknown-id");
+  // 2. positive support REQUIRES copiedValues (closes the citation-only launder).
+  if (ref.copiedValues === undefined) return invalid("missing-copied-values");
+  // 3. any foreign/unknown key present (incl. runtime junk like `ghost`).
+  if (isFieldIncompatible(claim, ref.copiedValues)) return invalid("field-incompatible");
+  // 4. no kind-compatible field present (covers `{}` and compatible-but-undefined).
+  if (!hasCompatibleField(claim, ref.copiedValues)) return invalid("missing-copied-values");
+  // 5. ungrounded support.
+  if (claim.grounded === false) return invalid("ungrounded-support");
+  // 6. any compatible present field ≠ the source value.
+  if (hasValueMismatch(claim, ref.copiedValues)) return invalid("value-mismatch");
+  // Keep — but rebuild copiedValues FROM THE CLAIM so the displayed numbers can
+  // only ever originate from authoritative board evidence, never from the ref.
+  return {
+    keep: {
+      boardClaimId: ref.boardClaimId,
+      use: ref.use,
+      copiedValues: reconstructCopiedValues(claim, ref.copiedValues),
+    },
+  };
+}
+
+function evaluateLimitation(
+  ref: CoachBoardClaimReference,
+  packet: BoardEvidencePacket,
+): RefOutcome {
+  const id = ref.boardClaimId;
+  // Unknown id → strip, audit, NO downgrade.
+  if (!isBoardFactualClaimId(packet, id)) {
+    return {
+      audit: { boardClaimId: id, use: "limitation", reason: "unknown-id", invalidatedSupport: false },
+    };
+  }
+  // Exists WITH copiedValues → ignore the values: strip them off the kept ref so
+  // they can never render or count as fact. Keep the (honest) limitation itself.
+  if (ref.copiedValues !== undefined) {
+    return {
+      keep: keepWhitelisted(ref),
+      audit: {
+        boardClaimId: id,
+        use: "limitation",
+        reason: "ignored-values-on-limitation",
+        invalidatedSupport: false,
+      },
+    };
+  }
+  // Exists, no copiedValues → keep a fresh ref. A limitation on grounded:false is legit.
+  return { keep: keepWhitelisted(ref) };
+}
+
+function evaluateQuestionTrigger(
+  ref: CoachBoardClaimReference,
+  packet: BoardEvidencePacket,
+): RefOutcome {
+  const id = ref.boardClaimId;
+  // Unknown id → strip, audit, NO downgrade.
+  if (!isBoardFactualClaimId(packet, id)) {
+    return {
+      audit: { boardClaimId: id, use: "questionTrigger", reason: "unknown-id", invalidatedSupport: false },
+    };
+  }
+  const claim = findClaim(packet, id);
+  // copiedValues present + (field-incompatible OR value-mismatch) → strip, audit.
+  if (ref.copiedValues !== undefined && claim) {
+    if (isFieldIncompatible(claim, ref.copiedValues)) {
+      return {
+        audit: {
+          boardClaimId: id,
+          use: "questionTrigger",
+          reason: "field-incompatible",
+          invalidatedSupport: false,
+        },
+      };
+    }
+    if (hasValueMismatch(claim, ref.copiedValues)) {
+      return {
+        audit: {
+          boardClaimId: id,
+          use: "questionTrigger",
+          reason: "value-mismatch",
+          invalidatedSupport: false,
+        },
+      };
+    }
+  }
+  // Otherwise → keep a FRESH ref: rebuild any compatible copiedValues FROM THE
+  // CLAIM (whitelisted), dropping junk keys like `ghost: undefined`. No downgrade.
+  return { keep: keepWhitelisted(ref, claim) };
+}
+
+function evaluateReference(
+  ref: CoachBoardClaimReference,
+  packet: BoardEvidencePacket,
+): RefOutcome {
+  switch (ref.use) {
+    case "supportingFact":
+      return evaluateSupportingFact(ref, packet);
+    case "limitation":
+      return evaluateLimitation(ref, packet);
+    case "questionTrigger":
+      return evaluateQuestionTrigger(ref, packet);
+  }
+}
+
+/**
+ * Structure-vs-claim firewall for board-derived facts in a coach response.
+ * Returns a fresh sanitized `response` (downgrade already baked in) plus a
+ * categorized `audit` and a `downgraded` convenience flag. Never mutates input.
+ */
+export function applyBoardFactFirewall(
+  response: CoachResponse,
+  packet: BoardEvidencePacket,
+): BoardFactFirewallResult {
+  // `question` has no advice → nothing to sanitize. Pure passthrough.
+  if (response.mode === "question") {
+    return { response, audit: [], downgraded: false };
+  }
+
+  const audit: BoardFactAudit[] = [];
+  const keptFacts: CoachBoardClaimReference[] = [];
+
+  for (const ref of response.advice.supportingFacts) {
+    const outcome = evaluateReference(ref, packet);
+    if (outcome.audit) audit.push(outcome.audit);
+    if (outcome.keep) keptFacts.push(outcome.keep);
+  }
+
+  // Downgrade keys on `use`, NOT on array membership: only an invalidated
+  // supportingFact can lower confidence. An honest limitation never does.
+  const downgraded = audit.some((entry) => entry.invalidatedSupport);
+
+  const baseConfidence = response.advice.reflection.confidence;
+  const confidence = downgraded
+    ? Math.min(baseConfidence, DOWNGRADE_CONFIDENCE)
+    : baseConfidence;
+
+  const sanitizedAdvice: CoachMatchAdvice = {
+    ...response.advice,
+    reflection: { ...response.advice.reflection, confidence },
+    supportingFacts: keptFacts,
+  };
+
+  if (response.mode === "hypothesis") {
+    const confidenceCap = downgraded
+      ? Math.min(response.confidenceCap, DOWNGRADE_CONFIDENCE)
+      : response.confidenceCap;
+    return {
+      response: { ...response, advice: sanitizedAdvice, confidenceCap },
+      audit,
+      downgraded,
+    };
+  }
+
+  // diagnosis: no confidenceCap to lower.
+  return {
+    response: { ...response, advice: sanitizedAdvice },
+    audit,
+    downgraded,
+  };
 }
