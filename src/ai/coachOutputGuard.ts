@@ -227,21 +227,59 @@ const DOWNGRADE_CONFIDENCE = 0.3;
 
 type CopiedValues = NonNullable<CoachBoardClaimReference["copiedValues"]>;
 
-// A present copiedValues field that does not belong to the claim's resolved kind.
+// The numeric fields that legitimately belong to each claim kind. Anything else
+// present in `copiedValues` — a typed foreign field OR an unknown junk key — is
+// incompatible. Kept as readonly string[] so we can test by membership.
+const ZONE_COUNT_FIELDS: readonly string[] = ["own", "rival", "delta"];
+const COVERAGE_FIELDS: readonly string[] = ["covering"];
+
+function compatibleFieldsFor(claim: BoardFactualClaim): readonly string[] {
+  return claim.kind === "zone-count" ? ZONE_COUNT_FIELDS : COVERAGE_FIELDS;
+}
+
+// Any present key that is NOT a compatible field for the claim's kind. We iterate
+// the keys ACTUALLY present at runtime (not the TS type), so adversarial junk like
+// `ghost` is caught — never rely on the static type to exclude unknown keys.
 function isFieldIncompatible(
   claim: BoardFactualClaim,
   copiedValues: CopiedValues,
 ): boolean {
-  if (claim.kind === "zone-count") {
-    // valid: own / rival / delta. covering is foreign.
-    return copiedValues.covering !== undefined;
-  }
-  // coverage → valid field is covering; own/rival/delta are foreign.
-  return (
-    copiedValues.own !== undefined ||
-    copiedValues.rival !== undefined ||
-    copiedValues.delta !== undefined
+  const allowed = compatibleFieldsFor(claim);
+  const present = copiedValues as Record<string, unknown>;
+  return Object.keys(present).some(
+    (key) => present[key] !== undefined && !allowed.includes(key),
   );
+}
+
+// At least one kind-compatible field is actually present (and defined). Covers the
+// `{}` case and a copiedValues whose only keys are compatible-but-undefined.
+function hasCompatibleField(
+  claim: BoardFactualClaim,
+  copiedValues: CopiedValues,
+): boolean {
+  const present = copiedValues as Record<string, unknown>;
+  return compatibleFieldsFor(claim).some((key) => present[key] !== undefined);
+}
+
+// Rebuild copiedValues FRESH from the AUTHORITATIVE claim: include only the
+// compatible fields the ref attempted to copy, each value sourced FROM THE CLAIM.
+// The ref's own numbers are never passed through. Precondition: not incompatible,
+// ≥1 compatible field present, no value mismatch — so the result is always a
+// schema-clean copiedValues (≥1 numeric key, no foreign keys).
+function reconstructCopiedValues(
+  claim: BoardFactualClaim,
+  copiedValues: CopiedValues,
+): CopiedValues {
+  const present = copiedValues as Record<string, unknown>;
+  const out: CopiedValues = {};
+  if (claim.kind === "zone-count") {
+    if (present.own !== undefined) out.own = claim.own;
+    if (present.rival !== undefined) out.rival = claim.rival;
+    if (present.delta !== undefined) out.delta = claim.delta;
+    return out;
+  }
+  if (present.covering !== undefined) out.covering = claim.covering;
+  return out;
 }
 
 // Only kind-compatible present fields are checked; each must equal the source.
@@ -284,19 +322,28 @@ function evaluateSupportingFact(
   // Deterministic priority order — first failure decides the reason.
   // 1. unknown id.
   if (!isBoardFactualClaimId(packet, id)) return invalid("unknown-id");
-  // 2. positive support REQUIRES copiedValues (closes the citation-only launder).
-  if (ref.copiedValues === undefined) return invalid("missing-copied-values");
   const claim = findClaim(packet, id);
   // claim is guaranteed present (isBoardFactualClaimId passed) — narrow for TS.
   if (!claim) return invalid("unknown-id");
-  // 3. ungrounded support.
-  if (claim.grounded === false) return invalid("ungrounded-support");
-  // 4. field incompatible with the claim's resolved kind.
+  // 2. positive support REQUIRES copiedValues (closes the citation-only launder).
+  if (ref.copiedValues === undefined) return invalid("missing-copied-values");
+  // 3. any foreign/unknown key present (incl. runtime junk like `ghost`).
   if (isFieldIncompatible(claim, ref.copiedValues)) return invalid("field-incompatible");
-  // 5. any compatible present field ≠ the source value.
+  // 4. no kind-compatible field present (covers `{}` and compatible-but-undefined).
+  if (!hasCompatibleField(claim, ref.copiedValues)) return invalid("missing-copied-values");
+  // 5. ungrounded support.
+  if (claim.grounded === false) return invalid("ungrounded-support");
+  // 6. any compatible present field ≠ the source value.
   if (hasValueMismatch(claim, ref.copiedValues)) return invalid("value-mismatch");
-  // Otherwise: keep, no downgrade contribution.
-  return { keep: ref };
+  // Keep — but rebuild copiedValues FROM THE CLAIM so the displayed numbers can
+  // only ever originate from authoritative board evidence, never from the ref.
+  return {
+    keep: {
+      boardClaimId: ref.boardClaimId,
+      use: ref.use,
+      copiedValues: reconstructCopiedValues(claim, ref.copiedValues),
+    },
+  };
 }
 
 function evaluateLimitation(

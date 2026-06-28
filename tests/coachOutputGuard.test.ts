@@ -460,6 +460,78 @@ describe("applyBoardFactFirewall (board fact firewall)", () => {
     expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
   });
 
+  it("15. supportingFact with empty copiedValues {} -> strip + downgrade, audit missing-copied-values, output re-parses", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: {} as never },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit[0].reason).toBe("missing-copied-values");
+    expect(out.audit[0].invalidatedSupport).toBe(true);
+    expect(adviceOf(out.response as { advice: CoachMatchAdvice }).supportingFacts).toHaveLength(0);
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
+  it("16. supportingFact with foreign/unknown key {delta:1, ghost:999} -> strip + downgrade, audit field-incompatible, output re-parses", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        {
+          boardClaimId: "presion-zona-3",
+          use: "supportingFact",
+          copiedValues: { delta: 1, ghost: 999 } as never,
+        },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit[0].reason).toBe("field-incompatible");
+    expect(out.audit[0].invalidatedSupport).toBe(true);
+    expect(adviceOf(out.response as { advice: CoachMatchAdvice }).supportingFacts).toHaveLength(0);
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
+  it("17a. kept supportingFact copiedValues is rebuilt FROM THE CLAIM (own deep-equals claim own)", () => {
+    const out = applyBoardFactFirewall(
+      hyp([{ boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { own: 3 } }]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(false);
+    expect(out.audit).toEqual([]);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts).toHaveLength(1);
+    expect(advice.supportingFacts[0].copiedValues).toEqual({ own: 3 });
+
+    // Prove the displayed number originates from the AUTHORITATIVE claim, not the ref.
+    const claim = packet().boardEvidence.factualClaims.find((c) => c.id === "presion-zona-3");
+    const claimOwn = claim && claim.kind === "zone-count" ? claim.own : undefined;
+    expect(advice.supportingFacts[0].copiedValues?.own).toBe(claimOwn);
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
+  it("17b. kept supportingFact only carries the compatible fields the ref attempted (rebuilt subset)", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        {
+          boardClaimId: "presion-zona-3",
+          use: "supportingFact",
+          copiedValues: { own: 3, delta: 1 },
+        },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(false);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts[0].copiedValues).toEqual({ own: 3, delta: 1 });
+    expect(advice.supportingFacts[0].copiedValues).not.toHaveProperty("rival");
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
   it("does not mutate the input response", () => {
     const input = hyp([
       { boardClaimId: "no-existe", use: "supportingFact", copiedValues: { delta: 1 } },
