@@ -621,6 +621,25 @@ describe("applyBoardFactFirewall (board fact firewall)", () => {
     expect(input.mode !== "question" && input.advice.reflection.confidence).toBe(inputConfidence);
     expect(input.mode !== "question" && input.advice.supportingFacts).toHaveLength(1);
   });
+
+  it("no-op invariant: all-valid supportingFacts pass through untouched (locks the 'packet present, nothing wrong' path the wrapper relies on)", () => {
+    const validRefs: CoachBoardClaimReference[] = [
+      { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { delta: 1 } },
+      { boardClaimId: "espacio-a-la-espalda", use: "supportingFact", copiedValues: { covering: 1 } },
+    ];
+    const input = hyp(validRefs);
+
+    const out = applyBoardFactFirewall(input, packet());
+
+    expect(out.downgraded).toBe(false);
+    expect(out.audit).toEqual([]);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts).toEqual(validRefs);
+    expect(advice.reflection.confidence).toBe(0.6);
+    if (out.response.mode === "hypothesis") {
+      expect(out.response.confidenceCap).toBe(0.7);
+    }
+  });
 });
 
 function advice(patch: Partial<CoachMatchAdvice> = {}): CoachMatchAdvice {
