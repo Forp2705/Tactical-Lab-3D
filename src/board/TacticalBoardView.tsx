@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useAppStore } from "@/state/useAppStore";
 import { requestBoardScenarioTurn } from "@/ai/coachAgentClient";
 import { buildBoardEvidencePacket } from "@/board/boardEvidencePacket";
+import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
+import type { CoachResponse } from "@/ai/CoachSchemas";
 import type { BoardScene, TacticalBoard } from "./boardModel";
 import { resolveActiveBoard, resolveActiveScene } from "./boardViewModel";
 import { TacticalBoardAiPanel } from "./components/TacticalBoardAiPanel";
@@ -55,7 +57,15 @@ function TacticalBoardWorkspace({
 
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
-  const [coachAnswer, setCoachAnswer] = useState<string | null>(null);
+  // The parsed coach response AND the EXACT packet that was asked are held together
+  // in transient state. The held packet is the ONE that was sent (never rebuilt from
+  // a possibly-changed overlay at render time), so the board-fact rows always match
+  // the claims the coach actually saw. Both are set together on success and cleared
+  // together on each new ask / on error — a previous answer never renders as new.
+  const [coachAnswer, setCoachAnswer] = useState<{
+    response: CoachResponse;
+    packet: BoardEvidencePacket;
+  } | null>(null);
 
   // One-shot board->coach bridge. Build the structured packet from the audited
   // overlay readout and POST it via /api. On ANY failure set an honest error
@@ -70,7 +80,7 @@ function TacticalBoardWorkspace({
     setCoachAnswer(null);
     try {
       const response = await requestBoardScenarioTurn(question, packet);
-      setCoachAnswer(JSON.stringify(response, null, 2));
+      setCoachAnswer({ response, packet });
     } catch (error) {
       setCoachError(
         error instanceof Error

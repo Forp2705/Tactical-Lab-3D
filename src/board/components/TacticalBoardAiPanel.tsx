@@ -4,6 +4,9 @@ import { blockTitle } from "../boardGeometry";
 import type { BoardPayload, PlanningBoardLayer } from "../productBoardTypes";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 import { groundingSummary } from "@/board/scenarioGrounding";
+import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
+import type { CoachResponse } from "@/ai/CoachSchemas";
+import { renderableBoardFacts } from "@/board/boardFactPresentation";
 
 type TacticalBoardAiPanelProps = {
   aiInterpretation: string[];
@@ -15,7 +18,7 @@ type TacticalBoardAiPanelProps = {
   consequenceOverlay: ConsequenceOverlay | null;
   coachLoading: boolean;
   coachError: string | null;
-  coachAnswer: string | null;
+  coachAnswer: { response: CoachResponse; packet: BoardEvidencePacket } | null;
   onRunScenario: (scenarioId: ScenarioId) => void;
   onAskCoach: () => void;
   onCommitOverlay: () => void;
@@ -155,7 +158,32 @@ export function TacticalBoardAiPanel({
                 </p>
               ) : null}
               {coachAnswer ? (
-                <pre className="rombo-scenario-coach-answer">{coachAnswer}</pre>
+                <div className="rombo-scenario-coach-answer">
+                  {/* Board-fact rows come ONLY from the authoritative packet claims
+                      via renderableBoardFacts — never from coach prose. Question
+                      mode has no supportingFacts, so no board-fact rows render. */}
+                  {coachAnswer.response.mode !== "question"
+                    ? (() => {
+                        const facts = renderableBoardFacts(
+                          coachAnswer.packet,
+                          coachAnswer.response.advice.supportingFacts,
+                        );
+                        return facts.length > 0 ? (
+                          <ul className="rombo-scenario-board-facts">
+                            {facts.map((fact) => (
+                              <li key={fact.id}>{fact.text}</li>
+                            ))}
+                          </ul>
+                        ) : null;
+                      })()
+                    : null}
+                  {/* Coach prose renders SEPARATELY from the board-fact rows. */}
+                  <pre className="rombo-scenario-coach-prose">
+                    {coachAnswer.response.mode === "question"
+                      ? JSON.stringify(coachAnswer.response, null, 2)
+                      : coachAnswer.response.advice.tacticalReading}
+                  </pre>
+                </div>
               ) : null}
             </div>
           </div>
