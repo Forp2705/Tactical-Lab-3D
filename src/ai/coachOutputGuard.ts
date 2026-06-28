@@ -310,6 +310,35 @@ type RefOutcome = {
   audit?: BoardFactAudit;
 };
 
+// Build the FRESH kept ref for any keep-path — never reuse the input reference
+// object. This makes "no ref-sourced branch" a structural property, not an
+// incidental one:
+//   - limitation: values are ignored entirely → fresh `{ boardClaimId, use }`.
+//   - questionTrigger (and other claim-backed keeps): if the ref attempted ≥1
+//     compatible field with no foreign key, rebuild copiedValues FROM THE CLAIM,
+//     whitelisted to those attempted fields (drops junk like `ghost`, even
+//     `ghost: undefined`); otherwise keep NO copiedValues.
+// The ref's own numbers are never passed through.
+function keepWhitelisted(
+  ref: CoachBoardClaimReference,
+  claim?: BoardFactualClaim,
+): CoachBoardClaimReference {
+  if (
+    ref.use !== "limitation" &&
+    claim &&
+    ref.copiedValues !== undefined &&
+    !isFieldIncompatible(claim, ref.copiedValues) &&
+    hasCompatibleField(claim, ref.copiedValues)
+  ) {
+    return {
+      boardClaimId: ref.boardClaimId,
+      use: ref.use,
+      copiedValues: reconstructCopiedValues(claim, ref.copiedValues),
+    };
+  }
+  return { boardClaimId: ref.boardClaimId, use: ref.use };
+}
+
 function evaluateSupportingFact(
   ref: CoachBoardClaimReference,
   packet: BoardEvidencePacket,
@@ -361,7 +390,7 @@ function evaluateLimitation(
   // they can never render or count as fact. Keep the (honest) limitation itself.
   if (ref.copiedValues !== undefined) {
     return {
-      keep: { boardClaimId: ref.boardClaimId, use: ref.use },
+      keep: keepWhitelisted(ref),
       audit: {
         boardClaimId: id,
         use: "limitation",
@@ -370,8 +399,8 @@ function evaluateLimitation(
       },
     };
   }
-  // Exists, no copiedValues → keep as-is. A limitation on grounded:false is legit.
-  return { keep: ref };
+  // Exists, no copiedValues → keep a fresh ref. A limitation on grounded:false is legit.
+  return { keep: keepWhitelisted(ref) };
 }
 
 function evaluateQuestionTrigger(
@@ -385,34 +414,33 @@ function evaluateQuestionTrigger(
       audit: { boardClaimId: id, use: "questionTrigger", reason: "unknown-id", invalidatedSupport: false },
     };
   }
+  const claim = findClaim(packet, id);
   // copiedValues present + (field-incompatible OR value-mismatch) → strip, audit.
-  if (ref.copiedValues !== undefined) {
-    const claim = findClaim(packet, id);
-    if (claim) {
-      if (isFieldIncompatible(claim, ref.copiedValues)) {
-        return {
-          audit: {
-            boardClaimId: id,
-            use: "questionTrigger",
-            reason: "field-incompatible",
-            invalidatedSupport: false,
-          },
-        };
-      }
-      if (hasValueMismatch(claim, ref.copiedValues)) {
-        return {
-          audit: {
-            boardClaimId: id,
-            use: "questionTrigger",
-            reason: "value-mismatch",
-            invalidatedSupport: false,
-          },
-        };
-      }
+  if (ref.copiedValues !== undefined && claim) {
+    if (isFieldIncompatible(claim, ref.copiedValues)) {
+      return {
+        audit: {
+          boardClaimId: id,
+          use: "questionTrigger",
+          reason: "field-incompatible",
+          invalidatedSupport: false,
+        },
+      };
+    }
+    if (hasValueMismatch(claim, ref.copiedValues)) {
+      return {
+        audit: {
+          boardClaimId: id,
+          use: "questionTrigger",
+          reason: "value-mismatch",
+          invalidatedSupport: false,
+        },
+      };
     }
   }
-  // Otherwise → keep, NO downgrade.
-  return { keep: ref };
+  // Otherwise → keep a FRESH ref: rebuild any compatible copiedValues FROM THE
+  // CLAIM (whitelisted), dropping junk keys like `ghost: undefined`. No downgrade.
+  return { keep: keepWhitelisted(ref, claim) };
 }
 
 function evaluateReference(

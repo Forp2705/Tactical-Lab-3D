@@ -6,6 +6,7 @@ import {
 } from "../src/ai/coachOutputGuard";
 import {
   CoachResponseSchema,
+  type CoachBoardClaimReference,
   type CoachMatchAdvice,
 } from "../src/ai/CoachSchemas";
 import { diag, hyp, packet } from "./fixtures/coachBridgeFixtures";
@@ -530,6 +531,84 @@ describe("applyBoardFactFirewall (board fact firewall)", () => {
     expect(advice.supportingFacts[0].copiedValues).toEqual({ own: 3, delta: 1 });
     expect(advice.supportingFacts[0].copiedValues).not.toHaveProperty("rival");
     expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
+  it("18. questionTrigger { delta: 1, ghost: undefined } -> kept, output has NO ghost, re-parses universally", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        {
+          boardClaimId: "presion-zona-3",
+          use: "questionTrigger",
+          copiedValues: { delta: 1, ghost: undefined } as never,
+        },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(false);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts).toHaveLength(1);
+    const kept = advice.supportingFacts[0];
+    expect(kept.use).toBe("questionTrigger");
+    expect(kept.copiedValues).toEqual({ delta: 1 });
+    expect(kept.copiedValues).not.toHaveProperty("ghost");
+    // The residual the red-team found: ghost survived and reparse was false.
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
+  it("19. PERMANENT claim-sourced regression lock: copiedValues { delta: -0 } with claim delta 0 -> output delta is +0 from the claim, not the ref", () => {
+    const zeroPacket = packet({
+      factualClaims: [
+        {
+          id: "delta-cero",
+          kind: "zone-count",
+          zoneLabel: "Delta cero",
+          own: 2,
+          rival: 2,
+          delta: 0,
+          grounded: true,
+        },
+      ],
+    });
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "delta-cero", use: "supportingFact", copiedValues: { delta: -0 } },
+      ]),
+      zeroPacket,
+    );
+
+    expect(out.downgraded).toBe(false);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    const delta = advice.supportingFacts[0].copiedValues?.delta;
+    expect(Object.is(delta, 0)).toBe(true);
+    expect(Object.is(delta, -0)).toBe(false);
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
+  it("20. universal re-parse: mixed valid SF + limitation w/ junk values + questionTrigger w/ junk-undefined key -> re-parses, and every kept ref is a FRESH object", () => {
+    const inputs: CoachBoardClaimReference[] = [
+      { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { delta: 1 } },
+      { boardClaimId: "zona-ciega", use: "limitation", copiedValues: { delta: -1 } },
+      {
+        boardClaimId: "presion-zona-3",
+        use: "questionTrigger",
+        copiedValues: { delta: 1, ghost: undefined } as never,
+      },
+    ];
+    const response = hyp(inputs);
+    const inputRefs =
+      response.mode !== "question" ? [...response.advice.supportingFacts] : [];
+
+    const out = applyBoardFactFirewall(response, packet());
+
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts.length).toBeGreaterThan(0);
+    for (const kept of advice.supportingFacts) {
+      for (const original of inputRefs) {
+        expect(kept).not.toBe(original);
+      }
+    }
   });
 
   it("does not mutate the input response", () => {
