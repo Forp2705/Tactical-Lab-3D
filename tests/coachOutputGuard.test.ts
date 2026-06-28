@@ -251,6 +251,7 @@ function advice(patch: Partial<CoachMatchAdvice> = {}): CoachMatchAdvice {
       insufficientEvidence: [],
     },
     playerFitWarnings: [],
+    supportingFacts: [],
     ...patch,
   };
 }
