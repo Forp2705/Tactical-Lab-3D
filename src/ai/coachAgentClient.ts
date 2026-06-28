@@ -5,6 +5,7 @@ import {
   type CoachResponse,
   type CollectedAnswer,
 } from "./CoachSchemas";
+import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
 import type { CoachShapeContext, ManualObservation } from "@/state/useAppStore";
 import type { GameModel } from "@/data/gameModel";
 import type { TeamIdentitySetup } from "@/data/teamIdentitySetup";
@@ -121,6 +122,49 @@ export async function requestCoachTurn(
 
   if (!parsed.success) {
     throw new Error("Coach agent response had an invalid interview format.");
+  }
+
+  return parsed.data;
+}
+
+/**
+ * One-shot board-scenario coach turn. POSTs `{ input, coachContext, boardEvidence }`
+ * to `/api/coach-agent` and returns the parsed `CoachResponse`.
+ *
+ * HONESTY CONTRACT: this makes EXACTLY ONE fetch and is agnostic to the failure
+ * mode. On ANY failure — non-2xx (400/402/429/500/502/503), network reject,
+ * timeout, or an unparseable/invalid response body — it throws an honest Error and
+ * STOPS. It is FORBIDDEN to retry without the packet, fall back to a generic
+ * packet-less coach query, or reuse a stale answer. Every failure ends the same way.
+ */
+export async function requestBoardScenarioTurn(
+  input: string,
+  boardEvidence: BoardEvidencePacket,
+  coachContext?: CoachAgentRuntimeContext | null,
+): Promise<CoachResponse> {
+  // Exactly one fetch. No retry/fallback path exists below this line.
+  const response = await fetch("/api/coach-agent", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ input, coachContext, boardEvidence }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | CoachResponse
+    | CoachAgentError
+    | null;
+
+  if (!response.ok) {
+    const message =
+      payload && "error" in payload && payload.error
+        ? payload.error
+        : "Coach agent request failed.";
+    throw new Error(message);
+  }
+
+  const parsed = CoachResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Coach agent returned an invalid board-scenario response.");
   }
 
   return parsed.data;

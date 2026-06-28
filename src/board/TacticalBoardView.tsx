@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { useAppStore } from "@/state/useAppStore";
+import { requestBoardScenarioTurn } from "@/ai/coachAgentClient";
+import { buildBoardEvidencePacket } from "@/board/boardEvidencePacket";
 import type { BoardScene, TacticalBoard } from "./boardModel";
 import { resolveActiveBoard, resolveActiveScene } from "./boardViewModel";
 import { TacticalBoardAiPanel } from "./components/TacticalBoardAiPanel";
@@ -49,6 +52,35 @@ function TacticalBoardWorkspace({
   scene: BoardScene;
 }) {
   const a = useBoardActions(board, scene);
+
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
+  const [coachAnswer, setCoachAnswer] = useState<string | null>(null);
+
+  // One-shot board->coach bridge. Build the structured packet from the audited
+  // overlay readout and POST it via /api. On ANY failure set an honest error
+  // message — NEVER fall back to a packet-less coach call or a stale answer.
+  const onAskCoach = async () => {
+    const overlay = a.consequenceOverlay;
+    if (!overlay) return; // guard: only when an overlay exists
+    const packet = buildBoardEvidencePacket(overlay);
+    const question = `Probamos este ajuste en la pizarra: ${overlay.title}. ¿Qué te parece?`;
+    setCoachLoading(true);
+    setCoachError(null);
+    setCoachAnswer(null);
+    try {
+      const response = await requestBoardScenarioTurn(question, packet);
+      setCoachAnswer(JSON.stringify(response, null, 2));
+    } catch (error) {
+      setCoachError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo consultar al coach.",
+      );
+    } finally {
+      setCoachLoading(false);
+    }
+  };
 
   return (
     <section className="rombo-board-shell">
@@ -158,7 +190,11 @@ function TacticalBoardWorkspace({
             sessionBlocks={a.sessionBlocks}
             canDeleteScene={board.scenes.length >= 2}
             consequenceOverlay={a.consequenceOverlay}
+            coachLoading={coachLoading}
+            coachError={coachError}
+            coachAnswer={coachAnswer}
             onRunScenario={a.runScenario}
+            onAskCoach={onAskCoach}
             onCommitOverlay={a.commitOverlay}
             onDiscardOverlay={a.discardOverlay}
             onToggleLayer={a.toggleLayer}

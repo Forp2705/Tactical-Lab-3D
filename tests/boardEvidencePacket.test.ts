@@ -39,6 +39,20 @@ describe("BoardEvidencePacket schema + contract", () => {
     expect(BoardEvidencePacketSchema.safeParse({ source: "boardScenario" }).success).toBe(false);
   });
 
+  it("rejects a packet with two claims sharing an id (uniqueness superRefine)", () => {
+    const dupes: BoardEvidencePacket = {
+      ...validPacket,
+      boardEvidence: {
+        ...validPacket.boardEvidence,
+        factualClaims: [
+          { id: "press", kind: "zone-count", zoneLabel: "Presión alta", own: 3, rival: 2, delta: 1, grounded: true },
+          { id: "press", kind: "zone-count", zoneLabel: "Presión alta", own: 9, rival: 0, delta: 9, grounded: false },
+        ],
+      },
+    };
+    expect(BoardEvidencePacketSchema.safeParse(dupes).success).toBe(false);
+  });
+
   it("isBoardFactualClaimId finds existing ids and rejects unknown", () => {
     expect(isBoardFactualClaimId(validPacket, "press")).toBe(true);
     expect(isBoardFactualClaimId(validPacket, "gap")).toBe(true);

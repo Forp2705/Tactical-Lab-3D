@@ -13,7 +13,11 @@ type TacticalBoardAiPanelProps = {
   sessionBlocks: SessionBlock[];
   canDeleteScene: boolean;
   consequenceOverlay: ConsequenceOverlay | null;
+  coachLoading: boolean;
+  coachError: string | null;
+  coachAnswer: string | null;
   onRunScenario: (scenarioId: ScenarioId) => void;
+  onAskCoach: () => void;
   onCommitOverlay: () => void;
   onDiscardOverlay: () => void;
   onToggleLayer: (layerId: string) => void;
@@ -35,7 +39,11 @@ export function TacticalBoardAiPanel({
   sessionBlocks,
   canDeleteScene,
   consequenceOverlay,
+  coachLoading,
+  coachError,
+  coachAnswer,
   onRunScenario,
+  onAskCoach,
   onCommitOverlay,
   onDiscardOverlay,
   onToggleLayer,
@@ -125,6 +133,30 @@ export function TacticalBoardAiPanel({
               <button type="button" onClick={onDiscardOverlay}>
                 Descartar
               </button>
+            </div>
+
+            {/* Puente al coach: manda este ajuste (paquete estructurado, one-shot)
+                via /api. Render rico de la respuesta es Task 7; aca el estado es
+                honesto y minimo (cargando / error / placeholder de respuesta). */}
+            <div className="rombo-scenario-coach">
+              <button
+                type="button"
+                className="rombo-scenario-ask-coach"
+                onClick={onAskCoach}
+                disabled={coachLoading}
+              >
+                {coachLoading
+                  ? "Consultando al coach..."
+                  : "Consultar al coach sobre este ajuste"}
+              </button>
+              {coachError ? (
+                <p className="rombo-scenario-coach-error" role="alert">
+                  {coachError}
+                </p>
+              ) : null}
+              {coachAnswer ? (
+                <pre className="rombo-scenario-coach-answer">{coachAnswer}</pre>
+              ) : null}
             </div>
           </div>
         ) : null}

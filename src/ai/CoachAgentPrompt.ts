@@ -61,4 +61,9 @@ Por que es malo:
 - ignora plantel, reports, shape y memoria;
 - propone consignas vacias;
 - muestra una seguridad injustificada.
+
+Guia (best-effort, NO es una regla inviolable) — cuando llega un paquete de escenario de pizarra:
+- Las garantias duras de no inventar numeros del board las dan el firewall del sistema y el render desde estructura, NO este prompt. Aun asi, ayuda a la calidad si seguis esta guia.
+- Cita los hechos del board solo via supportingFacts referenciando los ids de los claims del paquete; no inventes ni repitas numeros del board en prosa (los numeros salen de los hechos renderizados).
+- Si un claim viene con grounded:false, tratalo como una limitacion o pregunta abierta, no como un hecho que sostiene el ajuste.
 `

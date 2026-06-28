@@ -5,6 +5,8 @@ import {
   type CoachInterviewState,
   type CollectedAnswer,
 } from "../src/ai/CoachSchemas.js";
+import { parseIncomingBoardEvidence } from "../src/board/boardEvidencePacket.js";
+import type { BoardEvidencePacket } from "../src/board/boardEvidencePacket.js";
 import {
   badRequest,
   methodNotAllowed,
@@ -27,11 +29,28 @@ export default async function handler(
   let collectedEvidence: CollectedAnswer[] = [];
   let interviewState: CoachInterviewState | null = null;
   let skipInterview = false;
+  let boardEvidence: BoardEvidencePacket | null = null;
 
   try {
     const body = await readJsonBody(req);
     input = typeof body.input === "string" ? body.input.trim() : "";
     coachContext = body.coachContext ?? body.shapeContext;
+
+    // Honesty gate: parse the optional board-evidence packet BEFORE the coach.
+    // absent → no-op; valid → forward; malformed → HTTP 400. A malformed packet
+    // must NEVER be silently dropped to "no packet" (that would let a non-grounded
+    // answer masquerade as board-grounded). `parseIncomingBoardEvidence` is the
+    // single source of truth — no parallel hand-rolled checks here.
+    const boardEvidenceResult = parseIncomingBoardEvidence(body.boardEvidence);
+    if (boardEvidenceResult.status === "malformed") {
+      sendJson(res, 400, {
+        code: "INVALID_BOARD_EVIDENCE",
+        error: "Invalid boardEvidence packet",
+      });
+      return;
+    }
+    boardEvidence =
+      boardEvidenceResult.status === "ok" ? boardEvidenceResult.packet : null;
     const hasCollectedEvidence = Object.prototype.hasOwnProperty.call(
       body,
       "collectedEvidence",
@@ -79,6 +98,7 @@ export default async function handler(
       collectedEvidence,
       interviewState,
       skipInterview,
+      boardEvidence,
     });
     sendJson(res, 200, response);
   } catch (error) {

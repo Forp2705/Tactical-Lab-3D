@@ -25,28 +25,69 @@ export const BoardFactualClaimSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export const BoardEvidencePacketSchema = z.object({
-  source: z.literal("boardScenario"),
-  scope: z.literal("drawnSituation"),
-  scenarioId: z.string().min(1),
-  title: z.string(),
-  readout: z.object({
-    confidence: z.enum(["low", "medium", "high"]),
-    evidenceLevel: EvidenceLevelEnum,
-    expectedBenefit: z.string(),
-    mainRisk: z.string(),
-  }),
-  boardEvidence: z.object({
-    authority: z.literal("high"),
-    evidenceStrength: EvidenceLevelEnum,
-    hasGroundedMetrics: z.boolean(),
-    factualClaims: z.array(BoardFactualClaimSchema),
-    summary: z.string().optional(),
-  }),
-});
+export const BoardEvidencePacketSchema = z
+  .object({
+    source: z.literal("boardScenario"),
+    scope: z.literal("drawnSituation"),
+    scenarioId: z.string().min(1),
+    title: z.string(),
+    readout: z.object({
+      confidence: z.enum(["low", "medium", "high"]),
+      evidenceLevel: EvidenceLevelEnum,
+      expectedBenefit: z.string(),
+      mainRisk: z.string(),
+    }),
+    boardEvidence: z.object({
+      authority: z.literal("high"),
+      evidenceStrength: EvidenceLevelEnum,
+      hasGroundedMetrics: z.boolean(),
+      factualClaims: z.array(BoardFactualClaimSchema),
+      summary: z.string().optional(),
+    }),
+  })
+  // The schema is the SINGLE source of "valid packet". Claim ids must be unique:
+  // the firewall (Task 4) resolves "the authoritative claim for an id" via
+  // `factualClaims.find(id)`, which assumes exactly one claim per id. Without this
+  // refine a duplicate id is a conceptual bypass even with a perfect firewall, so
+  // duplicates are rejected HERE and land in the malformed branch automatically.
+  .superRefine((packet, ctx) => {
+    const ids = packet.boardEvidence.factualClaims.map((c) => c.id);
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "factualClaims ids must be unique",
+        path: ["boardEvidence", "factualClaims"],
+      });
+    }
+  });
 
 export type BoardFactualClaim = z.infer<typeof BoardFactualClaimSchema>;
 export type BoardEvidencePacket = z.infer<typeof BoardEvidencePacketSchema>;
+
+/**
+ * The ONLY validated entry point for an incoming board-evidence packet (used by
+ * the API gate in `api/coach-agent.ts`). Pure + client-safe — no server imports.
+ *
+ * CONTRACT: `runCoachTurn` only ever receives a SCHEMA-VALIDATED `boardEvidence`.
+ * Any future caller passing a packet MUST parse it with `BoardEvidencePacketSchema`
+ * (via this function) first. There is no parallel hand-rolled validation anywhere —
+ * `safeParse` is the single source of truth, so dup-ids / partial / wrong-typed
+ * packets all collapse into `malformed`. A malformed packet must NEVER be silently
+ * downgraded to "absent" (no packet): that would make a non-grounded answer look
+ * board-grounded. The caller is responsible for turning `malformed` into an HTTP 400.
+ */
+export function parseIncomingBoardEvidence(
+  raw: unknown,
+):
+  | { status: "absent" }
+  | { status: "ok"; packet: BoardEvidencePacket }
+  | { status: "malformed" } {
+  if (raw === undefined || raw === null) return { status: "absent" };
+  const parsed = BoardEvidencePacketSchema.safeParse(raw);
+  return parsed.success
+    ? { status: "ok", packet: parsed.data }
+    : { status: "malformed" };
+}
 
 export function isBoardFactualClaimId(packet: BoardEvidencePacket, id: string): boolean {
   return packet.boardEvidence.factualClaims.some((claim) => claim.id === id);

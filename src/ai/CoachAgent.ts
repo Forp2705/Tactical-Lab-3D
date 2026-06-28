@@ -421,6 +421,13 @@ function buildRetrievalQuery(
  */
 export async function runCoachTurn(
   args: Parameters<typeof runCoachTurnCore>[0] & {
+    // PRECONDITION: `boardEvidence` is ALWAYS a SCHEMA-VALIDATED packet. The ONLY
+    // validated entry point is `parseIncomingBoardEvidence` (the API gate in
+    // api/coach-agent.ts). Any future caller passing a packet MUST parse it with
+    // `BoardEvidencePacketSchema` first. No duplicate-id (or other) check is added
+    // here — the API-parse + unique-id superRefine chain guarantees a unique, valid
+    // input; this precondition makes a future bypass a MARKED contract violation,
+    // not a silent reopening.
     boardEvidence?: BoardEvidencePacket | null
   },
 ): Promise<CoachResponse> {
