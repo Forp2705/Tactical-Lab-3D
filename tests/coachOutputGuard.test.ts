@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyBoardFactFirewall,
   assessCoachAdviceTrust,
   guardCoachAdvice,
 } from "../src/ai/coachOutputGuard";
-import type { CoachMatchAdvice } from "../src/ai/CoachSchemas";
+import {
+  CoachResponseSchema,
+  type CoachMatchAdvice,
+} from "../src/ai/CoachSchemas";
+import { diag, hyp, packet } from "./fixtures/coachBridgeFixtures";
 
 describe("coachOutputGuard", () => {
   it("capea confianza si no hay citas validas", () => {
@@ -216,6 +221,254 @@ describe("coachOutputGuard", () => {
     expect(assessment.requiresHypothesisMode).toBe(false);
     expect(assessment.currentEvidenceCount).toBe(1);
     expect(assessment.confidenceCap).toBeGreaterThan(0.6);
+  });
+});
+
+describe("applyBoardFactFirewall (board fact firewall)", () => {
+  function adviceOf(response: { advice?: CoachMatchAdvice }): CoachMatchAdvice {
+    if (!response.advice) throw new Error("expected advice-bearing response");
+    return response.advice;
+  }
+
+  it("1. keeps a valid supportingFact with matching partial copiedValues; no downgrade, empty audit", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { delta: 1 } },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(false);
+    expect(out.audit).toEqual([]);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts).toHaveLength(1);
+    expect(advice.supportingFacts[0].copiedValues).toEqual({ delta: 1 });
+    expect(advice.reflection.confidence).toBe(0.6);
+    if (out.response.mode === "hypothesis") {
+      expect(out.response.confidenceCap).toBe(0.7);
+    }
+  });
+
+  it("2. supportingFact unknown id -> strip + downgrade, audit unknown-id, invalidatedSupport true", () => {
+    const out = applyBoardFactFirewall(
+      hyp([{ boardClaimId: "no-existe", use: "supportingFact", copiedValues: { delta: 1 } }]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit).toEqual([
+      { boardClaimId: "no-existe", use: "supportingFact", reason: "unknown-id", invalidatedSupport: true },
+    ]);
+    expect(adviceOf(out.response as { advice: CoachMatchAdvice }).supportingFacts).toHaveLength(0);
+  });
+
+  it("3. supportingFact missing copiedValues -> strip + downgrade, audit missing-copied-values", () => {
+    const out = applyBoardFactFirewall(
+      hyp([{ boardClaimId: "presion-zona-3", use: "supportingFact" }]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit[0].reason).toBe("missing-copied-values");
+    expect(out.audit[0].invalidatedSupport).toBe(true);
+    expect(adviceOf(out.response as { advice: CoachMatchAdvice }).supportingFacts).toHaveLength(0);
+  });
+
+  it("4. supportingFact value-mismatch -> strip + downgrade, audit value-mismatch", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { delta: 9 } },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit[0].reason).toBe("value-mismatch");
+    expect(out.audit[0].invalidatedSupport).toBe(true);
+  });
+
+  it("5. supportingFact field-incompatible (covering on zone-count) -> strip + downgrade, audit field-incompatible", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { covering: 1 } },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit[0].reason).toBe("field-incompatible");
+    expect(out.audit[0].invalidatedSupport).toBe(true);
+  });
+
+  it("6. supportingFact on grounded:false claim -> strip + downgrade, audit ungrounded-support", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "zona-ciega", use: "supportingFact", copiedValues: { delta: -1 } },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit[0].reason).toBe("ungrounded-support");
+    expect(out.audit[0].invalidatedSupport).toBe(true);
+  });
+
+  it("7. empty factualClaims + supportingFact ref -> strip + downgrade, audit unknown-id", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { delta: 1 } },
+      ]),
+      packet({ factualClaims: [] }),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.audit[0].reason).toBe("unknown-id");
+    expect(out.audit[0].invalidatedSupport).toBe(true);
+  });
+
+  it("8. limitation referencing grounded:false claim, no values -> KEPT, no downgrade, empty audit", () => {
+    const out = applyBoardFactFirewall(
+      hyp([{ boardClaimId: "zona-ciega", use: "limitation" }]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(false);
+    expect(out.audit).toEqual([]);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts).toHaveLength(1);
+    expect(advice.supportingFacts[0].boardClaimId).toBe("zona-ciega");
+  });
+
+  it("9. limitation WITH copiedValues -> ref kept but copiedValues stripped, audit ignored-values-on-limitation, no downgrade", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "zona-ciega", use: "limitation", copiedValues: { delta: -1 } },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(false);
+    expect(out.audit).toEqual([
+      {
+        boardClaimId: "zona-ciega",
+        use: "limitation",
+        reason: "ignored-values-on-limitation",
+        invalidatedSupport: false,
+      },
+    ]);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts).toHaveLength(1);
+    expect(advice.supportingFacts[0].copiedValues).toBeUndefined();
+  });
+
+  it("10. questionTrigger with value-mismatch -> stripped, audit value-mismatch, no downgrade", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "presion-zona-3", use: "questionTrigger", copiedValues: { own: 99 } },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(false);
+    expect(out.audit[0].reason).toBe("value-mismatch");
+    expect(out.audit[0].invalidatedSupport).toBe(false);
+    expect(adviceOf(out.response as { advice: CoachMatchAdvice }).supportingFacts).toHaveLength(0);
+  });
+
+  it("11a. downgrade lowers BOTH reflection.confidence and confidenceCap on a hypothesis", () => {
+    const out = applyBoardFactFirewall(
+      hyp([{ boardClaimId: "no-existe", use: "supportingFact", copiedValues: { delta: 1 } }]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.reflection.confidence).toBeLessThanOrEqual(0.3);
+    if (out.response.mode === "hypothesis") {
+      expect(out.response.confidenceCap).toBeLessThanOrEqual(0.3);
+    }
+  });
+
+  it("11b. downgrade on a diagnosis (no confidenceCap) lowers only reflection.confidence, no crash", () => {
+    const out = applyBoardFactFirewall(
+      diag([{ boardClaimId: "no-existe", use: "supportingFact", copiedValues: { delta: 1 } }]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    expect(out.response.mode).toBe("diagnosis");
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.reflection.confidence).toBeLessThanOrEqual(0.3);
+    expect("confidenceCap" in out.response).toBe(false);
+  });
+
+  it("12. mixed: one invalid supportingFact + one honest limitation -> downgraded true (from support only), limitation survives", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "no-existe", use: "supportingFact", copiedValues: { delta: 1 } },
+        { boardClaimId: "zona-ciega", use: "limitation" },
+      ]),
+      packet(),
+    );
+
+    expect(out.downgraded).toBe(true);
+    const advice = adviceOf(out.response as { advice: CoachMatchAdvice });
+    expect(advice.supportingFacts).toHaveLength(1);
+    expect(advice.supportingFacts[0]).toEqual({ boardClaimId: "zona-ciega", use: "limitation" });
+    const invalidated = out.audit.filter((a) => a.invalidatedSupport);
+    expect(invalidated).toHaveLength(1);
+    expect(invalidated[0].use).toBe("supportingFact");
+  });
+
+  it("13. question mode -> passthrough, empty audit, downgraded false", () => {
+    const questionResponse: import("../src/ai/CoachSchemas").CoachResponse = {
+      mode: "question",
+      intent: {
+        domains: ["pressing"],
+        specificity: "specific",
+        requestType: "diagnosis",
+        impliedClaims: [],
+      },
+      selectedQuestions: [],
+      blockedClaims: [],
+      evidenceAudit: {
+        covered: [],
+        missing: [],
+        criticalMissingCount: 0,
+        evidenceStrength: "partial",
+      },
+      confidenceCap: 0.5,
+    };
+
+    const out = applyBoardFactFirewall(questionResponse, packet());
+
+    expect(out.downgraded).toBe(false);
+    expect(out.audit).toEqual([]);
+    expect(out.response).toEqual(questionResponse);
+  });
+
+  it("14. sanitized response re-parses against CoachResponseSchema", () => {
+    const out = applyBoardFactFirewall(
+      hyp([
+        { boardClaimId: "no-existe", use: "supportingFact", copiedValues: { delta: 1 } },
+        { boardClaimId: "zona-ciega", use: "limitation", copiedValues: { delta: -1 } },
+        { boardClaimId: "presion-zona-3", use: "supportingFact", copiedValues: { delta: 1 } },
+      ]),
+      packet(),
+    );
+
+    expect(CoachResponseSchema.safeParse(out.response).success).toBe(true);
+  });
+
+  it("does not mutate the input response", () => {
+    const input = hyp([
+      { boardClaimId: "no-existe", use: "supportingFact", copiedValues: { delta: 1 } },
+    ]);
+    const inputConfidence = input.mode !== "question" ? input.advice.reflection.confidence : 0;
+    applyBoardFactFirewall(input, packet());
+
+    expect(input.mode !== "question" && input.advice.reflection.confidence).toBe(inputConfidence);
+    expect(input.mode !== "question" && input.advice.supportingFacts).toHaveLength(1);
   });
 });
 
