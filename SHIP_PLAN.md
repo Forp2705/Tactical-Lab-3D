@@ -80,8 +80,22 @@ Este plan y el roadmap de slices no compiten: el roadmap es el **mecanismo de ej
 
 Actualizar los "hechos verificados" del roadmap antes de delegar cualquier slice — hoy harían que un spec re-derive trabajo ya hecho.
 
+## Programa RomboIQ (reskin felt-board + login) — integrado al ship
+
+Decisión 2026-07-01: el rediseño de UI en curso (mockup felt-board hecho en Design, implementación en preparación) **entra en el alcance del ship**, no queda post-beta. Implicancias:
+
+**R.1 Aterrizar el programa en el repo (primera tarea, bloqueante).** Hoy el mockup y el estado del programa no están versionados — `tactical/` es un prototipo anterior (3 temas cockpit/broadcast/pizarra) y `docs/ui-leap-plan.md` es la visión previa, no el felt-board. Riesgo ya conocido: planes vigentes fuera del repo se pierden entre sesiones (mismo modo de falla que los "hechos verificados" viejos del roadmap). Entregable: `docs/superpowers/roadmap` o doc propio con el mockup (export/link), las 5 fases del programa, y qué fase está en curso.
+
+**R.2 Alcance del reskin = superficies de la beta, no toda la app.** Regla anti-parálisis aplicada al reskin: se rediseñan primero las pantallas del loop semanal que la beta incluye (Home, AiView, Post-match, Sessions, Board); LineupLab avanzado y video pueden quedar con la UI actual detrás de su framing "en evolución". Un solo sistema de tokens: el reskin debe resolver la colisión `theme.css` vs `tactical-ui.css` que documenta `ui-leap-plan.md` §1, no agregar una tercera capa.
+
+**R.3 Login del programa = auth de Fase 2.** Una sola historia de auth: la pantalla de login del mockup se implementa contra `BETA_STAFF_TOKENS`/`requireStaff` (2.2), no como sistema paralelo. Diseñar la UI ya sabiendo que detrás hay token de beta, no usuarios/contraseñas.
+
+**R.4 El gate en vivo se corre sobre la UI nueva.** No tiene sentido validar ni pulir pantallas que se van a reemplazar. Por eso el reskin va **antes** del gate (Fase 0), y absorbe la mayor parte de la Slice E (pass de densidad/UX) — esa slice probablemente muere dentro del reskin.
+
+**Riesgo a nombrar honestamente:** meter un reskin en el camino del ship agranda el alcance y es la clase de trabajo que estira lanzamientos indefinidamente. El mitigante es R.2 (solo superficies de beta) y un timebox explícito: si el reskin de las pantallas del loop no cierra en el plazo que definas, la beta sale con la UI actual y el reskin sigue en paralelo.
+
 ## Secuencia
 
-Slice 0 (cerrar) → Fase 0 / gate en vivo (1–2 días) → re-scope y ejecución de A–E según punch-list → Fase 2 como slices F–G (storage es lo grande) → Fase 3 / pre-ship.
+Slice 0 (cerrar) → R.1 aterrizar programa en repo → reskin de superficies beta + login-UI (R.2–R.3) → Fase 0 / gate en vivo sobre la UI nueva → re-scope y ejecución de A–D según punch-list (E absorbida por el reskin) → Fase 2 como slices F–G (storage es lo grande; auth ya tiene UI del reskin) → Fase 3 / pre-ship.
 
 Regla del repo para todo el plan: `npm run type-check && npm run build` en cada cambio, más los tests del área tocada según CLAUDE.md §11.
