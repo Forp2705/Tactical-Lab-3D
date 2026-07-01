@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import react from "@vitejs/plugin-react";
-import { type Plugin, defineConfig } from "vite";
+import type { Plugin } from "vite";
+import { defineConfig } from "vitest/config";
 
 type ApiHandlerModule = {
   default: (
@@ -85,5 +86,8 @@ export default defineConfig(() => ({
         },
       },
     },
+  },
+  test: {
+    setupFiles: ["./tests/setup/networkGuard.ts"],
   },
 }));
