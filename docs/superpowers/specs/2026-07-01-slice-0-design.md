@@ -88,7 +88,9 @@ Commit dedicado: `chore(slice-0): git rm tracked junk (20 files)`.
 
 Si solo se hace una mitad, la otra reintroduce el churn: `.gitattributes eol=lf` fuerza LF en el repo, pero un biome con `lineEnding: crlf` (o default) reescribiría a CRLF en cada `format` y volverían a pelearse. Con `core.autocrlf=true` en la máquina del usuario, `.gitattributes` toma precedencia para los archivos trackeados; biome LF asegura que el formatter no contradiga. **Ambos cambios se hacen y commitean como una unidad coherente en esta slice.**
 
-> Nota de continuidad: el commit `abca0b6` en `wip/preserve-2026-07-01` ya dejó `biome.json` en `lineEnding: lf`; si esa mitad llega vía cherry-pick/promoción, acá solo se agrega `.gitattributes` y se verifica que biome siga en `lf`. Si no, se aplica biome `lf` acá mismo.
+> Nota de continuidad: Slice 0 solo hace cherry-pick de `41a074a` (Gemini), **no** de `abca0b6` (el commit de biome autofix en `wip/preserve-2026-07-01`). Por lo tanto `biome.json` en la rama de Slice 0 sigue siendo el de `main` (sin `lineEnding`), y esta mitad —`lineEnding: lf`— se **aplica fresca acá**. El resto del autofix de `abca0b6` queda para promoverse en una slice posterior.
+
+> Orden de ejecución (swap Task 2↔3): la limpieza de Gemini (§3.3) corre **antes** que el renormalize, así el cherry-pick aplica sobre un árbol no-renormalizado (sin conflicto de EOL) y el renormalize posterior normaliza también los archivos del cherry-pick.
 
 Crear `.gitattributes`:
 
@@ -222,7 +224,7 @@ El fetch original se stubbea en los tests del guard para no depender de red real
 
 - **Renormalize toca casi todo el árbol.** Riesgo de esconder cambios semánticos en el diff gigante. Mitigación: hacerlo en commit dedicado y **después** del `git rm` de junk; revisar que `git diff --stat` del commit de renormalize sea solo EOL (no contenido).
 - **`npm install` mete churn no relacionado en el lockfile.** Mitigación: acotar el diff a Gemini (delta 4); revertir bumps ajenos.
-- **Cherry-pick de `41a074a` conflictúa por EOL** (llega después del renormalize de §3.2). Mitigación: resolver a favor del contenido semántico (LF); verificar con `git diff --ignore-all-space` que no se perdió lógica.
+- **Cherry-pick de `41a074a`** (con el swap Task 2↔3 corre **antes** del renormalize, sobre el árbol post-junk cuyo base es `e5001b2` = padre de `41a074a`): debería aplicar limpio. Si aparece conflicto, resolver a favor del contenido semántico y verificar con `git diff --ignore-all-space` que no se perdió lógica.
 - **`.gitattributes` y biome pelean por EOL si solo se hace una mitad.** Mitigación: co-locar ambos en §3.2 (`.gitattributes eol=lf` + biome `lineEnding lf`) y commitear como unidad.
 - **El guard rompe un test que sí llamaba live.** Mitigación: mockear/gatear ese test in situ (no mover). Evidencia actual: ninguno.
 - **Orden de merge.** Slice 0 va primero sí o sí; el resto del roadmap depende de este CI + árbol limpio.
