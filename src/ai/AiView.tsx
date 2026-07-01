@@ -51,7 +51,6 @@ type AgentStatus = {
   ok: boolean;
   openRouterConfigured: boolean;
   openRouterModel: string;
-  geminiConfigured: boolean;
   runtime: string;
 };
 
