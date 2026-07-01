@@ -37,7 +37,6 @@ export default defineConfig(() => ({
     localApiRoute("/api/coach-observability", () =>
       import("./api/coach-observability"),
     ),
-    localApiRoute("/api/ai/gemini", () => import("./api/ai/gemini")),
     localApiRoute("/api/post-match/generate", () =>
       import("./api/post-match/generate"),
     ),
@@ -57,6 +56,9 @@ export default defineConfig(() => ({
     },
   },
   build: {
+    // Three y react-pdf son vendors grandes pero lazy-loaded; mantener el
+    // warning por encima de esos chunks evita ruido sin esconder el bundle app.
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         // Separamos las dependencias pesadas en vendor chunks con nombre
