@@ -50,7 +50,7 @@ export function publicServerError(error: unknown, fallbackMessage: string) {
       payload: {
         code: "missing_openrouter_key",
         error:
-          "OpenRouter is not configured. Set OPENROUTER_API_KEY in the server environment and restart the app.",
+          "OpenRouter is not configured. Set OPENROUTER_API_KEY in Vercel environment variables and redeploy.",
       },
     };
   }
@@ -113,7 +113,7 @@ export function publicServerError(error: unknown, fallbackMessage: string) {
       payload: {
         code: "openrouter_unauthorized",
         error:
-          "OpenRouter rejected the request. Check OPENROUTER_API_KEY in the server environment.",
+          "OpenRouter rejected the request. Check OPENROUTER_API_KEY in Vercel.",
       },
     };
   }
