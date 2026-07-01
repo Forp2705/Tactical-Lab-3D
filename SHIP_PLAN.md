@@ -92,7 +92,7 @@ Decisión 2026-07-01: el rediseño de UI en curso (mockup felt-board hecho en De
 
 **R.4 El gate en vivo se corre sobre la UI nueva.** No tiene sentido validar ni pulir pantallas que se van a reemplazar. Por eso el reskin va **antes** del gate (Fase 0), y absorbe la mayor parte de la Slice E (pass de densidad/UX) — esa slice probablemente muere dentro del reskin.
 
-**Riesgo a nombrar honestamente:** meter un reskin en el camino del ship agranda el alcance y es la clase de trabajo que estira lanzamientos indefinidamente. El mitigante es R.2 (solo superficies de beta) y un timebox explícito: si el reskin de las pantallas del loop no cierra en el plazo que definas, la beta sale con la UI actual y el reskin sigue en paralelo.
+**Riesgo a nombrar honestamente:** meter un reskin en el camino del ship agranda el alcance y es la clase de trabajo que estira lanzamientos indefinidamente. El mitigante es R.2 (solo superficies de beta) y un timebox explícito de **2 semanas desde el arranque del reskin** (decidido 2026-07-01; realista porque Fases 1+2 del programa ya están entregadas y el CSS del mockup se trasplanta verbatim): si el reskin de las pantallas del loop no cierra en ese plazo, la beta sale con la UI actual y el reskin sigue en paralelo.
 
 ## Secuencia
 
