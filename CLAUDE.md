@@ -29,8 +29,7 @@ La dirección de producto es herramienta premium de staff, no pizarra genérica.
 - Drag and drop: `@dnd-kit`
 - Video/media export: `@ffmpeg/ffmpeg`
 - IA server-side:
-  - OpenRouter vía `openai` SDK
-  - endpoint legacy Gemini todavía presente en `api/ai/gemini.ts`
+  - OpenRouter vía `openai` SDK (único camino IA; Gemini removido: endpoint, ruta y dependencia)
 - Testing: Vitest
 - Lint/format: Biome
 
@@ -93,8 +92,6 @@ Variables relevantes:
 
 - `OPENROUTER_API_KEY`
 - `OPENROUTER_MODEL`
-
-Opcionalmente pueden existir variables para Gemini si se usa el endpoint legado.
 
 Regla importante:
 
@@ -170,6 +167,22 @@ Regla importante:
   - vista del plantel y edición general
 - `LineupLab3D.tsx`
   - laboratorio 3D de shapes, transitions, rival overlay y snapshot contextual para el coach
+
+## `src/board`
+
+- pizarra táctica: editor, reducer, render y bridge estructurado hacia el CoachAgent (firewall estructura-vs-claim).
+
+## `src/scout`
+
+- `opponentScout.ts`: modelo de scouting del rival usado por Home/AI.
+
+## `src/sketch`
+
+- bocetos rápidos (Quick Sketch): launcher, vista y schemas.
+
+## `src/home`
+
+- vista Inicio (masthead de jornada, problema de la semana, timeline del equipo).
 
 ## `src/library`
 
@@ -315,7 +328,7 @@ El módulo de video hoy es deliberadamente limitado:
 - permite tracking manual haciendo click en el canvas;
 - exporta CSV de tracks.
 
-No hay análisis automático de video en esta etapa.
+El módulo video combina tagging/tracking manual con un endpoint de detección de patrones por visión (`/api/video/pattern-scan` + `src/video/videoPatternScan.ts`). La UI aún no consume el endpoint (gap de cableado, no de capacidad).
 
 ## Asistente táctico IA
 
@@ -387,11 +400,6 @@ Regla central:
 ## `api/agent-status.ts`
 
 - chequeo de disponibilidad / estado del agente
-
-## `api/ai/gemini.ts`
-
-- endpoint legado / alternativo
-- no es el camino principal actual si el coach está montado sobre OpenRouter
 
 ---
 
@@ -598,9 +606,8 @@ Todavía hay deuda:
 
 - bundle grande en build;
 - warnings de import dinámico/estático de store/db;
-- endpoint Gemini legacy coexistiendo con OpenRouter;
 - varias capas IA que conviene no mezclar por error;
-- el módulo video todavía no alimenta análisis automático real.
+- `videoPatternScan.ts` existe pero la UI de video todavía no lo consume (gap de cableado).
 
 ---
 
