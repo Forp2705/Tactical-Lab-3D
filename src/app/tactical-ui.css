@@ -420,7 +420,7 @@ input[type="range"]::-webkit-slider-thumb {
   .home-action-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
 }
-@media (max-width: 860px) {
+@media (max-width: 1180px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar {
     position: fixed; z-index: 50; width: 264px; left: 0; top: 0;
@@ -1473,8 +1473,10 @@ h4,
    Legibility first: no glows, no decorative dots, no theme switching UI.
    ============================================================ */
 
-.app-shell {
-  grid-template-columns: 244px minmax(0, 1fr);
+@media (min-width: 1181px) {
+  .app-shell {
+    grid-template-columns: 244px minmax(0, 1fr);
+  }
 }
 
 .app-shell .sidebar {
