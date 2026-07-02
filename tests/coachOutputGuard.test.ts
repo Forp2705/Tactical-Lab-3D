@@ -223,6 +223,25 @@ describe("coachOutputGuard", () => {
     expect(assessment.currentEvidenceCount).toBe(1);
     expect(assessment.confidenceCap).toBeGreaterThan(0.6);
   });
+
+  it("T2: dispara missingPrimaryDomain cuando el pedido es de salida y la respuesta deriva al delantero", () => {
+    const assessment = assessCoachAdviceTrust(
+      advice({
+        tacticalReading: "El delantero queda aislado arriba y no genera peligro.",
+        probableCause: "El 9 ataca solo, sin companeros cercanos para rematar.",
+        mainAdjustment: "Acercar un companero al delantero para finalizar mejor.",
+        wednesdayTest: "Tarea de definicion con dos atacantes cerca del area.",
+        saturdayFocus: "Sostener dos hombres en zona de remate.",
+      }),
+      {
+        userInput: "no salimos limpio y el 9 queda aislado",
+        evidenceCatalog: [],
+      },
+    );
+
+    expect(assessment.missingPrimaryDomain).toBe(true);
+    expect(assessment.requiresHypothesisMode).toBe(true);
+  });
 });
 
 describe("applyBoardFactFirewall (board fact firewall)", () => {

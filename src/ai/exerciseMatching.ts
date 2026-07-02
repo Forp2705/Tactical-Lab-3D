@@ -109,21 +109,51 @@ export function inferDomainsFromText(text: string): TacticalDomain[] {
   const normalized = normalize(text);
   const domains: TacticalDomain[] = [];
 
-  if (
+  const salidaContext = hasAny(normalized, [
+    "salida",
+    "salir",
+    "salimos",
+    "construir",
+    "progresar",
+    "salir limpio",
+    "salida limpia",
+    "salir jugando",
+    "sacar jugado",
+    "sacar la pelota jugando",
+    "empezar la jugada",
+    "empezar a jugar",
+    "primera linea",
+    "lo aprietan al 5",
+    "5 lo aprietan",
+    "cinco lo aprietan",
+    "recibe de espaldas",
+    "recibir de espaldas",
+  ]);
+  // "lateral/carrilero/costado" son buildUp SOLO en contexto de salida (evita
+  // marcar buildUp en preguntas puramente defensivas como "nos ganan por banda").
+  const lateralInBuildUp =
+    hasAny(normalized, [
+      "lateral",
+      "laterales",
+      "carrilero",
+      "carrileros",
+      "costado",
+      "costados",
+    ]) &&
     hasAny(normalized, [
       "salida",
       "salir",
+      "salimos",
+      "sacar",
+      "empezar",
       "construir",
-      "progresar",
-      "salir limpio",
-      "salida limpia",
-      "lo aprietan al 5",
-      "5 lo aprietan",
-      "cinco lo aprietan",
-      "recibe de espaldas",
-      "recibir de espaldas",
-    ])
-  ) {
+      "jugar",
+      "jugado",
+      "progres",
+      "primera linea",
+      "inicio",
+    ]);
+  if (salidaContext || lateralInBuildUp) {
     domains.push("buildUp");
   }
   if (
@@ -173,7 +203,13 @@ export function inferDomainsFromText(text: string): TacticalDomain[] {
   if (hasAny(normalized, ["duelo", "1v1", "banda", "2v1"])) {
     domains.push("duels");
   }
-  if (hasAny(normalized, ["atac", "gener", "9", "finaliz", "aislado"])) {
+  // "9" con limite de palabra (no matchea "1990"/"90"); "genera" en vez de "gener"
+  // para no atrapar "generico". "aislado" se mantiene: el guard de deriva de fase
+  // depende de que buildUp TAMBIEN se detecte, no de quitar attack.
+  if (
+    hasAny(normalized, ["atac", "genera", "finaliz", "aislado"]) ||
+    /\b9\b/.test(normalized)
+  ) {
     domains.push("attack");
   }
 
