@@ -5,10 +5,12 @@ import {
   type BoardScene,
 } from "../src/board";
 import type { PlanningBoardPlayer } from "../src/board/productBoardTypes";
+import { type BoardObject, createPlayerToken } from "../src/board";
 import {
   handleCanvasPress,
   labelForTool,
   makeEquipmentLikeObject,
+  mergeFormationTokens,
   semanticForTool,
   tokenFromPlanningPlayer,
 } from "../src/board/boardTools";
@@ -86,6 +88,101 @@ describe("boardTools — object factories", () => {
     const token = tokenFromPlanningPlayer(player, { x: 10, y: 10 }, "Lateral", 12);
     expect(token.number).toBe(12);
     expect(token.rosterLink).toBeUndefined();
+  });
+});
+
+describe("boardTools — mergeFormationTokens (FIX mc-21 2a: formation-change merge)", () => {
+  function editedOwnToken(overrides: Partial<BoardObject> = {}): BoardObject {
+    return {
+      ...createPlayerToken(null, { x: 20, y: 30 }, "Lateral derecho", 2),
+      linkedPlayerId: "roster-2",
+      role: "Carrilero (manual)",
+      note: "Cubrir la espalda del central",
+      number: 77,
+      ...overrides,
+    };
+  }
+
+  it("preserves role/note/number from a matched linkedPlayerId and adopts the new position", () => {
+    const previous = [editedOwnToken()];
+    const rebuilt = tokenFromPlanningPlayer(
+      {
+        id: "roster-2",
+        name: "J. Perez",
+        position: "Lateral",
+        number: 2,
+        traits: "",
+        team: "A",
+      },
+      { x: 72, y: 78 },
+      "Extremo izquierdo",
+      2,
+    );
+    const [merged] = mergeFormationTokens(previous, [rebuilt]);
+    expect(merged.role).toBe("Carrilero (manual)");
+    expect(merged.note).toBe("Cubrir la espalda del central");
+    expect(merged.number).toBe(77);
+    expect(merged.position).toEqual({ x: 72, y: 78 });
+    expect(merged.linkedPlayerId).toBe("roster-2");
+  });
+
+  it("does NOT preserve edits on a token without linkedPlayerId (deliberate limit, roster shorter than formation)", () => {
+    const previous = [
+      editedOwnToken({ linkedPlayerId: undefined, id: "unlinked-1" }),
+    ];
+    const rebuilt = createPlayerToken(
+      null,
+      { x: 45, y: 84 },
+      "Carrilero",
+      9,
+    );
+    const [merged] = mergeFormationTokens(previous, [rebuilt]);
+    // No stable key to match unlinked tokens across a rebuild: the rebuilt
+    // token comes through untouched, edits on the old unlinked token are lost.
+    expect(merged).toEqual(rebuilt);
+    expect(merged.role).not.toBe("Carrilero (manual)");
+    expect(merged.note).toBeUndefined();
+  });
+
+  it("leaves an unmatched new token (no previous token with that linkedPlayerId) unchanged", () => {
+    const previous = [editedOwnToken({ linkedPlayerId: "roster-2" })];
+    const rebuilt = tokenFromPlanningPlayer(
+      {
+        id: "roster-9",
+        name: "Nuevo Jugador",
+        position: "Central",
+        number: 9,
+        traits: "",
+        team: "A",
+      },
+      { x: 22, y: 38 },
+      "Central",
+      9,
+    );
+    const [merged] = mergeFormationTokens(previous, [rebuilt]);
+    expect(merged).toEqual(rebuilt);
+  });
+
+  it("does not mutate its inputs (undo safety: history can hold these objects by reference)", () => {
+    const previous = [editedOwnToken()];
+    const previousSnapshot = JSON.parse(JSON.stringify(previous));
+    const rebuilt = tokenFromPlanningPlayer(
+      {
+        id: "roster-2",
+        name: "J. Perez",
+        position: "Lateral",
+        number: 2,
+        traits: "",
+        team: "A",
+      },
+      { x: 72, y: 78 },
+      "Extremo izquierdo",
+      2,
+    );
+    const rebuiltSnapshot = JSON.parse(JSON.stringify(rebuilt));
+    mergeFormationTokens(previous, [rebuilt]);
+    expect(previous).toEqual(previousSnapshot);
+    expect(rebuilt).toEqual(rebuiltSnapshot);
   });
 });
 
