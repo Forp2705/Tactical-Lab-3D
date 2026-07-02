@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { catalog } from "../src/data/exercises/catalog";
+import {
+  catalog,
+  generatedLibraryExerciseIds,
+} from "../src/data/exercises/catalog";
 import { validateExercise } from "../src/data/exercises/validateExercise";
 import {
   criticalExerciseIds,
@@ -110,6 +113,18 @@ describe("exercise selection gate", () => {
     for (const exercise of selectable) {
       expect(validateExercise(exercise).critical).toBe(false);
     }
-    expect(selectable.length).toBe(catalog.length - criticalExerciseIds.size);
+    // Contrato del pool (FIX 1): queda exactamente catalogo - (criticos U
+    // generados), ni mas ni menos. Chequeo bidireccional por id en vez de
+    // aritmetica de tamanos: el catalogo tiene un id duplicado preexistente
+    // ("defensa-centro-lateral" aparece dos veces en compactCuratedSpecs),
+    // asi que |catalogo| - |ids excluidos| no cuadra con el conteo de entradas.
+    const excluded = new Set([
+      ...criticalExerciseIds,
+      ...generatedLibraryExerciseIds,
+    ]);
+    const selectableIds = new Set(selectable.map((exercise) => exercise.id));
+    for (const exercise of catalog) {
+      expect(selectableIds.has(exercise.id)).toBe(!excluded.has(exercise.id));
+    }
   });
 });
