@@ -254,14 +254,22 @@ function fallbackIntent(userInput: string): TacticalIntent {
 
 function inferDomain(userInput: string): TacticalDomain {
   const text = userInput.toLowerCase();
-  if (/salida|salir|limpio|constru/i.test(text)) return "buildUp";
+  // buildUp se evalua primero: captura vocabulario de salida (incl. "empezar la
+  // jugada", "salir jugando", "primera linea") para que una consulta de salida por
+  // los laterales NO caiga en "defense". Alineado con inferDomainsFromText (T2).
+  if (
+    /salida|salir|salimos|limpio|constru|progres|sacar jugado|salir jugando|empezar la jugada|empezar a jugar|primera linea/i.test(
+      text,
+    )
+  )
+    return "buildUp";
   if (/perd|transicion|largo|partido/i.test(text)) return "defensiveTransition";
   if (/presion|apretar|saltar/i.test(text)) return "pressing";
   if (/bloque|hund|linea/i.test(text)) return "block";
   if (/banda|lateral|costado/i.test(text)) return "defense";
   if (/abp|pelota parada|corner|tiro libre/i.test(text)) return "setPieces";
   if (/duelo|mano a mano|marca/i.test(text)) return "duels";
-  if (/gener|situacion|9|delanter|atac/i.test(text)) return "attack";
+  if (/genera|situacion|\b9\b|delanter|atac|aislado/i.test(text)) return "attack";
   return "defense";
 }
 
