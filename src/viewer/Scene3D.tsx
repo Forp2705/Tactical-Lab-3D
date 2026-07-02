@@ -32,6 +32,12 @@ import {
   getVisibleZones,
   worldFromPitch,
 } from "./lib/runtime";
+import {
+  type TopFocus,
+  computeTopView,
+  getTopFocus,
+  separateTopMarkers,
+} from "./topFraming";
 
 type SceneProps = {
   exercise: Exercise;
@@ -169,10 +175,10 @@ export function Scene3D({
           />
         ) : null,
       )}
-      {frame.actors.map((pose) =>
-        cameraMode === "top" ? (
-          <TopActorNode key={pose.actor.id} pose={pose} mode={mode} />
-        ) : (
+      {cameraMode === "top" ? (
+        <TopActorsLayer frame={frame} mode={mode} />
+      ) : (
+        frame.actors.map((pose) => (
           <ActorNode
             key={pose.actor.id}
             pose={pose}
@@ -180,7 +186,7 @@ export function Scene3D({
             mode={mode}
             simplified={useSimplifiedActors}
           />
-        ),
+        ))
       )}
       <BallNode pose={frame.ball} mode={mode} top={cameraMode === "top"} />
       {renderSettings.postprocessing ? (
@@ -383,8 +389,10 @@ function SceneCamera({
   }, [preset]);
 
   // Encuadre por bounds de la accion (no de la cancha entera): asi la jugada
-  // llena el viewport en vez de quedar chica y arrinconada arriba.
-  const topZoom = computeTopZoom(topFocus, size);
+  // llena el viewport. computeTopView ademas pone un piso de zoom y clampea el
+  // centro para que la ventana visible nunca muestre bandas negras fuera de
+  // cancha (letterbox).
+  const topView = computeTopView(topFocus, size, mode);
   const span = Math.max(topFocus.spanX, topFocus.spanZ);
   const distance = framingDistance(span, preset.fov);
 
@@ -400,10 +408,10 @@ function SceneCamera({
 
   useFrame((_state, delta) => {
     if (cameraMode === "top") {
-      camera.position.set(topFocus.x, preset.position[1], topFocus.z + 0.01);
+      camera.position.set(topView.x, preset.position[1], topView.z + 0.01);
       camera.rotation.set(-Math.PI / 2, 0, 0);
       if ("zoom" in camera) {
-        camera.zoom = topZoom;
+        camera.zoom = topView.zoom;
         camera.updateProjectionMatrix();
       }
       return;
@@ -424,8 +432,8 @@ function SceneCamera({
     return (
       <OrthographicCamera
         makeDefault
-        position={[topFocus.x, preset.position[1], topFocus.z + 0.01]}
-        zoom={topZoom}
+        position={[topView.x, preset.position[1], topView.z + 0.01]}
+        zoom={topView.zoom}
         rotation={[-Math.PI / 2, 0, 0]}
       />
     );
@@ -441,17 +449,6 @@ function SceneCamera({
 }
 
 const LOOK_LIFT = 1.1;
-
-function computeTopZoom(
-  focus: TopFocus,
-  size: { width: number; height: number },
-) {
-  const spanX = Math.max(8, focus.spanX);
-  const spanZ = Math.max(8, focus.spanZ);
-  const zoomX = (size.width * 0.82) / spanX;
-  const zoomZ = (size.height * 0.8) / spanZ;
-  return clamp(Math.min(zoomX, zoomZ), 9, 34);
-}
 
 function framingDistance(span: number, fov: number) {
   const half = Math.max(7, span * 0.5 + 3);
@@ -502,19 +499,32 @@ function ActorNode({
   );
 }
 
-function TopActorNode({
-  pose,
+// Capa de chips en top: resuelve colisiones de a pares (duelos) ANTES de
+// renderizar, para que dos jugadores disputando el mismo metro no se fundan
+// en un solo blob. Solo mueve el render del marcador; el engine no cambia.
+function TopActorsLayer({
+  frame,
   mode,
-}: { pose: EngineActorPose; mode: PitchMode }) {
-  const position = worldFromPitch(pose.pos, mode);
-  const teamColor = teamColorFor(pose.actor.team);
+}: { frame: MatchFrame; mode: PitchMode }) {
+  const positions = useMemo(() => {
+    const raw = frame.actors.map((pose) => {
+      const world = worldFromPitch(pose.pos, mode);
+      return { x: world[0], z: world[2] };
+    });
+    return separateTopMarkers(raw);
+  }, [frame, mode]);
 
   return (
-    <TopActorMarker
-      actor={pose.actor}
-      position={[position[0], 0, position[2]]}
-      color={teamColor}
-    />
+    <group>
+      {frame.actors.map((pose, index) => (
+        <TopActorMarker
+          key={pose.actor.id}
+          actor={pose.actor}
+          position={[positions[index].x, 0, positions[index].z]}
+          color={teamColorFor(pose.actor.team)}
+        />
+      ))}
+    </group>
   );
 }
 
@@ -627,43 +637,6 @@ function playerScale(mode: PitchMode) {
   if (mode === "small") return 1.14;
   if (mode === "third") return 1.08;
   return 1.02;
-}
-
-type TopFocus = {
-  x: number;
-  z: number;
-  spanX: number;
-  spanZ: number;
-};
-
-// Margen para que las fichas y sus etiquetas no queden pegadas al borde.
-const FOCUS_PADDING = 10;
-
-function getTopFocus(frame: MatchFrame, mode: PitchMode): TopFocus {
-  const points = frame.actors.map((pose) => {
-    const world = worldFromPitch(pose.pos, mode);
-    return { x: world[0], z: world[2] };
-  });
-  const ballWorld = worldFromPitch(
-    { x: frame.ball.pos.x, y: frame.ball.pos.y },
-    mode,
-  );
-  points.push({ x: ballWorld[0], z: ballWorld[2] });
-
-  if (points.length === 0) return { x: 0, z: 0, spanX: 40, spanZ: 26 };
-
-  const minX = Math.min(...points.map((point) => point.x));
-  const maxX = Math.max(...points.map((point) => point.x));
-  const minZ = Math.min(...points.map((point) => point.z));
-  const maxZ = Math.max(...points.map((point) => point.z));
-  const { length, width } = pitchDimensions(mode);
-
-  return {
-    x: clamp((minX + maxX) / 2, -length / 2, length / 2),
-    z: clamp((minZ + maxZ) / 2, -width / 2, width / 2),
-    spanX: Math.max(6, maxX - minX) + FOCUS_PADDING,
-    spanZ: Math.max(6, maxZ - minZ) + FOCUS_PADDING,
-  };
 }
 
 function clamp(value: number, min: number, max: number) {
