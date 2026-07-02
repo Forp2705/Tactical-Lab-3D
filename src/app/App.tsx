@@ -236,7 +236,22 @@ export function App() {
     };
 
     const id = window.setInterval(handleSave, 8000);
-    return () => window.clearInterval(id);
+
+    // Flush ademas del intervalo: visibilitychange (pestana oculta/backgrounded)
+    // es el mecanismo primario; pagehide es backup para el cierre directo.
+    // beforeunload NO sirve: saveSnapshot es async (Dexie) y ese handler no
+    // puede esperar la promesa.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") handleSave();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handleSave);
+
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handleSave);
+    };
   }, [initialized]);
 
   if (!initialized) {

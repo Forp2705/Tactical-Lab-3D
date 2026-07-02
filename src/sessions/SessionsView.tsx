@@ -69,7 +69,8 @@ export function SessionsView() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
-  const computed = session.computed ?? recomputeFallback(session.blocks);
+  const computed =
+    session.computed ?? recomputeFallback(session.blocks, exerciseVariants);
   const sessionIntent = useMemo(
     () => readSessionIntent(session.staffNotes, aiPrompt, weeklyDecisionThread),
     [aiPrompt, session.staffNotes, weeklyDecisionThread],
@@ -438,10 +439,13 @@ const SessionBlockCard = memo(function SessionBlockCard({
   const attachBoardToSessionBlock = useAppStore((state) => state.attachBoardToSessionBlock);
   const detachBoardFromSessionBlock = useAppStore((state) => state.detachBoardFromSessionBlock);
   const createSessionBlockFromBoardScene = useAppStore((state) => state.createSessionBlockFromBoardScene);
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const [pendingAttachId, setPendingAttachId] = useState("");
   const [pendingBoardAttachId, setPendingBoardAttachId] = useState("");
   const [editingSketch, setEditingSketch] = useState<Sketch | null>(null);
-  const exercise = catalog.find((item) => item.id === block?.exerciseId);
+  const exercise = [...catalog, ...exerciseVariants].find(
+    (item) => item.id === block?.exerciseId,
+  );
   const {
     attributes,
     listeners,
@@ -917,7 +921,10 @@ function DroppableSessionArea({
   );
 }
 
-function recomputeFallback(blocks: Session["blocks"]) {
+export function recomputeFallback(
+  blocks: Session["blocks"],
+  exerciseVariants: Exercise[] = [],
+) {
   const materials = new Map<
     string,
     { name: string; qty: number; unit: string }
@@ -925,9 +932,12 @@ function recomputeFallback(blocks: Session["blocks"]) {
   const objectives = new Set<string>();
   let totalDuration = 0;
   let totalLoad = 0;
+  const availableExercises = [...catalog, ...exerciseVariants];
 
   for (const block of blocks) {
-    const exercise = catalog.find((item) => item.id === block.exerciseId);
+    const exercise = availableExercises.find(
+      (item) => item.id === block.exerciseId,
+    );
     if (!exercise) continue;
     totalDuration += block.durationMin;
     totalLoad += block.durationMin * exercise.rpe;
