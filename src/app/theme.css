@@ -2378,7 +2378,12 @@ body::before {
 .app-shell {
   position: relative;
   z-index: 1;
-  grid-template-columns: 282px minmax(0, 1fr);
+}
+
+@media (min-width: 1101px) {
+  .app-shell {
+    grid-template-columns: 282px minmax(0, 1fr);
+  }
 }
 
 .sidebar {
