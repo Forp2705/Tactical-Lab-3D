@@ -1,6 +1,41 @@
 # VALIDATION — Ola 2 render tests (mc-20)
 Base: `origin/main` = `10bcbc4` (post-hotfix PR #12) · Fecha: 2026-07-02 · Branch: `test/w2-board-render-tests` (sin push)
 
+## CORRECCION (gate mc-99 W2A, task_92fe08d8fdbc)
+
+El gate de mc-99 encontro que `tests/useBoardEditorHydratePersist.test.tsx`
+(T3) pasaba 4/4 **incluso contra el codigo pre-hotfix** (commit `6e68557`,
+padre de `7d1ef66`): el harness original nunca cerraba el circuito
+persist->rerender (yo llamaba `rerender()` manualmente, en vez de dejar que
+`persistWorkspace` disparara la re-renderizacion real via `setState`), asi
+que el header original afirmaba falsamente que el test fijaba el bug P0.
+
+Corregido investigando empiricamente en un worktree descartable (permitido
+por el brief de correccion: la regla de no tocar `src/**` aplica a esta
+rama, no a copias de verificacion desechables). Con el circuito realmente
+cerrado (`persistWorkspace` alimenta un `useState` real, no un `rerender()`
+guionado), probado con escritura simple, escritura doble (el patron real de
+`applyOwnFormation`: edicion local + commit externo de escena en el mismo
+evento) y con churn de `players`: **el hook aislado se asienta limpio en las
+DOS versiones del codigo** (pre y post hotfix) — ni una sola vez goteo en un
+loop, ni una vez llamo `persistWorkspace` mas de una vez. Conclusion: el
+crash real requiere la topologia completa de componentes/suscripciones
+(`useBoardActions` se suscribe con `useAppStore()` SIN selector — se
+re-renderiza en CUALQUIER escritura del store entero — mientras el padre
+`TacticalBoardView` deriva `board` via selectores separados de
+`tacticalBoards`/`activeBoardId`; la interaccion de esos dos canales de
+suscripcion independientes es lo que produce la divergencia, no algo que
+viva dentro de `useBoardEditor` en aislamiento). Ese nivel YA esta cubierto,
+de forma verificada, por `tests/boardRenderCrashClass.test.tsx` (T2).
+
+**T3 fue reescrito y re-etiquetado honestamente**: ya no afirma prevenir el
+crash P0. Ahora se declara lo que realmente prueba (contrato de estado de
+`useBoardEditor` en aislamiento: hidrata una vez, persiste solo si hay
+edicion real, el churn de identidad puro nunca dispara un persist de mas) y
+dice explicitamente que NO es sustituto de T2 para el crash. El header del
+archivo documenta el hallazgo completo. Ver seccion "Que se agrego" y Riesgo
+#3 actualizados abajo.
+
 ## Que se agrego
 
 - `jsdom` 29.1.1 pinneado en devDependencies (unica dependencia nueva).
@@ -11,14 +46,18 @@ Base: `origin/main` = `10bcbc4` (post-hotfix PR #12) · Fecha: 2026-07-02 · Bra
   exceeded"; (b) el arbol sigue montado (topbar + 11 tokens propios, no
   blanco); (c) el Rol editado sobrevive en la nueva formacion (contrato de
   FIX 2a). Segundo test: la misma secuencia SIN seleccionar ninguna ficha.
-- `tests/useBoardEditorHydratePersist.test.tsx` (T3, `// @vitest-environment jsdom`):
-  `renderHook` sobre `useBoardEditor` reproduciendo el patron de churn exacto
-  que causaba el ping-pong (nueva identidad de `board` + nuevas closures de
-  `persistWorkspace`/`onPersist` en cada render, tal cual el caller real sin
-  memoizar). 4 tests: hidrata sin persistir; churn puro no re-hidrata ni
-  persiste; una edicion real persiste EXACTAMENTE una vez y el churn posterior
-  no la vuelve a disparar (el assert que habria fallado antes del hotfix);
-  cambiar de board id re-hidrata una vez sin arrastrar persist de mas.
+- `tests/useBoardEditorHydratePersist.test.tsx` (T3, `// @vitest-environment jsdom`,
+  **corregido tras el gate de mc-99 — ver seccion CORRECCION arriba**):
+  `renderHook` sobre `useBoardEditor` con un harness de circuito CERRADO
+  (`persistWorkspace` alimenta un `useState` real, produciendo una nueva
+  identidad de `board` via una re-renderizacion genuina, no un `rerender()`
+  guionado por el test). 4 tests: hidrata sin persistir; una edicion real
+  persiste EXACTAMENTE una vez via el circuito cerrado; el patron real de
+  doble escritura de `applyOwnFormation` (edicion local + commit externo de
+  escena en el mismo evento) tambien persiste una sola vez; el churn de
+  identidad posterior nunca re-dispara persist. Documentado honestamente
+  como contrato de estado en aislamiento — NO como regression test del crash
+  P0 (ver CORRECCION).
 - `docs/plans/w2-board-render-tests-plan.md`: plan completo, escrito antes del
   codigo.
 
@@ -52,15 +91,15 @@ el brief (T4), asi que no se marcaron/segregaron aparte.
    nuevo de render que se agregue despues de este DEBE hacer lo mismo, o sus
    queries van a chocar con arboles de tests previos que quedaron en
    `document.body`. Documentado tambien como comentario inline en el test.
-3. **No se pudo hacer la verificacion roja/verde clasica** (revertir
-   temporalmente el hotfix en `src/board/useBoardEditor.ts` para confirmar
-   que estos tests fallan sin el fix): el harness bloqueo la accion por
-   tocar `src/**`, que es exactamente el limite que pidio el brief. La
-   confianza en que el test es significativo viene de leer el diff del
-   hotfix y el plan (`docs/plans/w1-fix2a-hotfix-plan.md`) linea por linea, no
-   de una corrida empirica contra el codigo viejo. Riesgo residual: sin esa
-   corrida no hay prueba directa de que T3 falla en el codigo pre-hotfix,
-   solo inferencia de lectura.
+3. **RESUELTO (ver CORRECCION arriba)**: la verificacion roja/verde SI se hizo,
+   en un worktree descartable (`git worktree add <tmp> 6e68557`, fuera de esta
+   rama, borrado despues con `git worktree remove --force`). Hallazgo: T3, aun
+   con el circuito genuinamente cerrado, NO distingue pre/post hotfix (pasa
+   4/4 en ambos) — el crash real vive en la topologia de componentes, no en
+   el hook aislado. Por eso T3 se re-etiqueto como contrato de estado, no como
+   regression test del crash. `tests/boardRenderCrashClass.test.tsx` (T2) es
+   el que si distingue (verificado por mc-99 contra el mismo commit
+   pre-hotfix).
 4. **`@testing-library/react` (`renderHook`, `render`, `fireEvent`, `cleanup`)
    se usa por primera vez en este repo** en esta ola — antes solo estaba
    instalada sin uso real. Cualquier test futuro que reutilice este patron
