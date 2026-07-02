@@ -5,6 +5,7 @@ import {
   BoardZoneSchema,
   TacticalBoardSchema,
   createInstruction,
+  createOpponentShape,
   createPlayerToken,
   createDefaultBoard,
   createSemanticArrow,
@@ -182,5 +183,39 @@ describe("Tactical Board helpers", () => {
     expect(draft.totalDurationMin).toBeGreaterThan(0);
     expect(draft.blocks).toHaveLength(2);
     expect(draft.blocks[0].objective).toContain("center back receives");
+  });
+});
+
+describe("Opponent formation rebuild — replace-total contract (mc-21 w2 A2)", () => {
+  it("does not carry a previous token's note/isDangerPlayer edits into a rebuilt formation", () => {
+    const before = createOpponentShape("4-4-2");
+    // Simulate a staff edit on one rival token, as the Inspector would do.
+    const edited = before.map((token, index) =>
+      index === 2
+        ? { ...token, note: "Cuidado con el desmarque", isDangerPlayer: true }
+        : token,
+    );
+    expect(edited[2].note).toBe("Cuidado con el desmarque");
+    expect(edited[2].isDangerPlayer).toBe(true);
+
+    // Rebuild for a different formation the way applyOpponentFormation does:
+    // createOpponentShape has no previousTokens parameter, so there is no
+    // channel through which an edit could survive — this locks that as a
+    // verified contract, not an assumption.
+    const rebuilt = createOpponentShape("4-2-3-1");
+
+    expect(rebuilt.every((token) => token.note === undefined)).toBe(true);
+    // isDangerPlayer is only ever re-derived by the built-in "last ST slot"
+    // heuristic inside createOpponentShape, never inherited from a prior edit.
+    const dangerCount = rebuilt.filter((token) => token.isDangerPlayer).length;
+    expect(dangerCount).toBeLessThanOrEqual(1);
+  });
+
+  it("gives every rebuilt token a fresh id (no stable identity across formation changes)", () => {
+    const first = createOpponentShape("4-4-2");
+    const second = createOpponentShape("4-4-2");
+    const firstIds = new Set(first.map((token) => token.id));
+    const overlap = second.filter((token) => firstIds.has(token.id));
+    expect(overlap).toHaveLength(0);
   });
 });
