@@ -9,7 +9,9 @@ import { resolveActiveBoard, resolveActiveScene } from "./boardViewModel";
 import { TacticalBoardAiPanel } from "./components/TacticalBoardAiPanel";
 import { TacticalBoardCanvas } from "./components/TacticalBoardCanvas";
 import { TacticalBoardEmptyState } from "./components/TacticalBoardEmptyState";
+import { TacticalBoardErrorBoundary } from "./components/TacticalBoardErrorBoundary";
 import { TacticalBoardFooter } from "./components/TacticalBoardFooter";
+import { TacticalBoardGhostSceneState } from "./components/TacticalBoardGhostSceneState";
 import { TacticalBoardInspectorPanel } from "./components/TacticalBoardInspectorPanel";
 import { TacticalBoardProblemPanel } from "./components/TacticalBoardProblemPanel";
 import { TacticalBoardRosterPanel } from "./components/TacticalBoardRosterPanel";
@@ -25,11 +27,12 @@ export function TacticalBoardView() {
   const createTacticalBoardFromWeeklyFocus = useAppStore(
     (state) => state.createTacticalBoardFromWeeklyFocus,
   );
+  const openTacticalBoard = useAppStore((state) => state.openTacticalBoard);
 
   const board = resolveActiveBoard(tacticalBoards, activeBoardId);
   const scene = resolveActiveScene(board, activeBoardSceneId);
 
-  if (!board || !scene) {
+  if (!board) {
     const requestedMissing = Boolean(
       activeBoardId &&
         !tacticalBoards.some((item) => item.id === activeBoardId),
@@ -43,7 +46,21 @@ export function TacticalBoardView() {
     );
   }
 
-  return <TacticalBoardWorkspace board={board} scene={scene} />;
+  if (!scene) {
+    return (
+      <TacticalBoardGhostSceneState
+        onOpenFirstScene={() =>
+          openTacticalBoard(board.id, board.scenes[0]?.id)
+        }
+      />
+    );
+  }
+
+  return (
+    <TacticalBoardErrorBoundary>
+      <TacticalBoardWorkspace board={board} scene={scene} />
+    </TacticalBoardErrorBoundary>
+  );
 }
 
 function TacticalBoardWorkspace({

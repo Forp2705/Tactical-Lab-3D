@@ -317,6 +317,15 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     ]);
   };
 
+  // Contrato explicito (mc-21 w2 A2): replace-total, sin preservar
+  // note/isDangerPlayer. A diferencia de los tokens propios (linkedPlayerId =
+  // identidad estable del jugador, independiente de la formacion), un token
+  // rival no representa una persona sino "un rol posicional dentro de ESTA
+  // formacion" (number = index+1 del slot). Cambiar de formacion cambia el
+  // significado de cada indice (el slot 5 en 4-4-2 es un lateral; en 4-2-3-1
+  // puede ser un doble pivote) — matchear por indice pegaria una nota/marca
+  // de peligroso en el lugar equivocado, que es peor que perderla. Ver
+  // tests/board.test.ts para el test que fija este contrato.
   const applyOpponentFormation = (formation: string) => {
     const opponent = createOpponentShape(formation);
     commitBoard({

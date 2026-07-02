@@ -101,6 +101,25 @@ describe("Tactical Board store integration", () => {
     expect(useAppStore.getState().activeBoardSceneId).toBe(secondSceneId);
   });
 
+  it("stores an explicit ghost sceneId as-is on a valid board instead of silently substituting the first scene (mc-21 w2 A1)", () => {
+    const boardId = useAppStore
+      .getState()
+      .createTacticalBoard({ title: "Plan con escena fantasma" });
+    const board = useAppStore
+      .getState()
+      .tacticalBoards.find((entry) => entry.id === boardId);
+    expect(board).toBeTruthy();
+    if (!board) return;
+
+    useAppStore.getState().openTacticalBoard(board.id, "scene-does-not-exist");
+
+    expect(useAppStore.getState().view).toBe("board");
+    expect(useAppStore.getState().activeBoardId).toBe(board.id);
+    expect(useAppStore.getState().activeBoardSceneId).toBe(
+      "scene-does-not-exist",
+    );
+  });
+
   it("clears active board pointers safely when opening a missing board", () => {
     const boardId = useAppStore
       .getState()
