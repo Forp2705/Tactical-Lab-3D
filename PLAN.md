@@ -41,17 +41,19 @@ Descartado: hoy ya esta inerte (perdido contra `tactical-ui.css`), y reactivarlo
 
 Metodo: Playwright contra `npm run dev`, `getComputedStyle` de `.app-shell` (`gridTemplateColumns`), `.sidebar` (bounding rect / `position`) y `.menu-toggle` (`display`), mas click funcional del toggle en un ancho colapsado.
 
-| Ancho | `.app-shell` grid | Sidebar | `.menu-toggle` | Resultado |
-|---|---|---|---|---|
-| 860px  | `1fr` (colapsado) | off-canvas (`position:fixed`, oculto) | visible, abre/cierra | PENDIENTE DE MEDIR POST-FIX |
-| 1024px | `1fr` (colapsado) | off-canvas | visible, abre/cierra | PENDIENTE |
-| 1100px | `1fr` (colapsado) | off-canvas | visible, abre/cierra | PENDIENTE |
-| 1180px | `1fr` (colapsado, borde exacto) | off-canvas | visible, abre/cierra | PENDIENTE |
-| 1200px | `244px minmax(0,1fr)` (fijo) | estatico, siempre visible | oculto (`display:none`) | PENDIENTE |
-| 1366px | `244px minmax(0,1fr)` (fijo) | estatico | oculto | PENDIENTE |
-| 1920px | `244px minmax(0,1fr)` (fijo) | estatico | oculto | PENDIENTE |
+Resultados medidos post-fix (Playwright, `getComputedStyle` en vivo contra `npm run dev`, mismo build de los 3 commits de este branch):
 
-(Tabla completada con resultados reales despues de implementar; ver PLAN.md final / body del `worker_done`.)
+| Ancho | `.app-shell` grid (computed) | Sidebar (`position`/transform) | `.menu-toggle` | Toggle funcional | Resultado |
+|---|---|---|---|---|---|
+| 860px  | `850px` (1 columna) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | Si — click abre (`nav-open`, `translateX(0)`) y el scrim cierra | OK |
+| 1024px | `1014px` (1 columna) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | No re-testeado a este ancho especifico (mismo mecanismo que 860, ya validado funcional) | OK — este es el ancho que reproducia el bug original del H1, confirmado resuelto |
+| 1100px | `1090px` (1 columna) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | Mecanismo identico a 860/1024 | OK |
+| 1180px | `1170px` (1 columna, borde exacto del rango colapsado) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | Mecanismo identico | OK |
+| 1200px | `244px 946px` (2 columnas, sidebar fijo) | `sticky`, sin transform (siempre visible) | `display:none` (oculto) | N/A (no hace falta, sidebar ya visible) | OK |
+| 1366px | `244px 1112px` (2 columnas) | `sticky` | `display:none` | N/A | OK |
+| 1920px | `244px 1666px` (2 columnas) | `sticky` | `display:none` | N/A | OK |
+
+Un solo mecanismo gobierna todo el rango <=1180px (drawer off-canvas de `tactical-ui.css`), y un solo mecanismo gobierna >1180px (sidebar fijo de 244px). Sin zona muerta entre 860-1180px. Sin errores de consola durante la corrida (`browser_console_messages`, 0 errores/warnings).
 
 ## 6. Guard EOL
 
