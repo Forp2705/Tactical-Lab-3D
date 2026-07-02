@@ -46,3 +46,10 @@ ROMBOIQ_PRODUCT_BENCHMARK_2026-06.md
 FLUENCY_PASS_REPORT.md
 PRODUCT.md
 CLOSEOUT_REPORT_onboarding_pitchside_quicksketch.md
+
+# Scratch/junk artifacts (Slice 0)
+tmp-*
+*.zip
+
+# Coach observability runtime log — written by tests/runtime, not a source artifact
+src/ai/generated/coach-observability.jsonl

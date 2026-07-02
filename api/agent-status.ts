@@ -19,9 +19,6 @@ export default function handler(req: IncomingMessage, res: ServerResponse) {
       Number(process.env.OPENAI_EMBEDDING_DIMENSIONS) || 512,
     visionConfigured: Boolean(process.env.OPENAI_API_KEY),
     visionModel: process.env.OPENAI_VISION_MODEL ?? "gpt-4.1-mini",
-    geminiConfigured: Boolean(
-      process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY,
-    ),
     runtime: process.env.VERCEL ? "vercel" : "local",
   });
 }

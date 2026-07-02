@@ -14,8 +14,8 @@
     "rag:build": "tsx scripts/buildCoachRagIndex.ts",
     "exercises:audit": "tsx scripts/auditExercises.ts",
     "type-check": "tsc --noEmit",
-    "format": "biome format --write .",
-    "lint": "biome check .",
+    "format": "biome format --write src api tests vite.config.ts package.json tsconfig.json biome.json",
+    "lint": "biome lint src api tests vite.config.ts",
     "memory:test": "tsx src/ai/testMemoryUpdate.ts",
     "knowledge:test": "tsx src/ai/testKnowledgeExtraction.ts",
     "knowledge:build-up": "tsx src/ai/ingestBuildUpKnowledge.ts",
@@ -24,7 +24,7 @@
     "knowledge:compactness": "tsx src/ai/ingestCompactnessKnowledge.ts",
     "observation:test": "tsx src/ai/testAddObservation.ts",
     "memory:build": "tsx src/ai/testBuildTacticalMemory.ts",
-    "memory:consolidate":"tsx src/ai/testConsolidateMemory.ts"
+    "memory:consolidate": "tsx src/ai/testConsolidateMemory.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -32,7 +32,6 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "@google/generative-ai": "^0.24.1",
     "@react-pdf/renderer": "^4.1.6",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.17.10",
