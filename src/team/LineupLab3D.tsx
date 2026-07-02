@@ -424,7 +424,7 @@ export function LineupLab3D({ players }: { players: Player[] }) {
         selectedShapeId,
         fromShapeId,
         toShapeId,
-        rivalChips: showRival ? rivalChips : [],
+        rivalChips,
       }),
     );
   }, [
@@ -437,7 +437,6 @@ export function LineupLab3D({ players }: { players: Player[] }) {
     savedTransitions,
     selectedShapeId,
     shapes,
-    showRival,
     toShapeId,
   ]);
 

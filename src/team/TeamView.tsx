@@ -34,6 +34,16 @@ const PITCH_H = 64;
 const sx = (x: number) => (x / 100) * PITCH_W;
 const sy = (y: number) => (y / 100) * PITCH_H;
 
+// Referencia rival del tablero de Evolucion (overlay decorativo, posiciones fijas).
+// Fuente unica: la usa el overlay visual y tambien el contexto del coach, para que
+// la presencia del rival llegue al asistente independientemente del toggle visual.
+const RIVAL_REFERENCE_POSITIONS: Vec2[] = [
+  { x: 70, y: 50 },
+  { x: 80, y: 30 },
+  { x: 80, y: 70 },
+  { x: 88, y: 50 },
+];
+
 export const FORMATIONS: Record<string, Array<Omit<LineupSlot, "playerId">>> = {
   "4-3-3": [
     slot("GK", 7, 50),
@@ -711,12 +721,7 @@ function TeamLineupPitch({
         ))}
         <PitchMarkings />
         {showRival
-          ? [
-              { x: 70, y: 50 },
-              { x: 80, y: 30 },
-              { x: 80, y: 70 },
-              { x: 88, y: 50 },
-            ].map((item, index) => (
+          ? RIVAL_REFERENCE_POSITIONS.map((item, index) => (
               <circle
                 key={index}
                 cx={sx(item.x)}
@@ -946,6 +951,16 @@ function coachContextFromShape(
         players,
       },
     ],
+    // Presencia del rival: se envia SIEMPRE al contexto del coach, no depende del
+    // toggle visual `showRival`. Es la referencia rival del tablero (posiciones
+    // fijas); el resumen del coach usa solo su presencia.
+    rivalReference: RIVAL_REFERENCE_POSITIONS.map((pos, index) => ({
+      id: `rival-ref-${index + 1}`,
+      num: index + 1,
+      role: "RIV",
+      x: Math.round(pos.x * 10) / 10,
+      y: Math.round(pos.y * 10) / 10,
+    })),
   };
 }
 
