@@ -1,5 +1,5 @@
 import type { Player } from "@/data";
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import {
   type BoardWorkspaceState,
   boardEditorReducer,
@@ -44,28 +44,48 @@ export function useBoardEditor(
     initialBoardEditorState,
   );
 
-  // Hydrate from the board. The reducer ignores a hydrate for the board it is
-  // already hydrated from, so this effect can re-run freely (e.g. after our own
-  // persistence changes the board object) without clobbering in-progress edits.
+  // `board` is a fresh object reference on every store update anywhere in the
+  // app (Zustand immutable updates), including updates this hook itself makes
+  // (scene edits, persistence). `persistWorkspace`/`onPersist` are typically
+  // recreated by the caller on every render too. None of that churn should
+  // cause hydrate/persist to redo work — only genuinely switching to a
+  // different board id, or a real local edit, should. Latest-ref pattern for
+  // the callbacks + id-only effect deps keeps re-renders from re-triggering
+  // dispatches (a prior version of this hook could ping-pong hydrate<->persist
+  // forever off pure identity churn — see FIX-BRIEF hotfix for mc-21 crash).
+  const persistWorkspaceRef = useRef(persistWorkspace);
+  const onPersistRef = useRef(onPersist);
+  useEffect(() => {
+    persistWorkspaceRef.current = persistWorkspace;
+    onPersistRef.current = onPersist;
+  });
+
+  const boardId = board?.id ?? null;
+
+  // Hydrate from the board. Guarded up front (not just inside the reducer) so
+  // that once a board is hydrated, re-renders that only change object
+  // identity (not the board id) never even reach a dispatch.
   useEffect(() => {
     if (!board) return;
+    if (state.hydratedBoardId === board.id) return;
     dispatch({
       type: "hydrate",
       boardId: board.id,
       workspace: resolveBoardWorkspace(board, players),
     });
-  }, [board, players]);
+  }, [board, players, state.hydratedBoardId]);
 
-  // Persist edits back to the board. Guarded so it only fires for the currently
-  // hydrated board, only when there are real edits, and clears the dirty flag
-  // afterwards — so there is no loop and no echo overwrite.
+  // Persist edits back to the board. Only depends on the board id (not the
+  // whole board object — scene edits elsewhere must not re-arm this effect)
+  // and only fires for the currently hydrated board, only when there are real
+  // edits, clearing the dirty flag afterwards.
   useEffect(() => {
-    if (!board) return;
-    if (!shouldPersistWorkspace(state, board.id)) return;
-    persistWorkspace(board.id, state.workspace);
-    onPersist?.();
+    if (boardId === null) return;
+    if (!shouldPersistWorkspace(state, boardId)) return;
+    persistWorkspaceRef.current(boardId, state.workspace);
+    onPersistRef.current?.();
     dispatch({ type: "persisted" });
-  }, [state, board, persistWorkspace, onPersist]);
+  }, [state, boardId]);
 
   const setRoster = useCallback(
     (value: Updater<PlanningBoardPlayer[]>) =>
