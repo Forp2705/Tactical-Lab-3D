@@ -6083,3 +6083,93 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   gap: 10px;
   padding: 14px 4px 4px;
 }
+
+/* ============================================================
+   W2 containment — board free-state coach bridge
+   (rombo-freestate-*: previously unstyled, fell back to browser
+   default ul/li — 40px indent + disc bullets, read as debug output)
+   ============================================================ */
+
+.rombo-freestate-summary {
+  margin: 0.4rem 0 0.6rem;
+  padding-left: 18px;
+  color: var(--muted, #9fb4bd);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rombo-freestate-coach .rombo-freestate-ask-coach {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.08);
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rombo-freestate-coach .rombo-freestate-ask-coach:hover {
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.rombo-freestate-coach .rombo-freestate-ask-coach:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.rombo-freestate-coach-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: #ff8a8a;
+}
+
+.rombo-freestate-coach-answer {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.rombo-freestate-board-facts {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted, #9fb4bd);
+  font-size: 12px;
+}
+
+.rombo-freestate-coach-questions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rombo-freestate-coach-questions li {
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(199, 223, 95, 0.5);
+}
+
+.rombo-freestate-coach-question-text {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.rombo-freestate-coach-question-why {
+  margin: 0;
+  opacity: 0.7;
+  font-size: 0.8rem;
+}
+
+.rombo-freestate-coach-prose {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
