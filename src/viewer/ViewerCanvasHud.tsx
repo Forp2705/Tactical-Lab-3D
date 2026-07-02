@@ -1,5 +1,5 @@
 import type { Exercise, Layer, Overlay } from "@/data";
-import { type MatchFrame, getMatchFrame } from "@/viewer/lib/matchEngine";
+import type { MatchFrame } from "@/viewer/lib/matchEngine";
 import { getActivePhase, getVisibleOverlays } from "@/viewer/lib/runtime";
 import { useMemo } from "react";
 
@@ -12,7 +12,8 @@ type ViewerCanvasHudProps = {
   showPasses: boolean;
   showPress: boolean;
   layers: Record<Layer, boolean>;
-  personalSpace?: boolean;
+  // Frame inyectado desde ViewerWorkspace (mismo objeto que recibe Scene3D).
+  frame: MatchFrame;
 };
 
 export function ViewerCanvasHud({
@@ -23,7 +24,7 @@ export function ViewerCanvasHud({
   showPasses,
   showPress,
   layers,
-  personalSpace = false,
+  frame,
 }: ViewerCanvasHudProps) {
   const phase = useMemo(() => getActivePhase(exercise, time), [exercise, time]);
   const layerState = useMemo(
@@ -33,10 +34,6 @@ export function ViewerCanvasHud({
       notes: layers.notes && showZones,
     }),
     [layers, showPress, showZones],
-  );
-  const frame = useMemo(
-    () => getMatchFrame(exercise, time, { personalSpace }),
-    [exercise, time, personalSpace],
   );
   const overlays = useMemo(
     () =>

@@ -22,11 +22,10 @@ import { OverlayLayer } from "./Overlays";
 import { Pitch3D } from "./Pitch3D";
 import { Player3D, SimplePlayer3D } from "./Player3D";
 import { type PitchMode, pitchDimensions } from "./lib/coords";
-import {
-  type EngineActorPose,
-  type EngineBallPose,
-  type MatchFrame,
-  getMatchFrame,
+import type {
+  EngineActorPose,
+  EngineBallPose,
+  MatchFrame,
 } from "./lib/matchEngine";
 import {
   getVisibleOverlays,
@@ -44,7 +43,9 @@ type SceneProps = {
   showPasses: boolean;
   showPress: boolean;
   layers: Record<Layer, boolean>;
-  personalSpace?: boolean;
+  // El frame se computa una sola vez en ViewerWorkspace y se inyecta a Scene3D
+  // y al HUD. Evita recalcular el match engine 2x por frame durante playback.
+  frame: MatchFrame;
 };
 
 export function Scene3D({
@@ -57,7 +58,7 @@ export function Scene3D({
   showPasses,
   showPress,
   layers,
-  personalSpace = false,
+  frame,
 }: SceneProps) {
   const mode = exercise.scene.pitchMode;
   const layerState = useMemo(
@@ -77,10 +78,6 @@ export function Scene3D({
     },
   );
   const zones = showZones ? getVisibleZones(exercise, time, layerState) : [];
-  const frame = useMemo(
-    () => getMatchFrame(exercise, time, { personalSpace }),
-    [exercise, time, personalSpace],
-  );
   const topFocus = useMemo(() => getTopFocus(frame, mode), [frame, mode]);
   const actionFocus = useMemo(
     () => ({ x: topFocus.x, z: topFocus.z }),
@@ -280,6 +277,11 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
     };
   }
 
+  // Medium (default): sin SSAO. A escala cenital tactica la oclusion aporta
+  // poco y cuesta un NormalPass extra; ademas su ausencia elimina el error de
+  // consola preexistente "enable the NormalPass to use SSAO". Quien quiera
+  // oclusion tiene calidad "high". Se conserva SMAA + Vignette via el branch
+  // !ssao de PostProcessingStack.
   return {
     shadows: true,
     shadowMapSize: 2048,
@@ -289,9 +291,9 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
     contactShadows: true,
     contactShadowResolution: 512,
     postprocessing: true,
-    ssao: true,
-    ssaoIntensity: 12,
-    ssaoRadius: 3,
+    ssao: false,
+    ssaoIntensity: 0,
+    ssaoRadius: 0,
     bloom: false,
   };
 }
