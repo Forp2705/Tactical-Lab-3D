@@ -94,6 +94,11 @@ export function Scene3D({
 
   return (
     <Canvas
+      // El contenedor de R3F resuelve height:100% contra un padre que solo
+      // tiene min-height => cae a un alto por defecto (~mitad del wrap) y el
+      // resto queda como franja muerta del fondo. Absolute inset-0 lo obliga
+      // a llenar .canvas-wrap (position:relative en todos sus usos).
+      style={{ position: "absolute", inset: 0 }}
       shadows="soft"
       dpr={[1, renderSettings.dprMax]}
       camera={{ position: [0, 36, 46], fov: 30 }}
@@ -283,11 +288,12 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
     };
   }
 
-  // Medium (default): sin SSAO. A escala cenital tactica la oclusion aporta
-  // poco y cuesta un NormalPass extra; ademas su ausencia elimina el error de
-  // consola preexistente "enable the NormalPass to use SSAO". Quien quiera
-  // oclusion tiene calidad "high". Se conserva SMAA + Vignette via el branch
-  // !ssao de PostProcessingStack.
+  // Medium (default): sin composer de postproceso. Quitar SSAO elimino el
+  // error "enable the NormalPass", pero el composer en si (SMAA+Vignette con
+  // multisampling=0 sobre canvas MSAA) sigue emitiendo GL_INVALID_OPERATION
+  // glBlitFramebuffer por frame; verificado en vivo: sin composer la consola
+  // queda limpia. El AA lo cubre el MSAA del canvas (antialias:true); solo se
+  // pierde la vignette cosmetica. Quien quiera SSAO/Bloom tiene "high".
   return {
     shadows: true,
     shadowMapSize: 2048,
@@ -296,7 +302,7 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
     environment: true,
     contactShadows: true,
     contactShadowResolution: 512,
-    postprocessing: true,
+    postprocessing: false,
     ssao: false,
     ssaoIntensity: 0,
     ssaoRadius: 0,

@@ -54,3 +54,13 @@ Además: consola limpia 30s en media (T1) — pego el conteo de errores/warnings
 
 ## Guard EOL
 `git diff --stat` antes de cada commit; whole-file diff → parar + escalation.
+
+## Addendum (hallazgos de la validación en vivo, commit 4)
+
+1. **El letterbox tenía DOS causas.** Además del zoom (resuelto por `computeTopView`), el contenedor de R3F resolvía `height:100%` contra `.canvas-wrap` que solo define `min-height` → el canvas GL caía a 840×420 dentro de un wrap de 640-800px; ~220px de "letterbox" eran fondo CSS del wrap, no encuadre. Fix en Scene3D (sin tocar CSS): `<Canvas style={{position:'absolute', inset:0}}>` — seguro porque `.canvas-wrap` es `position:relative` en todos sus usos y el HUD ya es absolute (PlayerView le da height explícito). Verificado: canvas pasa de 420px a 638px y la cancha lo llena.
+
+2. **La atribución SSAO→warning GL era parcial.** Quitar SSAO eliminó el ERROR "enable the NormalPass", pero el `GL_INVALID_OPERATION glBlitFramebuffer` por frame venía del EffectComposer en sí (SMAA+Vignette, multisampling=0 sobre canvas MSAA): con composer sin SSAO seguían ~256 warnings/30s; con `postprocessing:false` la consola queda en CERO (verificado primero en calidad low, después en medium). Decisión: **medium (default) sin composer** — el AA lo cubre el MSAA del canvas (`antialias:true`), solo se pierde la vignette cosmética; high conserva su cadena completa (y sus warnings en este driver — declarado como riesgo residual).
+
+3. **Evidencia visual (worktree, no commiteada):** `w2-before-arquero-top.jpeg` / `w2-after-arquero-top.jpeg` (arco/fondo en cuadro, duelo 6-8 separado — antes un blob "63"), `w2-before-rondo-top.jpeg` / `w2-after-rondo-top.jpeg` (sin degradación, acción llena el canvas), `w2-before-presion-banda-top.jpeg` / `w2-after-presion-banda-top-final.jpeg` (cluster 5-8-6-6-9 legible, cancha full-bleed), `w2-after-presion-banda-iso.jpeg` (iso intacto, se beneficia del canvas completo). Consola: 30s+ de playback en medium con 0 errores y 0 warnings GL (log playwright `console-2026-07-02T22-35-23-058Z.log`, 1 línea = info devtools).
+
+4. **Contenido, fuera de scope, para catálogo:** `pressing-portero-recibe` es `pitchMode: "half"` con el GK en x=10 (lado -x), pero Pitch3D solo dibuja arco en +x para half/third → el arquero defiende un fondo sin arco dibujado. El encuadre nuevo igual incluye esa línea de fondo; el arco faltante es dato/render preexistente.
