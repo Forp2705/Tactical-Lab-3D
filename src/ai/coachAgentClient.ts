@@ -6,6 +6,7 @@ import {
   type CollectedAnswer,
 } from "./CoachSchemas";
 import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
+import type { BoardFreeStateEvidencePacket } from "@/board/boardFreeStateEvidencePacket";
 import type { CoachShapeContext, ManualObservation } from "@/state/useAppStore";
 import type { GameModel } from "@/data/gameModel";
 import type { TeamIdentitySetup } from "@/data/teamIdentitySetup";
@@ -165,6 +166,47 @@ export async function requestBoardScenarioTurn(
   const parsed = CoachResponseSchema.safeParse(payload);
   if (!parsed.success) {
     throw new Error("Coach agent returned an invalid board-scenario response.");
+  }
+
+  return parsed.data;
+}
+
+/**
+ * One-shot free-state coach turn (mc-21 w2 B) — asks about the CURRENT board
+ * scene (not a canned scenario). POSTs
+ * `{ input, coachContext, freeStateEvidence }` to `/api/coach-agent`. Same
+ * honesty contract as `requestBoardScenarioTurn`: exactly one fetch, no
+ * retry/fallback, every failure mode (non-2xx, network reject, unparseable
+ * body) throws an honest Error.
+ */
+export async function requestBoardFreeStateTurn(
+  input: string,
+  freeStateEvidence: BoardFreeStateEvidencePacket,
+  coachContext?: CoachAgentRuntimeContext | null,
+): Promise<CoachResponse> {
+  // Exactly one fetch. No retry/fallback path exists below this line.
+  const response = await fetch("/api/coach-agent", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ input, coachContext, freeStateEvidence }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | CoachResponse
+    | CoachAgentError
+    | null;
+
+  if (!response.ok) {
+    const message =
+      payload && "error" in payload && payload.error
+        ? payload.error
+        : "Coach agent request failed.";
+    throw new Error(message);
+  }
+
+  const parsed = CoachResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Coach agent returned an invalid free-state response.");
   }
 
   return parsed.data;

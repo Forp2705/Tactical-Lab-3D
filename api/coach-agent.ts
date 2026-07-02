@@ -7,6 +7,8 @@ import {
 } from "../src/ai/CoachSchemas.js";
 import { parseIncomingBoardEvidence } from "../src/board/boardEvidencePacket.js";
 import type { BoardEvidencePacket } from "../src/board/boardEvidencePacket.js";
+import { parseIncomingBoardFreeState } from "../src/board/boardFreeStateEvidencePacket.js";
+import type { BoardFreeStateEvidencePacket } from "../src/board/boardFreeStateEvidencePacket.js";
 import {
   badRequest,
   methodNotAllowed,
@@ -30,6 +32,7 @@ export default async function handler(
   let interviewState: CoachInterviewState | null = null;
   let skipInterview = false;
   let boardEvidence: BoardEvidencePacket | null = null;
+  let freeStateEvidence: BoardFreeStateEvidencePacket | null = null;
 
   try {
     const body = await readJsonBody(req);
@@ -51,6 +54,22 @@ export default async function handler(
     }
     boardEvidence =
       boardEvidenceResult.status === "ok" ? boardEvidenceResult.packet : null;
+
+    // Same honesty gate, additive (mc-21 w2 B): the free-state packet (asks
+    // about the CURRENT scene, not a canned scenario). Same doctrine —
+    // malformed never silently becomes "absent".
+    const freeStateResult = parseIncomingBoardFreeState(
+      body.freeStateEvidence,
+    );
+    if (freeStateResult.status === "malformed") {
+      sendJson(res, 400, {
+        code: "INVALID_FREE_STATE_EVIDENCE",
+        error: "Invalid freeStateEvidence packet",
+      });
+      return;
+    }
+    freeStateEvidence =
+      freeStateResult.status === "ok" ? freeStateResult.packet : null;
     const hasCollectedEvidence = Object.prototype.hasOwnProperty.call(
       body,
       "collectedEvidence",
@@ -92,6 +111,19 @@ export default async function handler(
 
   try {
     const { runCoachTurn } = await import("../src/ai/CoachAgent.js");
+    // `freeStateEvidence` is forwarded against the interface the coordinator
+    // defined for mc-21 w2 B: `runCoachTurn`'s param type in CoachAgent.ts
+    // (prohibited to touch from this branch) does not YET declare this field
+    // — mc-17 adds it in a separate, coordinated branch that this one merges
+    // after. The cast lets THIS branch type-check standalone against current
+    // main while still forwarding the exact field name/shape all the way to
+    // the runCoachTurn boundary; runCoachTurnCore's current destructuring
+    // simply ignores the extra key until that signature lands, so this is a
+    // functional forward, not a dead placeholder — once mc-17's change is in,
+    // no further change is needed here.
+    type RunCoachTurnArgsWithFreeState = Parameters<typeof runCoachTurn>[0] & {
+      freeStateEvidence?: BoardFreeStateEvidencePacket | null;
+    };
     const response = await runCoachTurn({
       input,
       coachContext,
@@ -99,7 +131,8 @@ export default async function handler(
       interviewState,
       skipInterview,
       boardEvidence,
-    });
+      freeStateEvidence,
+    } as RunCoachTurnArgsWithFreeState);
     sendJson(res, 200, response);
   } catch (error) {
     console.error("[coach-agent] request failed", error);
