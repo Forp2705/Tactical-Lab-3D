@@ -1,8 +1,19 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "@/state/useAppStore";
-import { requestBoardScenarioTurn } from "@/ai/coachAgentClient";
+import {
+  requestBoardFreeStateTurn,
+  requestBoardScenarioTurn,
+} from "@/ai/coachAgentClient";
 import { buildBoardEvidencePacket } from "@/board/boardEvidencePacket";
 import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
+import {
+  allFreeStateFactRefs,
+  renderableFreeStateFacts,
+} from "@/board/boardFactPresentation";
+import {
+  buildBoardFreeStateEvidencePacket,
+  type BoardFreeStateEvidencePacket,
+} from "@/board/boardFreeStateEvidencePacket";
 import type { CoachResponse } from "@/ai/CoachSchemas";
 import type { BoardScene, TacticalBoard } from "./boardModel";
 import { resolveActiveBoard, resolveActiveScene } from "./boardViewModel";
@@ -106,6 +117,60 @@ function TacticalBoardWorkspace({
       );
     } finally {
       setCoachLoading(false);
+    }
+  };
+
+  // Free-state bridge (mc-21 w2 B): independent transient state from the
+  // scenario-overlay one above — asking about the current scene must never
+  // be gated by, or interfere with, the canned-scenario flow.
+  const [freeStateCoachLoading, setFreeStateCoachLoading] = useState(false);
+  const [freeStateCoachError, setFreeStateCoachError] = useState<
+    string | null
+  >(null);
+  const [freeStateCoachAnswer, setFreeStateCoachAnswer] = useState<{
+    response: CoachResponse;
+    packet: BoardFreeStateEvidencePacket;
+  } | null>(null);
+
+  // Recomputed from the live scene/workspace on every render — this is a
+  // "what would we send right now" preview, not a held snapshot (unlike
+  // coachAnswer.packet, which freezes the packet that was ACTUALLY asked).
+  const freeStatePacket = useMemo(
+    () =>
+      buildBoardFreeStateEvidencePacket(
+        board,
+        scene,
+        a.teamAFormation,
+        a.activeLayers,
+      ),
+    [board, scene, a.teamAFormation, a.activeLayers],
+  );
+  const freeStateSummary = useMemo(
+    () =>
+      renderableFreeStateFacts(
+        freeStatePacket,
+        allFreeStateFactRefs(freeStatePacket),
+      ),
+    [freeStatePacket],
+  );
+
+  const onAskCoachFreeState = async () => {
+    const packet = freeStatePacket; // pin the exact packet being asked
+    const question = `Esta es la escena actual de la pizarra (${packet.freeStateEvidence.factualClaims.length} hechos declarados). ¿Que te parece?`;
+    setFreeStateCoachLoading(true);
+    setFreeStateCoachError(null);
+    setFreeStateCoachAnswer(null);
+    try {
+      const response = await requestBoardFreeStateTurn(question, packet);
+      setFreeStateCoachAnswer({ response, packet });
+    } catch (error) {
+      setFreeStateCoachError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo consultar al coach.",
+      );
+    } finally {
+      setFreeStateCoachLoading(false);
     }
   };
 
@@ -220,8 +285,13 @@ function TacticalBoardWorkspace({
             coachLoading={coachLoading}
             coachError={coachError}
             coachAnswer={coachAnswer}
+            freeStateSummary={freeStateSummary}
+            freeStateCoachLoading={freeStateCoachLoading}
+            freeStateCoachError={freeStateCoachError}
+            freeStateCoachAnswer={freeStateCoachAnswer}
             onRunScenario={a.runScenario}
             onAskCoach={onAskCoach}
+            onAskCoachFreeState={onAskCoachFreeState}
             onCommitOverlay={a.commitOverlay}
             onDiscardOverlay={a.discardOverlay}
             onToggleLayer={a.toggleLayer}

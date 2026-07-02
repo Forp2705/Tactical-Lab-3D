@@ -59,8 +59,9 @@ describe("buildBoardFreeStateEvidencePacket", () => {
     expect(byId["object-count-arrow-pass"]).toMatchObject({ kind: "objectCount", objectType: "arrow", semantic: "pass", count: 2 });
     expect(byId["object-count-arrow-pressure"]).toMatchObject({ kind: "objectCount", objectType: "arrow", semantic: "pressure", count: 1 });
     expect(byId["object-count-zone-occupation"]).toMatchObject({ kind: "objectCount", objectType: "zone", semantic: "occupation", count: 1 });
-    expect(byId["object-count-note"]).toMatchObject({ kind: "objectCount", objectType: "note", count: 1 });
-    expect(byId["object-count-note"].semantic).toBeUndefined();
+    const noteClaim = byId["object-count-note"];
+    expect(noteClaim).toMatchObject({ kind: "objectCount", objectType: "note", count: 1 });
+    expect(noteClaim.kind === "objectCount" ? noteClaim.semantic : undefined).toBeUndefined();
     expect(byId["scene-active"]).toMatchObject({ kind: "scene", title: scene.title, index: 0, totalScenes: 1 });
     expect(byId["layers-visible"]).toMatchObject({ kind: "layers", visible: ["attack", "defense"] });
 

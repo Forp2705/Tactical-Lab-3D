@@ -5,8 +5,9 @@ import type { BoardPayload, PlanningBoardLayer } from "../productBoardTypes";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 import { groundingSummary } from "@/board/scenarioGrounding";
 import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
+import type { BoardFreeStateEvidencePacket } from "@/board/boardFreeStateEvidencePacket";
 import type { CoachResponse } from "@/ai/CoachSchemas";
-import { renderableBoardFacts } from "@/board/boardFactPresentation";
+import { renderableBoardFacts, renderableFreeStateFacts } from "@/board/boardFactPresentation";
 
 type TacticalBoardAiPanelProps = {
   aiInterpretation: string[];
@@ -19,8 +20,19 @@ type TacticalBoardAiPanelProps = {
   coachLoading: boolean;
   coachError: string | null;
   coachAnswer: { response: CoachResponse; packet: BoardEvidencePacket } | null;
+  // Free-state bridge (mc-21 w2 B): always available, independent of the
+  // canned-scenario flow above. freeStateSummary is what we are ABOUT TO
+  // SEND, shown before asking — transparency over what leaves the board.
+  freeStateSummary: Array<{ id: string; text: string }>;
+  freeStateCoachLoading: boolean;
+  freeStateCoachError: string | null;
+  freeStateCoachAnswer: {
+    response: CoachResponse;
+    packet: BoardFreeStateEvidencePacket;
+  } | null;
   onRunScenario: (scenarioId: ScenarioId) => void;
   onAskCoach: () => void;
+  onAskCoachFreeState: () => void;
   onCommitOverlay: () => void;
   onDiscardOverlay: () => void;
   onToggleLayer: (layerId: string) => void;
@@ -45,8 +57,13 @@ export function TacticalBoardAiPanel({
   coachLoading,
   coachError,
   coachAnswer,
+  freeStateSummary,
+  freeStateCoachLoading,
+  freeStateCoachError,
+  freeStateCoachAnswer,
   onRunScenario,
   onAskCoach,
+  onAskCoachFreeState,
   onCommitOverlay,
   onDiscardOverlay,
   onToggleLayer,
@@ -70,6 +87,62 @@ export function TacticalBoardAiPanel({
             <li key={item}>{item}</li>
           ))}
         </ul>
+      </section>
+
+      <section className="rombo-freestate-coach">
+        {/* Puente board->coach sobre el ESTADO LIBRE de la escena (mc-21 w2 B):
+            disponible SIEMPRE, no solo dentro de un ajuste de escenario. El
+            resumen se muestra ANTES de preguntar (que se manda), y solo lleva
+            hechos contables/declarados — nada inferido. */}
+        <h2>Consultar sobre la escena actual</h2>
+        {freeStateSummary.length > 0 ? (
+          <ul className="rombo-freestate-summary">
+            {freeStateSummary.map((row) => (
+              <li key={row.id}>{row.text}</li>
+            ))}
+          </ul>
+        ) : null}
+        <button
+          type="button"
+          className="rombo-freestate-ask-coach"
+          onClick={onAskCoachFreeState}
+          disabled={freeStateCoachLoading}
+        >
+          {freeStateCoachLoading
+            ? "Consultando al coach..."
+            : "Consultar al coach sobre esta escena"}
+        </button>
+        {freeStateCoachError ? (
+          <p className="rombo-freestate-coach-error" role="alert">
+            {freeStateCoachError}
+          </p>
+        ) : null}
+        {freeStateCoachAnswer ? (
+          <div className="rombo-freestate-coach-answer">
+            {/* Misma doctrina render-from-structure que el flujo de escenario:
+                las filas de hechos vienen SOLO de renderableFreeStateFacts. */}
+            {freeStateCoachAnswer.response.mode !== "question"
+              ? (() => {
+                  const facts = renderableFreeStateFacts(
+                    freeStateCoachAnswer.packet,
+                    freeStateCoachAnswer.response.advice.supportingFacts,
+                  );
+                  return facts.length > 0 ? (
+                    <ul className="rombo-freestate-board-facts">
+                      {facts.map((fact) => (
+                        <li key={fact.id}>{fact.text}</li>
+                      ))}
+                    </ul>
+                  ) : null;
+                })()
+              : null}
+            <pre className="rombo-freestate-coach-prose">
+              {freeStateCoachAnswer.response.mode === "question"
+                ? JSON.stringify(freeStateCoachAnswer.response, null, 2)
+                : freeStateCoachAnswer.response.advice.tacticalReading}
+            </pre>
+          </div>
+        ) : null}
       </section>
 
       <section className="rombo-scenario">
