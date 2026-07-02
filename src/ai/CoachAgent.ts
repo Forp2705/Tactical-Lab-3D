@@ -120,14 +120,28 @@ function getClient() {
 // ────────────────────────────────────────────────────────────────────────────
 type FreeStateFactualClaim = {
   id?: string
-  // Grounded neutral countable statement authored by mc-21's generator. We echo
-  // it VERBATIM — zero tactical interpretation on our side.
+  // Optional pre-rendered statement override. mc-21's REAL packet does NOT carry
+  // this (its schema strips unknown keys), so it never opens a validated free-text
+  // channel; kept only as a defensive precedence if some packet provides one.
   statement?: string
   text?: string
   label?: string
   fact?: string
-  // Fallback only (kind = value), never a tactical label we invent.
+  // mc-21's REAL shape is kind-based with per-kind declared fields (no `value`).
+  // We render these structurally, mirroring mc-21's `renderableFreeStateFacts` so
+  // prompt and UI declare identical facts. Zero tactical interpretation, zero
+  // positions — only declared counts/labels.
   kind?: string
+  side?: string
+  formation?: string
+  count?: number
+  objectType?: string
+  semantic?: string
+  title?: string
+  index?: number
+  totalScenes?: number
+  visible?: string[]
+  // Legacy generic fallback only (kind = value), never a tactical label we invent.
   value?: string | number
 }
 
@@ -169,6 +183,7 @@ function formatFreeStateClaim(entry: unknown): string | null {
   const id = stringValue(claim?.id)
   if (!id) return null
 
+  // 1. Pre-rendered statement override (real packets don't carry this; defensive).
   const text =
     stringValue(claim?.statement) ??
     stringValue(claim?.text) ??
@@ -176,7 +191,14 @@ function formatFreeStateClaim(entry: unknown): string | null {
     stringValue(claim?.fact)
   if (text) return `- ${id}: ${text}`
 
-  // Neutral fallback if mc-21 ships kind-based claims without a statement.
+  // 2. Structural render per kind — mirrors mc-21's `renderableFreeStateFacts` so
+  //    the prompt and the UI declare identical, countable board facts. Reads only
+  //    declared per-kind fields; no positions, no tactical interpretation.
+  const structural = formatFreeStateClaimByKind(claim)
+  if (structural) return `- ${id}: ${structural}`
+
+  // 3. Legacy generic fallback (kind = value) for any unforeseen kind carrying a
+  //    primitive value; then bare kind; then just the id.
   const kind = stringValue(claim?.kind)
   const value = claim?.value
   if (kind && (typeof value === "string" || typeof value === "number")) {
@@ -184,6 +206,65 @@ function formatFreeStateClaim(entry: unknown): string | null {
   }
   if (kind) return `- ${id}: ${kind}`
   return `- ${id}`
+}
+
+// Structural per-kind rendering of a free-state factual claim, defensively reading
+// the fields mc-21 declares per kind. Returns null when the kind is unknown or the
+// required fields are absent (caller falls through to the generic fallback).
+function formatFreeStateClaimByKind(
+  claim: Record<string, unknown> | null,
+): string | null {
+  const kind = stringValue(claim?.kind)
+  if (!claim || !kind) return null
+
+  if (kind === "formation") {
+    const formation = stringValue(claim.formation)
+    if (!formation) return null
+    const side = stringValue(claim.side) === "own" ? "propia" : "rival"
+    return `Formacion ${side}: ${formation}`
+  }
+
+  if (kind === "tokenCount") {
+    const count = numberValue(claim.count)
+    if (count === undefined) return null
+    const side = stringValue(claim.side) === "own" ? "propias" : "rivales"
+    return `Fichas ${side}: ${count}`
+  }
+
+  if (kind === "objectCount") {
+    const count = numberValue(claim.count)
+    if (count === undefined) return null
+    const objectType = stringValue(claim.objectType)
+    const label =
+      objectType === "arrow"
+        ? "Flechas"
+        : objectType === "zone"
+          ? "Zonas"
+          : objectType === "note"
+            ? "Notas"
+            : "Objetos"
+    const semantic = stringValue(claim.semantic)
+    return `${label}${semantic ? ` (${semantic})` : ""}: ${count}`
+  }
+
+  if (kind === "scene") {
+    const title = stringValue(claim.title)
+    const index = numberValue(claim.index)
+    const totalScenes = numberValue(claim.totalScenes)
+    if (title === undefined || index === undefined || totalScenes === undefined) {
+      return null
+    }
+    return `Escena activa: ${title} (${index + 1}/${totalScenes})`
+  }
+
+  if (kind === "layers") {
+    const visible = arrayValue(claim.visible ?? claim.layers).filter(
+      (item): item is string => typeof item === "string",
+    )
+    return `Capas visibles: ${visible.length ? visible.join(", ") : "ninguna"}`
+  }
+
+  return null
 }
 
 export async function generateCoachResponse(
