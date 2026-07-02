@@ -21,10 +21,23 @@ export const criticalExerciseIds: ReadonlySet<string> = new Set(
     .map((validation) => validation.exerciseId),
 );
 
+// Pool para SELECCIONES NUEVAS (motores de sesion/diagnostico, coach, Quick
+// Start). Excluye criticos y tambien los generados por plantilla: su escena
+// estampada contradice el titulo, y la Biblioteca/picker de Sesion ya los
+// ocultan — los motores deben elegir del mismo catalogo curado que ve el DT.
 export function getSelectableCatalog(): Exercise[] {
-  return catalog.filter((exercise) => !criticalExerciseIds.has(exercise.id));
+  return catalog.filter(
+    (exercise) =>
+      !criticalExerciseIds.has(exercise.id) &&
+      !generatedLibraryExerciseIds.has(exercise.id),
+  );
 }
 
+// Chequeo de REFERENCIAS EXISTENTES (bloques de sesion guardada, variantes,
+// ids persistidos): solo un critico invalida la referencia. A diferencia de
+// `getSelectableCatalog`, NO excluye generados — hay sesiones guardadas que
+// los referencian legitimamente (los motores los elegian antes de este fix)
+// y siguen siendo reproducibles; endurecer esto romperia datos existentes.
 export function isSelectableExercise(exerciseId: string): boolean {
   return !criticalExerciseIds.has(exerciseId);
 }
