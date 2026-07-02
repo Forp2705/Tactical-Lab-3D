@@ -43,7 +43,11 @@ import {
   type ConsequenceOverlay,
   buildConsequenceOverlay,
 } from "./scenarioBoardConsequence";
-import { handleCanvasPress, tokenFromPlanningPlayer } from "./boardTools";
+import {
+  handleCanvasPress,
+  mergeFormationTokens,
+  tokenFromPlanningPlayer,
+} from "./boardTools";
 import {
   boardProjectLabel,
   buildBoardReadiness,
@@ -303,10 +307,13 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
             index + 1,
           );
     });
+    const previousOwnTokens = scene.objects.filter(
+      (object) => object.type === "playerToken",
+    );
     setTeamAFormation(formation);
     updateSceneObjects([
       ...scene.objects.filter((object) => object.type !== "playerToken"),
-      ...ownTokens,
+      ...mergeFormationTokens(previousOwnTokens, ownTokens),
     ]);
   };
 
