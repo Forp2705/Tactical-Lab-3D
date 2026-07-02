@@ -1,65 +1,90 @@
-# PLAN — FIX 4: Navegacion nunca rota (860-1180px)
+# PLAN — FIX 3: Chooser de primer arranque + primera impresion honesta
 
-Branch: `fix/w1-nav-collapse` desde `origin/main` @ `1bad717`. Scope estricto: `src/app/theme.css` + `src/app/tactical-ui.css`.
+Branch: `fix/w1-first-impression` desde `origin/main` @ `f004b81` (incluye FIX 4 mergeado).
 
-## 1. Diagnostico verificado (amplia el H1 original)
+## 0. Colision concurrente (FIX 5)
 
-El brief describe dos mecanismos en pugna. Verificando en vivo (Playwright, `npm run dev`, computed styles) encontre que la causa raiz real es una capa mas abajo en la cascada de lo que el H1 original identificaba:
+`TeamView.tsx` esta siendo editado en paralelo por otro worker en `coachContextFromShape` (~:905) y `publishShape` (~:176-183). Mis hunks en `TeamView.tsx` se limitan a JSX puramente presentacional en tres puntos:
+- chip "en cancha" (linea 324 actual)
+- header del lineup, el "· salida asimetrica" fijo (linea 322 actual)
+- panel de banco (lineas 363-406 actuales)
 
-- `App.tsx` importa `theme.css` y despues `tactical-ui.css` (`src/app/App.tsx:8-10`). Vite concatena en orden de import, asi que **cualquier regla sin media query de `tactical-ui.css` le gana a cualquier regla sin media query de `theme.css`**, sin importar el orden interno dentro de cada archivo.
-- Por eso `theme.css:2378-2382` (`.app-shell { grid-template-columns: 282px minmax(0,1fr); }`, la redeclaracion que el H1 senala) **ya esta inerte hoy**: nunca gana en el render final, la tapa `tactical-ui.css`.
-- El ganador real, en TODOS los anchos, es `tactical-ui.css:1476-1478` (seccion "SIDEBAR CLEAN PASS"): `.app-shell { grid-template-columns: 244px minmax(0, 1fr); }`, sin media query, ultima declaracion sin condicion de esa propiedad en toda la cascada.
-- Confirmado en vivo a 700px (por debajo del breakpoint de drawer actual, 860px): `getComputedStyle(.app-shell).gridTemplateColumns` = `"244px 446px"` (NO colapsa a `1fr`), mientras que `.sidebar` si se saca de flujo (`position:fixed; transform:translateX(-100%)`, via `tactical-ui.css:425-428`) y el `.menu-toggle` si es visible (`display:grid`). O sea: el drawer *funciona* para ocultar el sidebar, pero el grid de `.app-shell` nunca libera esa primera columna de 244px — el contenido principal pierde 244px de ancho aun con el sidebar oculto. Este es un bug adicional, mismo origen, no mencionado en el H1 original.
+No toco `publishShape`, `coachContextFromShape`, `addRosterPlayer` (la reutilizo tal cual, sin modificarla), ni ninguna funcion de construccion de contexto.
 
-Conclusion: arreglar solo `theme.css:2284/2378` (como sugiere el H1 literal) **no cambia nada visible**, porque esas reglas ya perdian la pulseada contra `tactical-ui.css`. El fix tiene que tocar `tactical-ui.css:1476-1478`, que es la regla que de verdad manda.
+## 1. Predicado de "workspace virgen"
 
-## 2. Mecanismo elegido
+```
+esVirgen = workspaceMode === "real"
+        && team.players.length === 0
+        && session.blocks.length === 0
+        && reports.length === 0   // usePostMatchReports() ya filtra reportes semilla/demo cuando workspaceMode === "real" (usePostMatchReports.ts:41-47)
+```
 
-Extender el drawer off-canvas existente de `tactical-ui.css` (ya tiene affordance: hamburguesa + scrim + `position:fixed`/`translateX`) desde su rango actual (`max-width:860px`) hasta cubrir todo el rango roto (`max-width:1180px`), y neutralizar la redeclaracion incondicional de `244px` para que solo aplique arriba de ese corte. Es el mecanismo que recomienda el gate y el que menos superficie toca (3 ediciones puntuales, sin tocar `.tsx`).
+Los cuatro valores ya estan disponibles en `HomeView` (via `useAppStore` y el hook `usePostMatchReports` que `HomeView.tsx` ya importa). No hace falta ningun campo nuevo en el store ni en el snapshot: es una derivacion pura de estado que ya existe. `session.blocks` es `[]` por default en `createRealWorkspaceState()` (`useAppStore.ts:695-710`), `team.players` es `[]` en `initialTeam` (`useAppStore.ts:498-505`), y `reports` llega ya escopado a "reales" por `usePostMatchReports`.
 
-## 3. Cambios (por archivo)
+Nota: si el usuario carga UN jugador (via "Empezar desde cero" -> "Agregar jugador"), `esVirgen` pasa a `false` de forma natural en el siguiente render (Zustand reactivo) — no hace falta logica adicional para "salir" del estado virgen.
 
-### `src/app/tactical-ui.css`
+## 2. Chooser (componente nuevo)
 
-1. **Linea 423** — `@media (max-width: 860px)` -> `@media (max-width: 1180px)`. Extiende TODO el bloque (`.app-shell{grid-template-columns:1fr}`, `.sidebar{position:fixed;transform:translateX(-100%)}`, `.app-shell.nav-open .sidebar{...}`, `.nav-scrim`, `.menu-toggle{display:grid !important}`, `.home-action-strip`) al rango 860-1180px que hoy no tiene ningun mecanismo de colapso funcional.
-2. **Lineas 1476-1478** — envolver la redeclaracion incondicional en `@media (min-width: 1181px) { .app-shell { grid-template-columns: 244px minmax(0, 1fr); } }`. Sin este cambio, el paso 1 no alcanza: esta regla (mas abajo en el archivo, sin condicion) le seguiria ganando al bloque de colapso en todo el rango, exactamente como pasa hoy con el breakpoint de 860px.
+`src/home/FirstRunChooser.tsx` — overlay a pantalla completa, montado desde `HomeView` (import + render condicional al principio del arbol, no reemplaza nada existente).
 
-Con estos dos cambios, `.app-shell` colapsa a `1fr` en todo el rango <=1180px (una sola fuente de verdad: el bloque de `tactical-ui.css:423-434`), y solo el layout fijo de 244px aplica arriba de 1180px.
+Visibilidad: `esVirgen && !dismissedThisSession`. `dismissedThisSession` es estado de componente inicializado de forma lazy desde `sessionStorage.getItem("romboiq:first-run-chooser-dismissed") === "1"`.
 
-### `src/app/theme.css`
+- **"Explorar demo"**: llama a la accion YA EXISTENTE `useAppStore.getState().loadDemoWorkspace()` (`useAppStore.ts:1454-1462`, la misma que usa hoy `WorkspaceModeCard` en `HomeView.tsx:865-905`). No reimplemento la carga. Ademas marca `dismissedThisSession=true` + escribe el flag de sessionStorage (redundante con el cambio de `workspaceMode` a `"demo"`, que ya saca `esVirgen` de `true`, pero mantiene el comportamiento uniforme entre las dos opciones).
+- **"Empezar desde cero"**: NO llama ninguna accion del store (el workspace real vacio YA es el estado actual — no hay nada que "cargar"). Solo marca `dismissedThisSession=true` + sessionStorage. Esto es intencional: en un reload con el workspace todavia virgen, el chooser puede reaparecer (session storage se pierde en un reload duro solo si el usuario cierra la pestana; en un simple refresh del mismo tab, `sessionStorage` persiste, asi que NO reaparece dentro de la misma pestana — documentado como comportamiento correcto: es honesto porque el estado real sigue siendo virgen, y solo se resetea si el usuario abre una pestana/sesion de navegador nueva).
+- Sin campo nuevo en el snapshot persistido (cumple la prohibicion explicita del brief). Sin flag en `useAppStore.ts`.
+- Estetica: una pantalla, dos tarjetas de accion, sin marketing (nada de copy de venta) — reusa primitivas existentes (`.card`, `.btn`, `.btn.primary`, `.eyebrow`) mas 4-5 clases nuevas de layout puro (`.first-run-chooser-*`) agregadas al final de `theme.css`.
 
-3. **Lineas 2378-2382** — envolver en `@media (min-width: 1101px) { ... }` (complemento exacto de `max-width: 1100px` del bloque apilado en `theme.css:2284`). Esto es lo que pide el H1 original: aunque esta regla ya no gana el render final (ver diagnostico), sigue siendo una contradiccion interna dentro del mismo archivo (dos reglas de la misma propiedad, una condicional y otra no, en conflicto directo) — dejarla asi es confuso para el proximo que edite `theme.css` y es un riesgo latente si algun dia cambia el orden de imports. Se neutraliza sin borrar nada ni tocar `theme.css:2284` (que ya esta bien scopeado).
-- **No se toca** `theme.css:2935/3510/5083` — verificado que ninguno de los tres declara `grid-template-columns` sobre `.app-shell` (2935 s repite el mismo patron que 2284 sobre `.app-shell`, tambien ya inerte hoy por el mismo motivo de orden de import, se deja igual por indicacion explicita del brief; 3510 y 5083 son grids de `viewer`/`board`, no tocan `.app-shell`). No hace falta editarlos para que el fix funcione ni quedan re-rompiendo nada.
-- **No se toca** el "Tactical mockup shell lock" (`theme.css:3838-3900`): solo fija `grid-template-columns` de `.nav-btn` (30px 1fr auto), no de `.app-shell`. No compite con este fix.
-- **Fuera de scope, no tocado**: `src/ui/tacticalPrimitives.css` (tercer archivo importado por `App.tsx`) — confirmado que no declara `.app-shell` en absoluto, no puede re-romper el fix.
+Senal visible de que el modo demo quedo activo tras "Explorar demo": ya existe — `WorkspaceModeCard` (`HomeView.tsx:865-905`, siempre visible en la Sala) muestra "Modo demo" cuando `workspaceMode === "demo"`. No se necesita agregar nada nuevo para esto, se verifica en vivo que sigue mostrandose despues de cerrar el chooser.
 
-## 4. Por que no el otro mecanismo (sidebar apilado de `theme.css:2284`)
+## 3. TeamView honesto (solo 3 regiones presentacionales, sin tocar la logica de contexto)
 
-Descartado: hoy ya esta inerte (perdido contra `tactical-ui.css`), y reactivarlo (haciendolo ganar) requeriria pelear contra la cascada completa de `tactical-ui.css` (headers, nav-btn, brand, etc., todos con reglas propias para el sidebar) sin su affordance de reapertura (el patron apilado de `theme.css:2284` no tiene hamburguesa/scrim propios, dependeria de reutilizar los de `tactical-ui.css` de todos modos). Extender el drawer existente es menos codigo y no exige reconciliar dos sistemas de nav distintos.
+- **Chip** (linea ~324): de `{lineup.length} en cancha` a un conteo real: `lineup.filter((slot) => playersById[slot.playerId]).length` sobre el total de slots -> `"X/11 en cancha"` (o el total real de slots de la formacion activa, no un `11` fijo — algunas formaciones podrian tener otro largo aunque hoy todas usan 11).
+- **Header** (linea ~322): elimino el `· salida asimetrica` fijo. No hay ninguna fuente real para ese subtitulo (no hay campo de "estilo de salida" derivado en ningun lado de `TeamView`), asi que en vez de inventar una derivacion fantasma, muestro solo `{formation}`. Documentado: si en el futuro existe una fuente real (p.ej. un campo del `teamIdentity`), se puede reintroducir como derivado — hoy no existe, y el brief prohibe afirmaciones falsas.
+- **Banco** (lineas ~363-406): cuando `team.players.length === 0`, en vez de iterar `(bench.length ? bench : team.players)` sobre un array vacio sin feedback, muestro un estado vacio: mensaje + boton "Agregar jugador" que llama a la funcion `addRosterPlayer` YA EXISTENTE en el componente (linea ~185-188, la misma que usa el boton del toolbar) — no invento una accion nueva.
 
-## 5. Matriz de validacion (7 anchos obligatorios)
+## 4. Cancha de estado honesta (modulo nuevo + HomeView)
 
-Metodo: Playwright contra `npm run dev`, `getComputedStyle` de `.app-shell` (`gridTemplateColumns`), `.sidebar` (bounding rect / `position`) y `.menu-toggle` (`display`), mas click funcional del toggle en un ancho colapsado.
+`src/home/patternPitchOverlays.ts` (nuevo, NO importa nada de `AiView.tsx`): mapa deterministico `TacticalDomain -> PitchOverlay[]` para los dominios con significado espacial confiable en la convencion de cancha 0-100/0-64 ya usada por `PitchViz` (eje x: 0 = propio arco, 100 = arco rival, igual que `AiView.tsx` y el resto de la app):
 
-Resultados medidos post-fix (Playwright, `getComputedStyle` en vivo contra `npm run dev`, mismo build de los 3 commits de este branch):
+| domain | overlay | por que tiene señal espacial |
+|---|---|---|
+| `buildUp` | zona propia (x:8-34) | salida es siempre en el tercio propio |
+| `block` | zona propia compacta (x:10-40) | bloque defensivo es siempre detras de la linea de presion |
+| `pressing` | blockHeight alto (x:70) + zona final tercio rival (x:60-92) | presion propia se ubica en campo rival |
+| `defensiveTransition` | zona central (x:38-62) | transicion ocurre en el tercio medio |
+| `offensiveTransition` | zona central-adelantada (x:50-74) | idem, ligeramente mas adelantada |
+| `attack` | zona tercio final (x:66-94) | ataque organizado es en el ultimo tercio |
+| `setPieces` | zona area (x:78-96) | ABP tiene ubicacion fija real |
 
-| Ancho | `.app-shell` grid (computed) | Sidebar (`position`/transform) | `.menu-toggle` | Toggle funcional | Resultado |
-|---|---|---|---|---|---|
-| 860px  | `850px` (1 columna) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | Si — click abre (`nav-open`, `translateX(0)`) y el scrim cierra | OK |
-| 1024px | `1014px` (1 columna) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | No re-testeado a este ancho especifico (mismo mecanismo que 860, ya validado funcional) | OK — este es el ancho que reproducia el bug original del H1, confirmado resuelto |
-| 1100px | `1090px` (1 columna) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | Mecanismo identico a 860/1024 | OK |
-| 1180px | `1170px` (1 columna, borde exacto del rango colapsado) | `fixed`, `translateX(-264px)` (oculto) | `display:grid` (visible) | Mecanismo identico | OK |
-| 1200px | `244px 946px` (2 columnas, sidebar fijo) | `sticky`, sin transform (siempre visible) | `display:none` (oculto) | N/A (no hace falta, sidebar ya visible) | OK |
-| 1366px | `244px 1112px` (2 columnas) | `sticky` | `display:none` | N/A | OK |
-| 1920px | `244px 1666px` (2 columnas) | `sticky` | `display:none` | N/A | OK |
+Dominios SIN mapeo (sin señal espacial confiable, caen a estado neutro): `defense` (demasiado generico), `duels`, `physicalEmotional`, `systemLineup`.
 
-Un solo mecanismo gobierna todo el rango <=1180px (drawer off-canvas de `tactical-ui.css`), y un solo mecanismo gobierna >1180px (sidebar fijo de 244px). Sin zona muerta entre 860-1180px. Sin errores de consola durante la corrida (`browser_console_messages`, 0 errores/warnings).
+`derivePatternPitchOverlays(pattern?: TeamPattern): { overlays: PitchOverlay[]; confirmed: boolean }`:
+- sin pattern -> `{ overlays: [], confirmed: false }`
+- pattern con domain mapeado -> `{ overlays: <su set>, confirmed: true }`
+- pattern con domain no mapeado -> `{ overlays: [], confirmed: false }`
 
-## 6. Guard EOL
+En `HomeView.tsx`, reemplazo el bloque hardcodeado (`x:56,y:12,w:28,h:40` + `blockHeight x:42`, lineas ~199-213 actuales) por el resultado de este modulo:
+- `state`: `"analysis"` si `confirmed`, si no `"empty"` (ambos ya soportados por `PitchViz`, no hace falta tocar `tacticalPrimitives.tsx`).
+- `emptyMessage`: si hay `primaryPattern` pero sin señal espacial -> `"Patron sin ubicacion espacial confirmada"`; si no hay `primaryPattern` -> se mantiene `"Sin patron confirmado"` (comportamiento actual, sin cambios).
+- `subtitle` equivalente: distingue los 3 casos (patron con overlay / patron sin overlay confiable / sin patron).
 
-Antes de cada commit: `git diff --stat`. Si algun archivo aparece con TODAS sus lineas tocadas (whole-file diff por line-endings), parar y escalar. No se espera que pase — el fix son ediciones puntuales de 1-6 lineas por bloque, sin tocar el archivo entero.
+## 5. Guard EOL
 
-## 7. Riesgos residuales (a documentar en worker_done)
+`git diff --stat` antes de cada commit. Los cambios en `theme.css` son un bloque nuevo al final del archivo (linea 6013 en adelante); los cambios en `TeamView.tsx`/`HomeView.tsx` son ediciones puntuales de pocas lineas cada una. Si aparece un diff de archivo completo, freno y escalo.
 
-- El drawer extendido reutiliza el patron de `tactical-ui.css` (fixed + translateX + scrim); no se valida aqui contraste/tema (`data-theme`) mas alla del tema por defecto.
-- `theme.css:2284/2935` quedan como bloques legacy inertes (no rotos, pero muertos) — limpieza real es tarea del reskin, no de este fix (prohibido por brief).
+## 6. Validacion obligatoria (contexto Playwright nuevo = IndexedDB limpia)
+
+1. Contexto nuevo, primer load -> chooser visible.
+2. "Explorar demo" -> chooser se cierra, `WorkspaceModeCard` muestra "Modo demo".
+3. Contexto nuevo otra vez, primer load -> chooser visible de nuevo (nueva sesion de storage).
+4. "Empezar desde cero" -> chooser se cierra; Evolucion muestra "0/11 en cancha" sin "salida asimetrica"; banco con CTA.
+5. "Agregar jugador" desde el banco -> chip pasa a "1/11"; recargo la vista (sin nuevo contexto) -> chooser NO reaparece (sessionStorage vive en el mismo contexto/tab).
+6. Con patron activo de demo -> overlays derivados (no el rectangulo x:56,y:12 fijo); reviso que domains distintos den overlays distintos o estado neutro.
+7. Screenshot de la Sala con datos (modo demo) antes/despues para confirmar que no hay regresion visual fuera de la Cancha de estado.
+
+## 7. Riesgos residuales
+
+- El predicado de "virgen" depende de `reports` resuelto por fetch async; en el primer paint (antes de que resuelva `listPostMatchReports()`) el cache local ya arranca en `[]`, asi que no hay parpadeo visible en el caso real (sin reportes guardados en servidor tampoco hay nada que tarde en aparecer).
+- Si el patron primario de la demo cae en un dominio no mapeado (`defense`/`duels`/`physicalEmotional`/`systemLineup`), la Cancha de estado en modo demo mostraria estado neutro en vez de un overlay — comportamiento correcto igual (mejor neutro que inventado), se documenta el resultado real observado en la validacion en vivo.
+- No se toca `tacticalPrimitives.tsx` (fuera de scope) — reuso los estados `"empty"/"analysis"` ya soportados por `PitchViz`.

@@ -319,9 +319,12 @@ export function TeamView() {
           <div className="card-head">
             <div>
               <span className="eyebrow">Lineup Lab · arrastra los jugadores</span>
-              <h3>{formation} · salida asimetrica</h3>
+              <h3>{formation}</h3>
             </div>
-            <span className="chip">{lineup.length} en cancha</span>
+            <span className="chip">
+              {lineup.filter((slot) => playersById[slot.playerId]).length}/
+              {lineup.length} en cancha
+            </span>
           </div>
           <TeamLineupPitch
             lineup={lineup}
@@ -367,42 +370,54 @@ export function TeamView() {
                 <h3>Banco y alternativas</h3>
               </div>
             </div>
-            <div className="team-bench-list">
-              {(bench.length ? bench : team.players).map((player) => (
-                <button
-                  type="button"
-                  key={player.id}
-                  className={`player-row ${
-                    focusedPlayer?.id === player.id ? "selected" : ""
-                  }`}
-                  onClick={() => {
-                    setSelectedPlayerId(player.id);
-                    const pitchIndex = lineup.findIndex(
-                      (item) => item.playerId === player.id,
-                    );
-                    if (pitchIndex >= 0) setSelectedIdx(pitchIndex);
-                  }}
-                >
-                  <div
-                    className={`num ${player.positions[0] === "GK" ? "gk" : ""}`}
-                  >
-                    {player.num}
-                  </div>
-                  <div>
-                    <b>{player.name}</b>
-                    <small className="mono">
-                      {player.positions.join(" · ")}
-                    </small>
-                  </div>
-                  <span className="team-status-mini">
-                    <span className={`status-dot ${player.status}`} />
-                    <span className="mono">
-                      {STATUS_LABEL[player.status].slice(0, 4)}
-                    </span>
-                  </span>
+            {team.players.length === 0 ? (
+              <div className="team-bench-empty">
+                <p className="muted-panel">
+                  Todavia no hay jugadores en el plantel. Agrega el primero
+                  para empezar a armar el equipo.
+                </p>
+                <button type="button" className="btn primary" onClick={addRosterPlayer}>
+                  Agregar jugador
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="team-bench-list">
+                {(bench.length ? bench : team.players).map((player) => (
+                  <button
+                    type="button"
+                    key={player.id}
+                    className={`player-row ${
+                      focusedPlayer?.id === player.id ? "selected" : ""
+                    }`}
+                    onClick={() => {
+                      setSelectedPlayerId(player.id);
+                      const pitchIndex = lineup.findIndex(
+                        (item) => item.playerId === player.id,
+                      );
+                      if (pitchIndex >= 0) setSelectedIdx(pitchIndex);
+                    }}
+                  >
+                    <div
+                      className={`num ${player.positions[0] === "GK" ? "gk" : ""}`}
+                    >
+                      {player.num}
+                    </div>
+                    <div>
+                      <b>{player.name}</b>
+                      <small className="mono">
+                        {player.positions.join(" · ")}
+                      </small>
+                    </div>
+                    <span className="team-status-mini">
+                      <span className={`status-dot ${player.status}`} />
+                      <span className="mono">
+                        {STATUS_LABEL[player.status].slice(0, 4)}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
       </div>

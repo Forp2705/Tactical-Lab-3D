@@ -32,6 +32,8 @@ import {
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
 import { memo, useMemo, useState } from "react";
+import { FirstRunChooser } from "./FirstRunChooser";
+import { derivePatternPitchOverlays } from "./patternPitchOverlays";
 import { RealCoachOnboarding } from "./RealCoachOnboarding";
 import { TeamTimeline } from "./TeamTimeline";
 
@@ -87,6 +89,15 @@ export function HomeView() {
     [patterns],
   );
   const primaryPattern = patterns[0];
+  const isVirginWorkspace =
+    workspaceMode === "real" &&
+    teamPlayers.length === 0 &&
+    session.blocks.length === 0 &&
+    reports.length === 0;
+  const patternOverlays = useMemo(
+    () => derivePatternPitchOverlays(primaryPattern),
+    [primaryPattern],
+  );
   const opponentPlan = useMemo(
     () => buildOpponentGamePlan(opponentScout, gameModel),
     [gameModel, opponentScout],
@@ -118,6 +129,7 @@ export function HomeView() {
 
   return (
     <div className="view-enter grid home-command-view" style={{ gap: 16 }}>
+      <FirstRunChooser isVirgin={isVirginWorkspace} />
       <section className="hero command-hero">
         <div className="command-hero-copy">
         <span className="eyebrow">RomboIQ / {activeDay.label}</span>
@@ -192,25 +204,21 @@ export function HomeView() {
         <div className="command-hero-pitch">
           <PitchViz
             title="Cancha de estado"
-            subtitle={primaryPattern ? "patron activo" : "sin evidencia espacial"}
-            compact
-            state={primaryPattern ? "analysis" : "empty"}
-            emptyMessage="Sin patron confirmado"
-            overlays={
-              primaryPattern
-                ? [
-                    {
-                      type: "zone",
-                      x: 56,
-                      y: 12,
-                      w: 28,
-                      h: 40,
-                      tone: "warn",
-                    },
-                    { type: "blockHeight", x: 42, tone: "info" },
-                  ]
-                : []
+            subtitle={
+              patternOverlays.confirmed
+                ? "patron activo"
+                : primaryPattern
+                  ? "sin ubicacion espacial confirmada"
+                  : "sin evidencia espacial"
             }
+            compact
+            state={patternOverlays.confirmed ? "analysis" : "empty"}
+            emptyMessage={
+              primaryPattern
+                ? "Patron sin ubicacion espacial confirmada"
+                : "Sin patron confirmado"
+            }
+            overlays={patternOverlays.overlays}
           />
           <div className="command-pitch-summary">
             <div>
