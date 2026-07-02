@@ -109,11 +109,170 @@ function getClient() {
 }
 
 
+// ────────────────────────────────────────────────────────────────────────────
+// Free-state board evidence (sibling packet of slice-4 boardEvidence).
+//
+// The REAL type lives in mc-21's unmerged `src/board/boardFreeStateEvidencePacket.ts`.
+// We DO NOT import it (that branch merges after ours). We declare a minimal, all-
+// optional STRUCTURAL type for the only thing the prompt consumes — a list of
+// grounded, countable factualClaims — and narrow defensively at runtime. mc-21
+// aligns the real import at integration.
+// ────────────────────────────────────────────────────────────────────────────
+type FreeStateFactualClaim = {
+  id?: string
+  // Optional pre-rendered statement override. mc-21's REAL packet does NOT carry
+  // this (its schema strips unknown keys), so it never opens a validated free-text
+  // channel; kept only as a defensive precedence if some packet provides one.
+  statement?: string
+  text?: string
+  label?: string
+  fact?: string
+  // mc-21's REAL shape is kind-based with per-kind declared fields (no `value`).
+  // We render these structurally, mirroring mc-21's `renderableFreeStateFacts` so
+  // prompt and UI declare identical facts. Zero tactical interpretation, zero
+  // positions — only declared counts/labels.
+  kind?: string
+  side?: string
+  formation?: string
+  count?: number
+  objectType?: string
+  semantic?: string
+  title?: string
+  index?: number
+  totalScenes?: number
+  visible?: string[]
+  // Legacy generic fallback only (kind = value), never a tactical label we invent.
+  value?: string | number
+}
+
+type FreeStateEvidenceInput = {
+  factualClaims?: FreeStateFactualClaim[]
+  freeStateEvidence?: { factualClaims?: FreeStateFactualClaim[] }
+}
+
+/**
+ * Renders the "HECHOS DEL TABLERO (estado libre)" section from a free-state packet.
+ * Returns "" when absent/empty/malformed so the prompt is BYTE-IDENTICAL to today
+ * without a packet. The returned block carries its own leading separator, so it is
+ * interpolated adjacent to an existing value with no surrounding literal.
+ */
+export function formatFreeStateFactsBlock(freeStateEvidence: unknown): string {
+  const packet = objectValue(freeStateEvidence)
+  if (!packet) return ""
+
+  const claims = arrayValue(
+    packet.factualClaims ?? objectValue(packet.freeStateEvidence)?.factualClaims,
+  )
+  const lines = claims
+    .map((entry) => formatFreeStateClaim(entry))
+    .filter((line): line is string => Boolean(line))
+
+  if (!lines.length) return ""
+
+  return [
+    "",
+    "",
+    "HECHOS DEL TABLERO (estado libre):",
+    ...lines,
+    "Estos son hechos contables del tablero en estado libre. Podes citarlos por id como evidencia del tablero. Lo que no aparece en esta lista no es evidencia del tablero: no infieras posiciones ni lectura tactica a partir de estos hechos.",
+  ].join("\n")
+}
+
+function formatFreeStateClaim(entry: unknown): string | null {
+  const claim = objectValue(entry)
+  const id = stringValue(claim?.id)
+  if (!id) return null
+
+  // 1. Pre-rendered statement override (real packets don't carry this; defensive).
+  const text =
+    stringValue(claim?.statement) ??
+    stringValue(claim?.text) ??
+    stringValue(claim?.label) ??
+    stringValue(claim?.fact)
+  if (text) return `- ${id}: ${text}`
+
+  // 2. Structural render per kind — mirrors mc-21's `renderableFreeStateFacts` so
+  //    the prompt and the UI declare identical, countable board facts. Reads only
+  //    declared per-kind fields; no positions, no tactical interpretation.
+  const structural = formatFreeStateClaimByKind(claim)
+  if (structural) return `- ${id}: ${structural}`
+
+  // 3. Legacy generic fallback (kind = value) for any unforeseen kind carrying a
+  //    primitive value; then bare kind; then just the id.
+  const kind = stringValue(claim?.kind)
+  const value = claim?.value
+  if (kind && (typeof value === "string" || typeof value === "number")) {
+    return `- ${id}: ${kind} = ${value}`
+  }
+  if (kind) return `- ${id}: ${kind}`
+  return `- ${id}`
+}
+
+// Structural per-kind rendering of a free-state factual claim, defensively reading
+// the fields mc-21 declares per kind. Returns null when the kind is unknown or the
+// required fields are absent (caller falls through to the generic fallback).
+function formatFreeStateClaimByKind(
+  claim: Record<string, unknown> | null,
+): string | null {
+  const kind = stringValue(claim?.kind)
+  if (!claim || !kind) return null
+
+  if (kind === "formation") {
+    const formation = stringValue(claim.formation)
+    if (!formation) return null
+    const side = stringValue(claim.side) === "own" ? "propia" : "rival"
+    return `Formacion ${side}: ${formation}`
+  }
+
+  if (kind === "tokenCount") {
+    const count = numberValue(claim.count)
+    if (count === undefined) return null
+    const side = stringValue(claim.side) === "own" ? "propias" : "rivales"
+    return `Fichas ${side}: ${count}`
+  }
+
+  if (kind === "objectCount") {
+    const count = numberValue(claim.count)
+    if (count === undefined) return null
+    const objectType = stringValue(claim.objectType)
+    const label =
+      objectType === "arrow"
+        ? "Flechas"
+        : objectType === "zone"
+          ? "Zonas"
+          : objectType === "note"
+            ? "Notas"
+            : "Objetos"
+    const semantic = stringValue(claim.semantic)
+    return `${label}${semantic ? ` (${semantic})` : ""}: ${count}`
+  }
+
+  if (kind === "scene") {
+    const title = stringValue(claim.title)
+    const index = numberValue(claim.index)
+    const totalScenes = numberValue(claim.totalScenes)
+    if (title === undefined || index === undefined || totalScenes === undefined) {
+      return null
+    }
+    return `Escena activa: ${title} (${index + 1}/${totalScenes})`
+  }
+
+  if (kind === "layers") {
+    const visible = arrayValue(claim.visible ?? claim.layers).filter(
+      (item): item is string => typeof item === "string",
+    )
+    return `Capas visibles: ${visible.length ? visible.join(", ") : "ninguna"}`
+  }
+
+  return null
+}
+
 export async function generateCoachResponse(
   userInput: string,
   coachContext?: unknown,
   prefetched?: Awaited<ReturnType<typeof retrieveCoachEvidence>>,
   promptMode: CoachPromptMode = inferCoachPromptMode(userInput),
+  freeStateEvidence?: FreeStateEvidenceInput | null,
 ) {
   const startedAt = Date.now()
   if (!userInput.trim()) {
@@ -157,6 +316,9 @@ export async function generateCoachResponse(
   const evidenceCatalogText =
   formatEvidenceCatalog(evidenceCatalog)
   const modeInstructions = getCoachModeInstructions(promptMode)
+  // Bloque de hechos del tablero (estado libre). "" cuando no hay packet, de modo
+  // que el prompt queda byte-identico al actual. Trae su propio separador inicial.
+  const freeStateFactsBlock = formatFreeStateFactsBlock(freeStateEvidence)
 
   const prompt = `
 Respond ONLY with valid JSON using this exact structure:
@@ -296,7 +458,7 @@ Runtime coaching context:
 ${runtimeCoachContext}
 
 Current manual observations:
-${runtimeManualObservations}
+${runtimeManualObservations}${freeStateFactsBlock}
 
 Coach rules:
 ${COACH_RULES}
@@ -418,6 +580,12 @@ function buildRetrievalQuery(
  * ISOLATED here — it is NOT routed through the ambient `coachContext`. The firewall
  * is a single choke point that runs ONLY when a packet is present; absent → the
  * core result is returned byte-identical.
+ *
+ * `freeStateEvidence` (sibling packet, defined on `runCoachTurnCore`'s args and
+ * inherited here) enters the SAME isolated way: never via `coachContext`. It is
+ * threaded through to `generateCoachResponse`, which renders its factualClaims as a
+ * neutral facts section in the prompt. Absent → prompt is byte-identical to today.
+ * The API (mc-21) passes an already Zod-validated packet, mirroring boardEvidence.
  */
 export async function runCoachTurn(
   args: Parameters<typeof runCoachTurnCore>[0] & {
@@ -443,14 +611,25 @@ async function runCoachTurnCore({
   collectedEvidence = [],
   interviewState = null,
   skipInterview = false,
+  freeStateEvidence = null,
 }: {
   input: string
   coachContext?: unknown
   collectedEvidence?: CollectedAnswer[]
   interviewState?: CoachInterviewState | null
   skipInterview?: boolean
+  freeStateEvidence?: FreeStateEvidenceInput | null
 }): Promise<CoachResponse> {
   const turnStartedAt = Date.now()
+  // Free-state board facts travel EXPLICIT and ISOLATED (mirror of boardEvidence:
+  // never routed through coachContext). This wrapper injects the packet into every
+  // response generation without repeating the arg at each call-site.
+  const generateWithFreeState = (
+    userInput: string,
+    ctx: unknown,
+    prefetched: Awaited<ReturnType<typeof retrieveCoachEvidence>>,
+    mode: CoachPromptMode,
+  ) => generateCoachResponse(userInput, ctx, prefetched, mode, freeStateEvidence)
   const retrievalQuery = buildCoachRetrievalQuery(input, collectedEvidence)
   const questionOnlyFlow =
     !skipInterview &&
@@ -501,7 +680,7 @@ async function runCoachTurnCore({
       !questionResult.selectedQuestions.length
     ) {
       const fullEvidence = await retrieveCoachEvidence(retrievalQuery, coachContext)
-      const advice = await generateCoachResponse(
+      const advice = await generateWithFreeState(
         input,
         withInterviewEvidence(
           coachContext,
@@ -587,7 +766,7 @@ async function runCoachTurnCore({
     interviewState &&
     (evidenceAudit.evidenceStrength === "sufficient" || collectedEvidence.length)
   ) {
-    const advice = await generateCoachResponse(
+    const advice = await generateWithFreeState(
       input,
       enrichedCoachContext,
       prefetched,
@@ -627,7 +806,7 @@ async function runCoachTurnCore({
   }
 
   if (skipInterview) {
-    const advice = await generateCoachResponse(
+    const advice = await generateWithFreeState(
       input,
       enrichedCoachContext,
       prefetched,
@@ -694,7 +873,7 @@ async function runCoachTurnCore({
   }
 
   if (questionResult.recommendedResponseMode !== "question") {
-    const advice = await generateCoachResponse(
+    const advice = await generateWithFreeState(
       input,
       withInterviewEvidence(
         coachContext,
@@ -739,7 +918,7 @@ async function runCoachTurnCore({
   }
 
   if (!questionResult.selectedQuestions.length) {
-    const advice = await generateCoachResponse(
+    const advice = await generateWithFreeState(
       input,
       withInterviewEvidence(
         coachContext,
