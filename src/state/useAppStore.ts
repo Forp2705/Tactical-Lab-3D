@@ -1014,10 +1014,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
+    // A `sceneId` that was explicitly passed but does not match any scene is
+    // stored as-is (a ghost reference) rather than silently substituted —
+    // only the "nothing requested" case falls back to the first scene. The
+    // view layer (resolveActiveScene) surfaces the ghost case honestly.
     const activeBoardSceneId =
-      sceneId && board.scenes.some((scene) => scene.id === sceneId)
-        ? sceneId
-        : (board.scenes[0]?.id ?? null);
+      sceneId !== undefined ? sceneId : (board.scenes[0]?.id ?? null);
     set({
       activeBoardId: board.id,
       activeBoardSceneId,

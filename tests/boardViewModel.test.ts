@@ -36,10 +36,21 @@ describe("resolveActiveBoard", () => {
 describe("resolveActiveScene", () => {
   const board = createDefaultBoard("A");
 
-  it("finds the scene by id, else the first scene, else null", () => {
+  it("finds the scene by id when it matches", () => {
     expect(resolveActiveScene(board, board.scenes[0].id)).toBe(board.scenes[0]);
-    expect(resolveActiveScene(board, "ghost")).toBe(board.scenes[0]);
+  });
+
+  it("falls back to the first scene only when nothing was requested (null)", () => {
+    expect(resolveActiveScene(board, null)).toBe(board.scenes[0]);
+  });
+
+  it("returns null (not another scene) for a ghost id that matches nothing — explicit request, not silently substituted", () => {
+    expect(resolveActiveScene(board, "ghost")).toBeNull();
+  });
+
+  it("returns null when there is no board", () => {
     expect(resolveActiveScene(null, "x")).toBeNull();
+    expect(resolveActiveScene(null, null)).toBeNull();
   });
 });
 

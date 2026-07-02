@@ -20,16 +20,22 @@ export function resolveActiveBoard(
   );
 }
 
-/** Resolve the active scene within a board, falling back to the first scene. */
+/**
+ * Resolve the active scene within a board. `activeBoardSceneId === null`
+ * means "no scene was requested" and falls back to the first scene. A
+ * non-null id that does not match any scene is a ghost reference (e.g. a
+ * session block still pointing at a deleted scene) and resolves to `null` —
+ * it must NOT silently fall back to another scene, so the caller can show an
+ * honest "scene not found" state instead of swapping the user into the wrong
+ * scene without telling them.
+ */
 export function resolveActiveScene(
   board: TacticalBoard | null,
   activeBoardSceneId: string | null,
 ): BoardScene | null {
-  return (
-    board?.scenes.find((item) => item.id === activeBoardSceneId) ??
-    board?.scenes[0] ??
-    null
-  );
+  if (!board) return null;
+  if (activeBoardSceneId === null) return board.scenes[0] ?? null;
+  return board.scenes.find((item) => item.id === activeBoardSceneId) ?? null;
 }
 
 export type ResolvedSelection = {
