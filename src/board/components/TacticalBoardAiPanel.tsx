@@ -136,11 +136,35 @@ export function TacticalBoardAiPanel({
                   ) : null;
                 })()
               : null}
-            <pre className="rombo-freestate-coach-prose">
-              {freeStateCoachAnswer.response.mode === "question"
-                ? JSON.stringify(freeStateCoachAnswer.response, null, 2)
-                : freeStateCoachAnswer.response.advice.tacticalReading}
-            </pre>
+            {freeStateCoachAnswer.response.mode === "question" ? (
+              // mc-99 REVISE (gate task_2ee644e07e2a): question-mode used to
+              // dump the raw response via JSON.stringify in a <pre> here —
+              // debug-console UI on a DT-facing surface. This button has no
+              // diagnostic evidence behind it (generic "que te parece"
+              // input, and the free-state packet deliberately never counts
+              // as diagnosis evidence), so question mode is the LIKELY path,
+              // not an edge case — render the coach's actual questions
+              // instead. The scenario-flow twin below still does the raw
+              // dump; that is preexisting, registered debt, not touched here.
+              <ul className="rombo-freestate-coach-questions">
+                {freeStateCoachAnswer.response.selectedQuestions.map((q) => (
+                  <li key={q.id}>
+                    <p className="rombo-freestate-coach-question-text">
+                      {q.question}
+                    </p>
+                    {q.whyItMatters ? (
+                      <p className="rombo-freestate-coach-question-why">
+                        {q.whyItMatters}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <pre className="rombo-freestate-coach-prose">
+                {freeStateCoachAnswer.response.advice.tacticalReading}
+              </pre>
+            )}
           </div>
         ) : null}
       </section>
