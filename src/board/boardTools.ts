@@ -49,6 +49,50 @@ export function makeEquipmentLikeObject(
   };
 }
 
+// Merge helper for formation rebuilds (FIX mc-21 2a). `applyOwnFormation`
+// discards and rebuilds every playerToken from roster+formation; this
+// preserves manually-edited identity fields across that rebuild.
+//
+// Match key: linkedPlayerId. Preservation is unconditional on match (not a
+// diffed "was this actually edited" heuristic) — there is no clean signal to
+// tell an edited role/note/number apart from one that came from the previous
+// formation's default slot label, so we always carry the previous token's
+// values forward when matched. Trade-off: a stale positional role label can
+// survive a formation change if the user never touched it; preferable to the
+// silent full loss this replaces.
+//
+// Tokens without a linkedPlayerId (roster shorter than the formation, built
+// via createPlayerToken(null, ...)) are deliberately NOT preservable — there
+// is no stable key to match them across rebuilds. See tests/boardTools.test.ts.
+//
+// Must not mutate its inputs: `previousTokens` can be the same object
+// references held inside undo history (pushHistory stores the board by
+// reference, not deep-cloned), so mutating them in place would corrupt an
+// already-recorded history entry.
+export function mergeFormationTokens(
+  previousTokens: BoardObject[],
+  nextTokens: BoardObject[],
+): BoardObject[] {
+  const previousByPlayerId = new Map(
+    previousTokens
+      .filter((token): token is BoardObject & { linkedPlayerId: string } =>
+        Boolean(token.linkedPlayerId),
+      )
+      .map((token) => [token.linkedPlayerId, token] as const),
+  );
+  return nextTokens.map((token) => {
+    if (!token.linkedPlayerId) return token;
+    const previous = previousByPlayerId.get(token.linkedPlayerId);
+    if (!previous) return token;
+    return {
+      ...token,
+      role: previous.role,
+      note: previous.note,
+      number: previous.number,
+    };
+  });
+}
+
 export function tokenFromPlanningPlayer(
   player: PlanningBoardPlayer,
   position: BoardPoint,
