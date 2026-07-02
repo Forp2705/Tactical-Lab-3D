@@ -916,7 +916,7 @@ export async function retrieveCoachEvidence(userInput: string, coachContext?: un
   ].map(toRetrievedEvidence)
   const runtimeManualObservationEvidence =
     buildRuntimeManualObservationEvidenceCatalog(userInput, coachContext)
-  const runtimeEvidence = buildRuntimeVideoEvidenceCatalog(coachContext)
+  const runtimeEvidence = buildRuntimeVideoEvidenceCatalog(userInput, coachContext)
   const dedupedEvidence = dedupeEvidenceById([
     ...runtimeManualObservationEvidence,
     ...runtimeEvidence,
@@ -1314,11 +1314,15 @@ function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string)
     : "No deterministic fit warnings for this request."
 }
 
-function formatShapeRuntimeContext(shapeContext: unknown) {
+export function formatShapeRuntimeContext(shapeContext: unknown) {
   if (!shapeContext || typeof shapeContext !== "object" || Array.isArray(shapeContext)) {
     return ""
   }
   const shape = shapeContext as Record<string, unknown>
+  // Rival: SOLO presencia. rivalReference son 4 puntos decorativos constantes del
+  // tablero; alimentarlos como posiciones seria fabricar evidencia. Exponemos si el
+  // staff cargo la referencia rival, nunca sus coordenadas.
+  const hasRivalReference = arrayValue(shape.rivalReference).length > 0
   const metrics = metricObject(shape.currentMetrics)
   const shapeSummaries = arrayValue(shape.shapes)
     .slice(0, 4)
@@ -1347,6 +1351,7 @@ function formatShapeRuntimeContext(shapeContext: unknown) {
       : "",
     metrics ? `- Metricas shape actual: ${formatMetrics(metrics)}` : "",
     shapeSummaries.length ? `- Shapes guardados:\n${shapeSummaries.join("\n")}` : "",
+    `- Referencia rival cargada en el tablero: ${hasRivalReference ? "si" : "no"} (solo presencia, no es dato posicional; no infiere ubicaciones del rival).`,
     "- Uso táctico: estas métricas son evidencia geométrica objetiva del tablero, pero no prueban por sí solas una causa. No subir confianza solo por geometría sin evidencia actual.",
   ]
     .filter(Boolean)
@@ -1491,29 +1496,53 @@ function toRetrievedEvidence(item: EvidenceCatalogItem): RetrievedEvidence {
   }
 }
 
-function buildRuntimeVideoEvidenceCatalog(coachContext: unknown): RetrievedEvidence[] {
+function buildRuntimeVideoEvidenceCatalog(
+  userInput: string,
+  coachContext: unknown,
+): RetrievedEvidence[] {
   const context = objectValue(coachContext)
   const videoEvidence = objectValue(context?.videoEvidence)
   const text = stringValue(videoEvidence?.text)
   if (!text) return []
 
-  return normalizeRuntimeVideoEvidenceText(text)
-    .slice(0, 12)
-    .map((observation) => ({
-      id: observation.id,
-      sourceType: "video" as const,
-      title: observation.title,
-      excerpt: observation.text,
-      score:
-        observation.confidence === "high"
-          ? 0.94
-          : observation.confidence === "medium"
-            ? 0.76
-            : 0.48,
-      evidenceTargets: inferEvidenceTargets(
-        [observation.title, observation.text, observation.zone ?? ""].join(" "),
-      ),
-    }))
+  const observations = normalizeRuntimeVideoEvidenceText(text).slice(0, 12)
+  if (!observations.length) return []
+
+  const confidenceScore = (confidence: string | undefined) =>
+    confidence === "high" ? 0.94 : confidence === "medium" ? 0.76 : 0.48
+
+  // Rankeamos las marcas por relevancia a la consulta. La confianza de la marca
+  // entra como authorityScore (senal secundaria), pero la RELEVANCIA gobierna el
+  // umbral: un tag ajeno al caso (p. ej. ABP cuando se pregunta por la salida)
+  // cae por debajo de minScore y NO entra al catalogo, asi no habilita un
+  // diagnostico 0.9 con evidencia que no es del caso.
+  const ranked = rankDocuments(
+    userInput,
+    observations.map(
+      (observation): RetrievalDocument<typeof observation> => ({
+        id: observation.id,
+        sourceType: "video",
+        title: observation.title,
+        text: [observation.title, observation.text, observation.zone ?? ""].join(" "),
+        tags: ["video", observation.zone ?? ""].filter(Boolean),
+        payload: observation,
+        authorityScore: confidenceScore(observation.confidence),
+        evidenceTargets: inferEvidenceTargets(
+          [observation.title, observation.text, observation.zone ?? ""].join(" "),
+        ),
+      }),
+    ),
+    { limit: 6, minScore: 0.3 },
+  )
+
+  return ranked.map((item) => ({
+    id: item.id,
+    sourceType: "video" as const,
+    title: item.payload.title,
+    excerpt: item.payload.text,
+    score: item.score,
+    evidenceTargets: item.evidenceTargets,
+  }))
 }
 
 function buildRuntimeManualObservationEvidenceCatalog(
