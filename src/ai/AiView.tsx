@@ -179,6 +179,16 @@ export function AiView() {
     [activeTeamId, allManualObservations],
   );
   const unavailablePlayers = teamPlayers.length - availablePlayers;
+  // Resumen de contexto SIEMPRE visible: solo campos reales del estado, sin
+  // texto tactico inventado. La presencia del rival sale de rivalReference
+  // (poblada por publishShape independiente del toggle visual de Evolucion).
+  const activeShapeName =
+    coachShapeContext?.selectedShapeName ?? lineupLabShapes[0]?.name ?? null;
+  const activeShapeFormation = coachShapeContext?.formation ?? null;
+  const rivalInContext =
+    coachShapeContext != null
+      ? (coachShapeContext.rivalReference?.length ?? 0) > 0
+      : null;
   const cockpitContext = useMemo(
     () => ({
       availablePlayers,
@@ -422,6 +432,16 @@ export function AiView() {
                   disponible para sostener la lectura.
                 </span>
               </div>
+              <CoachContextSummary
+                activeShapeName={activeShapeName}
+                formation={activeShapeFormation}
+                availablePlayers={availablePlayers}
+                totalPlayers={teamPlayers.length}
+                rivalInContext={rivalInContext}
+                onGoToEvolucion={() =>
+                  useAppStore.getState().setView("team")
+                }
+              />
               {agentStatus?.openRouterConfigured === false ? (
                 <div className="tester-edge-state">
                   <b>Diagnostico en vivo no disponible</b>
@@ -509,6 +529,66 @@ export function AiView() {
         </div>
       </section>
     </>
+  );
+}
+
+function CoachContextSummary({
+  activeShapeName,
+  formation,
+  availablePlayers,
+  totalPlayers,
+  rivalInContext,
+  onGoToEvolucion,
+}: {
+  activeShapeName: string | null;
+  formation: string | null;
+  availablePlayers: number;
+  totalPlayers: number;
+  rivalInContext: boolean | null;
+  onGoToEvolucion: () => void;
+}) {
+  if (!activeShapeName) {
+    return (
+      <div className="ai-context-summary" role="status">
+        <span className="panel-eyebrow">Contexto del coach</span>
+        <div
+          className="toolbar compact"
+          style={{ flexWrap: "wrap", marginTop: 6, alignItems: "center" }}
+        >
+          <span className="ai-context-chip">Sin shape activo</span>
+          <button type="button" className="btn ghost" onClick={onGoToEvolucion}>
+            Ir a Evolucion a publicar un shape
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const tokens = [
+    `Shape ${activeShapeName}`,
+    formation ? `Formacion ${formation}` : null,
+    `Plantel ${availablePlayers}/${totalPlayers}`,
+    rivalInContext == null
+      ? null
+      : rivalInContext
+        ? "Rival presente"
+        : "Sin rival en el contexto",
+  ].filter((token): token is string => Boolean(token));
+
+  return (
+    <div className="ai-context-summary" role="status">
+      <span className="panel-eyebrow">Contexto del coach</span>
+      <div
+        className="toolbar compact"
+        style={{ flexWrap: "wrap", marginTop: 6 }}
+      >
+        {tokens.map((token) => (
+          <span className="ai-context-chip" key={token}>
+            {token}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
