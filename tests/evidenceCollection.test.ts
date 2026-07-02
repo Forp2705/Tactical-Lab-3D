@@ -95,6 +95,60 @@ describe("evidenceCollection", () => {
     expect(signals).toEqual([]);
   });
 
+  it("T3: knowledge generico solo NO alcanza sufficient (baja el cap de confianza)", () => {
+    const audit = buildEvidenceAudit({
+      claims,
+      signals: [],
+      retrieved: [
+        {
+          id: "KN-1",
+          sourceType: "knowledge",
+          title: "Principio de salida",
+          excerpt: "Apoyos escalonados para progresar.",
+          score: 0.6,
+          evidenceTargets: ["cause", "zone", "ownTeam"],
+        },
+      ],
+      intent,
+    });
+
+    expect(audit.criticalMissingCount).toBe(0);
+    expect(audit.evidenceStrength).not.toBe("sufficient");
+    expect(audit.evidenceStrength).toBe("partial");
+    expect(capConfidence(0.9, audit, false)).toBeLessThanOrEqual(0.68);
+    expect(capConfidence(0.9, audit, false)).toBeLessThan(0.9);
+  });
+
+  it("T3: knowledge + una observacion del caso SI alcanza sufficient", () => {
+    const audit = buildEvidenceAudit({
+      claims,
+      signals: [],
+      retrieved: [
+        {
+          id: "KN-1",
+          sourceType: "knowledge",
+          title: "Principio de salida",
+          excerpt: "Apoyos escalonados para progresar.",
+          score: 0.6,
+          evidenceTargets: ["zone"],
+        },
+        {
+          id: "OBS-1",
+          sourceType: "observation",
+          title: "Observacion manual del staff",
+          excerpt: "El 5 recibe de espaldas y queda solo.",
+          score: 0.5,
+          evidenceTargets: ["cause", "ownTeam"],
+        },
+      ],
+      intent,
+    });
+
+    expect(audit.criticalMissingCount).toBe(0);
+    expect(audit.evidenceStrength).toBe("sufficient");
+    expect(capConfidence(0.9, audit, false)).toBe(0.9);
+  });
+
   it("no trata reportes historicos recuperados como causa confirmada", () => {
     const audit = buildEvidenceAudit({
       claims,

@@ -89,13 +89,34 @@ export function buildEvidenceAudit({
       reason: reasonForMissingTarget(target),
     }));
 
+  // Senal del caso actual: respuesta del usuario, o evidencia recuperada de tipo
+  // observation/video. Reportes/memoria/knowledge NO cuentan como caso.
+  const hasCaseSignal =
+    signals.some((signal) =>
+      CASE_SIGNAL_SOURCES.includes(signal.source),
+    ) ||
+    retrieved.some(
+      (item) =>
+        item.sourceType === "observation" || item.sourceType === "video",
+    );
+
   return {
     covered: [...covered],
     missing,
     criticalMissingCount: missing.length,
-    evidenceStrength: evidenceStrengthFor(covered.size, missing.length),
+    evidenceStrength: evidenceStrengthFor(
+      covered.size,
+      missing.length,
+      hasCaseSignal,
+    ),
   };
 }
+
+const CASE_SIGNAL_SOURCES: EvidenceSignal["source"][] = [
+  "userAnswer",
+  "userInput",
+  "video",
+];
 
 export function mergeUserAnswersIntoEvidence(
   prior: EvidenceSignal[],
@@ -145,9 +166,13 @@ export function capForEvidenceStrength(strength: EvidenceStrength) {
 function evidenceStrengthFor(
   coveredCount: number,
   missingCount: number,
+  hasCaseSignal: boolean,
 ): EvidenceStrength {
   if (!coveredCount) return "none";
-  if (missingCount === 0) return "sufficient";
+  // Knowledge/memory genericos por si solos NO alcanzan "sufficient": exigimos al
+  // menos una senal del caso (userAnswer/observation/video). Sin ella, aunque el
+  // knowledge "cubra" los targets, la fuerza tope es "partial" (cap 0.68, no 0.9).
+  if (missingCount === 0) return hasCaseSignal ? "sufficient" : "partial";
   if (coveredCount === 1) return "weak";
   return "partial";
 }
