@@ -2422,7 +2422,7 @@ const compactCuratedSpecs = [
     focus: "Atacar primer palo para liberar pase atras al interior.",
   },
   {
-    id: "defensa-centro-lateral",
+    id: "defensa-centro-lateral-juego-abierto",
     title: "Defensa de centro lateral y segunda jugada",
     phase: "defenseOrg",
     principle: "defensa del area",
