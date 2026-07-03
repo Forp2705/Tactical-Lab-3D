@@ -37,6 +37,12 @@ type Updater<T> = T | ((prev: T) => T);
 
 export type BoardEditorAction =
   | { type: "hydrate"; boardId: string; workspace: BoardWorkspaceState }
+  // Unconditional workspace replacement for the SAME board (unlike
+  // "hydrate", which bails if hydratedBoardId already matches). Used by
+  // undo/redo (w3 T2): restoring a prior board snapshot must resync mirrored
+  // local fields (e.g. the formation dropdown) that "hydrate"'s per-id guard
+  // would otherwise leave stale, since the board id never changes on undo.
+  | { type: "forceRehydrate"; workspace: BoardWorkspaceState }
   | { type: "setRoster"; value: Updater<PlanningBoardPlayer[]> }
   | { type: "setProblem"; value: Updater<TacticalProblem> }
   | { type: "setExercise"; value: Updater<ExerciseBuilder> }
@@ -91,6 +97,8 @@ export function boardEditorReducer(
         dirty: false,
         workspace: action.workspace,
       };
+    case "forceRehydrate":
+      return { ...state, workspace: action.workspace, dirty: false };
     case "setRoster":
       return patchWorkspace(state, {
         roster: applyUpdater(action.value, state.workspace.roster),

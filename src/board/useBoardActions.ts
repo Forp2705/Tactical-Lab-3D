@@ -139,6 +139,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setLayers,
     setCurrentView,
     setTeamAFormation,
+    rehydrateWorkspace,
   } = useBoardEditor(board, team.players, {
     persistWorkspace: updateBoardWorkspace,
     onPersist: () => setStatus("Guardado automaticamente"),
@@ -279,6 +280,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setFuture((items) => [board, ...items]);
     setHistory((items) => items.slice(0, -1));
     updateTacticalBoard(board.id, previous);
+    // Resync mirrored workspace fields (e.g. the formation dropdown) from
+    // the snapshot we just restored — "board" here is still last render's
+    // value, so this must read from `previous`, not `board` (w3 T2).
+    rehydrateWorkspace(previous);
   };
 
   const redo = () => {
@@ -287,6 +292,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setHistory((items) => [...items, board]);
     setFuture((items) => items.slice(1));
     updateTacticalBoard(board.id, next);
+    rehydrateWorkspace(next);
   };
 
   const applyOwnFormation = (formation: string) => {
