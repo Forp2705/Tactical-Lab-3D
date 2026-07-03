@@ -5,6 +5,16 @@ import { zoneStyle } from "./boardActionStyle";
 
 export const BOARD_SCHEMA_VERSION = 2;
 
+// Debe calzar con TacticalBoardSchema.title (z.string().max(120) mas abajo).
+// Truncar ANTES del parse evita el ZodError silencioso de "Crear desde foco
+// semanal" cuando el problema del foco semanal es un texto largo.
+const BOARD_TITLE_MAX_LEN = 120;
+
+function truncateBoardTitle(title: string): string {
+  if (title.length <= BOARD_TITLE_MAX_LEN) return title;
+  return `${title.slice(0, BOARD_TITLE_MAX_LEN - 1)}…`;
+}
+
 const NormalizedCoordSchema = z.number().min(0).max(100);
 
 export const BoardPointSchema = z.object({
@@ -367,10 +377,11 @@ export function createDefaultBoard(
   options?: { weeklyThread?: WeeklyDecisionThread | null; players?: Player[] },
 ): TacticalBoard {
   const now = new Date().toISOString();
-  const cleanTitle =
+  const cleanTitle = truncateBoardTitle(
     title.trim() ||
-    options?.weeklyThread?.problem?.slice(0, 100) ||
-    "Pizarra tactica";
+      options?.weeklyThread?.problem?.slice(0, 100) ||
+      "Pizarra tactica",
+  );
   const firstScene = createDefaultBoardScene(
     "Respuesta inicial",
     "salida",

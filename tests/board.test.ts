@@ -31,6 +31,17 @@ describe("Tactical Board schema", () => {
     ]);
   });
 
+  it("truncates a title generated from a long weekly focus problem to a valid board (w5 P0)", () => {
+    const longProblem = "Nos presionan alto por el carril izquierdo y no logramos salir limpio ni progresar por el medio, quedando expuestos en la segunda linea de presion cuando el lateral recibe de espaldas".repeat(2);
+    expect(longProblem.length).toBeGreaterThan(120);
+
+    const board = createDefaultBoard(longProblem);
+
+    expect(() => TacticalBoardSchema.parse(board)).not.toThrow();
+    expect(board.title.length).toBeLessThanOrEqual(120);
+    expect(board.title.length).toBeGreaterThan(0);
+  });
+
   it("supports weak roster links without requiring shared Player imports", () => {
     const result = BoardObjectSchema.safeParse({
       id: "obj-1",
