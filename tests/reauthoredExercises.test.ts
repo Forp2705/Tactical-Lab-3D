@@ -51,10 +51,11 @@ describe("re-autorados W3.2 (Brief B)", () => {
     expect(phases.size).toBe(6);
   });
 
-  it("B5: el pool crecio a 25 con los salvages W5 y sigue sin criticos", () => {
-    expect(getSelectableCatalog().length).toBe(25); // 19 (post-W4) + 6 salvages W5
+  it("B5: el pool crecio a 26 (W5 salvages + W6 rewrite) y sigue sin criticos", () => {
+    expect(getSelectableCatalog().length).toBe(26); // 19 (post-W4) + 6 W5 + 1 W6
     // Ola 4: el unico critico historico ("presion-arquero-pase-atras", generado
-    // roto) fue retirado del catalogo; los salvages W5 no reintroducen criticos.
+    // roto) fue retirado del catalogo; ni los salvages W5 ni el rewrite W6
+    // reintroducen criticos.
     expect([...criticalExerciseIds]).toEqual([]);
   });
 
@@ -74,7 +75,7 @@ describe("re-autorados W3.2 (Brief B)", () => {
 });
 
 // W5: los 6 SALVAGE (mismo metodo/estandar que W3.2). El 7mo generado
-// (ataque-cambio-orientacion-extremo, REWRITE-CARO) sigue en cuarentena.
+// (ataque-cambio-orientacion-extremo, REWRITE-CARO) se re-autora en W6 (abajo).
 const SALVAGED_IDS = [
   "presion-salto-lateral",
   "transicion-primer-pase-seguro",
@@ -120,9 +121,44 @@ describe("salvages W5", () => {
     },
   );
 
-  it("S4: la cuarentena remanente es solo el REWRITE-CARO", () => {
-    expect([...generatedLibraryExerciseIds]).toEqual([
-      "ataque-cambio-orientacion-extremo",
-    ]);
+  it("S4: tras el rewrite W6 la cuarentena quedo vacia", () => {
+    expect([...generatedLibraryExerciseIds]).toEqual([]);
+  });
+});
+
+// W6: re-autorado del ultimo generado (REWRITE-CARO). Mismo contrato que los
+// salvages: escena real (11 actores, full pitch), fuera de la cuarentena y
+// dentro del pool. B4 (firma semantica: el switch se lee sin texto) la da el
+// gate mc-10.
+const REWRITTEN_ID = "ataque-cambio-orientacion-extremo";
+
+describe("rewrite W6 (REWRITE-CARO)", () => {
+  it("W1: valida con critical=false, score>=80 y sin tags de error", () => {
+    const validation = validateExercise(byId(REWRITTEN_ID));
+    expect(validation.critical).toBe(false);
+    expect(validation.score).toBeGreaterThanOrEqual(80);
+    expect(validation.errors).toHaveLength(0);
+  });
+
+  it("W2: salio de la cuarentena y entra al pool seleccionable", () => {
+    expect(generatedLibraryExerciseIds.has(REWRITTEN_ID)).toBe(false);
+    const pool = new Set(getSelectableCatalog().map((e) => e.id));
+    expect(pool.has(REWRITTEN_ID)).toBe(true);
+  });
+
+  it("W3: escena propia para contar el switch (atraccion + cambio + 1v1)", () => {
+    const exercise = byId(REWRITTEN_ID);
+    // El template estampaba 7 actores; el switch legible necesita el bloque
+    // rival completo que bascula, asi que la escena curada es mas densa.
+    expect(exercise.scene.actors.length).toBeGreaterThanOrEqual(10);
+    const teams = new Set(exercise.scene.actors.map((a) => a.team));
+    expect(teams.has("own") && teams.has("rival")).toBe(true);
+    expect(exercise.scene.pitchMode).toBe("full");
+    expect(exercise.scene.overlays.length).toBeGreaterThanOrEqual(4);
+    expect(exercise.scene.zones.length).toBeGreaterThanOrEqual(1);
+    expect(exercise.scene.triggers.length).toBeGreaterThanOrEqual(1);
+    // El bloque rival (>=4 defensores) es lo que hace legible la atraccion.
+    const rivals = exercise.scene.actors.filter((a) => a.team === "rival");
+    expect(rivals.length).toBeGreaterThanOrEqual(4);
   });
 });

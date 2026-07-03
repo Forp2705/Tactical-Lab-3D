@@ -3691,23 +3691,220 @@ const rawExercises: unknown[] = [
       phases: phases(11, ["cover", "rival"]),
     },
   },
-];
-
-const compactCuratedSpecs = [
-  // Cuarentena remanente tras W5: solo el REWRITE-CARO. Su escena estampada
-  // sigue oculta (fuera del pool) hasta un re-autorado futuro de costo alto
-  // (cancha completa, 10-12 actores en ambas bandas para que el switch sea
-  // legible). Veredicto y estimacion en docs/plans/feat-w5-salvage-six-plan.md.
+  // W6 re-autorado del ultimo generado (REWRITE-CARO). Escena a mano al
+  // estandar W3/W5: circulacion que ATRAE y hace bascular al bloque rival a la
+  // banda fuerte (4 rivales se corren via keyframes) y despues el cambio de
+  // orientacion al extremo del lado debil, que ataca el 1v1 con ventaja. Full
+  // pitch, 11 actores: el costo que lo hacia CARO, ahora pagado.
   {
     id: "ataque-cambio-orientacion-extremo",
     title: "Cambio de orientacion para extremo aislado",
     phase: "attackOrg",
     principle: "cambio de orientacion",
-    focus: "Atraer por dentro y cambiar al extremo con ventaja corporal.",
+    level: "U16+",
+    intensity: "med",
+    rpe: 6,
+    density: 0.6,
+    players: { min: 8, max: 12 },
+    duration: 14,
+    space: "cancha completa, ancho total",
+    material: [
+      { name: "pelotas", qty: 8, unit: "u" },
+      { name: "conos", qty: 10, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Atraer al bloque rival a una banda con la circulacion y cambiar de orientacion al extremo que quedo aislado en el lado debil.",
+      secondary:
+        "El cambio se juega cuando el bloque ya basculo, no antes: primero mover al rival, despues el pase largo.",
+    },
+    organization:
+      "El equipo circula por la banda fuerte para fijar y bascular al bloque rival; el extremo del lado debil espera aislado el cambio de orientacion para atacar el 1v1.",
+    rules: [
+      "El extremo del lado debil mantiene la amplitud maxima hasta que llega el cambio",
+      "No se cambia de orientacion hasta que el bloque rival basculo a la banda fuerte",
+      "El pase largo busca el pie mas lejano del defensor para ganar el primer apoyo",
+    ],
+    coaching: [
+      "Primero mover al rival con la circulacion, despues el cambio: el pase no crea el espacio, lo crea la atraccion",
+      "El extremo se abre y se queda alto para atacar de frente, no a recibir de espaldas",
+      "El que cambia levanta la cabeza y elige el lado debil, no el pase mas comodo",
+    ],
+    errors: [
+      "Cambiar de orientacion antes de que el bloque bascule: el defensor llega al cruce",
+      "El extremo se cierra por dentro y pierde el 1v1 con ventaja",
+      "Pase largo plano y sin angulo, facil de interceptar por el bloque",
+    ],
+    success:
+      "Llegar al 1v1 en el lado debil con ventaja corporal en 6 de cada 10 cambios.",
+    progressions: [
+      "Sumar un mediocentro rival que pueda saltar al que cambia",
+      "El extremo debe centrar o rematar en tres toques tras recibir",
+    ],
+    regressions: [
+      "El bloque rival bascula siempre anunciado y lento",
+      "Quitar al defensor del lado debil: el extremo ataca sin oposicion",
+    ],
+    scene: {
+      duration: 13,
+      pitchMode: "full",
+      actors: [
+        actor("swDFC4", "own", 4, "DFC", { x: 40, y: 48 }, [
+          { t: 4, pos: { x: 43, y: 50 } },
+        ]),
+        actor("swLAT2", "own", 2, "LAT", { x: 50, y: 74 }, [
+          { t: 3, pos: { x: 54, y: 77 } },
+          { t: 6, pos: { x: 57, y: 79 } },
+        ]),
+        actor("swINT8", "own", 8, "INT", { x: 52, y: 64 }, [
+          { t: 3.5, pos: { x: 56, y: 60 } },
+          { t: 6, pos: { x: 58, y: 58 } },
+        ]),
+        actor("swPIV6", "own", 6, "PIV", { x: 46, y: 52 }, [
+          { t: 5, pos: { x: 49, y: 50 } },
+        ]),
+        actor("swMP10", "own", 10, "MP", { x: 56, y: 50 }, [
+          { t: 4, pos: { x: 60, y: 46 } },
+          { t: 7, pos: { x: 64, y: 42 } },
+        ]),
+        actor("swEI11", "own", 11, "EI", { x: 52, y: 20 }, [
+          { t: 6.5, pos: { x: 56, y: 20 } },
+          { t: 9, pos: { x: 70, y: 20 } },
+          { t: 11, pos: { x: 82, y: 26 } },
+        ]),
+        // Lateral rival del lado debil: arranca METIDO hacia dentro (deja la
+        // banda baja vacia, el extremo queda aislado), se pincha aun mas con la
+        // circulacion (bascula con el bloque) y recien tras el switch RECUPERA
+        // TARDE a la banda, llegando por detras del extremo = ventaja real.
+        actor("swRLD2", "rival", 2, "LD", { x: 54, y: 40 }, [
+          { t: 4, pos: { x: 56, y: 46 } },
+          { t: 8, pos: { x: 58, y: 28 } },
+          { t: 10.5, pos: { x: 70, y: 26 } },
+        ]),
+        actor("swRDC5", "rival", 5, "DFC", { x: 48, y: 44 }, [
+          { t: 3, pos: { x: 50, y: 52 } },
+          { t: 6, pos: { x: 52, y: 60 } },
+        ]),
+        actor("swRDC4", "rival", 4, "DFC", { x: 50, y: 58 }, [
+          { t: 3, pos: { x: 53, y: 64 } },
+          { t: 6, pos: { x: 55, y: 70 } },
+        ]),
+        actor("swRMC6", "rival", 6, "MC", { x: 52, y: 50 }, [
+          { t: 3, pos: { x: 55, y: 58 } },
+          { t: 5.5, pos: { x: 58, y: 66 } },
+        ]),
+        actor("swRLI3", "rival", 3, "LI", { x: 56, y: 72 }, [
+          { t: 3, pos: { x: 56, y: 70 } },
+          { t: 5, pos: { x: 58, y: 68 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 40, y: 48, z: 0 },
+        path: [
+          { t: 1.8, pos: { x: 50, y: 74, z: 0.35 } },
+          { t: 3.5, pos: { x: 56, y: 60, z: 0.25 } },
+          { t: 5, pos: { x: 49, y: 50, z: 0.2 } },
+          { t: 7, pos: { x: 58, y: 22, z: 0.7 } },
+          { t: 9.5, pos: { x: 72, y: 20, z: 0.3 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "sw-p1",
+          type: "pass",
+          from: "swDFC4",
+          to: "swLAT2",
+          start: 1.2,
+          end: 2.2,
+          label: "fija la banda fuerte",
+          layer: "withBall",
+        },
+        {
+          id: "sw-p2",
+          type: "pass",
+          from: "swLAT2",
+          to: "swINT8",
+          start: 3,
+          end: 4,
+          label: "circula la banda fuerte",
+          layer: "withBall",
+        },
+        {
+          id: "sw-switch",
+          type: "pass",
+          from: "swPIV6",
+          to: "swEI11",
+          start: 6,
+          end: 7.4,
+          label: "cambio de orientacion",
+          layer: "withBall",
+        },
+        {
+          id: "sw-shift",
+          type: "cover",
+          from: "swRMC6",
+          to: { x: 58, y: 66 },
+          start: 3,
+          end: 6,
+          label: "el bloque se corre",
+          layer: "rival",
+        },
+        {
+          id: "sw-run",
+          type: "run",
+          from: "swEI11",
+          to: { x: 82, y: 26 },
+          start: 7.2,
+          end: 11,
+          label: "ataca el 1v1",
+          layer: "withoutBall",
+        },
+      ],
+      zones: [
+        {
+          id: "sw-zone",
+          label: "1v1 con ventaja",
+          rect: { x: 56, y: 8, w: 30, h: 26 },
+          color: "#5eead4",
+          layer: "withoutBall",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "sw-trigger",
+          description:
+            "El bloque rival bascula a la banda fuerte: se abre el cambio al extremo aislado",
+          whenT: 5.5,
+          cause: { actorId: "swRMC6", action: "closedLateral" },
+          visualMarker: { pos: { x: 58, y: 24 }, icon: "!" },
+          activatesOverlays: ["sw-switch", "sw-run"],
+        },
+      ],
+      phases: phases(13, ["withBall", "withoutBall", "rival"]),
+    },
   },
-  // Tipo explicito (no `as const`): al re-autorar specs (W3.2) la union de
-  // fases se achica y las comparaciones del template romperian con TS2367.
-] satisfies { id: string; title: string; phase: string; principle: string; focus: string }[];
+];
+
+type CompactCuratedSpec = {
+  id: string;
+  title: string;
+  phase: string;
+  principle: string;
+  focus: string;
+};
+
+// Cuarentena VACIA tras W6: el ultimo generado (REWRITE-CARO
+// `ataque-cambio-orientacion-extremo`) fue re-autorado a escena real (11
+// actores, full pitch, switch legible) y movido a `extraExercises` con la
+// misma id. `generatedLibraryExerciseIds` queda vacio; el pool ya no oculta
+// ningun ejercicio generado. Historia del re-autorado en
+// docs/plans/feat-w6-rewrite-switch-plan.md.
+// Anotacion explicita (antes `satisfies`): con array vacio `satisfies` infiere
+// `never[]` y rompe el `.map`. `phase: string` ademas evita el TS2367 de las
+// comparaciones del template (string vs literal, sin estrechar la union).
+const compactCuratedSpecs: CompactCuratedSpec[] = [];
 
 export const generatedLibraryExerciseIds: ReadonlySet<string> = new Set(
   compactCuratedSpecs.map((spec) => spec.id),
