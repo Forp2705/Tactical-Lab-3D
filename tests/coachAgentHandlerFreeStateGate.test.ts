@@ -62,7 +62,9 @@ function makeReqRes(body: Record<string, unknown>) {
   return { req, res, captured };
 }
 
-describe("api/coach-agent handler — free-state evidence gate (absent/valid/malformed)", () => {
+// Explicit 20s timeout: the handler dynamically imports CoachAgent, whose cold
+// transform under parallel load can exceed the 5s default (mc-99 W2B gate, section 3).
+describe("api/coach-agent handler — free-state evidence gate (absent/valid/malformed)", { timeout: 20000 }, () => {
   beforeEach(() => {
     runCoachTurnMock.mockReset();
     runCoachTurnMock.mockResolvedValue(COACH_RESPONSE);
