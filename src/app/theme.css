@@ -5272,10 +5272,10 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   text-align: center;
 }
 
-.rombo-save {
-  background: var(--felt-gold) !important;
-  border-color: rgba(26, 18, 5, 0.35) !important;
-  color: #1a1205 !important;
+.rombo-board-shell .rombo-save {
+  background: var(--felt-gold);
+  border-color: rgba(26, 18, 5, 0.35);
+  color: #1a1205;
 }
 
 .rombo-board-select {
