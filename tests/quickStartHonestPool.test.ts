@@ -57,9 +57,17 @@ describe("isSelectableExercise (validez de referencia existente)", () => {
     expect(isSelectableExercise(generatedNonCritical as string)).toBe(true);
   });
 
-  it("rechaza un critico", () => {
-    const critical = [...criticalExerciseIds][0];
-    expect(critical).toBeDefined();
-    expect(isSelectableExercise(critical)).toBe(false);
+  it("rechaza un critico si lo hubiera; tras Ola 4 el catalogo no tiene criticos", () => {
+    // El unico critico historico ("presion-arquero-pase-atras", generado roto)
+    // se retiro del catalogo en Ola 4, asi que el set quedo vacio. Se verifica el
+    // contrato de la funcion (rechaza cualquier id del set de criticos) sobre el
+    // set real: sin criticos, toda referencia del catalogo curado es reproducible.
+    expect(criticalExerciseIds.size).toBe(0);
+    for (const id of criticalExerciseIds) {
+      expect(isSelectableExercise(id)).toBe(false);
+    }
+    for (const exercise of getSelectableCatalog()) {
+      expect(isSelectableExercise(exercise.id)).toBe(true);
+    }
   });
 });
