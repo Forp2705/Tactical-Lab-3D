@@ -3271,7 +3271,7 @@ const rawExercises: unknown[] = [
   },
   {
     id: "defensa-centro-lateral-juego-abierto",
-    title: "Defensa de centro lateral y segunda jugada",
+    title: "Defensa de centro lateral en juego abierto",
     phase: "defenseOrg",
     principle: "defensa del area",
     level: "Amateur+",
