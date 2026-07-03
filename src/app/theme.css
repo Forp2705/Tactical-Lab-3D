@@ -5637,6 +5637,9 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   background: rgba(2, 6, 23, 0.68);
   color: #dcfce7;
   font-size: 12px;
+  /* Solo texto estatico adentro (sin botones/scroll): no debe robar eventos
+     de puntero a la cancha SVG que tiene debajo. */
+  pointer-events: none;
 }
 
 .rombo-key-instructions strong {
