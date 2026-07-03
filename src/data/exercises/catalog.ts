@@ -1579,6 +1579,508 @@ const extraExercises: unknown[] = [
       phases: phases(9, ["withBall", "withoutBall"]),
     },
   },
+  // --- Re-autorados W3.2 (ex-generados; conservan id para que las sesiones
+  // guardadas resuelvan al contenido nuevo). Curados a mano, Brief B. ---
+  {
+    id: "abp-defensa-zona-rechace",
+    title: "ABP defensiva protegiendo rechace",
+    phase: "abpDef",
+    principle: "defensa de area + rechace",
+    level: "Amateur+",
+    intensity: "med",
+    rpe: 6,
+    density: 0.45,
+    players: { min: 10, max: 14 },
+    duration: 12,
+    space: "area propia y frontal (tercio defensivo)",
+    material: [
+      { name: "pelotas", qty: 10, unit: "u" },
+      { name: "conos", qty: 6, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Ganar el primer contacto del corner y dominar la segunda jugada en el frontal.",
+      secondary:
+        "Que el pivote viva en la zona de rechace en vez de defender dentro del area.",
+    },
+    organization:
+      "Corner rival ensayado contra bloque propio: dos zonales en los palos, central que ataca el primer contacto, pivote e interior escalonados en el frontal para la segunda jugada.",
+    rules: [
+      "El central mas cercano ataca SIEMPRE el primer contacto, nunca lo espera",
+      "El pivote no entra al area: su zona es el frontal y el rechace",
+      "Tras el despeje, la linea sale junta a achicar",
+    ],
+    coaching: [
+      "Atacar la pelota en su punto mas alto, no esperarla en la linea",
+      "El rechace se defiende antes del centro: pivote ya perfilado hacia afuera",
+      "Tras ganar la segunda jugada, primer pase fuera de la zona de castigo",
+    ],
+    errors: [
+      "Mirar la pelota y perder al llegador del frontal",
+      "Despejar corto al centro del area",
+      "Salir tarde y dejar habilitado al rival del rechace",
+    ],
+    success:
+      "Ganar primer contacto y segunda jugada en 7 de 10 corners defendidos.",
+    progressions: [
+      "El rival puede jugar el corner en corto",
+      "Sumar un segundo llegador rival al frontal",
+    ],
+    regressions: [
+      "Corner siempre al primer palo anunciado",
+      "Sin llegador rival en el frontal",
+    ],
+    scene: {
+      duration: 12,
+      pitchMode: "third",
+      actors: [
+        actor("zrgk", "own", 1, "GK", { x: 94, y: 50 }, [
+          { t: 3.5, pos: { x: 93, y: 47 } },
+        ]),
+        actor("zrcb4", "own", 4, "DFC", { x: 91, y: 36 }, [
+          { t: 4.5, pos: { x: 89, y: 42 } },
+          { t: 8, pos: { x: 87, y: 40 } },
+        ]),
+        actor("zrcb5", "own", 5, "DFC", { x: 90, y: 52 }, [
+          { t: 5, pos: { x: 91, y: 49 } },
+        ]),
+        actor("zrlat3", "own", 3, "LAT", { x: 92, y: 66 }, [
+          { t: 5, pos: { x: 93, y: 62 } },
+        ]),
+        actor("zrpiv6", "own", 6, "PIV", { x: 78, y: 46 }, [
+          { t: 5.5, pos: { x: 74, y: 49 } },
+          { t: 8.5, pos: { x: 70, y: 49 } },
+        ]),
+        actor("zrint8", "own", 8, "INT", { x: 76, y: 60 }, [
+          { t: 6.5, pos: { x: 72, y: 56 } },
+        ]),
+        actor("zrk11", "rival", 11, "EI", { x: 98, y: 6 }, [
+          { t: 5, pos: { x: 95, y: 12 } },
+        ]),
+        actor("zrt9", "rival", 9, "DC", { x: 86, y: 38 }, [
+          { t: 4, pos: { x: 90, y: 44 } },
+        ]),
+        actor("zrt10", "rival", 10, "MP", { x: 88, y: 58 }, [
+          { t: 4.5, pos: { x: 91, y: 52 } },
+        ]),
+        actor("zrt8", "rival", 8, "INT", { x: 70, y: 44 }, [
+          { t: 6, pos: { x: 75, y: 48 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 98, y: 6, z: 0 },
+        path: [
+          { t: 4, pos: { x: 89, y: 42, z: 1.6 } },
+          { t: 6, pos: { x: 74, y: 48, z: 0.8 } },
+          { t: 9, pos: { x: 58, y: 52, z: 0.3 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "zr1",
+          type: "run",
+          from: "zrt9",
+          to: { x: 90, y: 44 },
+          start: 3.4,
+          end: 4.5,
+          label: "primer palo",
+          layer: "rival",
+        },
+        {
+          id: "zr2",
+          type: "run",
+          from: "zrt10",
+          to: { x: 91, y: 52 },
+          start: 3.4,
+          end: 4.5,
+          layer: "rival",
+        },
+        {
+          id: "zr3",
+          type: "cover",
+          from: "zrcb4",
+          to: { x: 89, y: 42 },
+          start: 3.4,
+          end: 5,
+          label: "ataca el primero",
+          layer: "abp",
+        },
+        {
+          id: "zr4",
+          type: "cover",
+          from: "zrpiv6",
+          to: { x: 74, y: 48 },
+          start: 4.5,
+          end: 7,
+          label: "rechace",
+          layer: "abp",
+        },
+        {
+          id: "zr5",
+          type: "lineBlocked",
+          from: "zrint8",
+          to: "zrt8",
+          start: 5,
+          end: 9,
+          label: "tapa al llegador",
+          layer: "cover",
+        },
+      ],
+      zones: [
+        {
+          id: "zrz1",
+          label: "zona de rechace",
+          rect: { x: 66, y: 32, w: 16, h: 36 },
+          color: "#facc15",
+          layer: "abp",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "zrt1",
+          description: "Despeje del primer contacto: nace la segunda jugada",
+          whenT: 4.5,
+          cause: { actorId: "zrcb4", action: "badControl" },
+          activatesOverlays: ["zr4", "zr5"],
+        },
+      ],
+      phases: phases(12, ["abp", "cover", "rival"]),
+    },
+  },
+  {
+    id: "transicion-perdida-cinco-segundos",
+    title: "Perdida y presion de cinco segundos",
+    phase: "transDef",
+    principle: "presion tras perdida",
+    level: "Amateur+",
+    intensity: "high",
+    rpe: 8,
+    density: 0.65,
+    players: { min: 8, max: 12 },
+    duration: 14,
+    space: "medio campo, carril donde ocurre la perdida",
+    material: [
+      { name: "pelotas", qty: 8, unit: "u" },
+      { name: "conos", qty: 8, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Reaccionar a la perdida con cinco segundos de presion inmediata sobre pelota y lineas de pase.",
+      secondary:
+        "Si no se recupera en la ventana, pasar a repliegue ordenado sin regalar la espalda.",
+    },
+    organization:
+      "Posesion propia real que progresa; a la interceptacion rival se abre una ventana de 5 segundos: el mas cercano salta a pelota, el segundo dobla, el pivote tapa el pase vertical y el punta cierra el pase atras.",
+    rules: [
+      "El mas cercano a la perdida salta SIN mirar al banco",
+      "El segundo llega a doblar, no a mirar",
+      "A los 5 segundos sin robo, el equipo pasa a repliegue",
+    ],
+    coaching: [
+      "La reaccion nace antes de la perdida: cuerpo ya orientado al rescate",
+      "Presionar la pelota y SOMBREAR la linea de pase vertical a la vez",
+      "Robar hacia adelante si se puede; si no, forzar el pase atras",
+    ],
+    errors: [
+      "Mirar la perdida un segundo antes de reaccionar",
+      "Saltar dos al mismo hombre y regalar la salida",
+      "Perseguir de frente y dejar la vertical abierta",
+    ],
+    success:
+      "Recuperar o forzar pase atras dentro de los 5 segundos en 6 de 10 perdidas.",
+    progressions: [
+      "El rival puede jugar a un toque tras robar",
+      "Achicar la ventana a 4 segundos",
+    ],
+    regressions: [
+      "El rival debe dar dos toques antes de pasar",
+      "Ventana de 7 segundos",
+    ],
+    scene: {
+      duration: 14,
+      pitchMode: "half",
+      actors: [
+        actor("p5i8", "own", 8, "INT", { x: 58, y: 46 }, [
+          { t: 7, pos: { x: 61, y: 38 } },
+        ]),
+        actor("p5e11", "own", 11, "EI", { x: 66, y: 26 }, [
+          { t: 5, pos: { x: 66, y: 28 } },
+          { t: 7, pos: { x: 63, y: 32 } },
+        ]),
+        actor("p5d9", "own", 9, "DC", { x: 74, y: 42 }, [
+          { t: 7.5, pos: { x: 68, y: 40 } },
+        ]),
+        actor("p5p6", "own", 6, "PIV", { x: 48, y: 52 }, [
+          { t: 7.5, pos: { x: 54, y: 50 } },
+        ]),
+        actor("p5l2", "own", 2, "LAT", { x: 56, y: 68 }, [
+          { t: 8, pos: { x: 58, y: 62 } },
+        ]),
+        actor("p5r4", "rival", 4, "DFC", { x: 70, y: 36 }, [
+          { t: 5.5, pos: { x: 64, y: 34 } },
+          { t: 9, pos: { x: 63, y: 33 } },
+        ]),
+        actor("p5r5", "rival", 5, "DFC", { x: 64, y: 50 }, [
+          { t: 8, pos: { x: 62, y: 48 } },
+        ]),
+        actor("p5r8", "rival", 8, "INT", { x: 52, y: 58 }, [
+          { t: 8, pos: { x: 55, y: 55 } },
+        ]),
+        actor("p5r7", "rival", 7, "ED", { x: 50, y: 30 }, [
+          { t: 9, pos: { x: 53, y: 33 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 58, y: 46, z: 0 },
+        path: [
+          { t: 5, pos: { x: 66, y: 27, z: 0.4 } },
+          { t: 6, pos: { x: 64, y: 34, z: 0.3 } },
+          { t: 9, pos: { x: 63, y: 33, z: 0 } },
+          { t: 10.5, pos: { x: 61, y: 39, z: 0.2 } },
+          { t: 12.5, pos: { x: 56, y: 47, z: 0.3 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "p51",
+          type: "pass",
+          from: "p5i8",
+          to: "p5e11",
+          start: 4,
+          end: 5,
+          layer: "withBall",
+        },
+        {
+          id: "p52",
+          type: "press",
+          from: "p5e11",
+          to: "p5r4",
+          start: 6,
+          end: 9,
+          label: "1er salto",
+          layer: "press",
+        },
+        {
+          id: "p53",
+          type: "press",
+          from: "p5i8",
+          to: "p5r4",
+          start: 6.5,
+          end: 9.5,
+          label: "dobla",
+          layer: "press",
+        },
+        {
+          id: "p54",
+          type: "lineBlocked",
+          from: "p5p6",
+          to: "p5r8",
+          start: 6,
+          end: 10.5,
+          label: "tapa vertical",
+          layer: "cover",
+        },
+        {
+          id: "p55",
+          type: "cover",
+          from: "p5d9",
+          to: { x: 68, y: 40 },
+          start: 6.5,
+          end: 10,
+          label: "cierra el atras",
+          layer: "cover",
+        },
+      ],
+      zones: [
+        {
+          id: "p5z1",
+          label: "5 segundos",
+          rect: { x: 56, y: 24, w: 16, h: 20 },
+          color: "#ef4444",
+          layer: "press",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "p5t1",
+          description: "Perdida: interceptan el pase interior, corren los 5 segundos",
+          whenT: 6,
+          cause: { actorId: "p5e11", action: "badControl" },
+          activatesOverlays: ["p52", "p53", "p54"],
+        },
+      ],
+      phases: phases(14, ["withBall", "press", "cover", "rival"]),
+    },
+  },
+  {
+    id: "repliegue-temporizar-banda",
+    title: "Repliegue temporizando en banda",
+    phase: "transDef",
+    principle: "temporizar y cerrar dentro",
+    level: "Amateur+",
+    intensity: "high",
+    rpe: 7,
+    density: 0.55,
+    players: { min: 8, max: 12 },
+    duration: 14,
+    space: "banda y medio campo propio",
+    material: [
+      { name: "pelotas", qty: 6, unit: "u" },
+      { name: "conos", qty: 10, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Frenar la contra por banda temporizando sin entrar hasta que llegue la ayuda.",
+      secondary: "Cerrar el canal interior mientras se cede la banda.",
+    },
+    organization:
+      "Contra rival lanzada por banda tras perdida propia: el lateral acompana orientando hacia fuera sin entrar, el pivote cierra el pase interior, el interior vuelve en carrera y recien con el 2v1 se cierra sobre la pelota.",
+    rules: [
+      "El lateral NO entra hasta que llega la ayuda",
+      "Ceder banda esta permitido; ceder el medio, no",
+      "El robo se intenta recien en el 2v1",
+    ],
+    coaching: [
+      "Cuerpo perfilado mostrando la linea: el rival conduce hacia donde queremos",
+      "Distancia de temporizacion: cerca para molestar, lejos para no ser eliminado",
+      "La ayuda avisa su llegada en voz alta; ahi se cierra la pinza",
+    ],
+    errors: [
+      "Entrar de frente y quedar eliminado en la banda",
+      "Temporizar mirando la pelota y regalar el pase interior",
+      "Cerrar la pinza antes de que la ayuda este a distancia de robo",
+    ],
+    success:
+      "Frenar la contra sin falta y forzar pase atras o lateral en 6 de 10 acciones.",
+    progressions: [
+      "El rival suma un segundo apoyo por dentro",
+      "Reducir el tiempo de llegada de la ayuda",
+    ],
+    regressions: [
+      "El conductor rival solo puede avanzar por banda",
+      "La ayuda arranca 10 metros mas cerca",
+    ],
+    scene: {
+      duration: 14,
+      pitchMode: "half",
+      actors: [
+        actor("rpw7", "rival", 7, "ED", { x: 30, y: 78 }, [
+          { t: 7, pos: { x: 48, y: 80 } },
+          { t: 9.5, pos: { x: 58, y: 80 } },
+          { t: 12, pos: { x: 54, y: 74 } },
+        ]),
+        actor("rps9", "rival", 9, "DC", { x: 38, y: 55 }, [
+          { t: 8, pos: { x: 50, y: 58 } },
+        ]),
+        actor("rpa10", "rival", 10, "MP", { x: 34, y: 40 }, [
+          { t: 9, pos: { x: 44, y: 50 } },
+        ]),
+        actor("rpl2", "own", 2, "LAT", { x: 48, y: 72 }, [
+          { t: 7, pos: { x: 53, y: 76 } },
+          { t: 9.5, pos: { x: 58, y: 77 } },
+          { t: 11.5, pos: { x: 60, y: 79 } },
+        ]),
+        actor("rpp6", "own", 6, "PIV", { x: 44, y: 48 }, [
+          { t: 8, pos: { x: 52, y: 58 } },
+        ]),
+        actor("rpc4", "own", 4, "DFC", { x: 58, y: 55 }, [
+          { t: 8, pos: { x: 60, y: 52 } },
+        ]),
+        actor("rpc5", "own", 5, "DFC", { x: 56, y: 40 }, [
+          { t: 8.5, pos: { x: 59, y: 45 } },
+        ]),
+        actor("rpi8", "own", 8, "INT", { x: 36, y: 45 }, [
+          { t: 9, pos: { x: 50, y: 62 } },
+          { t: 11.5, pos: { x: 57, y: 74 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 30, y: 78, z: 0 },
+        path: [
+          { t: 7, pos: { x: 48, y: 80, z: 0 } },
+          { t: 9.5, pos: { x: 58, y: 80, z: 0 } },
+          { t: 12, pos: { x: 45, y: 62, z: 0.3 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "rp1",
+          type: "dribble",
+          from: "rpw7",
+          to: { x: 58, y: 80 },
+          start: 4,
+          end: 9.5,
+          label: "conduce",
+          layer: "rival",
+        },
+        {
+          id: "rp2",
+          type: "press",
+          from: "rpl2",
+          to: "rpw7",
+          start: 4.5,
+          end: 9.5,
+          label: "temporiza sin entrar",
+          layer: "press",
+        },
+        {
+          id: "rp3",
+          type: "lineBlocked",
+          from: "rpp6",
+          to: "rps9",
+          start: 5,
+          end: 10.5,
+          label: "cierra dentro",
+          layer: "cover",
+        },
+        {
+          id: "rp4",
+          type: "cover",
+          from: "rpi8",
+          to: { x: 57, y: 74 },
+          start: 7,
+          end: 11.5,
+          label: "vuelve la ayuda",
+          layer: "cover",
+        },
+        {
+          id: "rp5",
+          type: "press",
+          from: "rpi8",
+          to: "rpw7",
+          start: 9.5,
+          end: 12,
+          label: "2v1",
+          layer: "press",
+        },
+      ],
+      zones: [
+        {
+          id: "rpz1",
+          label: "orientar aqui",
+          rect: { x: 44, y: 66, w: 22, h: 28 },
+          color: "#f97316",
+          layer: "press",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "rpt1",
+          description: "Llega la ayuda: ahora si, 2v1 sobre la banda",
+          whenT: 9.5,
+          cause: { actorId: "rpl2", action: "closedLateral" },
+          activatesOverlays: ["rp5"],
+        },
+      ],
+      phases: phases(14, ["press", "cover", "rival"]),
+    },
+  },
 ];
 
 function actor(
@@ -2369,25 +2871,11 @@ const compactCuratedSpecs = [
     focus: "Robar, pausar medio segundo y conectar al apoyo de cara.",
   },
   {
-    id: "transicion-perdida-cinco-segundos",
-    title: "Perdida y presion de cinco segundos",
-    phase: "transDef",
-    principle: "presion tras perdida",
-    focus: "Achicar hacia pelota y negar el primer pase vertical.",
-  },
-  {
     id: "abp-falta-bloqueo-frontal",
     title: "ABP falta lateral con bloqueo frontal",
     phase: "abpOff",
     principle: "ABP segundo movimiento",
     focus: "Bloquear sin chocar y atacar zona frontal liberada.",
-  },
-  {
-    id: "abp-defensa-zona-rechace",
-    title: "ABP defensiva protegiendo rechace",
-    phase: "abpDef",
-    principle: "defensa de area + rechace",
-    focus: "Ganar primer contacto y dejar un jugador perfilado para rechace.",
   },
   {
     id: "rondo-5v2-pared-interior",
@@ -2452,13 +2940,6 @@ const compactCuratedSpecs = [
     phase: "transOff",
     principle: "progresion rapida",
     focus: "Primer pase vertical, apoyo de cara y ruptura al espacio.",
-  },
-  {
-    id: "repliegue-temporizar-banda",
-    title: "Repliegue temporizando en banda",
-    phase: "transDef",
-    principle: "temporizar y cerrar dentro",
-    focus: "No robar de frente; orientar fuera hasta que llegue ayuda.",
   },
   {
     id: "abp-corner-corto-tercer-hombre",
