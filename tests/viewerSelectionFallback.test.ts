@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import {
+  resolveExerciseSelection,
+  resolveViewerSelection,
+} from "../src/app/viewerSelection";
 import type { Exercise } from "../src/data";
 import { catalog } from "../src/data/exercises/catalog";
 import { retiredExerciseIds } from "../src/data/exercises/retiredExercises";
-import { resolveViewerSelection } from "../src/app/viewerSelection";
 
 /**
  * W4 (mc-19): valida el camino 2 del brief de persistencia — un
@@ -51,5 +54,57 @@ describe("resolveViewerSelection — id retirado en selectedExerciseId", () => {
     const result = resolveViewerSelection(retiredId, override, exercises);
     expect(result.missing).toBe(false);
     expect(result.exercise.id).toBe(override.id);
+  });
+});
+
+/**
+ * W5 (mc-19): valida el residual declarado de W4 — HomeView (card "Ejercicio
+ * actual" y SessionCard), AppShell (top-stat-strip) y LibraryView (panel de
+ * detalle) usaban `getExerciseById(...) ?? catalog[0]` sin exponer que el id
+ * no resolvia. Los 4 call sites ahora usan `resolveExerciseSelection`, el
+ * nucleo del que tambien depende `resolveViewerSelection` (mismo helper, sin
+ * duplicar semantica).
+ */
+describe("resolveExerciseSelection — nucleo reusado por Home/AppShell/Library", () => {
+  const retiredId = [...retiredExerciseIds.keys()][0];
+  const exercises: Exercise[] = catalog;
+
+  it("id vigente resuelve normal, sin marcar missing", () => {
+    const vigenteId = catalog[1].id;
+    const result = resolveExerciseSelection(vigenteId, exercises);
+    expect(result.missing).toBe(false);
+    expect(result.exercise.id).toBe(vigenteId);
+  });
+
+  it("id retirado no crashea, cae a catalog[0] y marca missing:true", () => {
+    expect(() => resolveExerciseSelection(retiredId, exercises)).not.toThrow();
+    const result = resolveExerciseSelection(retiredId, exercises);
+    expect(result.missing).toBe(true);
+    expect(result.exercise.id).toBe(catalog[0].id);
+  });
+
+  it("id inexistente (nunca existio en el catalog) tambien cae a catalog[0] con missing:true", () => {
+    const result = resolveExerciseSelection(
+      "este-id-nunca-existio-en-el-catalog",
+      exercises,
+    );
+    expect(result.missing).toBe(true);
+    expect(result.exercise.id).toBe(catalog[0].id);
+  });
+
+  it("id retirado con variante local homonima resuelve la variante, no missing", () => {
+    const variant: Exercise = {
+      ...catalog[0],
+      id: `${retiredId}__variant__456`,
+    };
+    const result = resolveExerciseSelection(variant.id, [...catalog, variant]);
+    expect(result.missing).toBe(false);
+    expect(result.exercise.id).toBe(variant.id);
+  });
+
+  it("resolveViewerSelection sin override delega en resolveExerciseSelection (mismo resultado)", () => {
+    const viaViewer = resolveViewerSelection(retiredId, null, exercises);
+    const viaCore = resolveExerciseSelection(retiredId, exercises);
+    expect(viaViewer).toEqual(viaCore);
   });
 });

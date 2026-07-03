@@ -1,9 +1,11 @@
+import { resolveExerciseSelection } from "@/app/viewerSelection";
+import { catalog } from "@/data";
 import {
   APP_SNAPSHOT_VERSION,
   parseSnapshot,
   saveSnapshot,
 } from "@/state/db";
-import { getExerciseById, useAppStore } from "@/state/useAppStore";
+import { useAppStore } from "@/state/useAppStore";
 import { type ChangeEvent, type ReactNode, useState } from "react";
 
 type NavView =
@@ -59,9 +61,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const view = useAppStore((state) => state.view);
   const session = useAppStore((state) => state.session);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const presentationMode = useAppStore((state) => state.presentationMode);
   const [navOpen, setNavOpen] = useState(false);
-  const selectedExercise = getExerciseById(selectedExerciseId);
+  const { exercise: selectedExercise, missing: selectedExerciseMissing } =
+    resolveExerciseSelection(selectedExerciseId, [
+      ...catalog,
+      ...exerciseVariants,
+    ]);
 
   return (
     <div
@@ -161,7 +168,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div>
                 <span>Actual</span>
-                <b>{selectedExercise?.players.min ?? "-"}v</b>
+                <b>
+                  {selectedExerciseMissing ? "-" : selectedExercise.players.min}
+                  v
+                </b>
               </div>
               <div>
                 <span>Modo</span>
