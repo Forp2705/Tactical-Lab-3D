@@ -1,5 +1,10 @@
 export { catalog, generatedLibraryExerciseIds } from "./exercises/catalog.js";
 export {
+  isRetiredExercise,
+  resolveRetiredReplacement,
+  retiredExerciseIds,
+} from "./exercises/retiredExercises.js";
+export {
   type ExerciseDomain,
   type ExerciseValidation,
   type ValidationIssue,

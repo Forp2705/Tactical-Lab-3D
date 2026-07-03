@@ -8,7 +8,7 @@ import {
 
 describe("validateExercise — dominios y score fino", () => {
   it("expone los dominios resueltos del ejercicio", () => {
-    const pressing = validateExercise(byId("presion-arquero-pase-atras"));
+    const pressing = validateExercise(byId("pressing-portero-recibe"));
     expect(pressing.domains).toContain("pressing");
 
     const abp = catalog.find((e) => e.phase === "abpOff");
@@ -43,8 +43,11 @@ describe("validateExercise — dominios y score fino", () => {
   });
 
   it("las reglas de dominio bajan score via warnings, no via nuevos criticos", () => {
-    // El unico critico sigue siendo el ejercicio roto detectado en etapa 1.
-    expect([...criticalExerciseIds]).toEqual(["presion-arquero-pase-atras"]);
+    // Ola 4: el unico critico ("presion-arquero-pase-atras", generado roto sin
+    // arquero) fue retirado del catalogo junto con los otros 9 generados DELETE.
+    // El catalogo curado ya no tiene ningun critico; las reglas de dominio solo
+    // bajan score via warnings.
+    expect([...criticalExerciseIds]).toEqual([]);
   });
 
   it("es deterministica", () => {
@@ -66,13 +69,14 @@ describe("auditCatalog — reporte de calidad", () => {
     expect(auditCatalog()).toEqual(audit);
   });
 
-  it("el top-N peor incluye el ejercicio roto y solo entradas <100", () => {
+  it("el top-N peor lista las entradas de menor score y ninguna critica (Ola 4)", () => {
     const audit = auditCatalog(catalog, 5);
     expect(audit.worst.length).toBeGreaterThan(0);
     expect(audit.worst.length).toBeLessThanOrEqual(5);
     expect(audit.worst.every((entry) => entry.score < 100)).toBe(true);
-    expect(audit.worst[0].exerciseId).toBe("presion-arquero-pase-atras");
-    expect(audit.worst[0].critical).toBe(true);
+    // Tras retirar los 10 generados DELETE (incluido el unico critico) el peor
+    // ranking son curados imperfectos pero validos: ninguno critico.
+    expect(audit.worst.every((entry) => entry.critical === false)).toBe(true);
   });
 
   it("reporta conteo de problemas por tag y promedio coherente", () => {

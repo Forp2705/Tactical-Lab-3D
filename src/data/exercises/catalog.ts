@@ -2854,13 +2854,6 @@ const rawExercises: unknown[] = [
 
 const compactCuratedSpecs = [
   {
-    id: "salida-3-1-pivote-sombra",
-    title: "Salida 3+1 encontrando pivote a la espalda",
-    phase: "attackOrg",
-    principle: "salida limpia + tercer hombre",
-    focus: "Fijar primera presion y soltar al pivote cuando aparece la sombra.",
-  },
-  {
     id: "presion-salto-lateral",
     title: "Presion coordinada con salto del lateral",
     phase: "defenseOrg",
@@ -2882,32 +2875,11 @@ const compactCuratedSpecs = [
     focus: "Bloquear sin chocar y atacar zona frontal liberada.",
   },
   {
-    id: "rondo-5v2-pared-interior",
-    title: "Rondo 5v2 con pared interior",
-    phase: "attackOrg",
-    principle: "pared + apoyo interior",
-    focus: "Usar pared corta para eliminar al defensor que salta.",
-  },
-  {
-    id: "bloque-medio-trampa-pivote",
-    title: "Bloque medio cerrando pase al pivote",
-    phase: "defenseOrg",
-    principle: "bloque medio compacto",
-    focus: "Tapar pivote, orientar central hacia fuera y saltar en banda.",
-  },
-  {
     id: "ataque-cambio-orientacion-extremo",
     title: "Cambio de orientacion para extremo aislado",
     phase: "attackOrg",
     principle: "cambio de orientacion",
     focus: "Atraer por dentro y cambiar al extremo con ventaja corporal.",
-  },
-  {
-    id: "finalizacion-centro-raso",
-    title: "Finalizacion con centro raso atras",
-    phase: "attackOrg",
-    principle: "llegada a zona de remate",
-    focus: "Atacar primer palo para liberar pase atras al interior.",
   },
   {
     id: "defensa-centro-lateral-juego-abierto",
@@ -2918,53 +2890,11 @@ const compactCuratedSpecs = [
       "Central ataca centro, lateral cierra segundo palo y pivote rechace.",
   },
   {
-    id: "tercer-hombre-banda-derecha",
-    title: "Tercer hombre en banda derecha",
-    phase: "attackOrg",
-    principle: "tercer hombre exterior",
-    focus: "Fijar lateral, descargar de cara y lanzar ruptura exterior.",
-  },
-  {
-    id: "presion-arquero-pase-atras",
-    title: "Presion cuando el rival juega atras al arquero",
-    phase: "defenseOrg",
-    principle: "trigger arquero",
-    focus: "Delantero curva carrera y extremos tapan centrales.",
-  },
-  {
-    id: "salida-vs-doble-punta",
-    title: "Salida contra doble punta",
-    phase: "attackOrg",
-    principle: "superioridad en primera linea",
-    focus: "Separar centrales y usar mediocentro como hombre libre.",
-  },
-  {
-    id: "contraataque-carril-central",
-    title: "Contraataque por carril central con apoyos",
-    phase: "transOff",
-    principle: "progresion rapida",
-    focus: "Primer pase vertical, apoyo de cara y ruptura al espacio.",
-  },
-  {
-    id: "abp-corner-corto-tercer-hombre",
-    title: "Corner corto y tercer hombre frontal",
-    phase: "abpOff",
-    principle: "ABP corner corto",
-    focus: "Atraer dos marcas y jugar de cara al remate frontal.",
-  },
-  {
     id: "abp-defensa-bloqueo-segundo-palo",
     title: "ABP defensiva contra bloqueo al segundo palo",
     phase: "abpDef",
     principle: "marcas y zona mixta",
     focus: "Comunicar bloqueo y proteger segundo palo con ventaja.",
-  },
-  {
-    id: "posesion-6v3-hombre-libre",
-    title: "Posesion 6v3 detectando hombre libre",
-    phase: "attackOrg",
-    principle: "hombre libre interior",
-    focus: "Mover al bloque rival hasta que el interior reciba de cara.",
   },
   {
     id: "defensa-linea-pase-bloqueada",

@@ -1,4 +1,8 @@
-import { catalog, generatedLibraryExerciseIds } from "@/data";
+import {
+  catalog,
+  generatedLibraryExerciseIds,
+  resolveRetiredReplacement,
+} from "@/data";
 import type { Exercise, Session } from "@/data";
 import { useAppStore } from "@/state/useAppStore";
 import {
@@ -458,7 +462,71 @@ const SessionBlockCard = memo(function SessionBlockCard({
     data: { type: "block", blockId: id } satisfies DragMeta,
   });
 
-  if (!block || !exercise) return null;
+  if (!block) return null;
+
+  // Guard duradero (Ola 4): un bloque guardado cuyo exerciseId ya no resuelve
+  // (ejercicio retirado del catalogo, import roto, id colgante) NO desaparece en
+  // silencio del planner — se muestra explicito con salida clara. El tombstone,
+  // si existe, ofrece el reemplazo curado equivalente en 1 click.
+  if (!exercise) {
+    const replacementId = resolveRetiredReplacement(block.exerciseId);
+    const replacement = replacementId
+      ? [...catalog, ...exerciseVariants].find(
+          (item) => item.id === replacementId,
+        )
+      : undefined;
+    const retiredStyle = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    } as const;
+    return (
+      <div
+        ref={setNodeRef}
+        style={retiredStyle}
+        className="session-block"
+        {...attributes}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "24px 1fr auto",
+            gap: 10,
+            alignItems: "start",
+          }}
+          {...listeners}
+        >
+          <strong>{index + 1}</strong>
+          <div>
+            <b>Ejercicio retirado del catalogo</b>
+            <br />
+            <small>
+              Este bloque referencia un ejercicio que ya no esta disponible (
+              {block.exerciseId}).
+            </small>
+          </div>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => removeSessionBlock(block.id)}
+          >
+            Quitar bloque
+          </button>
+        </div>
+        {replacement ? (
+          <button
+            type="button"
+            style={{ marginTop: 8 }}
+            onClick={() =>
+              updateSessionBlock(block.id, { exerciseId: replacement.id })
+            }
+          >
+            Reemplazar por {replacement.title}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
 
   const previewOverlays: PitchOverlay[] = [
     {
