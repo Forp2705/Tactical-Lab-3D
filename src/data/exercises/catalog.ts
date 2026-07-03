@@ -3768,13 +3768,19 @@ const rawExercises: unknown[] = [
           { t: 4, pos: { x: 60, y: 46 } },
           { t: 7, pos: { x: 64, y: 42 } },
         ]),
-        actor("swEI11", "own", 11, "EI", { x: 52, y: 24 }, [
-          { t: 6.5, pos: { x: 56, y: 22 } },
+        actor("swEI11", "own", 11, "EI", { x: 52, y: 20 }, [
+          { t: 6.5, pos: { x: 56, y: 20 } },
           { t: 9, pos: { x: 70, y: 20 } },
           { t: 11, pos: { x: 82, y: 26 } },
         ]),
-        actor("swRLD2", "rival", 2, "LD", { x: 56, y: 26 }, [
-          { t: 8, pos: { x: 62, y: 24 } },
+        // Lateral rival del lado debil: arranca METIDO hacia dentro (deja la
+        // banda baja vacia, el extremo queda aislado), se pincha aun mas con la
+        // circulacion (bascula con el bloque) y recien tras el switch RECUPERA
+        // TARDE a la banda, llegando por detras del extremo = ventaja real.
+        actor("swRLD2", "rival", 2, "LD", { x: 54, y: 40 }, [
+          { t: 4, pos: { x: 56, y: 46 } },
+          { t: 8, pos: { x: 58, y: 28 } },
+          { t: 10.5, pos: { x: 70, y: 26 } },
         ]),
         actor("swRDC5", "rival", 5, "DFC", { x: 48, y: 44 }, [
           { t: 3, pos: { x: 50, y: 52 } },
@@ -3817,11 +3823,11 @@ const rawExercises: unknown[] = [
         {
           id: "sw-p2",
           type: "pass",
-          from: "swINT8",
-          to: "swPIV6",
-          start: 4.2,
-          end: 5.2,
-          label: "vuelve al pivote libre",
+          from: "swLAT2",
+          to: "swINT8",
+          start: 3,
+          end: 4,
+          label: "circula la banda fuerte",
           layer: "withBall",
         },
         {
