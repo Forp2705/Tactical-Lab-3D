@@ -117,6 +117,22 @@ export function useBoardEditor(
     [],
   );
 
+  // Forces the mirrored workspace to match a specific board snapshot,
+  // bypassing "hydrate"'s per-id guard (w3 T2: undo/redo restore a prior
+  // snapshot of the SAME board, so that guard would otherwise leave fields
+  // like the formation dropdown stale). Takes the board explicitly rather
+  // than reading the `board` param, because callers (undo/redo) call this
+  // with the snapshot they just restored — the `board` prop here is still
+  // last render's value until the next render.
+  const rehydrateWorkspace = useCallback(
+    (fromBoard: TacticalBoard) =>
+      dispatch({
+        type: "forceRehydrate",
+        workspace: resolveBoardWorkspace(fromBoard, players),
+      }),
+    [players],
+  );
+
   return {
     roster: state.workspace.roster,
     problem: state.workspace.problem,
@@ -130,5 +146,6 @@ export function useBoardEditor(
     setLayers,
     setCurrentView,
     setTeamAFormation,
+    rehydrateWorkspace,
   };
 }

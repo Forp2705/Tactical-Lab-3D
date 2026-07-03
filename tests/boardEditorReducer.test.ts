@@ -182,3 +182,39 @@ describe("resolveBoardWorkspace — reload keeps workspace, seeds when empty", (
     expect(resolved.teamAFormation).toBe(board.workspace.teamAFormation);
   });
 });
+
+describe("boardEditorReducer — forceRehydrate (w3 T2: undo/redo formation-label sync)", () => {
+  it("replaces the workspace unconditionally for the SAME board id, unlike hydrate", () => {
+    const hydrated = hydrate("board-a");
+    // A same-id "hydrate" is a documented no-op (guards against the
+    // hydrate<->persist ping-pong) — forceRehydrate must NOT share that
+    // guard, since undo/redo restore a prior snapshot of the SAME board.
+    const restoredWorkspace: BoardWorkspaceState = {
+      ...workspaceFor("board-a"),
+      teamAFormation: "4-4-2",
+    };
+    const rehydrated = boardEditorReducer(hydrated, {
+      type: "forceRehydrate",
+      workspace: restoredWorkspace,
+    });
+    expect(rehydrated.hydratedBoardId).toBe("board-a");
+    expect(rehydrated.workspace.teamAFormation).toBe("4-4-2");
+  });
+
+  it("clears dirty even if there were unpersisted edits (undo/redo supersede them)", () => {
+    const dirty = boardEditorReducer(hydrate("board-a"), {
+      type: "setTeamAFormation",
+      value: "3-5-2",
+    });
+    expect(dirty.dirty).toBe(true);
+
+    const rehydrated = boardEditorReducer(dirty, {
+      type: "forceRehydrate",
+      workspace: workspaceFor("board-a"),
+    });
+    expect(rehydrated.dirty).toBe(false);
+    expect(rehydrated.workspace.teamAFormation).toBe(
+      workspaceFor("board-a").teamAFormation,
+    );
+  });
+});
