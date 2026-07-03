@@ -5295,15 +5295,15 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-primary-cta {
   display: grid;
   min-width: 230px;
-  background: linear-gradient(180deg, #1463eb, #0f4ec5) !important;
-  border-color: rgba(96, 165, 250, 0.55) !important;
-  color: #ffffff !important;
+  background: var(--felt-gold) !important;
+  border-color: rgba(26, 18, 5, 0.35) !important;
+  color: #1a1205 !important;
   font-weight: 800;
   text-align: left;
 }
 
 .rombo-primary-cta span {
-  color: rgba(219, 234, 254, 0.78);
+  color: rgba(26, 18, 5, 0.65);
   font-size: 11px;
   font-weight: 500;
 }
@@ -5314,8 +5314,9 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 }
 
 .rombo-save {
-  background: linear-gradient(180deg, #1f7a35, #17602a) !important;
-  border-color: rgba(74, 222, 128, 0.45) !important;
+  background: var(--felt-gold) !important;
+  border-color: rgba(26, 18, 5, 0.35) !important;
+  color: #1a1205 !important;
 }
 
 .rombo-board-select {
