@@ -2850,58 +2850,860 @@ const rawExercises: unknown[] = [
       phases: phases(10, ["abp", "cover"]),
     },
   },
-];
-
-const compactCuratedSpecs = [
+  // === W5 salvage (ids conservados; re-autorados a escena real, salen de cuarentena) ===
   {
     id: "presion-salto-lateral",
     title: "Presion coordinada con salto del lateral",
     phase: "defenseOrg",
     principle: "presion orientada a banda",
-    focus: "Cerrar dentro y saltar cuando el pase viaja al lateral.",
+    level: "U16+",
+    intensity: "high",
+    rpe: 8,
+    density: 0.6,
+    players: { min: 8, max: 12 },
+    duration: 13,
+    space: "medio campo, orientado a una banda",
+    material: [
+      { name: "pelotas", qty: 6, unit: "u" },
+      { name: "conos", qty: 8, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Cerrar los pasillos interiores y saltar al lateral en el momento en que le viaja el pase.",
+      secondary:
+        "Que el salto del extremo sea el gatillo de una presion coordinada, no un impulso individual.",
+    },
+    organization:
+      "El rival construye desde su central; el bloque propio espera compacto por dentro y salta a la banda cuando el balon viaja al lateral.",
+    rules: [
+      "Nadie salta al lateral hasta que el pase sale del central",
+      "Al saltar el extremo, el bloque bascula junto hacia esa banda",
+      "El interior tapa SIEMPRE el pase al pivote rival",
+    ],
+    coaching: [
+      "El gatillo es el pase, no la posicion del lateral",
+      "Saltar orientando el cuerpo para forzar la linea de banda",
+      "Segundo esfuerzo del bloque: recuperar la distancia entre lineas al instante",
+    ],
+    errors: [
+      "Saltar antes de que el balon viaje y dejar el interior libre",
+      "Saltar solo, sin que el bloque bascule",
+      "Perder al pivote rival por mirar el balon",
+    ],
+    success:
+      "Forzar el pase hacia atras o el error del lateral en 6 de cada 10 saltos.",
+    progressions: [
+      "El lateral rival puede devolver de primera al central",
+      "Sumar un interior rival que ataque el pasillo liberado",
+    ],
+    regressions: [
+      "El pase al lateral llega siempre anunciado",
+      "Sin pivote rival por dentro",
+    ],
+    scene: {
+      duration: 13,
+      pitchMode: "full",
+      actors: [
+        actor("psED7", "own", 7, "ED", { x: 52, y: 74 }, [
+          { t: 2.8, pos: { x: 47, y: 78 } },
+          { t: 4.2, pos: { x: 45, y: 80 } },
+        ]),
+        actor("psLAT2", "own", 2, "LAT", { x: 60, y: 72 }, [
+          { t: 3.5, pos: { x: 55, y: 74 } },
+        ]),
+        actor("psPIV5", "own", 5, "PIV", { x: 56, y: 46 }, [
+          { t: 3.2, pos: { x: 52, y: 47 } },
+        ]),
+        actor("psINT8", "own", 8, "INT", { x: 54, y: 40 }, [
+          { t: 3.5, pos: { x: 50, y: 44 } },
+        ]),
+        actor("psDC6", "own", 6, "DFC", { x: 68, y: 50 }, [
+          { t: 4, pos: { x: 62, y: 56 } },
+        ]),
+        actor("psRcb4", "rival", 4, "DFC", { x: 40, y: 50 }, [
+          { t: 2.8, pos: { x: 42, y: 54 } },
+        ]),
+        actor("psRlat3", "rival", 3, "LAT", { x: 44, y: 80 }, [
+          { t: 4.2, pos: { x: 46, y: 82 } },
+        ]),
+        actor("psRpiv6", "rival", 6, "PIV", { x: 48, y: 44 }, [
+          { t: 4, pos: { x: 50, y: 46 } },
+        ]),
+        actor("psRdc5", "rival", 5, "DFC", { x: 36, y: 40 }),
+      ],
+      ball: {
+        start: { x: 40, y: 50, z: 0 },
+        path: [
+          { t: 3, pos: { x: 44, y: 78, z: 0.4 } },
+          { t: 5.5, pos: { x: 34, y: 52, z: 0.2 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "ps1",
+          type: "press",
+          from: "psED7",
+          to: "psRlat3",
+          start: 2.8,
+          end: 4.4,
+          label: "salto al lateral",
+          layer: "press",
+        },
+        {
+          id: "ps2",
+          type: "lineBlocked",
+          from: "psPIV5",
+          to: "psRpiv6",
+          start: 3,
+          end: 6,
+          label: "tapa el interior",
+          layer: "cover",
+        },
+        {
+          id: "ps3",
+          type: "cover",
+          from: "psINT8",
+          to: { x: 50, y: 44 },
+          start: 3,
+          end: 6,
+          label: "bascula por dentro",
+          layer: "cover",
+        },
+      ],
+      zones: [
+        {
+          id: "psz1",
+          label: "trampa en banda",
+          rect: { x: 40, y: 66, w: 22, h: 30 },
+          color: "#f97316",
+          layer: "press",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "pst1",
+          description: "El central rival suelta el pase al lateral: salta el bloque",
+          whenT: 2.8,
+          cause: { actorId: "psRcb4", action: "cbCarry" },
+          activatesOverlays: ["ps1", "ps2", "ps3"],
+        },
+      ],
+      phases: phases(13, ["press", "cover", "rival"]),
+    },
   },
   {
     id: "transicion-primer-pase-seguro",
     title: "Transicion ofensiva con primer pase seguro",
     phase: "transOff",
     principle: "asegurar tras robo",
-    focus: "Robar, pausar medio segundo y conectar al apoyo de cara.",
+    level: "Amateur+",
+    intensity: "med",
+    rpe: 6,
+    density: 0.55,
+    players: { min: 8, max: 12 },
+    duration: 12,
+    space: "medio campo",
+    material: [
+      { name: "pelotas", qty: 6, unit: "u" },
+      { name: "conos", qty: 6, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Tras el robo, pausar medio segundo y conectar el primer pase de cara al apoyo, no correr a ciegas.",
+      secondary:
+        "Asegurar la posesion recuperada antes de progresar: la decision manda sobre la velocidad.",
+    },
+    organization:
+      "Robo en la zona media; el recuperador levanta la cabeza, hace la pausa y descarga al apoyo que se muestra de cara.",
+    rules: [
+      "El recuperador no conduce hacia la presion: descarga al primer apoyo libre",
+      "El apoyo se muestra SIEMPRE de cara, nunca de espaldas",
+      "Recien con el balon seguro se ataca el espacio",
+    ],
+    coaching: [
+      "La pausa de medio segundo es la que ordena la transicion",
+      "Primer pase al pie que ve el campo, no al que esta mas adelantado",
+      "Amplitud sin forzar: abrir la cancha mientras se asegura",
+    ],
+    errors: [
+      "Salir conduciendo hacia la presion y perderla de nuevo",
+      "Buscar el pase largo antes de asegurar",
+      "Apoyo que pide de espaldas y no puede girar",
+    ],
+    success: "Retener la posesion tras el robo en 7 de cada 10 recuperaciones.",
+    progressions: [
+      "Limitar la pausa a un solo toque del apoyo",
+      "Sumar un segundo rival que presione la descarga",
+    ],
+    regressions: [
+      "Rival pasivo tras la perdida",
+      "Apoyo fijo en posicion de recepcion",
+    ],
+    scene: {
+      duration: 12,
+      pitchMode: "full",
+      actors: [
+        actor("tpMC8", "own", 8, "MC", { x: 50, y: 50 }, [
+          { t: 3, pos: { x: 51, y: 50 } },
+          { t: 4.5, pos: { x: 49, y: 52 } },
+        ]),
+        actor("tpAP10", "own", 10, "MP", { x: 56, y: 44 }, [
+          { t: 4, pos: { x: 55, y: 46 } },
+          { t: 6, pos: { x: 52, y: 54 } },
+        ]),
+        actor("tpED7", "own", 7, "ED", { x: 58, y: 72 }, [
+          { t: 5, pos: { x: 64, y: 68 } },
+        ]),
+        actor("tpDC5", "own", 5, "DFC", { x: 40, y: 50 }),
+        actor("tpPIV6", "own", 6, "PIV", { x: 46, y: 54 }, [
+          { t: 4.5, pos: { x: 48, y: 58 } },
+        ]),
+        actor("tpRdc4", "rival", 4, "DFC", { x: 54, y: 52 }, [
+          { t: 3, pos: { x: 56, y: 50 } },
+        ]),
+        actor("tpRmc8", "rival", 8, "MC", { x: 52, y: 60 }, [
+          { t: 4, pos: { x: 55, y: 54 } },
+        ]),
+        actor("tpRst9", "rival", 9, "DC", { x: 60, y: 46 }),
+      ],
+      ball: {
+        start: { x: 52, y: 51, z: 0 },
+        path: [
+          { t: 3, pos: { x: 50, y: 50, z: 0 } },
+          { t: 4.2, pos: { x: 55, y: 46, z: 0.2 } },
+          { t: 6, pos: { x: 52, y: 54, z: 0.2 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "tp1",
+          type: "pass",
+          from: "tpMC8",
+          to: "tpAP10",
+          start: 3.2,
+          end: 4.3,
+          label: "primer pase de cara",
+          layer: "withBall",
+        },
+        {
+          id: "tp2",
+          type: "run",
+          from: "tpED7",
+          to: { x: 64, y: 68 },
+          start: 4,
+          end: 6,
+          label: "amplitud sin forzar",
+          layer: "withBall",
+        },
+        {
+          id: "tp3",
+          type: "pass",
+          from: "tpAP10",
+          to: { x: 52, y: 54 },
+          start: 4.6,
+          end: 6,
+          label: "asegura y gira",
+          layer: "withBall",
+        },
+      ],
+      zones: [
+        {
+          id: "tpz1",
+          label: "pausa tras el robo",
+          rect: { x: 44, y: 42, w: 16, h: 18 },
+          color: "#38bdf8",
+          layer: "withBall",
+          visibleInPhases: ["execution"],
+        },
+      ],
+      triggers: [
+        {
+          id: "tpt1",
+          description: "El rival pierde el control: nace la transicion propia",
+          whenT: 2.5,
+          cause: { actorId: "tpRdc4", action: "badControl" },
+          activatesOverlays: ["tp1"],
+        },
+      ],
+      phases: phases(12, ["withBall", "withoutBall"]),
+    },
   },
   {
     id: "abp-falta-bloqueo-frontal",
     title: "ABP falta lateral con bloqueo frontal",
     phase: "abpOff",
     principle: "ABP segundo movimiento",
-    focus: "Bloquear sin chocar y atacar zona frontal liberada.",
-  },
-  {
-    id: "ataque-cambio-orientacion-extremo",
-    title: "Cambio de orientacion para extremo aislado",
-    phase: "attackOrg",
-    principle: "cambio de orientacion",
-    focus: "Atraer por dentro y cambiar al extremo con ventaja corporal.",
+    level: "U16+",
+    intensity: "med",
+    rpe: 5,
+    density: 0.4,
+    players: { min: 8, max: 12 },
+    duration: 11,
+    space: "tercio final, falta lateral",
+    material: [
+      { name: "pelotas", qty: 8, unit: "u" },
+      { name: "conos", qty: 4, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Bloquear legalmente sin chocar para liberar la zona frontal y atacarla con el segundo movimiento.",
+      secondary:
+        "Convertir una falta lateral en una llegada limpia al frontal del area.",
+    },
+    organization:
+      "Falta lateral ensayada: un jugador fija el bloqueo, el rematador arranca por detras y ataca la zona frontal que queda libre.",
+    rules: [
+      "El bloqueo se ocupa con el cuerpo, sin brazos ni empuje",
+      "El segundo movimiento arranca por detras del bloqueo, nunca antes",
+      "Si el frontal se cierra, se juega el descarte al punto de penal",
+    ],
+    coaching: [
+      "El bloqueo libera espacio, no busca contacto",
+      "El tiempo del rematador nace cuando el ejecutor toca el balon",
+      "Atacar el balon de frente y llegar lanzado, no esperandolo",
+    ],
+    errors: [
+      "Empujar en el bloqueo y regalar la falta",
+      "Arrancar el segundo movimiento antes del envio",
+      "Rematar frenado en vez de llegar de cara",
+    ],
+    success: "Rematar de cara desde la zona frontal en 6 de cada 10 ejecuciones.",
+    progressions: [
+      "El rival puede saltar la linea para achicar el frontal",
+      "Sumar un segundo bloqueo en el primer palo",
+    ],
+    regressions: [
+      "Marca rival pasiva en el frontal",
+      "Envio siempre a la misma zona anunciada",
+    ],
+    scene: {
+      duration: 11,
+      pitchMode: "third",
+      actors: [
+        actor("bfGK1", "rival", 1, "GK", { x: 96, y: 50 }, [
+          { t: 4, pos: { x: 95, y: 48 } },
+        ]),
+        actor("bfKick7", "own", 7, "MP", { x: 72, y: 14 }, [
+          { t: 3, pos: { x: 73, y: 15 } },
+        ]),
+        actor("bfBlock5", "own", 5, "DFC", { x: 86, y: 52 }, [
+          { t: 3, pos: { x: 86, y: 50 } },
+        ]),
+        actor("bfRun9", "own", 9, "DC", { x: 80, y: 44 }, [
+          { t: 3.5, pos: { x: 86, y: 48 } },
+          { t: 5, pos: { x: 90, y: 50 } },
+        ]),
+        actor("bfTall4", "own", 4, "DFC", { x: 88, y: 62 }, [
+          { t: 4, pos: { x: 90, y: 60 } },
+        ]),
+        actor("bfRdc6", "rival", 6, "DFC", { x: 86, y: 50 }, [
+          { t: 3.5, pos: { x: 84, y: 52 } },
+        ]),
+        actor("bfRdc3", "rival", 3, "DFC", { x: 84, y: 58 }),
+        actor("bfRmark8", "rival", 8, "INT", { x: 82, y: 46 }, [
+          { t: 4, pos: { x: 85, y: 48 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 72, y: 14, z: 0 },
+        path: [
+          { t: 4, pos: { x: 88, y: 50, z: 1.4 } },
+          { t: 6, pos: { x: 94, y: 50, z: 0.6 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "bf1",
+          type: "cover",
+          from: "bfBlock5",
+          to: { x: 86, y: 50 },
+          start: 3,
+          end: 4.5,
+          label: "bloqueo legal",
+          layer: "abp",
+        },
+        {
+          id: "bf2",
+          type: "run",
+          from: "bfRun9",
+          to: { x: 90, y: 50 },
+          start: 3.5,
+          end: 5,
+          label: "ataca zona liberada",
+          layer: "abp",
+        },
+        {
+          id: "bf3",
+          type: "run",
+          from: "bfTall4",
+          to: { x: 90, y: 60 },
+          start: 3.5,
+          end: 5,
+          label: "descarte segundo palo",
+          layer: "abp",
+        },
+      ],
+      zones: [
+        {
+          id: "bfz1",
+          label: "zona frontal liberada",
+          rect: { x: 82, y: 40, w: 14, h: 20 },
+          color: "#facc15",
+          layer: "abp",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "bft1",
+          description: "El bloqueo fija la marca: arranca el segundo movimiento",
+          whenT: 3,
+          cause: { actorId: "bfBlock5", action: "closedLateral" },
+          activatesOverlays: ["bf2"],
+        },
+      ],
+      phases: phases(11, ["abp", "cover"]),
+    },
   },
   {
     id: "defensa-centro-lateral-juego-abierto",
     title: "Defensa de centro lateral y segunda jugada",
     phase: "defenseOrg",
     principle: "defensa del area",
-    focus:
-      "Central ataca centro, lateral cierra segundo palo y pivote rechace.",
+    level: "Amateur+",
+    intensity: "high",
+    rpe: 7,
+    density: 0.55,
+    players: { min: 9, max: 12 },
+    duration: 12,
+    space: "area propia y frontal",
+    material: [
+      { name: "pelotas", qty: 8, unit: "u" },
+      { name: "conos", qty: 6, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Defender el centro lateral atacando el balon con el central y protegiendo la segunda jugada.",
+      secondary:
+        "Repartir responsabilidades: central al centro, lateral al segundo palo, pivote al rechace.",
+    },
+    organization:
+      "El rival centra desde la banda; el central ataca el envio, el lateral cierra el segundo palo y el pivote se queda en el frontal para el rechace.",
+    rules: [
+      "El central ataca el centro, no lo espera en la linea",
+      "El lateral cierra el segundo palo antes de mirar el balon",
+      "El pivote no entra al area: vive la zona de rechace",
+    ],
+    coaching: [
+      "Atacar el balon en el aire, ganar el punto de contacto",
+      "Segundo palo cerrado antes del envio, no despues",
+      "El rechace se defiende perfilado hacia afuera",
+    ],
+    errors: [
+      "Esperar el centro en la linea y llegar tarde",
+      "Dejar el segundo palo libre por mirar el primer palo",
+      "Despejar corto al centro del area",
+    ],
+    success: "Ganar el primer contacto o la segunda jugada en 7 de cada 10 centros.",
+    progressions: [
+      "El rival suma un llegador al punto de penal",
+      "Centro raso alternado con centro alto",
+    ],
+    regressions: [
+      "Centro siempre al primer palo anunciado",
+      "Sin llegador rival al rechace",
+    ],
+    scene: {
+      duration: 12,
+      pitchMode: "third",
+      actors: [
+        actor("dcGK1", "own", 1, "GK", { x: 94, y: 50 }, [
+          { t: 4, pos: { x: 93, y: 48 } },
+        ]),
+        actor("dcCB4", "own", 4, "DFC", { x: 88, y: 44 }, [
+          { t: 3.5, pos: { x: 86, y: 46 } },
+          { t: 5.5, pos: { x: 84, y: 48 } },
+        ]),
+        actor("dcLAT3", "own", 3, "LAT", { x: 90, y: 60 }, [
+          { t: 3.5, pos: { x: 91, y: 58 } },
+        ]),
+        actor("dcPIV6", "own", 6, "PIV", { x: 80, y: 50 }, [
+          { t: 5, pos: { x: 78, y: 52 } },
+        ]),
+        actor("dcCB5", "own", 5, "DFC", { x: 89, y: 52 }),
+        actor("dcRw11", "rival", 11, "EI", { x: 72, y: 80 }, [
+          { t: 3, pos: { x: 74, y: 82 } },
+        ]),
+        actor("dcRst9", "rival", 9, "DC", { x: 86, y: 46 }, [
+          { t: 4, pos: { x: 88, y: 46 } },
+        ]),
+        actor("dcRst10", "rival", 10, "MP", { x: 88, y: 58 }, [
+          { t: 4, pos: { x: 90, y: 58 } },
+        ]),
+        actor("dcRedge8", "rival", 8, "INT", { x: 78, y: 52 }, [
+          { t: 5.5, pos: { x: 80, y: 52 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 72, y: 80, z: 0 },
+        path: [
+          { t: 4, pos: { x: 86, y: 46, z: 1.6 } },
+          { t: 6, pos: { x: 78, y: 52, z: 0.5 } },
+          { t: 8, pos: { x: 66, y: 50, z: 0.3 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "dc1",
+          type: "cover",
+          from: "dcCB4",
+          to: { x: 86, y: 46 },
+          start: 3.5,
+          end: 5,
+          label: "ataca el centro",
+          layer: "cover",
+        },
+        {
+          id: "dc2",
+          type: "cover",
+          from: "dcLAT3",
+          to: { x: 91, y: 58 },
+          start: 3.5,
+          end: 5,
+          label: "cierra segundo palo",
+          layer: "cover",
+        },
+        {
+          id: "dc3",
+          type: "lineBlocked",
+          from: "dcPIV6",
+          to: "dcRedge8",
+          start: 5,
+          end: 8,
+          label: "vive el rechace",
+          layer: "cover",
+        },
+      ],
+      zones: [
+        {
+          id: "dcz1",
+          label: "segunda jugada",
+          rect: { x: 72, y: 40, w: 14, h: 24 },
+          color: "#f97316",
+          layer: "cover",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "dct1",
+          description: "El central despeja el centro: nace la segunda jugada",
+          whenT: 5,
+          cause: { actorId: "dcCB4", action: "badControl" },
+          activatesOverlays: ["dc3"],
+        },
+      ],
+      phases: phases(12, ["cover", "rival"]),
+    },
   },
   {
     id: "abp-defensa-bloqueo-segundo-palo",
     title: "ABP defensiva contra bloqueo al segundo palo",
     phase: "abpDef",
     principle: "marcas y zona mixta",
-    focus: "Comunicar bloqueo y proteger segundo palo con ventaja.",
+    level: "U16+",
+    intensity: "med",
+    rpe: 5,
+    density: 0.42,
+    players: { min: 10, max: 14 },
+    duration: 12,
+    space: "area propia (tercio defensivo)",
+    material: [
+      { name: "pelotas", qty: 10, unit: "u" },
+      { name: "conos", qty: 6, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Comunicar el bloqueo rival al segundo palo y protegerlo con ventaja en la marca.",
+      secondary:
+        "Que el bloqueo no libere al rematador: el cambio de marca se avisa en voz alta.",
+    },
+    organization:
+      "Corner rival con un bloqueador que busca liberar al rematador en el segundo palo; el bloque mixto avisa el bloqueo y protege esa zona.",
+    rules: [
+      "El bloqueo se canta antes de que ocurra: se avisa en voz alta",
+      "El segundo palo tiene siempre un cuerpo de ventaja",
+      "Tras el despeje, la linea sale junta a achicar",
+    ],
+    coaching: [
+      "Ver el bloqueo antes que el balon: leer el movimiento del bloqueador",
+      "Proteger el segundo palo por delante del rematador, no a la par",
+      "El zonal del primer palo no abandona su punto por el bloqueo",
+    ],
+    errors: [
+      "No avisar el bloqueo y perder al rematador",
+      "Marcar a la par en vez de ganar la posicion",
+      "Despejar corto al centro del area",
+    ],
+    success:
+      "Neutralizar el bloqueo y ganar el segundo palo en 7 de cada 10 corners.",
+    progressions: [
+      "El rival puede jugar el corner en corto",
+      "Sumar un segundo bloqueador al primer palo",
+    ],
+    regressions: [
+      "Corner siempre al segundo palo anunciado",
+      "Sin bloqueo, marca directa",
+    ],
+    scene: {
+      duration: 12,
+      pitchMode: "third",
+      actors: [
+        actor("sbGK1", "own", 1, "GK", { x: 94, y: 50 }, [
+          { t: 3.5, pos: { x: 93, y: 52 } },
+        ]),
+        actor("sbCB4", "own", 4, "DFC", { x: 90, y: 58 }, [
+          { t: 3.4, pos: { x: 91, y: 59 } },
+          { t: 5.5, pos: { x: 89, y: 56 } },
+        ]),
+        actor("sbCB5", "own", 5, "DFC", { x: 91, y: 44 }),
+        actor("sbLAT3", "own", 3, "LAT", { x: 92, y: 66 }, [
+          { t: 4, pos: { x: 92, y: 62 } },
+        ]),
+        actor("sbPIV6", "own", 6, "PIV", { x: 86, y: 50 }, [
+          { t: 5.5, pos: { x: 82, y: 50 } },
+        ]),
+        actor("sbMark8", "own", 8, "INT", { x: 89, y: 56 }, [
+          { t: 3.4, pos: { x: 90, y: 60 } },
+        ]),
+        actor("sbKick11", "rival", 11, "EI", { x: 98, y: 6 }, [
+          { t: 3, pos: { x: 96, y: 10 } },
+        ]),
+        actor("sbBlock5", "rival", 5, "DFC", { x: 89, y: 54 }, [
+          { t: 3.2, pos: { x: 90, y: 56 } },
+        ]),
+        actor("sbTall9", "rival", 9, "DC", { x: 91, y: 60 }, [
+          { t: 3.4, pos: { x: 91, y: 61 } },
+        ]),
+        actor("sbTall10", "rival", 10, "MP", { x: 90, y: 46 }, [
+          { t: 4, pos: { x: 91, y: 46 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 98, y: 6, z: 0 },
+        path: [
+          { t: 4, pos: { x: 91, y: 58, z: 1.6 } },
+          { t: 6, pos: { x: 84, y: 52, z: 0.5 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "sb1",
+          type: "cover",
+          from: "sbCB4",
+          to: { x: 91, y: 59 },
+          start: 3.4,
+          end: 5,
+          label: "protege segundo palo",
+          layer: "abp",
+        },
+        {
+          id: "sb2",
+          type: "lineBlocked",
+          from: "sbMark8",
+          to: "sbTall9",
+          start: 3.4,
+          end: 5.5,
+          label: "avisa el bloqueo",
+          layer: "cover",
+        },
+        {
+          id: "sb3",
+          type: "run",
+          from: "sbTall9",
+          to: { x: 91, y: 61 },
+          start: 3.4,
+          end: 4.6,
+          label: "llega tras bloqueo",
+          layer: "rival",
+        },
+      ],
+      zones: [
+        {
+          id: "sbz1",
+          label: "segundo palo",
+          rect: { x: 84, y: 54, w: 12, h: 26 },
+          color: "#facc15",
+          layer: "abp",
+          visibleInPhases: ["execution", "outcome"],
+        },
+      ],
+      triggers: [
+        {
+          id: "sbt1",
+          description: "El bloqueador cruza al rematador: se canta y cambia la marca",
+          whenT: 3.2,
+          cause: { actorId: "sbBlock5", action: "closedLateral" },
+          activatesOverlays: ["sb2"],
+        },
+      ],
+      phases: phases(12, ["abp", "cover", "rival"]),
+    },
   },
   {
     id: "defensa-linea-pase-bloqueada",
     title: "Bloquear linea de pase al 9",
     phase: "defenseOrg",
     principle: "linea bloqueada",
-    focus: "Central no persigue; perfila cuerpo y niega recepcion del 9.",
+    level: "U16+",
+    intensity: "med",
+    rpe: 6,
+    density: 0.5,
+    players: { min: 8, max: 11 },
+    duration: 11,
+    space: "medio campo defensivo",
+    material: [
+      { name: "pelotas", qty: 6, unit: "u" },
+      { name: "conos", qty: 6, unit: "u" },
+      { name: "pecheras", qty: 2, unit: "colores" },
+    ],
+    objective: {
+      primary:
+        "Negar la linea de pase al 9 entre lineas perfilando el cuerpo, sin salir a perseguir.",
+      secondary:
+        "Defensa posicional: quitar la recepcion sin romper la estructura del bloque.",
+    },
+    organization:
+      "El central rival busca filtrar al 9 entre lineas; el central propio perfila el cuerpo y niega esa linea mientras el pivote la tapa por delante.",
+    rules: [
+      "El central no persigue al 9: perfila y niega la linea",
+      "El pivote tapa la linea vertical por delante",
+      "Si el 9 baja, se lo pasa a la marca, no se lo sigue",
+    ],
+    coaching: [
+      "Perfilar el cuerpo entre el balon y el 9, no de frente",
+      "Tapar la linea con la posicion, no con la carrera",
+      "Mantener la distancia entre lineas mientras se niega el pase",
+    ],
+    errors: [
+      "Salir a perseguir al 9 y abrir la espalda de la linea",
+      "Quedar de frente y dejar la linea de pase abierta",
+      "Romper el bloque por seguir al que baja",
+    ],
+    success: "Negar la recepcion del 9 entre lineas en 7 de cada 10 intentos.",
+    progressions: [
+      "El 9 alterna venir al pie con romper a la espalda",
+      "Sumar un interior rival que ofrezca tercer hombre",
+    ],
+    regressions: [
+      "El 9 pide siempre al mismo pie",
+      "Rival sin tercer hombre de apoyo",
+    ],
+    scene: {
+      duration: 11,
+      pitchMode: "half",
+      actors: [
+        actor("lpCB4", "own", 4, "DFC", { x: 74, y: 50 }, [
+          { t: 3, pos: { x: 76, y: 49 } },
+          { t: 5, pos: { x: 75, y: 51 } },
+        ]),
+        actor("lpPIV6", "own", 6, "PIV", { x: 66, y: 50 }, [
+          { t: 3, pos: { x: 64, y: 52 } },
+        ]),
+        actor("lpCB5", "own", 5, "DFC", { x: 78, y: 42 }),
+        actor("lpLAT3", "own", 3, "LAT", { x: 80, y: 64 }),
+        actor("lpGK1", "own", 1, "GK", { x: 94, y: 50 }),
+        actor("lpRcb8", "rival", 8, "DFC", { x: 48, y: 50 }, [
+          { t: 3, pos: { x: 50, y: 50 } },
+        ]),
+        actor("lpRst9", "rival", 9, "DC", { x: 72, y: 52 }, [
+          { t: 4, pos: { x: 70, y: 54 } },
+        ]),
+        actor("lpRmp10", "rival", 10, "MP", { x: 60, y: 58 }, [
+          { t: 4.5, pos: { x: 58, y: 56 } },
+        ]),
+      ],
+      ball: {
+        start: { x: 48, y: 50, z: 0 },
+        path: [
+          { t: 3, pos: { x: 50, y: 50, z: 0 } },
+          { t: 4.5, pos: { x: 60, y: 52, z: 0.3 } },
+          { t: 6, pos: { x: 44, y: 54, z: 0.2 } },
+        ],
+      },
+      overlays: [
+        {
+          id: "lp1",
+          type: "lineBlocked",
+          from: "lpPIV6",
+          to: "lpRst9",
+          start: 2.5,
+          end: 6,
+          label: "niega la linea al 9",
+          layer: "cover",
+        },
+        {
+          id: "lp2",
+          type: "cover",
+          from: "lpCB4",
+          to: { x: 76, y: 49 },
+          start: 3,
+          end: 6,
+          label: "perfila, no persigue",
+          layer: "cover",
+        },
+        {
+          id: "lp3",
+          type: "pass",
+          from: "lpRcb8",
+          to: { x: 66, y: 52 },
+          start: 3,
+          end: 4,
+          label: "intento vertical",
+          layer: "rival",
+        },
+      ],
+      zones: [
+        {
+          id: "lpz1",
+          label: "linea de pase al 9",
+          rect: { x: 56, y: 44, w: 18, h: 16 },
+          color: "#f97316",
+          layer: "cover",
+          visibleInPhases: ["execution"],
+        },
+      ],
+      triggers: [
+        {
+          id: "lpt1",
+          description: "El central rival busca filtrar al 9: se tapa la linea",
+          whenT: 3,
+          cause: { actorId: "lpRcb8", action: "ballToPivot" },
+          activatesOverlays: ["lp1"],
+        },
+      ],
+      phases: phases(11, ["cover", "rival"]),
+    },
+  },
+];
+
+const compactCuratedSpecs = [
+  // Cuarentena remanente tras W5: solo el REWRITE-CARO. Su escena estampada
+  // sigue oculta (fuera del pool) hasta un re-autorado futuro de costo alto
+  // (cancha completa, 10-12 actores en ambas bandas para que el switch sea
+  // legible). Veredicto y estimacion en docs/plans/feat-w5-salvage-six-plan.md.
+  {
+    id: "ataque-cambio-orientacion-extremo",
+    title: "Cambio de orientacion para extremo aislado",
+    phase: "attackOrg",
+    principle: "cambio de orientacion",
+    focus: "Atraer por dentro y cambiar al extremo con ventaja corporal.",
   },
   // Tipo explicito (no `as const`): al re-autorar specs (W3.2) la union de
   // fases se achica y las comparaciones del template romperian con TS2367.
