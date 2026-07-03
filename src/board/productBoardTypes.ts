@@ -210,14 +210,35 @@ export function inferAiInterpretationFindings({
   }
 
   // 3) Hechos posicionales por zona: conteo de fichas reales, NO veredicto.
-  for (const zone of zones.slice(0, 2)) {
-    const { own, rival } = countTokensInZone(objects, zone);
-    if (own + rival > 0) {
-      findings.push({
+  // W6 decision: una linea por zona REAL, nunca deduplicada por texto — el
+  // cap anterior a las primeras 2 zonas escondia zonas 3/4 sin motivo (bug de
+  // affordance, no decision de producto). Si dos zonas distintas producen el
+  // mismo texto (mismo label default + misma ocupacion), se desambigua con el
+  // indice de la zona en vez de fusionar las lineas.
+  const zoneFacts = zones
+    .map((zone, index) => {
+      const { own, rival } = countTokensInZone(objects, zone);
+      if (own + rival === 0) return null;
+      return {
         id: `zone:${zone.id}`,
         text: `En ${zone.label}: ${own} propios vs ${rival} rivales.`,
-      });
-    }
+        zoneNumber: index + 1,
+      };
+    })
+    .filter((fact): fact is NonNullable<typeof fact> => fact !== null);
+  const zoneTextOccurrences = new Map<string, number>();
+  for (const fact of zoneFacts) {
+    zoneTextOccurrences.set(
+      fact.text,
+      (zoneTextOccurrences.get(fact.text) ?? 0) + 1,
+    );
+  }
+  for (const fact of zoneFacts) {
+    const ambiguous = (zoneTextOccurrences.get(fact.text) ?? 0) > 1;
+    findings.push({
+      id: fact.id,
+      text: ambiguous ? `${fact.text} (zona ${fact.zoneNumber})` : fact.text,
+    });
   }
 
   // 4) Degradar con honestidad: decir QUE FALTA en vez de inventar.

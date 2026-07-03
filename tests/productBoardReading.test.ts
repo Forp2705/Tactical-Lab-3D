@@ -3,6 +3,7 @@ import {
   countTokensInZone,
   isInsideZoneRect,
   inferAiInterpretation,
+  inferAiInterpretationFindings,
 } from "@/board/productBoardTypes";
 import type { BoardObject, BoardZone } from "@/board/boardModel";
 
@@ -61,5 +62,41 @@ describe("P0.5 reading is tied to countTokensInZone", () => {
     expect(findings).toContain(`En ${z.label}: ${own} propios vs ${rival} rivales.`);
     expect(own).toBe(2);
     expect(rival).toBe(1);
+  });
+});
+
+describe("W6: zone-summary is one line per real zone (no dedup by content)", () => {
+  it("reports all 4 zones as 4 distinct findings, even with identical text", () => {
+    // Two zones share the same default label + same occupancy on purpose:
+    // this used to collapse to fewer visible lines via the old
+    // zones.slice(0, 2) cap, which had nothing to do with text dedup.
+    const zones = [
+      zone({ id: "z1", label: "Zona", x: 0, y: 0, w: 20, h: 20 }),
+      zone({ id: "z2", label: "Zona", x: 20, y: 0, w: 20, h: 20 }),
+      zone({ id: "z3", label: "Presion alta", x: 40, y: 0, w: 20, h: 20 }),
+      zone({ id: "z4", label: "Salida", x: 60, y: 0, w: 20, h: 20 }),
+    ];
+    const objects = [
+      tok("p1", "playerToken", 5, 5), // in z1
+      tok("p2", "playerToken", 25, 5), // in z2
+      tok("p3", "playerToken", 45, 5), // in z3
+      tok("p4", "playerToken", 65, 5), // in z4
+    ];
+    const findings = inferAiInterpretationFindings({
+      players: [],
+      objects,
+      arrows: [],
+      zones,
+    });
+
+    expect(findings).toHaveLength(4);
+    // ids are always unique (stable, from zone.id) regardless of text.
+    expect(new Set(findings.map((f) => f.id)).size).toBe(4);
+    // z1/z2 collide on text ("Zona": 1 propios vs 0 rivales) -> disambiguated.
+    expect(findings[0].text).toBe("En Zona: 1 propios vs 0 rivales. (zona 1)");
+    expect(findings[1].text).toBe("En Zona: 1 propios vs 0 rivales. (zona 2)");
+    // z3/z4 have distinct labels -> no suffix needed.
+    expect(findings[2].text).toBe("En Presion alta: 1 propios vs 0 rivales.");
+    expect(findings[3].text).toBe("En Salida: 1 propios vs 0 rivales.");
   });
 });
