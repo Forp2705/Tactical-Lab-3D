@@ -15,11 +15,18 @@ import {
 import { COACH_RULES } from "./CoachRules.js"
 import {
   contrastTextWithGameModel,
+  DEFAULT_GAME_MODEL,
   isGameModelConfigured,
   normalizeGameModel,
   summarizeGameModel,
 } from "../data/gameModel.js"
-import { summarizeOpponentScout } from "../scout/opponentScout.js"
+import {
+  buildOpponentGamePlan,
+  DEFAULT_OPPONENT_SCOUT,
+  hasOpponentScoutData,
+  normalizeOpponentScout,
+  summarizeOpponentScout,
+} from "../scout/opponentScout.js"
 import { MATCH_MEMORY } from "./MatchMemory.js"
 import { retrieveRelevantContext } from "./retrieveRelevantContext.js"
 import { retrieveRelevantKnowledge } from "./retrieveRelevantKnowledge.js"
@@ -383,6 +390,7 @@ Game model and fit rules:
 - Do not raise confidence only because the model says something; current evidence still governs confidence.
 - If Team setup says "${MISSING_TEAM_IDENTITY_MESSAGE}", do not invent a base formation, pressing identity or build-up style.
 - In that case, work only with current evidence and ask for setup context before making model-of-play claims.
+- Everything under "Opponent Scout" is staff-declared BELIEF (see its header), never verified fact: attribute rival claims as "segun el scout cargado por el staff", never invent rival formation, coordinates or behavior beyond what the scout declares, and do not raise confidence on the scout alone. With no scout loaded, make no claims about the rival and ask for the missing scout instead.
 
 Coaching staff context:
 ${coachingStaffContext}
@@ -1377,13 +1385,46 @@ function formatStructuredGameModel(coachContext: unknown) {
   return buildCoachTeamIdentityContextFromRuntime(coachContext).structuredGameModel
 }
 
-function formatOpponentScoutContext(coachContext: unknown) {
+// Rival attribution block (mc-10 Brief A). The scout already reaches the prompt;
+// this wraps it with the 3-level honesty rule so the model can NEVER treat
+// staff-declared belief as verified fact, and defines the no-scout default
+// (make no rival claims, ask for the missing scout). Exported for composer unit
+// tests (A1-A4). No schema/evidence-pipeline changes; rivalReference stays a
+// separate presence-only block.
+export function formatOpponentScoutContext(coachContext: unknown) {
   const context = objectValue(coachContext)
   const raw = context?.opponentScout
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return "No opponent scout loaded."
+  const scout =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? normalizeOpponentScout(raw)
+      : null
+
+  if (!scout || !hasOpponentScoutData(scout)) {
+    // No-scout default: keep the sentinel, forbid rival claims, and surface 1-2
+    // actionable scout questions (reused from buildOpponentGamePlan) WITHOUT
+    // blocking the answer.
+    const scoutQuestions = buildOpponentGamePlan(
+      DEFAULT_OPPONENT_SCOUT,
+      DEFAULT_GAME_MODEL,
+    ).openQuestions.slice(0, 2)
+    return [
+      "No opponent scout loaded.",
+      "No hagas ninguna afirmacion sobre la formacion, las posiciones ni la conducta del rival: no hay scout cargado. Trabaja sobre el equipo propio y la evidencia actual.",
+      "Incluir 1-2 de estas preguntas de scout accionables en reflection.missingInformation o en las preguntas de seguimiento, sin bloquear la respuesta:",
+      ...scoutQuestions.map((question) => `- ${question}`),
+    ].join("\n")
   }
-  return summarizeOpponentScout(raw as Parameters<typeof summarizeOpponentScout>[0])
+
+  return [
+    "OPPONENT SCOUT (staff-declared belief, not verified fact)",
+    "Regla de atribucion (3 niveles de certeza):",
+    "- Nivel 1 (hecho del tablero: tu shape/estructura propia, freeStateEvidence): se puede afirmar.",
+    '- Nivel 2 (TODO lo de abajo = scout declarado por el staff): citalo SIEMPRE con atribucion, "segun el scout cargado por el staff". Es intencion/creencia del staff y puede estar equivocada. NO subas la confianza por el scout solo.',
+    "- Nivel 3 (tu inferencia): va como hipotesis en reflection, nunca como posicion o conducta concreta del rival.",
+    "NUNCA inventes formacion, coordenadas ni conducta del rival mas alla de lo declarado aca.",
+    "",
+    summarizeOpponentScout(scout),
+  ].join("\n")
 }
 
 function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string) {
