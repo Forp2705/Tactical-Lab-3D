@@ -1,5 +1,6 @@
+import { resolveExerciseSelection } from "@/app/viewerSelection";
 import { catalog, ExerciseSchema, generatedLibraryExerciseIds } from "@/data";
-import { getExerciseById, useAppStore } from "@/state/useAppStore";
+import { useAppStore } from "@/state/useAppStore";
 import { LoadMeter, PitchViz } from "@/ui/tacticalPrimitives";
 import { useMemo, useState } from "react";
 
@@ -150,7 +151,11 @@ export function LibraryView() {
         )
       : smartFiltered;
 
-  const selected = getExerciseById(selectedExerciseId);
+  const { exercise: selected, missing: selectedIsMissing } =
+    resolveExerciseSelection(selectedExerciseId, [
+      ...catalog,
+      ...exerciseVariants,
+    ]);
   const selectedIsVariant = exerciseVariants.some(
     (exercise) => exercise.id === selected.id,
   );
@@ -419,6 +424,12 @@ export function LibraryView() {
       </div>
       <aside className="detail-panel">
         <span className="panel-eyebrow">Informe de campo</span>
+        {selectedIsMissing ? (
+          <div className="alert-row warn">
+            El ejercicio seleccionado ya no esta disponible en el catalogo.
+            Mostrando <b>{selected.title}</b> en su lugar.
+          </div>
+        ) : null}
         {selectedIsVariant ? (
           <span className="tag custom-tag">Jugada propia</span>
         ) : null}
@@ -487,6 +498,12 @@ export function LibraryView() {
           <button
             type="button"
             className="secondary"
+            disabled={selectedIsMissing}
+            title={
+              selectedIsMissing
+                ? "El ejercicio original ya no esta disponible: elegi otro antes de agregarlo a la sesion."
+                : undefined
+            }
             onClick={() => useAppStore.getState().addToSession(selected.id)}
           >
             Agregar a sesión
@@ -494,6 +511,12 @@ export function LibraryView() {
           <button
             type="button"
             className="secondary"
+            disabled={selectedIsMissing}
+            title={
+              selectedIsMissing
+                ? "El ejercicio original ya no esta disponible: elegi otro antes de crear una copia."
+                : undefined
+            }
             onClick={handleCreateEditableCopy}
           >
             Crear copia editable

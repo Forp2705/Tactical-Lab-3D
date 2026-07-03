@@ -29,7 +29,8 @@ import {
   isTeamIdentityBootstrapped,
   isTeamIdentityConfigured,
 } from "@/data/teamIdentitySetup";
-import { getExerciseById, useAppStore } from "@/state/useAppStore";
+import { resolveExerciseSelection } from "@/app/viewerSelection";
+import { useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
 import { memo, useMemo, useState } from "react";
 import { FirstRunChooser } from "./FirstRunChooser";
@@ -48,6 +49,7 @@ export function HomeView() {
   const microcycle = useAppStore((state) => state.microcycle);
   const aiPrompt = useAppStore((state) => state.aiPrompt);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const tags = useAppStore((state) => state.tags);
   const tracks = useAppStore((state) => state.tracks);
   const allManualObservations = useAppStore((state) => state.manualObservations);
@@ -57,7 +59,11 @@ export function HomeView() {
     (state) => state.lineupLab.savedTransitions.length,
   );
   const { reports, reportsError } = usePostMatchReports();
-  const selectedExercise = getExerciseById(selectedExerciseId);
+  const { exercise: selectedExercise, missing: selectedExerciseMissing } =
+    resolveExerciseSelection(selectedExerciseId, [
+      ...catalog,
+      ...exerciseVariants,
+    ]);
   const [quickObservation, setQuickObservation] = useState("");
   const availablePlayers = useMemo(
     () =>
@@ -432,15 +438,31 @@ export function HomeView() {
             <div className="list">
               <div className="list-row">
                 <div className="lr-icon">3D</div>
-                <div>
-                  <b>{selectedExercise.title}</b>
-                  <small>
-                    {selectedExercise.phase} / {selectedExercise.principle}
-                  </small>
-                </div>
-                <span className="tag-pill">
-                  {selectedExercise.players.min}-{selectedExercise.players.max}
-                </span>
+                {selectedExerciseMissing ? (
+                  <>
+                    <div>
+                      <b style={{ color: "var(--warn)" }}>
+                        Ejercicio retirado del catalogo
+                      </b>
+                      <small>Abri Biblioteca para elegir uno vigente.</small>
+                    </div>
+                    <span className="tag-pill" style={{ color: "var(--warn)" }}>
+                      !
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <b>{selectedExercise.title}</b>
+                      <small>
+                        {selectedExercise.phase} / {selectedExercise.principle}
+                      </small>
+                    </div>
+                    <span className="tag-pill">
+                      {selectedExercise.players.min}-{selectedExercise.players.max}
+                    </span>
+                  </>
+                )}
               </div>
               <div className="list-row">
                 <div className="lr-icon">CAT</div>
@@ -1186,7 +1208,9 @@ const MicrocycleCard = memo(function MicrocycleCard() {
 const SessionCard = memo(function SessionCard() {
   const session = useAppStore((state) => state.session);
   const aiPrompt = useAppStore((state) => state.aiPrompt);
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const blocks = session.blocks.slice(0, 4);
+  const exercisePool = [...catalog, ...exerciseVariants];
   return (
     <div className="card">
       <div className="card-head">
@@ -1210,13 +1234,22 @@ const SessionCard = memo(function SessionCard() {
       {blocks.length ? (
         <div className="list">
           {blocks.map((block, index) => {
-            const exercise = getExerciseById(block.exerciseId);
+            const { exercise, missing } = resolveExerciseSelection(
+              block.exerciseId,
+              exercisePool,
+            );
             return (
               <div className="list-row" key={block.id}>
                 <div className="lr-icon">{String(index + 1).padStart(2, "0")}</div>
                 <div>
-                  <b>{exercise.title}</b>
-                  <small>{block.durationMin} min / {exercise.objective.primary}</small>
+                  <b style={missing ? { color: "var(--warn)" } : undefined}>
+                    {missing ? "Ejercicio retirado del catalogo" : exercise.title}
+                  </b>
+                  <small>
+                    {missing
+                      ? `${block.durationMin} min`
+                      : `${block.durationMin} min / ${exercise.objective.primary}`}
+                  </small>
                 </div>
                 <span className="chip">{block.durationMin}'</span>
               </div>
