@@ -21,7 +21,13 @@ import type {
   MemoryCandidate,
   SavedPostMatchReport,
 } from "@/ai/post-match/schemas";
-import { type Exercise, getSelectableCatalog, type Player } from "@/data";
+import {
+  catalog,
+  type Exercise,
+  getSelectableCatalog,
+  type Player,
+} from "@/data";
+import { resolveExerciseSelection } from "@/app/viewerSelection";
 import { buildSessionPlanFromDiagnosis } from "@/sessions/diagnosisSession";
 import { exportCoachDiagnosisHtml } from "@/export/premiumExports";
 import {
@@ -32,11 +38,7 @@ import {
   PitchViz,
 } from "@/ui/tacticalPrimitives";
 import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
-import {
-  getExerciseById,
-  type CoachShapeContext,
-  useAppStore,
-} from "@/state/useAppStore";
+import { type CoachShapeContext, useAppStore } from "@/state/useAppStore";
 import {
   summarizeVideoEvidence,
   videoEvidenceToTagsText,
@@ -115,6 +117,7 @@ export function AiView() {
   const allManualObservations = useAppStore((state) => state.manualObservations);
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const mode = useAppStore((state) => state.aiMode);
   const setMode = useAppStore((state) => state.setAiMode);
   const coachInterview = useAppStore((state) => state.coachInterview);
@@ -135,7 +138,11 @@ export function AiView() {
   const [lastRun, setLastRun] = useState<LastRunState>({ state: "idle" });
 
   const input = prompt.trim();
-  const selectedExercise = getExerciseById(selectedExerciseId);
+  const { exercise: selectedExercise, missing: selectedExerciseMissing } =
+    resolveExerciseSelection(selectedExerciseId, [
+      ...catalog,
+      ...exerciseVariants,
+    ]);
   const recentReports = useMemo(
     () =>
       [...reports].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).slice(0, 3),
@@ -204,7 +211,9 @@ export function AiView() {
         coachShapeContext?.selectedShapeName ??
         lineupLabShapes[0]?.name ??
         "Sin shape activo",
-      currentExercise: selectedExercise?.title ?? "Sin ejercicio",
+      currentExercise: selectedExerciseMissing
+        ? "Ejercicio retirado del catalogo"
+        : selectedExercise.title,
       sessionBlocks: sessionBlockCount,
       videoTags: tagsCount,
       videoTracks: tracksCount,
@@ -221,7 +230,8 @@ export function AiView() {
       lineupLabShapes,
       lineupLabTransitions.length,
       recentReports,
-      selectedExercise?.title,
+      selectedExercise.title,
+      selectedExerciseMissing,
       sessionBlockCount,
       manualObservations.length,
       tagsCount,

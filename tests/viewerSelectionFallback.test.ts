@@ -108,3 +108,32 @@ describe("resolveExerciseSelection — nucleo reusado por Home/AppShell/Library"
     expect(viaViewer).toEqual(viaCore);
   });
 });
+
+/**
+ * W6 (mc-19): ultimo call site conocido del patron — AiView.tsx (ContextRow
+ * "Ejercicio actual" en el panel "Avanzado"). Excluido de W4/W5 por la
+ * restriccion no-IA; ahora tiene permiso acotado solo para esto. AiView usa
+ * el mismo nucleo (catalog + exerciseVariants) que Home/AppShell/Library, sin
+ * logica nueva en el helper. A diferencia de esos call sites, el valor
+ * resuelto en AiView NO se inyecta en el payload al coach
+ * (`buildCoachRuntimeContext` no tiene ningun campo de ejercicio) — el fix
+ * es puramente de display, verificado por separado con Playwright
+ * interceptando el fetch a /api/coach-agent.
+ */
+describe("resolveExerciseSelection — call site de AiView (contexto Diagnostico)", () => {
+  const retiredId = [...retiredExerciseIds.keys()][0];
+  const exercises: Exercise[] = catalog;
+
+  it("id vigente resuelve normal, sin marcar missing", () => {
+    const vigenteId = catalog[1].id;
+    const result = resolveExerciseSelection(vigenteId, exercises);
+    expect(result.missing).toBe(false);
+    expect(result.exercise.id).toBe(vigenteId);
+  });
+
+  it("id retirado marca missing:true en vez de sustituir en silencio", () => {
+    const result = resolveExerciseSelection(retiredId, exercises);
+    expect(result.missing).toBe(true);
+    expect(result.exercise.id).toBe(catalog[0].id);
+  });
+});
