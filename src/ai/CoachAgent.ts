@@ -47,6 +47,7 @@ import {
   guardCoachAdvice,
 } from "./coachOutputGuard.js"
 import type { BoardEvidencePacket } from "../board/boardEvidencePacket.js"
+import type { BoardFreeStateEvidencePacket } from "../board/boardFreeStateEvidencePacket.js"
 import { recordCoachObservabilityEvent } from "./coachObservability.js"
 import {
   buildCoachPipelineTrace,
@@ -112,43 +113,14 @@ function getClient() {
 // ────────────────────────────────────────────────────────────────────────────
 // Free-state board evidence (sibling packet of slice-4 boardEvidence).
 //
-// The REAL type lives in mc-21's unmerged `src/board/boardFreeStateEvidencePacket.ts`.
-// We DO NOT import it (that branch merges after ours). We declare a minimal, all-
-// optional STRUCTURAL type for the only thing the prompt consumes — a list of
-// grounded, countable factualClaims — and narrow defensively at runtime. mc-21
-// aligns the real import at integration.
+// The type is the REAL one from `src/board/boardFreeStateEvidencePacket.ts`
+// (client-safe: zod + types, no server-only imports). The API gate
+// (`parseIncomingBoardFreeState`) is the only validated entry point; the packet
+// nests its claims under `freeStateEvidence.factualClaims` (a kind-based
+// discriminated union). The formatter below still takes `unknown` and narrows
+// defensively — it is the render boundary and must tolerate partial/malformed
+// input (and is unit-tested with such) without widening the public param type.
 // ────────────────────────────────────────────────────────────────────────────
-type FreeStateFactualClaim = {
-  id?: string
-  // Optional pre-rendered statement override. mc-21's REAL packet does NOT carry
-  // this (its schema strips unknown keys), so it never opens a validated free-text
-  // channel; kept only as a defensive precedence if some packet provides one.
-  statement?: string
-  text?: string
-  label?: string
-  fact?: string
-  // mc-21's REAL shape is kind-based with per-kind declared fields (no `value`).
-  // We render these structurally, mirroring mc-21's `renderableFreeStateFacts` so
-  // prompt and UI declare identical facts. Zero tactical interpretation, zero
-  // positions — only declared counts/labels.
-  kind?: string
-  side?: string
-  formation?: string
-  count?: number
-  objectType?: string
-  semantic?: string
-  title?: string
-  index?: number
-  totalScenes?: number
-  visible?: string[]
-  // Legacy generic fallback only (kind = value), never a tactical label we invent.
-  value?: string | number
-}
-
-type FreeStateEvidenceInput = {
-  factualClaims?: FreeStateFactualClaim[]
-  freeStateEvidence?: { factualClaims?: FreeStateFactualClaim[] }
-}
 
 /**
  * Renders the "HECHOS DEL TABLERO (estado libre)" section from a free-state packet.
@@ -272,7 +244,7 @@ export async function generateCoachResponse(
   coachContext?: unknown,
   prefetched?: Awaited<ReturnType<typeof retrieveCoachEvidence>>,
   promptMode: CoachPromptMode = inferCoachPromptMode(userInput),
-  freeStateEvidence?: FreeStateEvidenceInput | null,
+  freeStateEvidence?: BoardFreeStateEvidencePacket | null,
 ) {
   const startedAt = Date.now()
   if (!userInput.trim()) {
@@ -618,7 +590,7 @@ async function runCoachTurnCore({
   collectedEvidence?: CollectedAnswer[]
   interviewState?: CoachInterviewState | null
   skipInterview?: boolean
-  freeStateEvidence?: FreeStateEvidenceInput | null
+  freeStateEvidence?: BoardFreeStateEvidencePacket | null
 }): Promise<CoachResponse> {
   const turnStartedAt = Date.now()
   // Free-state board facts travel EXPLICIT and ISOLATED (mirror of boardEvidence:

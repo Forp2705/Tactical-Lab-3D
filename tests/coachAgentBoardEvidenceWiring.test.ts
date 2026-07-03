@@ -18,7 +18,9 @@ vi.mock("openai", () => ({
   },
 }));
 
-describe("runCoachTurn board-evidence wiring", () => {
+// Explicit 20s timeout: dynamic `await import("../src/ai/CoachAgent")` can exceed
+// the 5s default under parallel load (mc-99 W2B gate, section 3). Env-hardening only.
+describe("runCoachTurn board-evidence wiring", { timeout: 20000 }, () => {
   beforeEach(() => {
     process.env.OPENROUTER_API_KEY = "test-key";
     mockState.advice = advice();

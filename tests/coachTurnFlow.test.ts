@@ -51,7 +51,10 @@ const defenseClaim: ImpliedClaim = {
   requiredEvidence: ["cause", "zone", "ownTeam"],
 };
 
-describe("runCoachTurn", () => {
+// Explicit 20s timeout: these tests `await import("../src/ai/CoachAgent")`, whose
+// cold transform under parallel load can exceed the 5s default and yield false
+// timeouts (mc-99 W2B gate, section 3). Widening is env-hardening, not a logic change.
+describe("runCoachTurn", { timeout: 20000 }, () => {
   beforeEach(() => {
     process.env.OPENROUTER_API_KEY = "test-key";
     mockState.advice = advice();
