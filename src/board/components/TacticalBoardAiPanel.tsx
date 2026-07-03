@@ -274,12 +274,30 @@ export function TacticalBoardAiPanel({
                         ) : null;
                       })()
                     : null}
-                  {/* Coach prose renders SEPARATELY from the board-fact rows. */}
-                  <pre className="rombo-scenario-coach-prose">
-                    {coachAnswer.response.mode === "question"
-                      ? JSON.stringify(coachAnswer.response, null, 2)
-                      : coachAnswer.response.advice.tacticalReading}
-                  </pre>
+                  {/* Coach prose renders SEPARATELY from the board-fact rows.
+                      Question mode used to dump raw JSON here — same fix as
+                      the free-state twin (mc-99 gate task_2ee644e07e2a),
+                      same reused classes (mc-18 styled them in W2 #19). */}
+                  {coachAnswer.response.mode === "question" ? (
+                    <ul className="rombo-freestate-coach-questions">
+                      {coachAnswer.response.selectedQuestions.map((q) => (
+                        <li key={q.id}>
+                          <p className="rombo-freestate-coach-question-text">
+                            {q.question}
+                          </p>
+                          {q.whyItMatters ? (
+                            <p className="rombo-freestate-coach-question-why">
+                              {q.whyItMatters}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <pre className="rombo-scenario-coach-prose">
+                      {coachAnswer.response.advice.tacticalReading}
+                    </pre>
+                  )}
                 </div>
               ) : null}
             </div>
