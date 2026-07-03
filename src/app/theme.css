@@ -1,3 +1,30 @@
+/* Felt-board fonts, self-hosted (Google Fonts OFL, latin subset, variable
+   woff2 downloaded build-time — no runtime CDN request). Referenced only by
+   the --felt-font-* tokens below, consumed under .rombo-board-shell. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/bricolage-grotesque-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Familjen Grotesk";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/familjen-grotesk-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/geist-mono-variable.woff2") format("woff2");
+}
+
 :root {
   --bg: #050b10;
   --panel: rgba(10, 18, 24, 0.92);
