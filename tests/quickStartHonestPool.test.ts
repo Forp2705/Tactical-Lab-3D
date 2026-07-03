@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generatedLibraryExerciseIds } from "../src/data/exercises/catalog";
+import { retiredExerciseIds } from "../src/data/exercises/retiredExercises";
 import {
   criticalExerciseIds,
   getSelectableCatalog,
@@ -49,12 +50,23 @@ describe("Quick Start: cada template arma plan solo con curados", () => {
 });
 
 describe("isSelectableExercise (validez de referencia existente)", () => {
-  it("acepta un generado no critico: las sesiones guardadas que los referencian siguen validas", () => {
-    const generatedNonCritical = [...generatedLibraryExerciseIds].find(
+  it("tras W6 la cuarentena quedo vacia; el contrato de referencia vive en los retirados", () => {
+    // El ultimo generado se re-autoro en W6, asi que `generatedLibraryExerciseIds`
+    // quedo vacio y ya no existe el caso "generado no critico referenciado". El
+    // contrato de `isSelectableExercise` (una referencia guardada sigue valida
+    // salvo que sea CRITICA) se mantiene sobre el equivalente actual de un id
+    // fuera del pool visible: uno RETIRADO no critico, que una sesion vieja
+    // todavia puede referenciar y debe seguir siendo reproducible.
+    expect(generatedLibraryExerciseIds.size).toBe(0);
+
+    const retiredNonCritical = [...retiredExerciseIds.keys()].find(
       (id) => !criticalExerciseIds.has(id),
     );
-    expect(generatedNonCritical).toBeDefined();
-    expect(isSelectableExercise(generatedNonCritical as string)).toBe(true);
+    expect(retiredNonCritical).toBeDefined();
+    expect(isSelectableExercise(retiredNonCritical as string)).toBe(true);
+    // Pero NO reaparece en el pool de selecciones nuevas.
+    const pool = new Set(getSelectableCatalog().map((e) => e.id));
+    expect(pool.has(retiredNonCritical as string)).toBe(false);
   });
 
   it("rechaza un critico si lo hubiera; tras Ola 4 el catalogo no tiene criticos", () => {
