@@ -1077,39 +1077,43 @@ const extraExercises: unknown[] = [
     regressions: ["Arquero a dos toques", "Un central rival fijo"],
     scene: {
       duration: 16,
+      // Escena espejada en X (x -> 100 - x): en "half" Pitch3D dibuja el arco
+      // solo en x alto, y el arquero tiene que defender un arco visible. El
+      // espejo preserva la geometria relativa y la intencion (presion al GK
+      // que recibe, salida forzada a banda); solo cambia el lado.
       pitchMode: "half",
       actors: [
-        actor("pgk", "rival", 1, "GK", { x: 10, y: 50 }, [
-          { t: 3, pos: { x: 12, y: 50 } },
+        actor("pgk", "rival", 1, "GK", { x: 90, y: 50 }, [
+          { t: 3, pos: { x: 88, y: 50 } },
         ]),
-        actor("pcb4", "rival", 4, "DFC", { x: 25, y: 36 }, [
-          { t: 6, pos: { x: 23, y: 34 } },
+        actor("pcb4", "rival", 4, "DFC", { x: 75, y: 36 }, [
+          { t: 6, pos: { x: 77, y: 34 } },
         ]),
-        actor("pcb5", "rival", 5, "DFC", { x: 25, y: 64 }, [
-          { t: 6, pos: { x: 28, y: 66 } },
+        actor("pcb5", "rival", 5, "DFC", { x: 75, y: 64 }, [
+          { t: 6, pos: { x: 72, y: 66 } },
         ]),
-        actor("pp6", "rival", 6, "PIV", { x: 42, y: 50 }, [
-          { t: 7, pos: { x: 44, y: 50 } },
+        actor("pp6", "rival", 6, "PIV", { x: 58, y: 50 }, [
+          { t: 7, pos: { x: 56, y: 50 } },
         ]),
-        actor("pr9o", "own", 9, "DC", { x: 38, y: 50 }, [
-          { t: 5, pos: { x: 22, y: 58 } },
+        actor("pr9o", "own", 9, "DC", { x: 62, y: 50 }, [
+          { t: 5, pos: { x: 78, y: 58 } },
         ]),
-        actor("pr11o", "own", 11, "EI", { x: 44, y: 34 }, [
-          { t: 7, pos: { x: 30, y: 34 } },
+        actor("pr11o", "own", 11, "EI", { x: 56, y: 34 }, [
+          { t: 7, pos: { x: 70, y: 34 } },
         ]),
-        actor("pr7o", "own", 7, "ED", { x: 44, y: 66 }, [
-          { t: 7, pos: { x: 33, y: 66 } },
+        actor("pr7o", "own", 7, "ED", { x: 56, y: 66 }, [
+          { t: 7, pos: { x: 67, y: 66 } },
         ]),
-        actor("pr8o", "own", 8, "INT", { x: 52, y: 48 }, [
-          { t: 8, pos: { x: 45, y: 50 } },
+        actor("pr8o", "own", 8, "INT", { x: 48, y: 48 }, [
+          { t: 8, pos: { x: 55, y: 50 } },
         ]),
       ],
       ball: {
-        start: { x: 25, y: 36, z: 0 },
+        start: { x: 75, y: 36, z: 0 },
         path: [
-          { t: 3, pos: { x: 10, y: 50, z: 0.5 } },
-          { t: 7, pos: { x: 25, y: 64, z: 0.7 } },
-          { t: 10, pos: { x: 33, y: 70, z: 0.4 } },
+          { t: 3, pos: { x: 90, y: 50, z: 0.5 } },
+          { t: 7, pos: { x: 75, y: 64, z: 0.7 } },
+          { t: 10, pos: { x: 67, y: 70, z: 0.4 } },
         ],
       },
       overlays: [
@@ -1148,7 +1152,7 @@ const extraExercises: unknown[] = [
         {
           id: "pgz1",
           label: "trampa",
-          rect: { x: 22, y: 62, w: 18, h: 18 },
+          rect: { x: 60, y: 62, w: 18, h: 18 },
           color: "#ef4444",
           layer: "press",
           visibleInPhases: ["outcome"],
