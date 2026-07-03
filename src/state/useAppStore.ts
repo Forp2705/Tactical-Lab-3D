@@ -975,33 +975,46 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
   createTacticalBoard: (options) => {
-    const board = createDefaultBoard(options?.title, {
-      players: get().team.players,
-    });
-    set((state) => ({
-      tacticalBoards: [...state.tacticalBoards, board],
-      activeBoardId: board.id,
-      activeBoardSceneId: board.scenes[0]?.id ?? null,
-      view: "board",
-    }));
-    return board.id;
+    // El boton llamador ignora el valor de retorno en error; no morir mudo
+    // ante un fallo de creacion inesperado (P0 real es el truncado de title
+    // en createDefaultBoard, esto es defensa adicional).
+    try {
+      const board = createDefaultBoard(options?.title, {
+        players: get().team.players,
+      });
+      set((state) => ({
+        tacticalBoards: [...state.tacticalBoards, board],
+        activeBoardId: board.id,
+        activeBoardSceneId: board.scenes[0]?.id ?? null,
+        view: "board",
+      }));
+      return board.id;
+    } catch (error) {
+      console.error("[board] createTacticalBoard failed", error);
+      return "";
+    }
   },
   createTacticalBoardFromWeeklyFocus: () => {
     const state = get();
-    const board = createDefaultBoard(
-      state.weeklyDecisionThread?.problem || "Pizarra desde foco semanal",
-      {
-        weeklyThread: state.weeklyDecisionThread,
-        players: state.team.players,
-      },
-    );
-    set({
-      tacticalBoards: [...state.tacticalBoards, board],
-      activeBoardId: board.id,
-      activeBoardSceneId: board.scenes[0]?.id ?? null,
-      view: "board",
-    });
-    return board.id;
+    try {
+      const board = createDefaultBoard(
+        state.weeklyDecisionThread?.problem || "Pizarra desde foco semanal",
+        {
+          weeklyThread: state.weeklyDecisionThread,
+          players: state.team.players,
+        },
+      );
+      set({
+        tacticalBoards: [...state.tacticalBoards, board],
+        activeBoardId: board.id,
+        activeBoardSceneId: board.scenes[0]?.id ?? null,
+        view: "board",
+      });
+      return board.id;
+    } catch (error) {
+      console.error("[board] createTacticalBoardFromWeeklyFocus failed", error);
+      return "";
+    }
   },
   openTacticalBoard: (boardId, sceneId) => {
     const board = get().tacticalBoards.find((item) => item.id === boardId);

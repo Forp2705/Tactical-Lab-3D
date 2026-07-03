@@ -62,7 +62,7 @@ import {
   type BoardPayload,
   type PlanningBoardPlayer,
   buildBoardPayload,
-  inferAiInterpretation,
+  inferAiInterpretationFindings,
 } from "./productBoardTypes";
 import { useBoardEditor } from "./useBoardEditor";
 
@@ -170,7 +170,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
 
   const aiInterpretation = useMemo(
     () =>
-      inferAiInterpretation({
+      inferAiInterpretationFindings({
         players: roster,
         objects: scene.objects,
         arrows: scene.arrows,
@@ -229,7 +229,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       teamAFormation,
       exercise,
       layers,
-      aiInterpretation,
+      // BoardPayload.aiInterpretation es string[] (contrato del JSON
+      // exportable); aiInterpretation aca es la version rica con id para el
+      // panel, no se filtra el shape hacia el export.
+      aiInterpretation: aiInterpretation.map((finding) => finding.text),
     });
     setPayload(nextPayload);
     setStatus("Payload JSON copiado al portapapeles");

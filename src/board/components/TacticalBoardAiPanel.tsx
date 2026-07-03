@@ -10,7 +10,7 @@ import type { CoachResponse } from "@/ai/CoachSchemas";
 import { renderableBoardFacts, renderableFreeStateFacts } from "@/board/boardFactPresentation";
 
 type TacticalBoardAiPanelProps = {
-  aiInterpretation: string[];
+  aiInterpretation: Array<{ id: string; text: string }>;
   layers: PlanningBoardLayer[];
   payload: BoardPayload | null;
   attachBlockId: string;
@@ -84,7 +84,7 @@ export function TacticalBoardAiPanel({
         <h2>Que entiende RomboIQ</h2>
         <ul className="rombo-ai-list">
           {aiInterpretation.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item.id}>{item.text}</li>
           ))}
         </ul>
       </section>
