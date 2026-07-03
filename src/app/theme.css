@@ -4828,45 +4828,6 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   touch-action: none;
 }
 
-.board-pitch-base {
-  fill: #071b14;
-}
-
-.board-pitch-marks {
-  fill: none;
-  stroke: rgba(232, 255, 247, 0.45);
-  stroke-width: 0.35;
-}
-
-.board-object {
-  cursor: grab;
-}
-
-.board-object.own circle {
-  fill: #5eead4;
-  stroke: rgba(255, 255, 255, 0.78);
-  stroke-width: 0.28;
-}
-
-.board-object.rival circle {
-  fill: #ff7474;
-  stroke: rgba(255, 255, 255, 0.72);
-  stroke-width: 0.28;
-}
-
-.board-object.selected circle,
-.board-arrow-group.selected .board-arrow,
-.board-zone-group.selected .board-zone {
-  stroke: #f8d66d;
-  stroke-width: 0.9;
-}
-
-.danger-ring {
-  fill: none !important;
-  stroke: #f8d66d !important;
-  stroke-width: 0.55 !important;
-}
-
 .board-ball {
   fill: #f8fafc;
   stroke: #0f172a;
@@ -4880,8 +4841,6 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   font-weight: 900;
 }
 
-.token-role,
-.board-object-label,
 .board-zone-label {
   text-anchor: middle;
   fill: #e8fff7;
