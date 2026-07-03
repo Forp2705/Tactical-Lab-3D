@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RomboIQ â€” Pizarra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Familjen+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@300;400;500;700&family=Shantell+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{ background:#0a1712; font-family:"Familjen Grotesk",system-ui,sans-serif; overflow:hidden; }
+  .stage{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  .fitbox{ width:calc(1440px * var(--s,1)); height:calc(960px * var(--s,1)); }
+  .scaler{ width:1440px; height:960px; transform-origin:top left; transform:scale(var(--s,1)); }
+
+  /* ===== board (felt) ===== */
+  .board{
+    position:relative; width:1440px; height:960px; overflow:hidden; border-radius:10px;
+    --frame:0 50px 130px rgba(0,0,0,.6), inset 0 0 0 14px #2b2018, inset 0 0 0 18px #3a2c20;
+    --grain:.5; --glow:0 0 1px rgba(255,255,255,.35);
+    background:
+      radial-gradient(120% 90% at 18% 12%, rgba(255,255,255,0.05), transparent 55%),
+      radial-gradient(140% 120% at 88% 96%, rgba(0,0,0,0.45), transparent 60%),
+      repeating-linear-gradient(27deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 5px),
+      linear-gradient(160deg,#16352a 0%,#0d241b 55%,#0a1d16 100%);
+    box-shadow:var(--frame); color:#f3efe2;
+  }
+  .board::after{ content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:var(--grain,.5);
+    background-image:radial-gradient(rgba(255,255,255,.5) .5px, transparent .6px); background-size:4px 4px; }
+  .chalk{ text-shadow:var(--glow); }
+  .vhide{ display:none !important; }
+
+  /* ===== top ===== */
+  .top{ position:absolute; top:40px; left:54px; right:54px; display:flex; align-items:flex-start; justify-content:space-between; z-index:6;}
+  .mast{ display:flex; align-items:center; gap:16px; cursor:pointer; }
+  .mast .rb{ width:46px;height:46px;transform:rotate(45deg);border:3px solid #f3efe2;display:grid;place-items:center; box-shadow:0 0 0 2px rgba(0,0,0,.2) inset;}
+  .mast .rb i{ width:11px;height:11px;background:#f6d24b;border-radius:1px; }
+  .mast h1{ font-family:"Bricolage Grotesque";font-weight:800;font-size:42px;letter-spacing:.01em;line-height:.8;text-transform:uppercase;}
+  .mast h1 em{ font-style:normal;color:#f6d24b; }
+  .mast .sub{ font-family:"Geist Mono"; font-size:11px; letter-spacing:.18em; color:#9fc2b1; text-transform:uppercase; margin-top:5px;}
+  .matchstrip{ text-align:right; font-family:"Geist Mono"; font-size:12px; letter-spacing:.1em; color:#cfe6da;}
+  .matchstrip b{ display:block; font-family:"Bricolage Grotesque"; font-weight:700; font-size:22px; letter-spacing:.02em; text-transform:uppercase; color:#fff;}
+  .matchstrip .cd{ color:#f6d24b; }
+  .swoosh{ position:absolute; top:104px; left:54px; width:300px; height:14px; z-index:5;}
+
+  /* ===== nav ===== */
+  .nav{ position:absolute; top:136px; left:40px; width:240px; z-index:6; padding:14px 16px 16px; border:1px solid transparent; border-radius:14px; transition:border-color .2s ease, background .2s ease, box-shadow .2s ease; }
+  .nav:hover{ border-color:rgba(243,239,226,.24); background:rgba(5,12,9,.72); box-shadow:0 20px 46px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05); }
+  .nav .nk{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.24em; text-transform:uppercase; color:#7fa994; margin:0 0 14px 2px;}
+  .nav a{ display:flex; align-items:center; gap:13px; padding:9px 0; color:#cfe6da; text-decoration:none; position:relative; cursor:pointer;}
+  .nav a .tk{ width:15px;height:15px;border:2px solid #5f8775;border-radius:50%; flex:none; transition:.2s;}
+  .nav a .lb{ font-family:"Bricolage Grotesque"; font-weight:600; font-size:21px; text-transform:uppercase; letter-spacing:.01em; transition:.2s;}
+  .nav a:hover{ color:#fff; }
+  .nav a.on{ color:#fff; }
+  .nav a.on .tk{ border-color:#f6d24b; background:#f6d24b; width:17px; height:17px; box-shadow:0 0 12px rgba(246,210,75,.5);}
+  .nav a.on .lb{ text-shadow:0 0 1px rgba(255,255,255,.4); }
+  .nav .div{ height:1px; background:rgba(255,255,255,.12); margin:16px 0; }
+
+  /* ===== pitch (technical panel) ===== */
+  .pitch{ position:absolute; z-index:2; border:2.5px solid rgba(243,239,226,.8); border-radius:4px; overflow:hidden;
+    background:linear-gradient(165deg,#0c1f18 0%,#081410 100%);
+    box-shadow: inset 0 0 60px rgba(0,0,0,.35), 0 14px 36px rgba(0,0,0,.45);}
+  .pitch::before{ content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background:linear-gradient(rgba(150,200,180,.05) 1px,transparent 1px) 0 0/34px 34px,
+      linear-gradient(90deg, rgba(150,200,180,.05) 1px,transparent 1px) 0 0/34px 34px;}
+  #pitchSala{ top:150px; right:60px; width:640px; height:800px; }
+  .circ{ position:absolute; left:50%; top:0; width:170px;height:170px;transform:translate(-50%,-50%); border:2px solid rgba(243,239,226,.5); border-radius:50%;}
+  .box{ position:absolute; left:50%; transform:translateX(-50%); width:300px; height:120px; border:2px solid rgba(243,239,226,.55);}
+  .box.b{ bottom:0; border-bottom:0;}
+  .six{ position:absolute; left:50%; transform:translateX(-50%); width:150px;height:52px;border:2px solid rgba(243,239,226,.45);}
+  .six.b{ bottom:0;border-bottom:0;}
+  .ttl{ position:absolute; top:14px; left:16px; font-family:"Geist Mono"; font-size:10px; letter-spacing:.18em; color:rgba(243,239,226,.6); text-transform:uppercase; z-index:4;}
+  .legend{ position:absolute; left:16px; bottom:13px; display:flex; gap:16px; font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:rgba(243,239,226,.72); z-index:4;}
+  .legend span{ display:flex; align-items:center; gap:6px;}
+  .legend i{ width:12px;height:12px;border-radius:50%; flex:none;}
+  .legend .lus{ background:#f6d24b;}
+  .legend .lthem{ border:2px dashed #ff6b5e;}
+  .legend .lpase{ width:18px; height:0; border:0; border-top:2px solid #eafff2; border-radius:0; }
+
+  .tok{ position:absolute; width:34px;height:34px;border-radius:50%; display:grid;place-items:center; font-family:"Bricolage Grotesque"; font-weight:700; font-size:15.5px; transform:translate(-50%,-50%); z-index:3;}
+  .tok.us{ background:#f6d24b; color:#1a1205; box-shadow:0 3px 8px rgba(0,0,0,.4);}
+  .tok.them{ background:transparent; color:#ff6b5e; border:2px dashed #ff6b5e;}
+  .arrow{ position:absolute; left:0; top:0; width:100%; height:100%; z-index:2; }
+  .arrow svg{ overflow:visible; }
+
+  /* compact preview pitch */
+  .pitch.compact{ position:relative; top:auto; right:auto; width:100%; height:430px; box-shadow:inset 0 0 40px rgba(0,0,0,.35);}
+  .pitch.compact .tok{ width:24px;height:24px;font-size:11px;}
+  .pitch.compact .circ{ width:130px;height:130px;}
+  .cue-ring{ position:absolute; width:14%; aspect-ratio:1; border:1.7px dashed #eafff2; border-radius:50%; transform:translate(-50%,-50%); z-index:3; pointer-events:none; box-shadow:0 0 14px rgba(234,255,242,.18); }
+  .cue-lbl{ position:absolute; transform:translate(-50%,-300%); font-family:"Geist Mono"; font-size:9px; letter-spacing:.16em; color:#eafff2; white-space:nowrap; z-index:3; pointer-events:none; }
+
+  /* ===== paper note cards ===== */
+  .card{ position:absolute; z-index:5; background:#f4efe2; color:#1c2620; box-shadow:0 18px 36px rgba(0,0,0,.42); padding:20px 22px;
+    background-image:repeating-linear-gradient(0deg, rgba(0,0,0,.02) 0 1px, transparent 1px 28px);}
+  .card::before{ content:""; position:absolute; top:-11px; left:50%; transform:translateX(-50%) rotate(-3deg); width:96px; height:24px; background:rgba(246,210,75,.55); box-shadow:0 2px 5px rgba(0,0,0,.18); }
+  .card .ek{ display:inline-block; font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.2em; text-transform:uppercase; color:#9a7b2e; padding-bottom:9px; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M2,7C26,2,50,9,76,4S110,9,118,5' fill='none' stroke='%23d9a32a' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left bottom; background-size:100% 7px; }
+  .card h3{ font-family:"Bricolage Grotesque"; font-weight:700; text-transform:uppercase; font-size:25px; line-height:1; letter-spacing:-.01em; margin:7px 0 0; color:#15201a;}
+  .card p{ font-size:13.5px; line-height:1.5; color:#3c463f; margin-top:9px; }
+  .card .scribble{ font-family:"Shantell Sans"; font-size:21px; color:#c0492f; transform:rotate(-3deg); display:inline-block; }
+  .tags{ display:flex; gap:7px; margin-top:13px; flex-wrap:wrap; }
+  .tags span{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.06em; padding:4px 9px; border:1px solid #cdbf9c; color:#6b5e3c; text-transform:uppercase;}
+
+  #cProblem{ top:150px; left:312px; width:412px; transform:rotate(-1.4deg); }
+  #cProblem h3{ font-size:30px; }
+  #cSession{ top:486px; left:326px; width:300px; transform:rotate(1.6deg); }
+  #cSession .blk{ display:flex; align-items:baseline; gap:10px; padding:7px 0; border-bottom:1px dashed #cdbf9c;}
+  #cSession .blk:last-child{ border-bottom:0;}
+  #cSession .blk b{ font-family:"Bricolage Grotesque"; font-weight:700; color:#9a7b2e; width:24px; font-size:16px;}
+  #cSession .blk .nm{ font-size:13px; font-weight:600; flex:1; }
+  #cSession .blk .mn{ font-family:"Geist Mono"; font-size:12px; color:#6b5e3c; }
+
+  /* sala plan + coaching notes */
+  #cPlan{ top:300px; left:300px; width:372px; transform:rotate(-1.1deg); }
+  #cCoach{ top:584px; left:316px; width:340px; transform:rotate(1.2deg); }
+  #cCoach .cl{ display:flex; gap:10px; align-items:baseline; padding:7px 0; border-bottom:1px dashed #cdbf9c; font-size:13px; line-height:1.4;}
+  #cCoach .cl:last-child{ border-bottom:0;}
+  #cCoach .cl b{ font-family:"Shantell Sans"; font-size:22px; color:#c0492f; width:18px; flex:none;}
+
+  /* ===== mesa tweak (order) ===== */
+  .board[data-mesa=ordenado] #cProblem,
+  .board[data-mesa=ordenado] #cSession,
+  .board[data-mesa=ordenado] #cPlan,
+  .board[data-mesa=ordenado] #cCoach{ transform:none; }
+  .board[data-mesa=ordenado] #cSession{ left:312px; }
+  .board[data-mesa=ordenado] #cCoach{ left:300px; }
+  .board[data-mesa=ordenado] .card::before{ transform:translateX(-50%) rotate(0deg); background:rgba(246,210,75,.4); }
+  .board[data-mesa=ordenado] .scribble{ font-family:"Familjen Grotesk",sans-serif; font-style:italic; font-weight:600; font-size:13.5px; color:#3c463f; transform:none; }
+
+  /* ===== preview (home) ===== */
+  #previewWrap{ position:absolute; top:150px; right:80px; width:416px; z-index:4; }
+  .preview-card{ border:1px solid rgba(243,239,226,.16); border-radius:12px; background:rgba(8,18,14,.55); padding:14px; box-shadow:0 18px 40px rgba(0,0,0,.4); }
+  .preview-card .ph{ display:flex; align-items:center; justify-content:space-between; margin-bottom:11px; }
+  .preview-card .ph .k{ display:inline-block; font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.2em; text-transform:uppercase; color:#9fc2b1; padding-bottom:9px; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M2,7C26,2,50,9,76,4S110,9,118,5' fill='none' stroke='%23f6d24b' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left bottom; background-size:100% 7px; }
+  .preview-card .ph .sys{ font-family:"Bricolage Grotesque"; font-weight:700; font-size:15px; text-transform:uppercase; color:#f6d24b; letter-spacing:.02em;}
+  .preview-card .open{ width:100%; margin-top:13px; font-family:"Bricolage Grotesque"; font-weight:600; text-transform:uppercase; font-size:14px; letter-spacing:.03em;
+    padding:12px; border:0; border-radius:8px; background:#f6d24b; color:#1a1205; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:.16s;}
+  .preview-card .open:hover{ filter:brightness(1.06); }
+
+  /* ===== switcher (sala) ===== */
+  #switcher{ position:absolute; top:138px; left:300px; width:372px; z-index:6; }
+  #switcher .sk{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#7fa994; margin-bottom:9px; display:flex; align-items:center; gap:8px;}
+  #switcher .seg{ display:flex; gap:7px; }
+  #switcher .seg button{ flex:1; font-family:"Bricolage Grotesque"; font-weight:600; text-transform:uppercase; font-size:14px; letter-spacing:.02em; padding:10px 6px;
+    border:1px solid rgba(243,239,226,.2); background:transparent; color:#cfe6da; border-radius:7px; cursor:pointer; transition:.16s; white-space:nowrap;}
+  #switcher .seg button:hover{ border-color:rgba(246,210,75,.45); color:#fff; }
+  #switcher .seg button.on{ background:#f6d24b; color:#1a1205; border-color:#f6d24b; }
+  #switcher #defFilter button.on{ background:transparent; color:#f6d24b; border-color:#f6d24b; }
+  .formlist{ display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
+  .formlist button{ font-family:"Bricolage Grotesque"; font-weight:700; text-transform:uppercase; font-size:13px; letter-spacing:.02em; padding:7px 12px; border:1px solid rgba(243,239,226,.18); background:transparent; color:#cfe6da; border-radius:7px; cursor:pointer; transition:border-color .15s ease, color .15s ease, background .15s ease; }
+  .formlist button:hover{ border-color:rgba(246,210,75,.45); color:#fff; }
+  .formlist button.on{ background:#f6d24b; color:#1a1205; border-color:#f6d24b; }
+  .back{ display:inline-flex; align-items:center; gap:6px; font-family:"Geist Mono"; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#9fc2b1; background:none; border:0; cursor:pointer; }
+  .back:hover{ color:#f6d24b; }
+
+  /* ===== stats (home) ===== */
+  .stats{ position:absolute; left:54px; bottom:46px; z-index:5; display:flex; gap:34px; align-items:flex-end;}
+  .stat b{ font-family:"Bricolage Grotesque"; font-weight:800; font-size:58px; line-height:.8; letter-spacing:.01em; display:block; }
+  .stat.y b{ color:#f6d24b;} .stat.w b{ color:#f3efe2;} .stat.load b{ color:#f4a93a;}
+  .stat span{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#9fc2b1; margin-top:6px; display:block;}
+
+  /* home details */
+  #cSession .sh{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+
+  /* ===== tweak: surface ===== */
+  .board[data-surface=carbon]{
+    --frame:0 50px 130px rgba(0,0,0,.6), inset 0 0 0 14px #141414, inset 0 0 0 18px #262626;
+    background:
+      radial-gradient(120% 90% at 18% 12%, rgba(255,255,255,0.04), transparent 55%),
+      radial-gradient(140% 120% at 88% 96%, rgba(0,0,0,0.5), transparent 60%),
+      repeating-linear-gradient(27deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 5px),
+      linear-gradient(160deg,#26282c 0%,#16171b 55%,#0c0d10 100%);
+  }
+  .board[data-surface=blueprint]{
+    --frame:0 50px 130px rgba(0,0,0,.55), inset 0 0 0 14px #0a2240, inset 0 0 0 18px #14385f;
+    color:#eaf2ff;
+    background:
+      linear-gradient(rgba(150,195,255,.07) 1px, transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg, rgba(150,195,255,.07) 1px, transparent 1px) 0 0/40px 40px,
+      radial-gradient(140% 120% at 88% 96%, rgba(0,0,12,0.45), transparent 60%),
+      linear-gradient(160deg,#11315c 0%,#0b2244 55%,#08152b 100%);
+  }
+  /* ===== tweak: trazo (notes only; pitch stays precise) ===== */
+  .board[data-trazo=marcador]{ --grain:.16; --glow:none; }
+  .board[data-trazo=digital]{ --grain:0; --glow:none; }
+
+  /* ===== tweaks panel ===== */
+  .tweaks{ position:fixed; right:18px; bottom:18px; z-index:50; width:266px; display:none;
+    background:rgba(12,22,17,.96); color:#eaf3ed; border:1px solid rgba(246,210,75,.25);
+    border-radius:12px; padding:15px 16px 17px; box-shadow:0 24px 60px rgba(0,0,0,.5);
+    font-family:"Familjen Grotesk",sans-serif; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .tweaks.show{ display:block; }
+  .tweaks .th{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .tweaks .th h4{ font-family:"Bricolage Grotesque"; font-weight:800; font-size:19px; letter-spacing:.02em; text-transform:uppercase; }
+  .tweaks .th button{ background:none; border:0; color:#7fa994; font-size:16px; cursor:pointer; line-height:1; }
+  .tweaks .grp{ margin-bottom:13px; }
+  .tweaks .gl{ font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:#7fa994; margin-bottom:7px; }
+  .tweaks .gl b{ color:#f6d24b; font-weight:400; }
+  .tweaks .seg{ display:flex; gap:6px; }
+  .tweaks .seg button{ flex:1; font-family:"Bricolage Grotesque"; font-weight:600; text-transform:uppercase; font-size:11.5px; letter-spacing:.02em;
+    padding:8px 4px; border:1px solid rgba(243,239,226,.18); background:transparent; color:#cfe6da; border-radius:6px; cursor:pointer; transition:.16s; }
+  .tweaks .seg button:hover{ border-color:rgba(246,210,75,.45); color:#fff; }
+  .tweaks .seg button.on{ background:#f6d24b; color:#1a1205; border-color:#f6d24b; }
+  .tweaks .hint{ font-size:10.5px; line-height:1.45; color:#7fa994; margin-top:11px; border-top:1px solid rgba(255,255,255,.08); padding-top:10px; }
+
+  /* ===== login ===== */
+  .login{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(120% 90% at 18% 12%, rgba(255,255,255,0.04), transparent 55%), linear-gradient(160deg,#16352a 0%,#0d241b 55%,#0a1d16 100%);
+    font-family:"Familjen Grotesk",sans-serif; }
+  .login.gone{ display:none; }
+  .login::before{ content:""; position:absolute; inset:0; opacity:.55;
+    background:linear-gradient(rgba(150,200,180,.045) 1px,transparent 1px) 0 0/46px 46px, linear-gradient(90deg,rgba(150,200,180,.045) 1px,transparent 1px) 0 0/46px 46px; }
+  .login::after{ content:""; position:absolute; left:50%; top:50%; width:560px; height:560px; transform:translate(-50%,-50%); border:1px solid rgba(243,239,226,.08); border-radius:50%; }
+  .login-card{ position:relative; z-index:2; width:432px; padding:42px 44px 28px; background:rgba(8,18,14,.8); border:1px solid rgba(243,239,226,.14);
+    border-radius:16px; box-shadow:0 40px 90px rgba(0,0,0,.55); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); color:#f3efe2; }
+  .lbrand{ display:flex; align-items:center; gap:14px; }
+  .lbrand .rb{ width:40px;height:40px;transform:rotate(45deg);border:3px solid #f3efe2;display:grid;place-items:center; }
+  .lbrand .rb i{ width:10px;height:10px;background:#f6d24b;border-radius:1px;}
+  .lbrand h1{ font-family:"Bricolage Grotesque"; font-weight:800; font-size:34px; line-height:.8; text-transform:uppercase; }
+  .lbrand h1 em{ font-style:normal; color:#f6d24b; }
+  .lk{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:#9fc2b1; margin:18px 0 22px; display:inline-block; padding-bottom:8px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M2,7C26,2,50,9,76,4S110,9,118,5' fill='none' stroke='%23f6d24b' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left bottom; background-size:100% 7px; }
+  .lfield{ display:block; margin-bottom:15px; }
+  .lfield span{ display:block; font-family:"Geist Mono"; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#9fc2b1; margin-bottom:7px; }
+  .lfield input{ width:100%; font-family:"Familjen Grotesk",sans-serif; font-size:16px; color:#f3efe2; background:rgba(255,255,255,.04); border:1px solid rgba(243,239,226,.2); border-radius:9px; padding:12px 14px; outline:none; transition:.16s; }
+  .lfield input:focus{ border-color:#f6d24b; background:rgba(246,210,75,.06); }
+  .lrow{ display:flex; align-items:center; justify-content:space-between; margin:4px 0 20px; font-size:13px; color:#cfe6da; }
+  .chk{ display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .chk input{ accent-color:#f6d24b; width:15px; height:15px; }
+  .lforgot{ color:#9fc2b1; text-decoration:none; cursor:pointer; }
+  .lforgot:hover{ color:#f6d24b; }
+  #loginForm button{ width:100%; font-family:"Bricolage Grotesque"; font-weight:700; text-transform:uppercase; font-size:16px; letter-spacing:.02em; padding:14px; border:0; border-radius:10px; background:#f6d24b; color:#1a1205; cursor:pointer; transition:.16s; }
+  #loginForm button:hover{ filter:brightness(1.06); }
+  .lfoot{ font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:#5f8775; margin-top:22px; text-align:center; }
+
+  /* ===== user chip (nav) ===== */
+  .userchip{ display:flex; align-items:center; gap:11px; cursor:pointer; padding:4px 2px; }
+  .userchip .ua{ width:34px; height:34px; flex:none; display:grid; place-items:center; border-radius:50%; background:#f6d24b; color:#1a1205; font-family:"Bricolage Grotesque"; font-weight:800; font-size:13px; }
+  .userchip .ui b{ display:block; font-family:"Bricolage Grotesque"; font-weight:700; font-size:15px; color:#f3efe2; }
+  .userchip .ui span{ font-family:"Geist Mono"; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#7fa994; }
+  .userchip:hover .ui span{ color:#f6d24b; }
+
+  /* ===== sections: shared ===== */
+  .sechead{ position:absolute; left:300px; top:140px; z-index:5; }
+  .sechead .ek{ display:inline-block; font-family:"Geist Mono"; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:#f6d24b; padding-bottom:9px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 10' preserveAspectRatio='none'%3E%3Cpath d='M2,7C26,2,50,9,76,4S110,9,118,5' fill='none' stroke='%23f6d24b' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left bottom; background-size:100% 7px; }
+  .sechead h2{ font-family:"Bricolage Grotesque"; font-weight:800; font-size:40px; line-height:.95; text-transform:uppercase; color:#f3efe2; margin-top:11px; letter-spacing:-.01em; }
+  .panel{ position:absolute; z-index:2; border:2.5px solid rgba(243,239,226,.8); border-radius:6px; overflow:hidden;
+    background:linear-gradient(165deg,#0c1f18 0%,#081410 100%); box-shadow: inset 0 0 60px rgba(0,0,0,.35), 0 14px 36px rgba(0,0,0,.45); }
+  .panel .pk{ position:absolute; top:14px; left:16px; font-family:"Geist Mono"; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:rgba(243,239,226,.6); z-index:4; }
+  .mrow{ position:absolute; z-index:5; display:flex; gap:14px; }
+  .mcard{ background:rgba(8,18,14,.5); border:1px solid rgba(243,239,226,.14); border-radius:10px; padding:14px 16px; min-width:118px; }
+  .mcard b{ display:block; font-family:"Bricolage Grotesque"; font-weight:800; font-size:33px; line-height:.85; color:#f6d24b; }
+  .mcard b.w{ color:#f3efe2; } .mcard b.up{ color:#5fcaa0; } .mcard b.dn{ color:#ff8a7e; }
+  .mcard span{ font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:#9fc2b1; margin-top:7px; display:block; }
+
+  /* ===== diagnÃ³stico ===== */
+  #pitchDiag{ top:150px; right:60px; width:560px; height:720px; }
+  #pitchDiag .tok.them{ width:30px; height:30px; font-size:13px; }
+  .heat{ position:absolute; border-radius:50%; transform:translate(-50%,-50%); filter:blur(12px); z-index:1; pointer-events:none; }
+  .heat.danger{ background:radial-gradient(circle, rgba(255,107,94,.5), transparent 70%); }
+  .heat.exploit{ background:radial-gradient(circle, rgba(95,202,160,.5), transparent 70%); }
+  .zlbl{ position:absolute; transform:translate(-50%,-50%); font-family:"Geist Mono"; font-size:11px; letter-spacing:.1em; text-transform:uppercase; z-index:4; white-space:nowrap; }
+  .zlbl.d{ color:#ff8a7e; } .zlbl.e{ color:#7fe0bb; }
+  #diagStats{ left:300px; top:282px; }
+  #diagFort{ top:432px; left:300px; width:312px; transform:rotate(-1.2deg); }
+  #diagDeb{ top:686px; left:312px; width:312px; transform:rotate(1deg); }
+  .card .bl{ display:flex; gap:9px; align-items:baseline; padding:6px 0; font-size:13px; line-height:1.4; }
+  .card .bl::before{ content:""; width:6px;height:6px; margin-top:6px; background:#c0492f; transform:rotate(45deg); flex:none; }
+  .board[data-mesa=ordenado] #diagFort, .board[data-mesa=ordenado] #diagDeb{ transform:none; }
+
+  /* ===== evoluciÃ³n ===== */
+  #evoChart{ left:300px; top:296px; width:660px; height:420px; }
+  #evoTiles{ position:absolute; right:60px; top:296px; width:300px; display:grid; grid-template-columns:1fr 1fr; gap:14px; z-index:5; }
+  #evoForm{ position:absolute; right:60px; top:206px; display:flex; gap:7px; z-index:5; align-items:center; }
+  #evoForm em{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#9fc2b1; font-style:normal; margin-right:4px; }
+  #evoForm i{ width:30px;height:30px; display:grid; place-items:center; border-radius:6px; font-family:"Bricolage Grotesque"; font-weight:800; font-size:14px; }
+  #evoForm i.w{ background:#5fcaa0; color:#072018; } #evoForm i.d{ background:#cdbf9c; color:#1c2620; } #evoForm i.l{ background:#ff8a7e; color:#2a0d09; }
+
+  /* ===== post-partido ===== */
+  #postScore{ position:absolute; left:300px; top:272px; z-index:5; display:flex; align-items:center; gap:22px; }
+  #postScore .tn{ font-family:"Bricolage Grotesque"; font-weight:800; font-size:23px; text-transform:uppercase; color:#f3efe2; max-width:130px; line-height:1; }
+  #postScore .sc{ font-family:"Bricolage Grotesque"; font-weight:800; font-size:62px; line-height:.8; color:#f6d24b; letter-spacing:.02em; }
+  #postScore .sc small{ color:#9fc2b1; font-size:30px; }
+  #postPlan{ top:412px; left:300px; width:360px; transform:rotate(-1deg); }
+  .board[data-mesa=ordenado] #postPlan{ transform:none; }
+  #postTimeline{ top:150px; right:60px; width:560px; height:720px; }
+  .tl{ position:absolute; left:28px; right:24px; top:52px; }
+  .tl .ev{ display:flex; align-items:center; gap:14px; padding:12.5px 0; border-bottom:1px solid rgba(243,239,226,.1); }
+  .tl .ev:last-child{ border-bottom:0; }
+  .tl .ev .mn{ font-family:"Geist Mono"; font-size:13px; color:#f6d24b; width:40px; flex:none; }
+  .tl .ev .ic{ width:11px;height:11px;border-radius:50%; flex:none; }
+  .tl .ev .ic.goal{ background:#5fcaa0; } .tl .ev .ic.card{ background:#f6d24b; } .tl .ev .ic.rival{ background:#ff6b5e; } .tl .ev .ic.sub{ background:#9fc2b1; }
+  .tl .ev .tx{ font-size:14.5px; color:#eaf3ed; } .tl .ev .tx b{ font-weight:700; }
+  .tl .ev .tx small{ display:block; font-family:"Geist Mono"; font-size:10px; color:#7fa994; letter-spacing:.06em; text-transform:uppercase; margin-top:2px;}
+
+  /* ===== cancha 3D ===== */
+  #stage3d{ position:absolute; left:268px; top:236px; width:1110px; height:600px; perspective:1250px; z-index:3; }
+  #pitch3d{ position:absolute; left:50%; top:50%; width:780px; height:520px; transform:translate(-50%,-50%) rotateX(var(--t3d,56deg));
+    transform-style:preserve-3d; border:2px solid rgba(243,239,226,.55); border-radius:4px;
+    background:linear-gradient(165deg,#0e2a20 0%,#081712 100%); box-shadow:0 60px 90px rgba(0,0,0,.6); }
+  #pitch3d::before{ content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(rgba(150,200,180,.07) 1px,transparent 1px) 0 0/52px 52px, linear-gradient(90deg, rgba(150,200,180,.07) 1px,transparent 1px) 0 0/52px 52px; }
+  #pitch3d .tok{ width:32px; height:32px; font-size:14px; transform:translate(-50%,-50%) rotateX(calc(-1 * var(--t3d,56deg))); box-shadow:0 14px 16px rgba(0,0,0,.55); }
+  #c3dFloor{ position:absolute; left:50%; top:50%; width:1180px; height:760px; transform:translate(-50%,-50%) rotateX(var(--t3d,56deg)); border-radius:50%;
+    background:radial-gradient(closest-side, rgba(0,0,0,.5), transparent 75%); z-index:-1; }
+  #c3dHint{ position:absolute; left:300px; bottom:60px; z-index:6; font-family:"Geist Mono"; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#9fc2b1; display:flex; gap:14px; align-items:center; }
+  #c3dHint b{ color:#f6d24b; font-weight:400; }
+  .c3dctl{ display:inline-flex; gap:8px; }
+  .c3dctl button{ font-family:"Geist Mono"; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#cfe6da; background:rgba(8,18,14,.6); border:1px solid rgba(243,239,226,.2); border-radius:6px; padding:7px 11px; cursor:pointer; transition:.16s; }
+  .c3dctl button:hover{ border-color:#f6d24b; color:#f6d24b; }
+
+  /* ===== video + tracking ===== */
+  #videoPanel{ left:300px; top:284px; width:700px; height:404px; }
+  #videoPanel .vp-field{ position:absolute; inset:0; background:linear-gradient(165deg,#0c1f18,#081410); }
+  #videoPanel .vp-field::before{ content:""; position:absolute; inset:0;
+    background:linear-gradient(rgba(150,200,180,.05) 1px,transparent 1px) 0 0/40px 40px, linear-gradient(90deg, rgba(150,200,180,.05) 1px,transparent 1px) 0 0/40px 40px; }
+  .trk{ position:absolute; border-radius:50%; transform:translate(-50%,-50%); z-index:3; }
+  .trk.us{ width:15px;height:15px; background:#f6d24b; box-shadow:0 0 0 3px rgba(246,210,75,.2); }
+  .trk.them{ width:15px;height:15px; background:transparent; border:2px dashed #ff6b5e; }
+  .trk.ball{ width:9px;height:9px; background:#fff; }
+  .trail{ position:absolute; height:2px; transform-origin:left center; background:linear-gradient(90deg, rgba(246,210,75,.55), transparent); z-index:2; }
+  .playbtn{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:74px;height:74px;border-radius:50%; background:rgba(246,210,75,.94); display:grid; place-items:center; z-index:5; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,.5); transition:.16s; }
+  .playbtn:hover{ transform:translate(-50%,-50%) scale(1.06); }
+  .playbtn::before{ content:""; border-left:22px solid #1a1205; border-top:13px solid transparent; border-bottom:13px solid transparent; margin-left:6px; }
+  .vbar{ position:absolute; left:18px; right:18px; bottom:15px; z-index:5; }
+  .vbar .track{ height:5px; border-radius:3px; background:rgba(255,255,255,.18); position:relative; }
+  .vbar .track i{ position:absolute; left:0; top:0; bottom:0; width:38%; background:#f6d24b; border-radius:3px; }
+  .vbar .track i::after{ content:""; position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:13px;height:13px;border-radius:50%; background:#f6d24b; box-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .vbar .vt{ display:flex; justify-content:space-between; font-family:"Geist Mono"; font-size:10px; color:#cfe6da; margin-top:9px; letter-spacing:.05em; }
+  #clips{ top:284px; right:60px; width:300px; height:404px; }
+  .clip{ position:absolute; left:24px; right:20px; }
+  .cliplist{ position:absolute; left:0; right:0; top:50px; }
+  .cliplist .ci{ display:flex; align-items:center; gap:12px; padding:11px 24px; border-bottom:1px solid rgba(243,239,226,.1); cursor:pointer; transition:.14s; }
+  .cliplist .ci:hover{ background:rgba(246,210,75,.07); }
+  .cliplist .ci .mn{ font-family:"Geist Mono"; font-size:12px; color:#f6d24b; width:38px; flex:none; }
+  .cliplist .ci .nm{ font-size:13.5px; color:#eaf3ed; flex:1; }
+  .cliplist .ci .tg{ font-family:"Geist Mono"; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#7fa994; }
+
+  /* ===== coach IA (chat) ===== */
+  #coachDiag{ left:300px; top:230px; width:600px; height:642px; }
+  .coach{ display:flex; flex-direction:column; }
+  .coach .coach-h{ display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid rgba(243,239,226,.12); flex:none; }
+  .coach .coach-h .ek{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:#f6d24b; }
+  .coach .coach-st{ font-family:"Geist Mono"; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#7fa994; display:flex; align-items:center; gap:6px; }
+  .coach .coach-st i{ width:7px;height:7px;border-radius:50%;background:#5fcaa0; box-shadow:0 0 8px #5fcaa0; }
+  .coach .coach-log{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:11px; }
+  .coach .coach-log::-webkit-scrollbar{ width:6px; } .coach .coach-log::-webkit-scrollbar-thumb{ background:rgba(243,239,226,.18); border-radius:3px; }
+  .coach .msg{ max-width:86%; font-size:13.5px; line-height:1.5; padding:11px 13px; border-radius:13px; }
+  .coach .msg.ai{ align-self:flex-start; background:rgba(243,239,226,.06); border:1px solid rgba(243,239,226,.1); color:#eaf3ed; border-bottom-left-radius:3px; white-space:pre-wrap; }
+  .coach .msg.me{ align-self:flex-end; background:#f6d24b; color:#1a1205; border-bottom-right-radius:3px; font-weight:500; }
+  .coach .msg.typing{ color:#9fc2b1; font-family:"Geist Mono"; font-size:12px; letter-spacing:.05em; }
+  .coach .coach-chips{ display:flex; gap:7px; flex-wrap:wrap; padding:0 16px 11px; flex:none; }
+  .coach .coach-chips button{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.03em; text-transform:uppercase; color:#cfe6da; background:rgba(255,255,255,.04); border:1px solid rgba(243,239,226,.16); border-radius:20px; padding:6px 11px; cursor:pointer; transition:.15s; }
+  .coach .coach-chips button:hover{ border-color:#f6d24b; color:#f6d24b; }
+  .coach .coach-in{ display:flex; gap:8px; padding:12px 14px; border-top:1px solid rgba(243,239,226,.12); flex:none; }
+  .coach .coach-in input{ flex:1; font-family:"Familjen Grotesk",sans-serif; font-size:14px; color:#f3efe2; background:rgba(255,255,255,.04); border:1px solid rgba(243,239,226,.18); border-radius:9px; padding:11px 13px; outline:none; transition:.15s; }
+  .coach .coach-in input:focus{ border-color:#f6d24b; }
+  .coach .coach-in button{ width:46px; flex:none; font-size:18px; border:0; border-radius:9px; background:#f6d24b; color:#1a1205; cursor:pointer; transition:.15s; }
+  .coach .coach-in button:hover{ filter:brightness(1.06); }
+  .coach .coach-in button:disabled{ opacity:.45; cursor:default; }
+
+  /* ===== animar jugada (sala) ===== */
+  .animbtn{ width:100%; margin-top:11px; font-family:"Bricolage Grotesque"; font-weight:700; text-transform:uppercase; font-size:13px; letter-spacing:.03em; padding:11px; border:1px solid rgba(246,210,75,.5); background:rgba(246,210,75,.1); color:#f6d24b; border-radius:8px; cursor:pointer; transition:.16s; }
+  .animbtn:hover{ background:rgba(246,210,75,.2); }
+  .animbtn:disabled{ opacity:.4; cursor:default; border-color:rgba(243,239,226,.18); background:transparent; color:#9fc2b1; }
+  .animbtn.playing{ background:#f6d24b; color:#1a1205; }
+
+  /* diagnÃ³stico Â· cancha propuesta */
+  #diagBoard{ position:absolute; right:60px; top:230px; width:400px; z-index:5; }
+  .db-h{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .db-h .ek{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:#f6d24b; }
+  .db-sys{ font-family:"Bricolage Grotesque"; font-weight:800; font-size:18px; text-transform:uppercase; color:#f6d24b; letter-spacing:.02em; }
+  #pitchDiag2{ position:relative; width:100%; height:470px; border:2px solid rgba(243,239,226,.7); border-radius:5px; overflow:hidden; background:linear-gradient(165deg,#0c1f18 0%,#081410 100%); box-shadow:inset 0 0 50px rgba(0,0,0,.4); }
+  #pitchDiag2::before{ content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(rgba(150,200,180,.05) 1px,transparent 1px) 0 0/30px 30px, linear-gradient(90deg, rgba(150,200,180,.05) 1px,transparent 1px) 0 0/30px 30px; }
+  #pitchDiag2 .tok{ width:26px; height:26px; font-size:12px; }
+  #pitchDiag2 .circ{ width:120px; height:120px; }
+  #diagAnim{ margin-top:13px; }
+  #diagBoard .db-note{ font-family:"Geist Mono"; font-size:10px; line-height:1.5; letter-spacing:.04em; color:#7fa994; margin-top:11px; }
+
+  /* post-partido Â· informe */
+  #postScore{ top:228px; }
+  #postStats{ left:300px; top:330px; }
+  #postReport{ left:300px; top:596px; width:540px; height:344px; display:flex; flex-direction:column; }
+  .rep-h{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid rgba(243,239,226,.12); flex:none; }
+  .rep-h .ek{ font-family:"Geist Mono"; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:#f6d24b; }
+  .rep-gen{ font-family:"Bricolage Grotesque"; font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:.03em; padding:8px 13px; border:0; border-radius:7px; background:#f6d24b; color:#1a1205; cursor:pointer; transition:.15s; }
+  .rep-gen:hover{ filter:brightness(1.06); } .rep-gen:disabled{ opacity:.5; cursor:default; }
+  .rep-body{ flex:1; overflow-y:auto; padding:18px 20px; }
+  .rep-body::-webkit-scrollbar{ width:6px; } .rep-body::-webkit-scrollbar-thumb{ background:rgba(243,239,226,.18); border-radius:3px; }
+  .rep-empty{ font-size:13.5px; line-height:1.55; color:#9fc2b1; max-width:92%; }
+  .rep-text{ white-space:pre-wrap; font-size:14px; line-height:1.6; color:#eaf3ed; }
+  .rep-sec{ display:block; color:#f6d24b; font-family:"Bricolage Grotesque"; font-weight:700; text-transform:uppercase; font-size:13px; letter-spacing:.02em; margin:15px 0 3px; }
+  .rep-text .rep-sec:first-child{ margin-top:0; }
+  #postTimeline{ top:230px; right:60px; width:500px; height:642px; }
+  .tl-link{ color:#9fc2b1; cursor:pointer; font-family:"Geist Mono"; }
+  .tl-link:hover{ color:#f6d24b; }
+  .tl .ev{ cursor:pointer; padding-right:6px; border-radius:6px; }
+  .tl .ev:hover{ background:rgba(246,210,75,.06); }
+  .ev-clip{ margin-left:auto; color:#f6d24b; font-size:11px; opacity:.4; padding-left:10px; }
+  .tl .ev:hover .ev-clip{ opacity:1; }
+
+  /* post-partido Â· informe (formulario) */
+  .rep-field{ margin-bottom:16px; }
+  .rep-field > label{ display:block; font-family:"Geist Mono"; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#9fc2b1; margin-bottom:7px; }
+  .rep-field.good > label{ color:#5fcaa0; } .rep-field.fix > label{ color:#ffb27e; }
+  .rep-body textarea{ width:100%; resize:none; font-family:"Familjen Grotesk",sans-serif; font-size:13.5px; line-height:1.5; color:#f3efe2; background:rgba(255,255,255,.04); border:1px solid rgba(243,239,226,.16); border-radius:9px; padding:11px 13px; outline:none; transition:.15s; }
+  .rep-body textarea::placeholder{ color:#5f8775; }
+  .rep-body textarea:focus{ border-color:#f6d24b; background:rgba(246,210,75,.05); }
+  #repResumen{ height:50px; }
+  .rep-two{ display:flex; gap:14px; }
+  .rep-two .rep-field{ flex:1; margin-bottom:0; }
+  .rep-two textarea{ height:92px; }
+  /* post-partido Â· datos del partido (form hermano) */
+  #postData{ left:300px; top:230px; width:540px; height:352px; display:flex; flex-direction:column; }
+  .pd-cap{ font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#7fa994; }
+  .pd-body{ flex:1; padding:16px 18px; overflow-y:auto; }
+  .pd-grid{ display:grid; grid-template-columns:1fr 1fr; gap:13px 14px; }
+  .pd-f{ display:flex; flex-direction:column; }
+  .pd-f.wide{ grid-column:1 / -1; }
+  .pd-f label{ font-family:"Geist Mono"; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:#9fc2b1; margin-bottom:6px; }
+  .pd-f input{ font-family:"Familjen Grotesk",sans-serif; font-size:14px; color:#f3efe2; background:rgba(255,255,255,.04); border:1px solid rgba(243,239,226,.16); border-radius:8px; padding:10px 12px; outline:none; transition:.15s; }
+  .pd-f input:focus{ border-color:#f6d24b; background:rgba(246,210,75,.05); }
+  .animating .tok.us{ transition:left 1.15s cubic-bezier(.45,0,.25,1), top 1.15s cubic-bezier(.45,0,.25,1); }
+</style>
+</head>
+<body>
+<div class="stage"><div class="fitbox"><div class="scaler"><div class="board" data-view="home" data-surface="verde" data-trazo="tiza" data-mesa="trabajo" data-comment-anchor="408316c4a7-div">
+
+  <div class="top">
+    <div class="mast chalk" id="brand">
+      <div class="rb"><i></i></div>
+      <div><h1>Rombo<em>IQ</em></h1><div class="sub" id="mastSub">Inicio Â· MD-3 Â· 4-3-3</div></div>
+    </div>
+    <div class="matchstrip chalk">
+      jornada 19 Â· local
+      <b>vs AtlÃ©tico Norte</b>
+      <span class="cd">â€º dÃ­a de partido en 3 dÃ­as</span>
+    </div>
+  </div>
+  <svg class="swoosh" viewBox="0 0 300 14"><path d="M2 9 C 80 2, 150 13, 296 5" fill="none" stroke="#f6d24b" stroke-width="3" stroke-linecap="round"/></svg>
+
+  <nav class="nav chalk">
+    <div class="nk">â€” el plan de la semana</div>
+    <a data-view="sala" id="navSala"><span class="tk"></span><span class="lb">Sala</span></a>
+    <a data-view="diagnostico"><span class="tk"></span><span class="lb">DiagnÃ³stico</span></a>
+    <a data-view="evolucion"><span class="tk"></span><span class="lb">EvoluciÃ³n</span></a>
+    <a data-view="postpartido"><span class="tk"></span><span class="lb">Post-partido</span></a>
+    <div class="div"></div>
+    <div class="nk">â€” herramientas</div>
+    <a data-view="cancha3d"><span class="tk"></span><span class="lb">Cancha 3D</span></a>
+    <a data-view="video"><span class="tk"></span><span class="lb">Video + tracking</span></a>
+    <div class="div"></div>
+    <div class="userchip" id="userChip" title="Cerrar sesiÃ³n"><span class="ua">MB</span><div class="ui"><b id="userName">Marcelo B.</b><span>Cuerpo tÃ©cnico Â· salir â†©</span></div></div>
+  </nav>
+
+  <!-- ============ HOME ============ -->
+  <div class="card home-only" id="cProblem">
+    <div class="ek" id="hpEk">problema de la semana</div>
+    <h3 id="hpTitle">ConstrucciÃ³n ante presiÃ³n alta</h3>
+    <p id="hpText"></p>
+    <div class="tags" id="hpTags"></div>
+  </div>
+
+  <div class="card home-only" id="cSession">
+    <div class="ek">sesiÃ³n de hoy</div>
+    <div class="sh"><h3>Bloques</h3></div>
+    <div class="blk"><b>1</b><span class="nm">Rondo 4v2 activaciÃ³n</span><span class="mn">15â€²</span></div>
+    <div class="blk"><b>2</b><span class="nm">Salida bajo presiÃ³n 11v8</span><span class="mn">25â€²</span></div>
+    <div class="blk"><b>3</b><span class="nm">FinalizaciÃ³n + ABP</span><span class="mn">20â€²</span></div>
+  </div>
+
+  <div class="home-only" id="previewWrap">
+    <div class="preview-card">
+      <div class="ph"><span class="k">tablero tÃ¡ctico</span><span class="sys" id="pvSys">3-2-5</span></div>
+      <div class="pitch compact" id="pitchHome"></div>
+      <button class="open" id="openSala">Abrir pizarra en Sala â†—</button>
+    </div>
+  </div>
+
+  <div class="stats chalk home-only">
+    <div class="stat load"><b>92%</b><span>carga Â· pico MD-3 â–²</span></div>
+    <div class="stat w"><b>12/14</b><span>disponibles</span></div>
+    <div class="stat y"><b>03</b><span>reports en memoria</span></div>
+  </div>
+
+  <!-- ============ SALA ============ -->
+  <div class="sala-only" id="switcher">
+    <div class="sk"><button class="back" id="backHome">â† Inicio</button> Â· formaciÃ³n que ejecutÃ¡s</div>
+    <div class="seg" id="defFilter">
+      <button data-def="3">LÃ­nea de 3</button>
+      <button data-def="4">LÃ­nea de 4</button>
+      <button data-def="5">LÃ­nea de 5</button>
+    </div>
+    <div class="formlist" id="formList"></div>
+    <button class="animbtn" id="animBtn">â–¶ Animar jugada</button>
+  </div>
+
+  <div class="card sala-only" id="cPlan">
+    <div class="ek" id="cpEk">el plan</div>
+    <h3 id="cpTitle"></h3>
+    <p id="cpText"></p>
+    <div class="tags" id="cpTags"></div>
+  </div>
+
+  <div class="card sala-only" id="cCoach">
+    <div class="ek">puntos de coaching</div>
+    <div id="coachList"></div>
+  </div>
+
+  <div class="pitch sala-only" id="pitchSala"></div>
+
+  <!-- ============ DIAGNÃ“STICO ============ -->
+  <div class="sechead diag-only">
+    <div class="ek">coach IA Â· atlÃ©tico norte</div>
+    <h2>Asistente tÃ¡ctico</h2>
+  </div>
+  <div class="panel coach diag-only" id="coachDiag">
+    <div class="coach-h"><span class="ek">asistente tÃ¡ctico</span><span class="coach-st"><i></i>coach IA Â· en lÃ­nea</span></div>
+    <div class="coach-log" id="diagLog"></div>
+    <div class="coach-chips" id="diagChips"></div>
+    <div class="coach-in"><input id="diagInput" placeholder="PreguntÃ¡ sobre AtlÃ©tico Norteâ€¦" /><button id="diagSend" aria-label="Enviar">â†’</button></div>
+  </div>
+  <div class="diag-only" id="diagBoard">
+    <div class="db-h"><span class="ek">propuesta en cancha</span><span class="db-sys" id="diagPitchSys">3-2-5</span></div>
+    <div id="pitchDiag2"></div>
+    <button class="animbtn" id="diagAnim">â–¶ Probar la jugada</button>
+    <div class="db-note">El coach dibuja acÃ¡ lo que sugiere â€” teÃ³rico y prÃ¡ctico. El detalle fino lo ajustÃ¡s en Sala.</div>
+  </div>
+
+  <!-- ============ EVOLUCIÃ“N ============ -->
+  <div class="sechead evo-only">
+    <div class="ek">tendencia Â· temporada</div>
+    <h2>EvoluciÃ³n del equipo</h2>
+  </div>
+  <div class="evo-only" id="evoForm">
+    <em>Ãºltimos 5</em>
+    <i class="w">G</i><i class="w">G</i><i class="d">E</i><i class="l">P</i><i class="w">G</i>
+  </div>
+  <div class="panel evo-only" id="evoChart">
+    <div class="pk">xG a favor vs en contra Â· J10â€“J19</div>
+    <svg viewBox="0 0 660 420" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;">
+      <line x1="60" y1="120" x2="620" y2="120" stroke="rgba(243,239,226,.1)" stroke-width="1"/>
+      <line x1="60" y1="210" x2="620" y2="210" stroke="rgba(243,239,226,.1)" stroke-width="1"/>
+      <line x1="60" y1="300" x2="620" y2="300" stroke="rgba(243,239,226,.1)" stroke-width="1"/>
+      <polyline points="60,175 122,192 184,157 247,245 309,228 371,280 433,262 496,315 558,297 620,332" fill="none" stroke="#ff6b5e" stroke-width="2.4" stroke-dasharray="4 5" opacity="0.85"/>
+      <polyline points="60,262 122,228 184,280 247,192 309,210 371,157 433,175 496,123 558,140 620,88" fill="none" stroke="#5fcaa0" stroke-width="3"/>
+      <circle cx="620" cy="88" r="5" fill="#5fcaa0"/><circle cx="620" cy="332" r="4" fill="#ff6b5e"/>
+      <text x="60" y="372" fill="#7fa994" font-family="Geist Mono" font-size="11">J10</text>
+      <text x="300" y="372" fill="#7fa994" font-family="Geist Mono" font-size="11">J14</text>
+      <text x="585" y="372" fill="#7fa994" font-family="Geist Mono" font-size="11">J19</text>
+      <text x="486" y="78" fill="#5fcaa0" font-family="Geist Mono" font-size="11">xG favor â–²</text>
+      <text x="486" y="352" fill="#ff8a7e" font-family="Geist Mono" font-size="11">xG contra â–¼</text>
+    </svg>
+  </div>
+  <div class="evo-only" id="evoTiles">
+    <div class="mcard"><b class="up">+11</b><span>pts Ãºltimos 5</span></div>
+    <div class="mcard"><b class="up">1.8</b><span>xG favor /p â–²</span></div>
+    <div class="mcard"><b class="dn">0.9</b><span>xG contra /p â–¼</span></div>
+    <div class="mcard"><b class="w">58%</b><span>posesiÃ³n media</span></div>
+  </div>
+  <!-- ============ POST-PARTIDO ============ -->
+  <div class="sechead post-only">
+    <div class="ek">informe Â· J18 vs Sur</div>
+    <h2>Informe del partido</h2>
+  </div>
+  <div class="panel post-only" id="postData">
+    <div class="rep-h"><span class="ek">datos del partido</span><span class="pd-cap">cargÃ¡ lo que pasÃ³</span></div>
+    <div class="pd-body">
+      <div class="pd-grid">
+        <div class="pd-f"><label>Rival</label><input id="fRival" value="Sur" /></div>
+        <div class="pd-f"><label>Resultado (Rombo â€“ rival)</label><input id="fRes" value="2 â€“ 1" /></div>
+        <div class="pd-f"><label>Sistema</label><input id="fSys" value="3-2-5" /></div>
+        <div class="pd-f"><label>Cambios</label><input id="fCam" value="Entra 19 (74') por lÃ­nea de 5" /></div>
+        <div class="pd-f"><label>Goleadores</label><input id="fGol" value="9 (12'), 7 (63')" /></div>
+        <div class="pd-f"><label>Amonestados</label><input id="fAmo" value="6 (28', falta tÃ¡ctica)" /></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel post-only" id="postReport">
+    <div class="rep-h"><span class="ek">informe del partido</span><button class="rep-gen" id="repGen">âœ¦ Autocompletar con IA</button></div>
+    <div class="rep-body" id="repBody">
+      <div class="rep-field">
+        <label>Resumen del partido</label>
+        <textarea id="repResumen" placeholder="CÃ³mo se desarrollÃ³ el partido, el plan y su ejecuciÃ³nâ€¦"></textarea>
+      </div>
+      <div class="rep-two">
+        <div class="rep-field good">
+          <label>âœ“ Lo que funcionÃ³</label>
+          <textarea id="repGood" placeholder="Lo positivo a sostener para el prÃ³ximo partidoâ€¦"></textarea>
+        </div>
+        <div class="rep-field fix">
+          <label>â–³ A corregir</label>
+          <textarea id="repFix" placeholder="Lo que hay que ajustar en la semanaâ€¦"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel post-only" id="postTimeline">
+    <div class="pk">momentos clave <span class="tl-link" id="toVideo">Â· ver clips en video â†—</span></div>
+    <div class="tl">
+      <div class="ev" data-clip="1"><span class="mn">12'</span><span class="ic goal"></span><span class="tx"><b>Gol â€” Rombo (1-0)</b><small>9 Â· tras 3-2-5, pase que rompe</small></span><span class="ev-clip">â–¶</span></div>
+      <div class="ev" data-clip="1"><span class="mn">28'</span><span class="ic card"></span><span class="tx"><b>Amarilla â€” 6</b><small>falta tÃ¡ctica en transiciÃ³n</small></span><span class="ev-clip">â–¶</span></div>
+      <div class="ev" data-clip="1"><span class="mn">41'</span><span class="ic rival"></span><span class="tx"><b>Gol â€” Sur (1-1)</b><small>contra tras pÃ©rdida nuestra</small></span><span class="ev-clip">â–¶</span></div>
+      <div class="ev" data-clip="1"><span class="mn">63'</span><span class="ic goal"></span><span class="tx"><b>Gol â€” Rombo (2-1)</b><small>7 al espacio del lateral</small></span><span class="ev-clip">â–¶</span></div>
+      <div class="ev" data-clip="1"><span class="mn">74'</span><span class="ic sub"></span><span class="tx"><b>Cambio â€” entra 19</b><small>cerrar con lÃ­nea de 5</small></span><span class="ev-clip">â–¶</span></div>
+      <div class="ev" data-clip="1"><span class="mn">90'</span><span class="ic goal"></span><span class="tx"><b>GestiÃ³n del resultado</b><small>bloque bajo, 0 ocasiones claras concedidas</small></span><span class="ev-clip">â–¶</span></div>
+    </div>
+  </div>
+
+  <!-- ============ CANCHA 3D ============ -->
+  <div class="sechead c3d-only">
+    <div class="ek">laboratorio Â· 3D</div>
+    <h2>Cancha 3D</h2>
+  </div>
+  <div class="c3d-only" id="stage3d">
+    <div id="c3dFloor"></div>
+    <div id="pitch3d"></div>
+  </div>
+  <div class="c3d-only" id="c3dHint">
+    <span>Sistema <b id="c3dSys">3-2-5</b> en perspectiva Â· editÃ¡ la formaciÃ³n en Sala</span>
+    <span class="c3dctl"><button data-tilt="6">Bajar cÃ¡mara</button><button data-tilt="-6">Subir cÃ¡mara</button><button data-tilt="reset">Reset</button></span>
+  </div>
+
+  <!-- ============ VIDEO + TRACKING ============ -->
+  <div class="sechead vid-only">
+    <div class="ek">video Â· tracking</div>
+    <h2>Clips y seguimiento</h2>
+  </div>
+  <div class="panel vid-only" id="videoPanel">
+    <div class="vp-field"></div>
+    <div class="trail" style="left:30%;top:62%;width:130px;transform:rotate(-30deg);"></div>
+    <div class="trail" style="left:48%;top:54%;width:100px;transform:rotate(-14deg);"></div>
+    <div class="trail" style="left:64%;top:40%;width:70px;transform:rotate(-6deg);"></div>
+    <div class="trk us" style="left:30%;top:62%;"></div>
+    <div class="trk us" style="left:48%;top:54%;"></div>
+    <div class="trk us" style="left:64%;top:40%;"></div>
+    <div class="trk them" style="left:42%;top:48%;"></div>
+    <div class="trk them" style="left:58%;top:58%;"></div>
+    <div class="trk ball" style="left:67%;top:39%;"></div>
+    <div class="playbtn" id="playBtn"></div>
+    <div class="vbar">
+      <div class="track"><i></i></div>
+      <div class="vt"><span>SALIDA BAJO PRESIÃ“N Â· 11 v 8</span><span>0:38 / 1:42</span></div>
+    </div>
+  </div>
+  <div class="panel vid-only" id="clips">
+    <div class="pk">clips etiquetados</div>
+    <div class="cliplist">
+      <div class="ci"><span class="mn">12'</span><span class="nm">Salida 3-2-5 â†’ gol</span><span class="tg">build-up</span></div>
+      <div class="ci"><span class="mn">34'</span><span class="nm">PresiÃ³n tras pÃ©rdida</span><span class="tg">transiciÃ³n</span></div>
+      <div class="ci"><span class="mn">52'</span><span class="nm">ABP defensiva</span><span class="tg">abp</span></div>
+      <div class="ci"><span class="mn">63'</span><span class="nm">7 al espacio</span><span class="tg">ataque</span></div>
+      <div class="ci"><span class="mn">78'</span><span class="nm">Bloque bajo 5-4-1</span><span class="tg">defensa</span></div>
+    </div>
+  </div>
+
+</div></div></div></div>
+
+<div class="login" id="login">
+  <div class="login-card">
+    <div class="lbrand"><div class="rb"><i></i></div><h1>Rombo<em>IQ</em></h1></div>
+    <div class="lk">acceso cuerpo tÃ©cnico</div>
+    <form id="loginForm" autocomplete="on">
+      <label class="lfield"><span>Usuario</span><input type="text" id="luser" value="mbielsa" autocomplete="username" /></label>
+      <label class="lfield"><span>ContraseÃ±a</span><input type="password" id="lpass" value="tactica19" autocomplete="current-password" /></label>
+      <div class="lrow"><label class="chk"><input type="checkbox" id="lremember" checked /> Recordarme en este equipo</label><a class="lforgot">Â¿Clave?</a></div>
+      <button type="submit">Entrar a la pizarra â†’</button>
+    </form>
+    <div class="lfoot">RomboIQ Â· plataforma tÃ¡ctica Â· J19 vs AtlÃ©tico Norte</div>
+  </div>
+</div>
+
+<div class="tweaks" id="tweaks">
+  <div class="th"><h4>Tweaks</h4><button id="twClose" aria-label="Cerrar">âœ•</button></div>
+  <div class="grp">
+    <div class="gl">Superficie Â· <b id="lblSurface">verde</b></div>
+    <div class="seg" data-key="surface"><button data-val="verde">Verde</button><button data-val="carbon">CarbÃ³n</button><button data-val="blueprint">Plano</button></div>
+  </div>
+  <div class="grp">
+    <div class="gl">Trazo de las notas Â· <b id="lblTrazo">tiza</b></div>
+    <div class="seg" data-key="trazo"><button data-val="tiza">Tiza</button><button data-val="marcador">Marcador</button><button data-val="digital">Digital</button></div>
+  </div>
+  <div class="grp">
+    <div class="gl">Mesa Â· <b id="lblMesa">de trabajo</b></div>
+    <div class="seg" data-key="mesa"><button data-val="trabajo">De trabajo</button><button data-val="ordenado">Ordenado</button></div>
+  </div>
+  <div class="hint">La cancha es siempre el artefacto tÃ©cnico preciso; los tweaks cambian el material, el trazo de las notas y el orden de la mesa.</div>
+</div>
+
+<script>
+  /* ====== plans: the board reflects the system the coach executes ====== */
+  const DEFS = '<defs><marker id="ah" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#f6d24b"/></marker><marker id="ahp" markerWidth="11" markerHeight="11" refX="6.5" refY="5" orient="auto"><path d="M0 0L10 5L0 10" fill="none" stroke="#eafff2" stroke-width="1.7"/></marker></defs>';
+
+  const PLANS = {
+    "325": {
+      def:3, ek:"problema de la semana", sys:"3-2-5", ptitle:"construcciÃ³n Â· 3-2-5 vs presiÃ³n 4-4-2",
+      title:"ConstrucciÃ³n ante presiÃ³n alta",
+      text:"El 6 cae entre los centrales para ganar el 3v2; el lateral izquierdo invierte y queda libre el pivote que rompe la primera lÃ­nea.",
+      scribble:"Â¡el 6 baja!", tags:["MD-3","vs Norte","4-3-3 â†’ 3-2-5"],
+      homeCue:{x:40,y:50,label:"LIBRE"},
+      anim:[[6,50,83],[4,14,56],[3,47,40]],
+      coach:["El 6 cae entre centrales â†’ 3v2","Lateral izq. invierte: pivote libre","Buscar el pase que rompe la 1Âª lÃ­nea"],
+      us:[[1,50,91],[4,24,71],[6,50,71],[5,76,71],[3,40,50],[8,61,50],[11,12,22],[10,33,19],[9,50,17],[7,67,19],[2,88,22]],
+      them:[[9,41,61],[10,59,61],[7,18,39],[6,40,39],[8,60,39],[11,82,39]],
+      svg:'<text x="432" y="540" fill="#f6d24b" font-family="Geist Mono, monospace" font-size="15" font-weight="700" letter-spacing="1">3 v 2</text>'+
+          '<text x="432" y="556" fill="rgba(246,210,75,.7)" font-family="Geist Mono, monospace" font-size="9" letter-spacing="1">superioridad</text>'+
+          '<path d="M280 356 C 266 432, 266 500, 280 538" stroke="#f6d24b" stroke-width="3" fill="none" marker-end="url(#ah)"/>'+
+          '<text x="293" y="430" fill="#f6d24b" font-family="Geist Mono, monospace" font-size="12">baja</text>'+
+          '<path d="M70 528 C 120 498, 175 462, 214 420" stroke="#f6d24b" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round" fill="none" marker-end="url(#ah)"/>'+
+          '<text x="36" y="472" fill="#f6d24b" font-family="Geist Mono, monospace" font-size="11">invierte</text>'+
+          '<circle cx="224" cy="400" r="27" fill="none" stroke="#eafff2" stroke-width="1.5" stroke-dasharray="3 4"/>'+
+          '<text x="224" y="360" fill="#eafff2" font-family="Geist Mono, monospace" font-size="10" text-anchor="middle" letter-spacing="1.5">LIBRE</text>'+
+          '<circle cx="280" cy="568" r="4.5" fill="#eafff2"/>'+
+          '<path d="M280 560 L 233 414" stroke="#eafff2" stroke-width="2.4" fill="none" marker-end="url(#ahp)"/>'+
+          '<text x="298" y="500" fill="#eafff2" font-family="Geist Mono, monospace" font-size="12">pase que rompe</text>'+
+          '<path d="M218 386 L 196 205" stroke="#f6d24b" stroke-width="2" stroke-dasharray="2 6" opacity="0.45" fill="none" marker-end="url(#ah)"/>'
+    },
+    "442": {
+      def:4, ek:"sistema de la semana", sys:"4-4-2", ptitle:"bloque medio Â· 4-4-2",
+      title:"Bloque medio 4-4-2",
+      text:"Dos lÃ­neas de cuatro compactas. Salida directa al 9 para jugar las segundas, con los laterales dando amplitud al progresar.",
+      scribble:"Â¡compactos!", tags:["4-4-2","bloque medio","segundas"],
+      homeCue:{x:40,y:24,label:"AL 9"},
+      anim:[[3,12,55],[2,88,55],[9,40,33]],
+      coach:["Dos lÃ­neas de 4, distancias cortas","Directo al 9 â†’ atacar la segunda","Laterales suben a dar amplitud"],
+      us:[[1,50,91],[3,16,73],[5,38,73],[4,62,73],[2,84,73],[7,16,48],[6,40,48],[8,60,48],[11,84,48],[9,40,24],[10,60,24]],
+      them:[[9,50,62],[7,30,58],[11,70,58],[8,38,40],[6,50,38],[10,62,40]],
+      svg:'<circle cx="224" cy="384" r="4.5" fill="#eafff2"/>'+
+          '<path d="M224 376 L 224 215" stroke="#eafff2" stroke-width="2.4" fill="none" marker-end="url(#ahp)"/>'+
+          '<text x="236" y="300" fill="#eafff2" font-family="Geist Mono, monospace" font-size="12">directo al 9</text>'+
+          '<path d="M90 562 C 80 500, 78 460, 80 412" stroke="#f6d24b" stroke-width="3" stroke-dasharray="2 7" fill="none" marker-end="url(#ah)"/>'+
+          '<text x="26" y="470" fill="#f6d24b" font-family="Geist Mono, monospace" font-size="11">amplitud</text>'+
+          '<path d="M470 562 C 480 500, 482 460, 480 412" stroke="#f6d24b" stroke-width="3" stroke-dasharray="2 7" fill="none" marker-end="url(#ah)"/>'+
+          '<circle cx="224" cy="192" r="26" fill="none" stroke="#eafff2" stroke-width="1.5" stroke-dasharray="3 4"/>'+
+          '<text x="224" y="150" fill="#eafff2" font-family="Geist Mono, monospace" font-size="10" text-anchor="middle" letter-spacing="1.5">2Âª JUGADA</text>'
+    },
+    "433": {
+      def:4, ek:"sistema de la semana", sys:"4-3-3", ptitle:"estructura base Â· 4-3-3",
+      title:"4-3-3 de referencia",
+      text:"Estructura base sin transformar: el 6 es la primera salida frente a los dos delanteros, interiores entre lÃ­neas y extremos fijando amplitud.",
+      scribble:"base", tags:["4-3-3","base","referencia"],
+      coach:["El 6 como primera opciÃ³n de salida","Interiores reciben entre lÃ­neas","Extremos abiertos, fijan a los laterales"],
+      us:[[1,50,91],[3,16,72],[5,38,72],[4,62,72],[2,84,72],[6,50,56],[8,33,46],[10,67,46],[11,16,22],[9,50,18],[7,84,22]],
+      them:[[9,42,60],[10,58,60],[8,34,42],[6,50,40],[11,66,42]],
+      svg:'<circle cx="280" cy="448" r="26" fill="none" stroke="#eafff2" stroke-width="1.5" stroke-dasharray="3 4"/>'+
+          '<text x="300" y="452" fill="#eafff2" font-family="Geist Mono, monospace" font-size="12">el 6 recibe</text>'+
+          '<circle cx="280" cy="700" r="4.5" fill="#eafff2"/>'+
+          '<path d="M280 700 L 280 486" stroke="#eafff2" stroke-width="2.2" fill="none" marker-end="url(#ahp)"/>'+
+          '<path d="M90 470 L 80 215" stroke="#f6d24b" stroke-width="2" stroke-dasharray="2 6" opacity="0.5" fill="none" marker-end="url(#ah)"/>'+
+          '<path d="M470 470 L 480 215" stroke="#f6d24b" stroke-width="2" stroke-dasharray="2 6" opacity="0.5" fill="none" marker-end="url(#ah)"/>'+
+          '<text x="250" y="150" fill="rgba(246,210,75,.7)" font-family="Geist Mono, monospace" font-size="10">extremos abiertos</text>',
+      homeCue:{x:50,y:56,label:"SALIDA Â· 6"},
+      anim:[[6,50,65],[8,30,38],[10,70,38]]
+    },
+    "4231": { def:4, ek:"sistema de la semana", sys:"4-2-3-1", ptitle:"4-2-3-1",
+      title:"4-2-3-1", text:"Doble pivote asegura la salida; el enganche entre lÃ­neas y un 9 de referencia.", scribble:"el 10 libre", tags:["4-2-3-1","doble pivote"],
+      coach:["Doble 6 cubre la salida","El 10 ataca entre lÃ­neas","Las bandas dan amplitud"],
+      us:[[1,50,91],[3,16,73],[5,38,73],[4,62,73],[2,84,73],[6,40,55],[8,60,55],[11,18,34],[10,50,30],[7,82,34],[9,50,17]],
+      homeCue:{x:50,y:30,label:"ENGANCHE"} },
+    "4141": { def:4, ek:"sistema de la semana", sys:"4-1-4-1", ptitle:"4-1-4-1",
+      title:"4-1-4-1", text:"Un ancla por delante de la lÃ­nea; bloque medio compacto y un 9 que fija.", scribble:"ancla", tags:["4-1-4-1","ancla"],
+      coach:["El 6 protege la zona","LÃ­nea de 4 compacta","El 9 fija a los centrales"],
+      us:[[1,50,91],[3,16,73],[5,38,73],[4,62,73],[2,84,73],[6,50,58],[11,16,40],[8,40,38],[10,60,38],[7,84,40],[9,50,17]],
+      homeCue:{x:50,y:58,label:"ANCLA Â· 6"} },
+    "343": { def:3, ek:"sistema de la semana", sys:"3-4-3", ptitle:"3-4-3 ofensivo",
+      title:"3-4-3 ofensivo", text:"Tres centrales y carrileros altos; tridente que ataca la Ãºltima lÃ­nea.", scribble:"carrileros", tags:["3-4-3","carrileros"],
+      coach:["Carrileros dan amplitud","El tridente fija la Ãºltima lÃ­nea","Tres centrales aseguran la salida"],
+      us:[[1,50,91],[4,28,73],[6,50,75],[5,72,73],[2,12,50],[8,38,50],[10,62,50],[3,88,50],[11,22,22],[9,50,17],[7,78,22]],
+      homeCue:{x:12,y:50,label:"CARRILERO"} },
+    "352": { def:3, ek:"sistema de la semana", sys:"3-5-2", ptitle:"3-5-2",
+      title:"3-5-2", text:"Tres centrales, mediocampo poblado y dos puntas; superioridad por dentro.", scribble:"+1 al medio", tags:["3-5-2","medio +1"],
+      coach:["Superioridad en el medio","Carrileros estiran el campo","Dos puntas fijan la lÃ­nea"],
+      us:[[1,50,91],[4,28,74],[5,50,76],[3,72,74],[11,10,52],[8,33,48],[6,50,52],[10,67,48],[2,90,52],[9,40,22],[7,60,22]],
+      homeCue:{x:50,y:52,label:"+1 MEDIO"} },
+    "3421": { def:3, ek:"sistema de la semana", sys:"3-4-2-1", ptitle:"3-4-2-1",
+      title:"3-4-2-1", text:"Tres atrÃ¡s, doble lÃ­nea de cuatro y dos mediapuntas detrÃ¡s del 9.", scribble:"dobles 10", tags:["3-4-2-1","mediapuntas"],
+      coach:["Dos 10 entre lÃ­neas","Carrileros amplitud","El 9 fija a los centrales"],
+      us:[[1,50,91],[4,28,73],[6,50,75],[5,72,73],[2,12,50],[8,38,50],[10,62,50],[3,88,50],[11,38,28],[7,62,28],[9,50,17]],
+      homeCue:{x:38,y:28,label:"MEDIAPUNTAS"} },
+    "532": { def:5, ek:"sistema de la semana", sys:"5-3-2", ptitle:"5-3-2 sÃ³lido",
+      title:"5-3-2 sÃ³lido", text:"Cinco en lÃ­nea, tres por dentro y dos puntas para la transiciÃ³n.", scribble:"bloque bajo", tags:["5-3-2","bloque bajo"],
+      coach:["La lÃ­nea de 5 cierra el ancho","Salida en transiciÃ³n a los 2","El trÃ­o controla el medio"],
+      us:[[1,50,91],[3,10,74],[6,30,76],[5,50,77],[4,70,76],[2,90,74],[8,32,52],[10,50,50],[7,68,52],[9,40,26],[11,60,26]],
+      homeCue:{x:50,y:50,label:"TRÃO MEDIO"} },
+    "541": { def:5, ek:"sistema de la semana", sys:"5-4-1", ptitle:"5-4-1",
+      title:"5-4-1", text:"Cinco atrÃ¡s y cuatro por delante; bloque muy compacto y un 9 de aguante.", scribble:"compacto", tags:["5-4-1","compacto"],
+      coach:["Dos lÃ­neas de 5 y 4","El 9 aguanta arriba","Achicar espacios centrales"],
+      us:[[1,50,91],[3,10,74],[6,30,76],[5,50,77],[4,70,76],[2,90,74],[7,14,50],[8,38,50],[10,62,50],[11,86,50],[9,50,24]],
+      homeCue:{x:50,y:24,label:"AGUANTE Â· 9"} },
+    "523": { def:5, ek:"sistema de la semana", sys:"5-2-3", ptitle:"5-2-3",
+      title:"5-2-3", text:"Cinco atrÃ¡s con doble pivote y un tridente para presionar la salida rival.", scribble:"presiÃ³n 3", tags:["5-2-3","tridente"],
+      coach:["Doble pivote equilibra","El tridente presiona arriba","Carrileros listos para subir"],
+      us:[[1,50,91],[3,10,74],[6,30,76],[5,50,77],[4,70,76],[2,90,74],[8,38,54],[10,62,54],[11,18,28],[9,50,24],[7,82,28]],
+      homeCue:{x:50,y:24,label:"TRIDENTE"} }
+  };
+
+  let curPlan = "325";
+  const $ = (s)=>document.querySelector(s);
+
+  function renderPitch(el, plan, mode){
+    let h = '<div class="circ"></div><div class="box b"></div><div class="six b"></div>';
+    plan.us.forEach(function(t){ h += '<div class="tok us" style="left:'+t[1]+'%;top:'+t[2]+'%">'+t[0]+'</div>'; });
+    if(mode === 'full'){
+      if(plan.them) plan.them.forEach(function(t){ h += '<div class="tok them" style="left:'+t[1]+'%;top:'+t[2]+'%">'+t[0]+'</div>'; });
+      h += '<div class="ttl">'+plan.ptitle+'</div>';
+      if(plan.svg){
+        h += '<div class="legend"><span><i class="lus"></i>Nosotros</span><span><i class="lthem"></i>Norte</span><span><i class="lpase"></i>Pase</span></div>';
+        h += '<svg class="arrow" viewBox="0 0 560 800" preserveAspectRatio="none">'+DEFS+plan.svg+'</svg>';
+      } else {
+        h += '<div class="legend"><span><i class="lus"></i>Nosotros</span></div>';
+      }
+    } else if(mode === 'home' && plan.homeCue){
+      var c = plan.homeCue;
+      h += '<div class="cue-ring" style="left:'+c.x+'%;top:'+c.y+'%"></div>';
+      h += '<div class="cue-lbl" style="left:'+c.x+'%;top:'+c.y+'%">'+c.label+'</div>';
+    } else if(mode === 'demo'){
+      if(plan.them) plan.them.forEach(function(t){ h += '<div class="tok them" style="left:'+t[1]+'%;top:'+t[2]+'%">'+t[0]+'</div>'; });
+      if(plan.svg){ h += '<svg class="arrow" viewBox="0 0 560 800" preserveAspectRatio="none">'+DEFS+plan.svg+'</svg>'; }
+    }
+    el.innerHTML = h;
+  }
+
+  function renderSala(p){
+    $('#cpTitle').textContent = p.title;
+    $('#cpText').textContent = p.text;
+    $('#cpTags').innerHTML = p.tags.map(function(t){ return '<span>'+t+'</span>'; }).join('');
+    $('#coachList').innerHTML = p.coach.map(function(c,i){ return '<div class="cl"><b>'+(i+1)+'</b><span>'+c+'</span></div>'; }).join('');
+  }
+
+  function renderHome(){
+    var p = PLANS[curPlan];
+    renderPitch($('#pitchHome'), p, 'home');
+    $('#hpEk').textContent = p.ek;
+    $('#hpTitle').textContent = p.title;
+    $('#hpText').innerHTML = p.text.replace(/^([^;.]+[;.])/, '$1 <span class="scribble">'+p.scribble+'</span>');
+    $('#hpTags').innerHTML = p.tags.map(function(t){ return '<span>'+t+'</span>'; }).join('');
+    $('#pvSys').textContent = p.sys;
+  }
+
+  const DEF_GROUPS = {3:[],4:[],5:[]};
+  Object.keys(PLANS).forEach(function(id){ DEF_GROUPS[PLANS[id].def].push(id); });
+  let activeDef = 3;
+
+  function renderFormList(){
+    $('#formList').innerHTML = DEF_GROUPS[activeDef].map(function(id){
+      return '<button data-plan="'+id+'"'+(id===curPlan?' class="on"':'')+'>'+PLANS[id].sys+'</button>';
+    }).join('');
+  }
+  function setDef(d){
+    activeDef = d; renderFormList();
+    document.querySelectorAll('#defFilter button').forEach(function(b){ b.classList.toggle('on', Number(b.dataset.def)===d); });
+  }
+  function setPlan(k){
+    curPlan = k; const p = PLANS[k];
+    renderPitch($('#pitchSala'), p, 'full');
+    renderSala(p);
+    renderHome();
+    if($('#pitch3d')) renderPitch($('#pitch3d'), p, 'plain');
+    var c3s = $('#c3dSys'); if(c3s) c3s.textContent = p.sys;
+    var ab = $('#animBtn'); if(ab){ ab.disabled = !p.anim; ab.textContent = p.anim ? 'â–¶ Animar jugada' : 'AnimaciÃ³n sÃ³lo en jugadas trabajadas'; }
+    setDef(p.def);
+  }
+
+  const VIEW_CLASS = {home:'home-only', sala:'sala-only', diagnostico:'diag-only', evolucion:'evo-only', postpartido:'post-only', cancha3d:'c3d-only', video:'vid-only'};
+  const VIEW_SUB = {sala:'Sala Â· pizarra Â· MD-3', diagnostico:'DiagnÃ³stico Â· scouting Â· MD-3', evolucion:'EvoluciÃ³n Â· temporada', postpartido:'Post-partido Â· J18', cancha3d:'Cancha 3D Â· laboratorio', video:'Video + tracking'};
+  function showView(v){
+    $('.board').dataset.view = v;
+    Object.keys(VIEW_CLASS).forEach(function(name){
+      var hide = name !== v;
+      document.querySelectorAll('.'+VIEW_CLASS[name]).forEach(function(el){ el.classList.toggle('vhide', hide); });
+    });
+    document.querySelectorAll('.nav a[data-view]').forEach(function(a){ a.classList.toggle('on', a.dataset.view===v); });
+    $('#mastSub').textContent = VIEW_SUB[v] || ('Inicio Â· MD-3 Â· ' + PLANS[curPlan].sys);
+  }
+
+  $('#brand').addEventListener('click', function(){ showView('home'); });
+  $('#openSala').addEventListener('click', function(){ showView('sala'); });
+  $('#backHome').addEventListener('click', function(){ showView('home'); });
+  document.querySelectorAll('.nav a[data-view]').forEach(function(a){ a.addEventListener('click', function(){ showView(a.dataset.view); }); });
+  $('#defFilter').addEventListener('click', function(e){ var b=e.target.closest('button'); if(b) setDef(Number(b.dataset.def)); });
+  $('#formList').addEventListener('click', function(e){ var b=e.target.closest('button'); if(b) setPlan(b.dataset.plan); });
+
+  /* cancha 3D Â· cÃ¡mara */
+  var tilt3d = 56;
+  $('#c3dHint').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.tilt==='reset') tilt3d=56; else tilt3d=Math.max(38,Math.min(66, tilt3d+Number(b.dataset.tilt)));
+    $('#stage3d').style.setProperty('--t3d', tilt3d+'deg');
+  });
+
+  /* login */
+  var AUTH_KEY = 'romboiq_auth';
+  function logIn(remember){ if(remember){ try{ localStorage.setItem(AUTH_KEY,'1'); }catch(e){} } $('#login').classList.add('gone'); }
+  function logOut(){ try{ localStorage.removeItem(AUTH_KEY); }catch(e){} $('#login').classList.remove('gone'); }
+  try{ if(localStorage.getItem(AUTH_KEY)==='1') $('#login').classList.add('gone'); }catch(e){}
+  $('#loginForm').addEventListener('submit', function(e){ e.preventDefault(); logIn($('#lremember').checked); });
+  $('#userChip').addEventListener('click', logOut);
+
+  /* ===== animar jugada ===== */
+  function animatePitch(pitch, planKey, btn){
+    var p = PLANS[planKey]; if(!p || !p.anim || pitch.classList.contains('animating')) return;
+    var toks = [].slice.call(pitch.querySelectorAll('.tok.us'));
+    pitch.classList.add('animating'); if(btn){ btn.classList.add('playing'); btn.disabled=true; }
+    p.anim.forEach(function(a){
+      var tok = toks.find(function(el){ return el.textContent === String(a[0]); });
+      if(tok){ if(!tok.dataset.ox){ tok.dataset.ox = tok.style.left; tok.dataset.oy = tok.style.top; } tok.style.left = a[1]+'%'; tok.style.top = a[2]+'%'; }
+    });
+    setTimeout(function(){
+      toks.forEach(function(tok){ if(tok.dataset.ox){ tok.style.left = tok.dataset.ox; tok.style.top = tok.dataset.oy; } });
+      setTimeout(function(){ pitch.classList.remove('animating'); if(btn){ btn.classList.remove('playing'); btn.disabled=false; } }, 1250);
+    }, 1700);
+  }
+  $('#animBtn').addEventListener('click', function(){ animatePitch($('#pitchSala'), curPlan, $('#animBtn')); });
+
+  /* ===== diagnÃ³stico Â· cancha propuesta ===== */
+  var diagPlanKey = '325';
+  function renderDiagBoard(key){
+    if(!PLANS[key]) return;
+    diagPlanKey = key;
+    renderPitch($('#pitchDiag2'), PLANS[key], 'demo');
+    $('#diagPitchSys').textContent = PLANS[key].sys;
+    var da = $('#diagAnim'); da.disabled = !PLANS[key].anim; da.textContent = PLANS[key].anim ? 'â–¶ Probar la jugada' : 'AnimaciÃ³n sÃ³lo en jugadas trabajadas';
+  }
+  $('#diagAnim').addEventListener('click', function(){ animatePitch($('#pitchDiag2'), diagPlanKey, $('#diagAnim')); });
+  renderDiagBoard('325');
+
+  /* ===== post-partido Â· informe ===== */
+  function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  $('#repGen').addEventListener('click', async function(){
+    var rival=($('#fRival').value||'').trim(), res=($('#fRes').value||'').trim();
+    if(!rival || !res){ $('#repResumen').value='CargÃ¡ al menos el rival y el resultado en "Datos del partido" para que la IA pueda redactar el anÃ¡lisis.'; $('#fRival').focus(); return; }
+    var sys=($('#fSys').value||'').trim(), gol=($('#fGol').value||'').trim(), amo=($('#fAmo').value||'').trim(), cam=($('#fCam').value||'').trim();
+    var btn=this; btn.disabled=true; btn.textContent='Completandoâ€¦';
+    try{
+      var prompt='Sos el analista de RomboIQ. El cuerpo tÃ©cnico de Rombo FC cargÃ³ estos datos del partido; redactÃ¡ el anÃ¡lisis SOLO a partir de ellos. Rival: '+rival+'. Resultado (Rombo - rival): '+res+'. Sistema: '+(sys||'sin especificar')+'. Goleadores: '+(gol||'sin datos')+'. Amonestados: '+(amo||'ninguno')+'. Cambios: '+(cam||'sin datos')+'. DevolvÃ© EXACTAMENTE tres bloques con estos rÃ³tulos seguidos de dos puntos, cada uno en su renglÃ³n: "Resumen:", "Lo que funcionÃ³:", "A corregir:". EspaÃ±ol rioplatense, concreto y accionable, sin markdown ni asteriscos ni viÃ±etas.';
+      var resp=(await window.claude.complete(prompt))||'';
+      function grab(a,b){ var i=resp.indexOf(a); if(i<0) return ''; var s=i+a.length; var e=b?resp.indexOf(b,s):resp.length; if(e<0)e=resp.length; return resp.slice(s,e).replace(/^[\s:â€“-]+/,'').trim(); }
+      var rs=grab('Resumen:','Lo que funcionÃ³:'); var rg=grab('Lo que funcionÃ³:','A corregir:'); var rf=grab('A corregir:',null);
+      $('#repResumen').value = rs || resp.trim();
+      if(rg) $('#repGood').value = rg;
+      if(rf) $('#repFix').value = rf;
+    }catch(e){ $('#repResumen').value='No pude autocompletar ahora. ProbÃ¡ de nuevo en un momento.'; }
+    btn.disabled=false; btn.textContent='âœ¦ Autocompletar con IA';
+  });
+  $('#toVideo').addEventListener('click', function(){ showView('video'); });
+  $('#postTimeline').addEventListener('click', function(e){ if(e.target.closest('.ev')) showView('video'); });
+
+  /* ===== coach IA ===== */
+  function makeCoach(o){
+    var log=$('#'+o.log), input=$('#'+o.input), send=$('#'+o.send), chips=$('#'+o.chips);
+    var history=[];
+    function add(role,text){ var d=document.createElement('div'); d.className='msg '+(role==='user'?'me':'ai'); d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
+    if(o.seed){ add('ai',o.seed); history.push({role:'assistant',content:o.seed}); }
+    (o.sugg||[]).forEach(function(s){ var b=document.createElement('button'); b.type='button'; b.textContent=s; b.addEventListener('click',function(){ input.value=s; doSend(); }); chips.appendChild(b); });
+    async function doSend(){
+      var q=input.value.trim(); if(!q || send.disabled) return;
+      input.value=''; add('user',q); history.push({role:'user',content:q});
+      send.disabled=true; input.disabled=true;
+      var t=add('ai','escribiendoâ€¦'); t.classList.add('typing');
+      try{
+        var transcript=history.map(function(m){ return (m.role==='user'?'DT: ':'Coach: ')+m.content; }).join('\n');
+        var prompt=o.persona+'\n\n'+o.context+'\n\nConversaciÃ³n:\n'+transcript+'\n\nRespondÃ© SOLO el prÃ³ximo mensaje del Coach, en espaÃ±ol rioplatense, breve (2 a 4 frases), concreto y accionable. Sin markdown ni viÃ±etas con asteriscos.';
+        var resp=await window.claude.complete(prompt);
+        t.remove(); var clean=(resp||'').trim();
+        if(o.onPlan){ var mm=clean.match(/\[CANCHA:\s*([0-9]{3,4})\s*\]/i); if(mm){ o.onPlan(mm[1]); clean=clean.replace(mm[0],'').trim(); } }
+        add('ai',clean||'â€¦'); history.push({role:'assistant',content:clean});
+      }catch(e){ t.remove(); add('ai','Uy, no pude conectar con el modelo ahora. ProbÃ¡ de nuevo en un momento.'); }
+      send.disabled=false; input.disabled=false; input.focus();
+    }
+    send.addEventListener('click',doSend);
+    input.addEventListener('keydown',function(e){ if(e.key==='Enter') doSend(); });
+  }
+
+  makeCoach({
+    log:'diagLog', input:'diagInput', send:'diagSend', chips:'diagChips',
+    onPlan: renderDiagBoard,
+    persona:'Sos el asistente tÃ¡ctico de RomboIQ, un coach de IA que ayuda al cuerpo tÃ©cnico de Rombo FC a preparar el prÃ³ximo partido. HablÃ¡s claro, futbolero y al grano.',
+    context:'Contexto: prÃ³ximo rival AtlÃ©tico Norte (J19, somos locales, en 3 dÃ­as). Juegan 4-4-2 directo, buscan al 9 de espaldas. Su lateral izquierdo (3) es muy ofensivo y deja la espalda. Son muy fuertes en pelota parada (ganan casi todo arriba; 40% de sus goles son de ABP) y atacan el 62% por izquierda; conceden 1.4 xG por partido. Nuestro plan de la semana es construcciÃ³n ante presiÃ³n alta con un 3-2-5 (el 6 cae entre centrales para el 3v2, el lateral invierte y queda libre el pivote que rompe la primera lÃ­nea). Nuestro 7 puede atacar la espalda del lateral 3. Cuando propongas una forma o sistema concreto para visualizar, terminÃ¡ el mensaje con una etiqueta en un renglÃ³n aparte, formato exacto [CANCHA:clave], usando UNA de estas claves segÃºn el sistema: 325, 442, 433, 4231, 4141, 343, 352, 3421, 532, 541, 523. Esa etiqueta no se le muestra al usuario: dibuja la formaciÃ³n en la cancha de al lado. Usala sÃ³lo cuando recomiendes una forma puntual.',
+    seed:'Hola Marcelo. Te ayudo a preparar el partido vs AtlÃ©tico Norte. Dato clave: su lateral 3 deja la espalda y son letales en ABP. Â¿Por dÃ³nde arrancamos?',
+    sugg:['Â¿CÃ³mo atacamos la espalda del 3?','Plan para sus ABP','Â¿QuÃ© sistema conviene?']
+  });
+
+  setPlan("325"); showView('home');
+
+  /* ====== tweaks ====== */
+  const TWEAKS = /*EDITMODE-BEGIN*/{
+    "surface": "verde",
+    "trazo": "tiza",
+    "mesa": "trabajo"
+  }/*EDITMODE-END*/;
+  const board = $('.board');
+  const labels = { surface:{verde:'verde',carbon:'carbÃ³n',blueprint:'plano tÃ©cnico'}, trazo:{tiza:'tiza',marcador:'marcador',digital:'digital'}, mesa:{trabajo:'de trabajo',ordenado:'ordenado'} };
+  const lblEl = { surface:$('#lblSurface'), trazo:$('#lblTrazo'), mesa:$('#lblMesa') };
+  function applyTweaks(){
+    board.dataset.surface=TWEAKS.surface; board.dataset.trazo=TWEAKS.trazo; board.dataset.mesa=TWEAKS.mesa;
+    for(const k in TWEAKS){
+      if(lblEl[k]) lblEl[k].textContent = labels[k][TWEAKS[k]];
+      document.querySelectorAll('.tweaks .seg[data-key="'+k+'"] button').forEach(function(b){ b.classList.toggle('on', b.dataset.val===TWEAKS[k]); });
+    }
+  }
+  document.querySelectorAll('.tweaks .seg').forEach(function(seg){
+    seg.addEventListener('click', function(e){
+      const btn = e.target.closest('button'); if(!btn) return;
+      const k = seg.dataset.key, v = btn.dataset.val; TWEAKS[k]=v; applyTweaks();
+      var edits={}; edits[k]=v; window.parent.postMessage({type:'__edit_mode_set_keys', edits:edits}, '*');
+    });
+  });
+  const panel = $('#tweaks');
+  window.addEventListener('message', function(e){
+    const t = e.data && e.data.type;
+    if(t==='__activate_edit_mode') panel.classList.add('show');
+    if(t==='__deactivate_edit_mode') panel.classList.remove('show');
+  });
+  $('#twClose').addEventListener('click', function(){ panel.classList.remove('show'); window.parent.postMessage({type:'__edit_mode_dismissed'},'*'); });
+  window.parent.postMessage({type:'__edit_mode_available'},'*');
+  applyTweaks();
+
+  function fit(){ const s=Math.min(window.innerWidth/1440, window.innerHeight/960); document.documentElement.style.setProperty('--s', s); }
+  window.addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>
