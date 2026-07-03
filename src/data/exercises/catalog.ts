@@ -2969,7 +2969,9 @@ const compactCuratedSpecs = [
     principle: "linea bloqueada",
     focus: "Central no persigue; perfila cuerpo y niega recepcion del 9.",
   },
-] as const;
+  // Tipo explicito (no `as const`): al re-autorar specs (W3.2) la union de
+  // fases se achica y las comparaciones del template romperian con TS2367.
+] satisfies { id: string; title: string; phase: string; principle: string; focus: string }[];
 
 export const generatedLibraryExerciseIds: ReadonlySet<string> = new Set(
   compactCuratedSpecs.map((spec) => spec.id),
