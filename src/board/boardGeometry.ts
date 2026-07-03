@@ -5,11 +5,35 @@ import type {
   BoardArrow,
   BoardObject,
   BoardPoint,
+  BoardZone,
   BoardZoneSemantic,
 } from "./boardModel";
 
 export function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+// Edicion de geometria de zona via inspector (W6): el modelo vive en
+// normalizado 0-100 (NormalizedCoordSchema) y el schema exige
+// x + w <= 100 && y + h <= 100. Editar UN campo a la vez clampeando contra
+// los otros tres mantiene ese invariante sin tocar los campos no editados.
+// NaN/Infinity (input invalido) -> null, rechazo sobrio sin persistir NaN.
+export function zoneGeometryPatch(
+  zone: Pick<BoardZone, "x" | "y" | "w" | "h">,
+  field: "x" | "y" | "w" | "h",
+  rawValue: number,
+): Partial<Pick<BoardZone, "x" | "y" | "w" | "h">> | null {
+  if (!Number.isFinite(rawValue)) return null;
+  switch (field) {
+    case "x":
+      return { x: clamp(rawValue, 0, 100 - zone.w) };
+    case "y":
+      return { y: clamp(rawValue, 0, 100 - zone.h) };
+    case "w":
+      return { w: clamp(rawValue, 1, 100 - zone.x) };
+    case "h":
+      return { h: clamp(rawValue, 1, 100 - zone.y) };
+  }
 }
 
 export function distance(a: BoardPoint, b: BoardPoint) {

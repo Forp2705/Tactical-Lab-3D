@@ -446,6 +446,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       tacticalMeaning: string;
       semantic: BoardZoneSemantic;
       color: string;
+      x: number;
+      y: number;
+      w: number;
+      h: number;
     }>,
   ) => {
     if (!selectedZone) return;

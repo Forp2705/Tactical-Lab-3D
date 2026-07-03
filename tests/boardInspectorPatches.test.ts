@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { arrowStyle, zoneStyle } from "../src/board/boardActionStyle";
+import { zoneGeometryPatch } from "../src/board/boardGeometry";
 import {
   arrowSemanticPatch,
   arrowTargetZonePatch,
@@ -82,4 +83,44 @@ describe("zoneSemanticPatch (re-derive default-aware)", () => {
 // Sanity: arrowStyle existe para la semantica destino (el color sigue solo).
 it("arrow color follows the new semantic via arrowStyle (not stored)", () => {
   expect(arrowStyle("pressure").color).not.toBe(arrowStyle("pass").color);
+});
+
+// W6: reposicion de zona via inspector — un campo a la vez, clampeado contra
+// el invariante x+w<=100 / y+h<=100 del schema (nunca toca los otros campos).
+describe("zoneGeometryPatch (edicion x/y/w/h del inspector)", () => {
+  const zone = createTacticalZone("occupation", 40, 30, 20, 20);
+
+  it("clamps x so it never pushes x+w over 100 (adjusts x, not w)", () => {
+    const patch = zoneGeometryPatch(zone, "x", 95);
+    expect(patch).toEqual({ x: 80 });
+  });
+
+  it("clamps w so it never pushes x+w over 100 (adjusts w, not x)", () => {
+    const patch = zoneGeometryPatch(zone, "w", 90);
+    expect(patch).toEqual({ w: 60 });
+  });
+
+  it("clamps y so it never pushes y+h over 100 (adjusts y, not h)", () => {
+    const patch = zoneGeometryPatch(zone, "y", 95);
+    expect(patch).toEqual({ y: 80 });
+  });
+
+  it("clamps h so it never pushes y+h over 100 (adjusts h, not y)", () => {
+    const patch = zoneGeometryPatch(zone, "h", 90);
+    expect(patch).toEqual({ h: 70 });
+  });
+
+  it("clamps a negative value up to the valid minimum instead of rejecting it", () => {
+    expect(zoneGeometryPatch(zone, "x", -10)).toEqual({ x: 0 });
+    expect(zoneGeometryPatch(zone, "w", -5)).toEqual({ w: 1 });
+  });
+
+  it("rejects NaN/Infinity input without producing a patch (no NaN persisted)", () => {
+    expect(zoneGeometryPatch(zone, "x", Number.NaN)).toBeNull();
+    expect(zoneGeometryPatch(zone, "w", Number.POSITIVE_INFINITY)).toBeNull();
+  });
+
+  it("passes an in-range value through unchanged", () => {
+    expect(zoneGeometryPatch(zone, "x", 10)).toEqual({ x: 10 });
+  });
 });

@@ -5763,6 +5763,14 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   background: rgba(127, 29, 29, 0.2);
 }
 
+/* Campos x/y/ancho/alto del ZoneInspector (W6): 2x2 en vez de apilados a lo
+   largo — son 4 numeros cortos, no texto libre. */
+.rombo-inspector-geometry {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
 .rombo-inspector-summary .muted-panel {
   margin: 2px 0 0;
   font-size: 12px;
