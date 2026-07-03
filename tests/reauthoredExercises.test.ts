@@ -51,10 +51,11 @@ describe("re-autorados W3.2 (Brief B)", () => {
     expect(phases.size).toBe(6);
   });
 
-  it("B5: el pool crecio exactamente a 19 y los criticos no crecieron", () => {
-    expect(getSelectableCatalog().length).toBe(19); // 15 curados + 3 re-autorados + 1 des-sombrado por el dedup de PR#23 (gate W3B)
-    // Unico critico historico: el generado en cuarentena de W1.
-    expect([...criticalExerciseIds]).toEqual(["presion-arquero-pase-atras"]);
+  it("B5: el pool sigue en 19 y ya no queda ningun critico (Ola 4)", () => {
+    expect(getSelectableCatalog().length).toBe(19); // 15 curados + 3 re-autorados + 1 des-sombrado por el dedup de PR#23 (gate W3B); el delete de generados no toca el pool
+    // Ola 4: el unico critico historico ("presion-arquero-pase-atras", generado
+    // roto) fue retirado del catalogo; el pool no cambia porque ya lo excluia.
+    expect([...criticalExerciseIds]).toEqual([]);
   });
 
   it.each(REAUTHORED_IDS)(

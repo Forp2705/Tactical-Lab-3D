@@ -3,6 +3,10 @@ import {
   catalog,
   generatedLibraryExerciseIds,
 } from "../src/data/exercises/catalog";
+import {
+  resolveRetiredReplacement,
+  retiredExerciseIds,
+} from "../src/data/exercises/retiredExercises";
 import { validateExercise } from "../src/data/exercises/validateExercise";
 import {
   criticalExerciseIds,
@@ -29,8 +33,15 @@ describe("validateExercise", () => {
     expect(result.score).toBeGreaterThanOrEqual(80);
   });
 
-  it("el ejercicio roto de presion al arquero falla por falta de arquero", () => {
-    const result = validateExercise(byId("presion-arquero-pase-atras"));
+  it("un ejercicio de presion al arquero sin arquero es critico (missing-gk)", () => {
+    // Antes cubierto por el generado roto "presion-arquero-pase-atras" (retirado
+    // del catalogo en Ola 4). Se sintetiza a partir de un curado de pressing al
+    // que se le quita el arquero: el validador debe marcarlo critico igual.
+    const broken = clone(byId("pressing-portero-recibe"));
+    broken.scene.actors = broken.scene.actors.filter(
+      (actor) => !/gk|arq|portero/i.test(actor.role),
+    );
+    const result = validateExercise(broken);
     expect(result.critical).toBe(true);
     expect(result.tags).toContain("missing-gk");
     expect(result.errors.some((issue) => issue.tag === "missing-gk")).toBe(
@@ -53,7 +64,7 @@ describe("validateExercise", () => {
   });
 
   it("es deterministica: misma entrada, misma salida", () => {
-    const exercise = byId("presion-arquero-pase-atras");
+    const exercise = byId("pressing-portero-recibe");
     expect(validateExercise(exercise)).toEqual(validateExercise(exercise));
   });
 
@@ -101,8 +112,18 @@ describe("validateExercise", () => {
 });
 
 describe("exercise selection gate", () => {
-  it("cuarentena el ejercicio roto: queda fuera de los candidatos", () => {
-    expect(criticalExerciseIds.has("presion-arquero-pase-atras")).toBe(true);
+  it("ejercicio roto retirado (Ola 4): fuera del catalogo, con tombstone al curado", () => {
+    // "presion-arquero-pase-atras" era el generado roto (presion al arquero sin
+    // arquero). En Ola 4 se retiro del catalogo por completo; su tombstone redirige
+    // al curado equivalente, que sigue siendo seleccionable.
+    expect(catalog.some((e) => e.id === "presion-arquero-pase-atras")).toBe(
+      false,
+    );
+    expect(criticalExerciseIds.has("presion-arquero-pase-atras")).toBe(false);
+    expect(retiredExerciseIds.has("presion-arquero-pase-atras")).toBe(true);
+    expect(resolveRetiredReplacement("presion-arquero-pase-atras")).toBe(
+      "pressing-portero-recibe",
+    );
     const selectableIds = new Set(getSelectableCatalog().map((e) => e.id));
     expect(selectableIds.has("presion-arquero-pase-atras")).toBe(false);
     expect(selectableIds.has("pressing-portero-recibe")).toBe(true);
