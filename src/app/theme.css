@@ -2338,6 +2338,21 @@ button.danger {
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
   --font-head: "Avenir Next", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
   --font-body: "Aptos", "Segoe UI", system-ui, sans-serif;
+
+  /* Felt-board palette, transplanted verbatim from docs/design/Pizarra.html
+     (.board/.pitch/.tok). Distinct from the cockpit --chalk/--lime tokens
+     above; only consumed under .rombo-board-shell (W3 slice 1). */
+  --felt-bg-1: #16352a;
+  --felt-bg-2: #0d241b;
+  --felt-bg-3: #0a1d16;
+  --felt-ink: #f3efe2;
+  --felt-gold: #f6d24b;
+  --felt-coral: #ff6b5e;
+  --felt-mint: #eafff2;
+  --felt-line: rgba(243, 239, 226, 0.8);
+  --felt-font-head: "Bricolage Grotesque", var(--font-head);
+  --felt-font-mono: "Geist Mono", ui-monospace, "Consolas", monospace;
+  --felt-font-body: "Familjen Grotesk", var(--font-body);
 }
 
 body {
@@ -5112,12 +5127,28 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-height: calc(100vh - 24px);
-  color: #e8f2ff;
+  color: var(--felt-ink);
+  font-family: var(--felt-font-body);
+  /* Felt texture, verbatim from Pizarra.html .board (radial highlights +
+     diagonal grain + base gradient), background-size omitted since the
+     mockup relies on the same repeating-linear-gradient tiling default. */
   background: radial-gradient(
-      circle at 18% 0%,
-      rgba(23, 119, 255, 0.07),
-      transparent 28%
-    ), linear-gradient(180deg, #07111d 0%, #050b12 100%);
+      120% 90% at 18% 12%,
+      rgba(255, 255, 255, 0.05),
+      transparent 55%
+    ),
+    radial-gradient(140% 120% at 88% 96%, rgba(0, 0, 0, 0.45), transparent 60%),
+    repeating-linear-gradient(
+      27deg,
+      rgba(255, 255, 255, 0.012) 0 2px,
+      transparent 2px 5px
+    ),
+    linear-gradient(
+      160deg,
+      var(--felt-bg-1) 0%,
+      var(--felt-bg-2) 55%,
+      var(--felt-bg-3) 100%
+    );
 }
 
 .rombo-board-topbar,
@@ -5127,22 +5158,23 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(5, 13, 24, 0.82);
+  border-bottom: 1px solid var(--felt-line);
+  background: rgba(8, 18, 14, 0.55);
 }
 
 .rombo-board-footer {
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  border-top: 1px solid var(--felt-line);
   border-bottom: 0;
 }
 
 .rombo-brand {
+  font-family: var(--felt-font-head);
   font-weight: 900;
   font-size: 18px;
   letter-spacing: -0.02em;
-  color: #ffffff;
+  color: var(--felt-ink);
   padding-right: 18px;
-  border-right: 1px solid rgba(148, 163, 184, 0.25);
+  border-right: 1px solid var(--felt-line);
 }
 
 .rombo-title-block {
@@ -5152,6 +5184,9 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-title-block h1 {
   margin: 0;
+  font-family: var(--felt-font-head);
+  font-weight: 800;
+  text-transform: uppercase;
   font-size: 20px;
   line-height: 1.15;
 }
@@ -5277,11 +5312,13 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-board-health span,
 .rombo-board-footer strong {
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  /* Mono chip treatment transplanted from Pizarra.html .ttl/.pk labels. */
+  border: 1px solid var(--felt-line);
   border-radius: 999px;
   padding: 4px 9px;
-  background: rgba(15, 23, 42, 0.62);
-  color: #b6c5d8;
+  background: rgba(8, 18, 14, 0.62);
+  color: var(--felt-mint);
+  font-family: var(--felt-font-mono);
   font-size: 12px;
 }
 
@@ -5298,10 +5335,12 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-right-panel section,
 .rombo-pitch-panel,
 .rombo-board-empty > div {
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  /* Panel treatment transplanted from Pizarra.html .panel/.pitch (dark
+     green-tinted surface, felt-line border) instead of the cockpit blue. */
+  border: 1.5px solid var(--felt-line);
   border-radius: 10px;
-  background: rgba(8, 18, 31, 0.78);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+  background: linear-gradient(165deg, #0c1f18 0%, #081410 100%);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.35);
 }
 
 .rombo-toolrail {
@@ -5313,8 +5352,10 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-toolrail h2,
 .rombo-toolrail h3,
 .rombo-right-panel h2 {
+  /* Mono eyebrow treatment transplanted from Pizarra.html .ttl/.ek/.pk. */
   margin: 0 0 10px;
-  color: #9ca3af;
+  color: var(--felt-mint);
+  font-family: var(--felt-font-mono);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -5423,11 +5464,8 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   min-height: 0;
   max-height: calc(100vh - 188px);
   padding: 46px 18px 24px;
-  background: linear-gradient(
-    180deg,
-    rgba(7, 38, 24, 0.86),
-    rgba(6, 32, 22, 0.9)
-  );
+  /* Verbatim from Pizarra.html .pitch background. */
+  background: linear-gradient(165deg, #0c1f18 0%, #081410 100%);
 }
 
 .rombo-pitch-toolbar {
@@ -5454,6 +5492,8 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   touch-action: none;
 }
 
+/* Line/fill colors transplanted from Pizarra.html .pitch markings
+   (circ/box/six use rgba(243,239,226,.45-.8), same felt-line family). */
 .pitch-bg {
   fill: rgba(11, 78, 34, 0.88);
 }
@@ -5461,12 +5501,12 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .pitch-lines,
 .pitch-lines-fill {
   fill: none;
-  stroke: rgba(226, 255, 237, 0.66);
+  stroke: var(--felt-line);
   stroke-width: 0.32;
 }
 
 .pitch-dot {
-  fill: rgba(226, 255, 237, 0.66);
+  fill: var(--felt-line);
 }
 
 .board-zone {
@@ -5536,12 +5576,18 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   filter: drop-shadow(0 0.7px 1px rgba(0, 0, 0, 0.7));
 }
 
+/* Transplanted from Pizarra.html .tok.us (filled gold) / .tok.them
+   (transparent + dashed coral outline). SVG has no border-style:dashed, so
+   the dashed look is stroke-dasharray on the same felt-coral stroke. */
 .token.own {
-  fill: #1267d8;
+  fill: var(--felt-gold);
 }
 
 .token.rival {
-  fill: #dc2626;
+  fill: transparent;
+  stroke: var(--felt-coral);
+  stroke-width: 0.5;
+  stroke-dasharray: 0.9 0.55;
 }
 
 .token.selected,
