@@ -11,12 +11,17 @@ import {
   labelForArrow,
   labelForZone,
 } from "../boardModel";
+import { zoneGeometryPatch } from "../boardGeometry";
 
 type InspectorZone = { id: string; label: string };
 
 type ZonePatch = Partial<{
   label: string;
   tacticalMeaning: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }>;
 
 type TacticalBoardInspectorPanelProps = {
@@ -278,10 +283,54 @@ function ZoneInspector({
           }
         />
       </label>
+      <div className="rombo-inspector-geometry">
+        <ZoneGeometryField field="x" label="X" zone={zone} onUpdate={onUpdate} />
+        <ZoneGeometryField field="y" label="Y" zone={zone} onUpdate={onUpdate} />
+        <ZoneGeometryField
+          field="w"
+          label="Ancho"
+          zone={zone}
+          onUpdate={onUpdate}
+        />
+        <ZoneGeometryField field="h" label="Alto" zone={zone} onUpdate={onUpdate} />
+      </div>
       <button type="button" className="danger" onClick={onDelete}>
         Borrar zona
       </button>
     </div>
+  );
+}
+
+// Un campo x/y/w/h a la vez: clampea contra el invariante 0-100 del modelo y
+// descarta input invalido (NaN/Infinity) sin llamar a onUpdate — el input
+// simplemente vuelve a mostrar el ultimo valor committeado.
+function ZoneGeometryField({
+  field,
+  label,
+  zone,
+  onUpdate,
+}: {
+  field: "x" | "y" | "w" | "h";
+  label: string;
+  zone: BoardZone;
+  onUpdate: (patch: ZonePatch) => void;
+}) {
+  return (
+    <label>
+      {label}
+      <input
+        type="number"
+        value={zone[field]}
+        onChange={(event) => {
+          const patch = zoneGeometryPatch(
+            zone,
+            field,
+            Number(event.target.value),
+          );
+          if (patch) onUpdate(patch);
+        }}
+      />
+    </label>
   );
 }
 
