@@ -1,3 +1,30 @@
+/* Felt-board fonts, self-hosted (Google Fonts OFL, latin subset, variable
+   woff2 downloaded build-time — no runtime CDN request). Referenced only by
+   the --felt-font-* tokens below, consumed under .rombo-board-shell. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/bricolage-grotesque-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Familjen Grotesk";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/familjen-grotesk-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/geist-mono-variable.woff2") format("woff2");
+}
+
 :root {
   --bg: #050b10;
   --panel: rgba(10, 18, 24, 0.92);
@@ -4801,45 +4828,6 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   touch-action: none;
 }
 
-.board-pitch-base {
-  fill: #071b14;
-}
-
-.board-pitch-marks {
-  fill: none;
-  stroke: rgba(232, 255, 247, 0.45);
-  stroke-width: 0.35;
-}
-
-.board-object {
-  cursor: grab;
-}
-
-.board-object.own circle {
-  fill: #5eead4;
-  stroke: rgba(255, 255, 255, 0.78);
-  stroke-width: 0.28;
-}
-
-.board-object.rival circle {
-  fill: #ff7474;
-  stroke: rgba(255, 255, 255, 0.72);
-  stroke-width: 0.28;
-}
-
-.board-object.selected circle,
-.board-arrow-group.selected .board-arrow,
-.board-zone-group.selected .board-zone {
-  stroke: #f8d66d;
-  stroke-width: 0.9;
-}
-
-.danger-ring {
-  fill: none !important;
-  stroke: #f8d66d !important;
-  stroke-width: 0.55 !important;
-}
-
 .board-ball {
   fill: #f8fafc;
   stroke: #0f172a;
@@ -4853,8 +4841,6 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   font-weight: 900;
 }
 
-.token-role,
-.board-object-label,
 .board-zone-label {
   text-anchor: middle;
   fill: #e8fff7;
@@ -5268,15 +5254,15 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-primary-cta {
   display: grid;
   min-width: 230px;
-  background: linear-gradient(180deg, #1463eb, #0f4ec5) !important;
-  border-color: rgba(96, 165, 250, 0.55) !important;
-  color: #ffffff !important;
+  background: var(--felt-gold) !important;
+  border-color: rgba(26, 18, 5, 0.35) !important;
+  color: #1a1205 !important;
   font-weight: 800;
   text-align: left;
 }
 
 .rombo-primary-cta span {
-  color: rgba(219, 234, 254, 0.78);
+  color: rgba(26, 18, 5, 0.65);
   font-size: 11px;
   font-weight: 500;
 }
@@ -5287,8 +5273,9 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 }
 
 .rombo-save {
-  background: linear-gradient(180deg, #1f7a35, #17602a) !important;
-  border-color: rgba(74, 222, 128, 0.45) !important;
+  background: var(--felt-gold) !important;
+  border-color: rgba(26, 18, 5, 0.35) !important;
+  color: #1a1205 !important;
 }
 
 .rombo-board-select {
