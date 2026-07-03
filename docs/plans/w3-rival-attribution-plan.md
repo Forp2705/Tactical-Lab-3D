@@ -24,6 +24,22 @@ Todo en `src/ai/CoachAgent.ts` (NO toco `CoachAgentPrompt.ts`; la instruccion vi
 ## Validacion
 `npm run type-check && npm run build && npm test -- --run` + `tests/coach*` + nuevos. Guard EOL. Commits atomicos.
 
+## Evidencia con key real (2 asks, modelo anthropic/claude-sonnet-4.5)
+Mismo input ("Como planteo el partido contra este rival, sobre todo por las bandas?", skipInterview).
+- Ask A (CON scout probableSystem 4-4-2 + vulnerabilities): mode=hypothesis, confidence 0.48.
+  ATRIBUCION PASS: "El scout declara que el rival juega con presion alta orientada a banda y sale corto
+  por central..." — atribuye al scout, se mantiene dentro de lo declarado (no inventa coordenadas ni
+  formacion extra). A2 PASS: 0.48 queda BAJO el techo de no-evidencia-actual (~0.55 de los guards); el
+  scout NO empuja la confianza por encima del techo que fija la evidencia (queda en hipotesis).
+- Ask B (SIN scout, mismo input): mode=hypothesis, confidence 0.15. A3 PASS FUERTE: "No hay scout
+  cargado del rival... Sin conocer la formacion rival, su presion, su salida... cualquier planteo seria
+  especulacion" — CERO afirmacion posicional/conductual del rival; missingInformation pide el scout
+  explicito ("Falta scout del rival: formacion, presion, salida, perfil de laterales y extremos").
+Interpretacion A2: el criterio es el TECHO (no romper el cap que fija la evidencia actual), no un orden
+estricto with<=without; con scout 0.48 y sin scout 0.15, ambos <= ~0.55 => el techo no se rompe por el
+scout (que ademas es belief, no evidencia). Estructuralmente, ningun path de cap (buildEvidenceAudit /
+capForEvidenceStrength / assessCoachAdviceTrust) recibe ni referencia el scout.
+
 ## Riesgos
 - A2 real requiere modelo (no deterministico); la garantia fuerte es estructural (scout no entra a ningun path de cap). Si corro asks, es evidencia, no la prueba.
 - El texto del bloque es un cambio de prompt (aditivo); cero rewrite del system prompt; A1 fija el substring.
