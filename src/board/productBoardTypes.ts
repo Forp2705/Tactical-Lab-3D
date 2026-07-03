@@ -157,13 +157,19 @@ export function buildBoardPayload(
   };
 }
 
+// Finding con id estable de su origen real (arrow.id / zone.id), para que la
+// UI pueda keyear listas sin depender del texto (dos zonas con el mismo
+// resumen -p.ej. mismo label y misma ocupacion- generan el mismo texto pero
+// nunca el mismo id).
+export type AiFinding = { id: string; text: string };
+
 // Lectura deterministica de la escena. Cada finding tiene antecedente
 // ESTRUCTURAL en el grafo (una flecha real, una zona, posiciones de fichas).
 // Reporta HECHOS que el DT interpreta, no veredictos que la herramienta
 // asevera: "3 propios vs 2 rivales en X" (posicional, defendible) en vez de
 // "tenemos ventaja" (cualitativo, que un board estatico no sostiene). Si la
 // escena no da para leer, lo dice en vez de inventar. Sin LLM.
-export function inferAiInterpretation({
+export function inferAiInterpretationFindings({
   players,
   objects,
   arrows,
@@ -173,8 +179,8 @@ export function inferAiInterpretation({
   objects: BoardObject[];
   arrows: BoardArrow[];
   zones: BoardZone[];
-}): string[] {
-  const findings: string[] = [];
+}): AiFinding[] {
+  const findings: AiFinding[] = [];
 
   // 1) Relaciones jugador->jugador: hecho estructural (existe una flecha real
   //    anclada de objeto a objeto). Nada de plantillas keyed a un semantic.
@@ -185,9 +191,10 @@ export function inferAiInterpretation({
     const from = resolveBoardActor(arrow.from, objects, players);
     const to = resolveBoardActor(arrow.to, objects, players);
     if (from && to) {
-      findings.push(
-        `${labelBoardActor(from)} ${RELATION_VERB[arrow.semantic]} ${labelBoardActor(to)}.`,
-      );
+      findings.push({
+        id: `link:${arrow.id}`,
+        text: `${labelBoardActor(from)} ${RELATION_VERB[arrow.semantic]} ${labelBoardActor(to)}.`,
+      });
     }
   }
 
@@ -196,33 +203,40 @@ export function inferAiInterpretation({
     const zone = zones.find((item) => item.id === arrow.targetZoneId);
     if (!zone) continue;
     const from = resolveBoardActor(arrow.from, objects, players);
-    findings.push(
-      `${from ? labelBoardActor(from) : "Una accion"} se orienta hacia ${zone.label}.`,
-    );
+    findings.push({
+      id: `target:${arrow.id}`,
+      text: `${from ? labelBoardActor(from) : "Una accion"} se orienta hacia ${zone.label}.`,
+    });
   }
 
   // 3) Hechos posicionales por zona: conteo de fichas reales, NO veredicto.
   for (const zone of zones.slice(0, 2)) {
     const { own, rival } = countTokensInZone(objects, zone);
     if (own + rival > 0) {
-      findings.push(`En ${zone.label}: ${own} propios vs ${rival} rivales.`);
+      findings.push({
+        id: `zone:${zone.id}`,
+        text: `En ${zone.label}: ${own} propios vs ${rival} rivales.`,
+      });
     }
   }
 
   // 4) Degradar con honestidad: decir QUE FALTA en vez de inventar.
   if (findings.length === 0) {
     if (arrows.length === 0) {
-      findings.push(
-        "La pizarra todavia no tiene acciones. Dibuja flechas ancladas a jugadores para leer relaciones.",
-      );
+      findings.push({
+        id: "degrade:no-actions",
+        text: "La pizarra todavia no tiene acciones. Dibuja flechas ancladas a jugadores para leer relaciones.",
+      });
     } else if (anchoredLinks.length === 0) {
-      findings.push(
-        "Hay acciones, pero ninguna anclada de jugador a jugador. Ancla origen y destino para leer relaciones concretas.",
-      );
+      findings.push({
+        id: "degrade:no-anchor",
+        text: "Hay acciones, pero ninguna anclada de jugador a jugador. Ancla origen y destino para leer relaciones concretas.",
+      });
     } else {
-      findings.push(
-        "Faltan numeros o roles en las fichas para describir la relacion con precision.",
-      );
+      findings.push({
+        id: "degrade:no-numbers",
+        text: "Faltan numeros o roles en las fichas para describir la relacion con precision.",
+      });
     }
   }
 
@@ -230,6 +244,14 @@ export function inferAiInterpretation({
   // importancia -zonas danger/risk y links anclados- en vez de por orden de
   // insercion del array, para que una zona relevante no quede afuera.
   return findings.slice(0, 4);
+}
+
+// Wrapper delgado: mantiene el contrato string[] preexistente (payload JSON
+// exportable + tests) sin filtrar el shape rico (con id) hacia afuera.
+export function inferAiInterpretation(
+  input: Parameters<typeof inferAiInterpretationFindings>[0],
+): string[] {
+  return inferAiInterpretationFindings(input).map((finding) => finding.text);
 }
 
 type BoardActorRef = {
