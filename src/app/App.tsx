@@ -6,6 +6,7 @@ import { ViewerCanvasHud } from "@/viewer/ViewerCanvasHud";
 import { getMatchFrame } from "@/viewer/lib/matchEngine";
 import { useViewerKeyboard } from "@/viewer/useKeyboard";
 import { Suspense, lazy, useEffect, useMemo } from "react";
+import { resolveViewerSelection } from "./viewerSelection";
 import "./theme.css";
 import "./tactical-ui.css";
 import "@/ui/tacticalPrimitives.css";
@@ -83,13 +84,15 @@ async function exportCurrentCanvas(format: "mp4" | "gif") {
 }
 
 function slugifyForFilename(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "ejercicio";
+  return (
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || "ejercicio"
+  );
 }
 
 async function exportCurrentCanvasImage() {
@@ -285,9 +288,13 @@ function ViewerWorkspace() {
   const viewerExerciseOverride = useAppStore(
     (state) => state.viewerExerciseOverride,
   );
+  const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const presentationMode = useAppStore((state) => state.presentationMode);
-  const selectedExercise =
-    viewerExerciseOverride ?? getExerciseById(selectedExerciseId) ?? catalog[0];
+  const { exercise: selectedExercise, missing: selectionMissing } =
+    resolveViewerSelection(selectedExerciseId, viewerExerciseOverride, [
+      ...catalog,
+      ...exerciseVariants,
+    ]);
   const camera = useAppStore((state) => state.camera);
   const viewerQuality = useAppStore((state) => state.viewerQuality);
   const time = useAppStore((state) => state.time);
@@ -321,12 +328,19 @@ function ViewerWorkspace() {
   return (
     <section className="viewer-layout">
       <div className="stage-card viewer-stage">
+        {selectionMissing ? (
+          <div className="alert-row warn">
+            El ejercicio seleccionado ya no esta disponible en el catalogo.
+            Mostrando <b>{selectedExercise.title}</b> en su lugar.
+          </div>
+        ) : null}
         <div className="stage-header">
           <div>
             <h3>{selectedExercise.title}</h3>
             <p>
               {selectedExercise.phase} - {selectedExercise.principle} -{" "}
-              {selectedExercise.players.min}-{selectedExercise.players.max} jugadores
+              {selectedExercise.players.min}-{selectedExercise.players.max}{" "}
+              jugadores
             </p>
             <div className="viewer-team-legend" aria-label="Leyenda de equipos">
               <span>
@@ -446,7 +460,10 @@ function ViewerWorkspace() {
             <p>{selectedExercise.objective.primary}</p>
             <div className="viewer-summary-grid">
               <ViewerStatCard label="Fase viva" value={phase.name} />
-              <ViewerStatCard label="Principio" value={selectedExercise.principle} />
+              <ViewerStatCard
+                label="Principio"
+                value={selectedExercise.principle}
+              />
               <ViewerStatCard
                 label="Jugadores"
                 value={`${selectedExercise.players.min}-${selectedExercise.players.max}`}
@@ -468,7 +485,9 @@ function ViewerWorkspace() {
                   onChange={(event) =>
                     useAppStore
                       .getState()
-                      .setViewerQuality(event.target.value as typeof viewerQuality)
+                      .setViewerQuality(
+                        event.target.value as typeof viewerQuality,
+                      )
                   }
                 >
                   <option value="high">Alta</option>
@@ -480,8 +499,8 @@ function ViewerWorkspace() {
             <div className="viewer-toggle-grid">
               {VIEWER_TOGGLES.map((toggle) => {
                 const active =
-                  visibleToggles.find((item) => item.id === toggle.id)?.active ??
-                  false;
+                  visibleToggles.find((item) => item.id === toggle.id)
+                    ?.active ?? false;
                 return (
                   <button
                     type="button"
@@ -501,7 +520,9 @@ function ViewerWorkspace() {
             <button
               type="button"
               className="viewer-primary-action"
-              onClick={() => useAppStore.getState().addToSession(selectedExercise.id)}
+              onClick={() =>
+                useAppStore.getState().addToSession(selectedExercise.id)
+              }
             >
               Agregar a sesion
             </button>
@@ -543,7 +564,9 @@ function ViewerWorkspace() {
               <button
                 type="button"
                 className="secondary"
-                onClick={() => useAppStore.getState().duplicateSelectedExercise()}
+                onClick={() =>
+                  useAppStore.getState().duplicateSelectedExercise()
+                }
               >
                 Duplicar variante
               </button>
