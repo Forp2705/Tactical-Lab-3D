@@ -444,7 +444,7 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: var(--shadow);
   padding: clamp(20px, 3vw, 30px);
 }
-.hero h2 { margin: 10px 0 8px; font-size: clamp(26px, 4vw, 42px); letter-spacing: -0.04em; line-height: 1.02; }
+.hero h2 { margin: 4px 0 4px; font-size: clamp(26px, 4vw, 42px); letter-spacing: -0.04em; line-height: 1.02; }
 .hero p { margin: 0; color: var(--muted); max-width: 52ch; }
 .hero-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
 
@@ -1280,7 +1280,7 @@ h4,
   color: var(--text) !important;
   font-size: 14px;
   line-height: 1.6;
-  margin-top: 12px !important;
+  margin-top: 6px !important;
 }
 
 .command-hero-copy {
@@ -1302,7 +1302,7 @@ h4,
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 14px 0 0;
+  margin: 8px 0 0;
 }
 
 .command-hero-pitch {
@@ -1597,7 +1597,7 @@ body .app-shell .brand-mark {
 
 /* Home noise reduction */
 .command-hero {
-  padding: clamp(20px, 3vw, 30px) !important;
+  padding: clamp(14px, 1.8vw, 18px) !important;
 }
 
 .command-hero .home-title {
@@ -1609,7 +1609,11 @@ body .app-shell .brand-mark {
   color: var(--muted);
   font-size: 15px;
   line-height: 1.45;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
+}
+
+.command-hero .toolbar.compact {
+  margin-top: 6px;
 }
 
 .home-action-strip {
@@ -1939,11 +1943,11 @@ body .app-shell .brand-mark {
 }
 
 .command-status-row {
-  margin-top: 14px;
+  margin-top: 8px;
 }
 
 .command-loop-row {
-  margin-top: 18px;
+  margin-top: 8px;
 }
 
 .command-pitch-summary div {
@@ -2606,7 +2610,7 @@ body .app-shell .brand-mark {
 .home-next-action {
   display: grid;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 8px;
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -2824,7 +2828,7 @@ body .app-shell .brand-mark {
 .home-next-action {
   gap: 10px;
   max-width: 660px;
-  padding: 16px 18px;
+  padding: 10px 18px;
 }
 
 .home-next-action h3,
