@@ -51,8 +51,8 @@ describe("re-autorados W3.2 (Brief B)", () => {
     expect(phases.size).toBe(6);
   });
 
-  it("B5: el pool crecio exactamente a 18 y los criticos no crecieron", () => {
-    expect(getSelectableCatalog().length).toBe(18);
+  it("B5: el pool crecio exactamente a 19 y los criticos no crecieron", () => {
+    expect(getSelectableCatalog().length).toBe(19); // 15 curados + 3 re-autorados + 1 des-sombrado por el dedup de PR#23 (gate W3B)
     // Unico critico historico: el generado en cuarentena de W1.
     expect([...criticalExerciseIds]).toEqual(["presion-arquero-pase-atras"]);
   });
