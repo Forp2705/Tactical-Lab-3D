@@ -1622,7 +1622,7 @@ body .app-shell .brand-mark {
 
 .app-shell button.home-action {
   min-height: 58px !important;
-  padding: 14px 16px !important;
+  padding: 6px 16px !important;
 }
 
 .home-action small {
