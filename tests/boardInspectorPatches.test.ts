@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+import { createElement } from "react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { arrowStyle, zoneStyle } from "../src/board/boardActionStyle";
 import { zoneGeometryPatch } from "../src/board/boardGeometry";
 import {
@@ -10,6 +13,7 @@ import {
   labelForZone,
   zoneSemanticPatch,
 } from "../src/board/boardModel";
+import { TacticalBoardInspectorPanel } from "../src/board/components/TacticalBoardInspectorPanel";
 
 // P0.4: logica pura del inspector. Las tres trampas que levanto el review.
 
@@ -122,5 +126,82 @@ describe("zoneGeometryPatch (edicion x/y/w/h del inspector)", () => {
 
   it("passes an in-range value through unchanged", () => {
     expect(zoneGeometryPatch(zone, "x", 10)).toEqual({ x: 10 });
+  });
+});
+
+// W7: el input x/y/w/h del inspector es controlado por `zone[field]`.
+// Number("") === 0, asi que borrar el campo para retipear commiteaba un
+// patch con 0 y la zona saltaba. El fix agrega un borrador local que no
+// commitea mientras el campo esta vacio o es invalido.
+describe("ZoneGeometryField (inspector UI): no 0 transitorio al borrar el campo", () => {
+  function renderZoneInspector(onUpdateZone: (patch: unknown) => void) {
+    const zone = createTacticalZone("occupation", 40, 30, 20, 20);
+    render(
+      createElement(TacticalBoardInspectorPanel, {
+        selectedObject: null,
+        selectedArrow: null,
+        selectedZone: zone,
+        zones: [{ id: zone.id, label: zone.label }],
+        sceneSummary: { title: "", phase: "", problem: "" },
+        onUpdateObject: () => {},
+        onUpdateArrow: () => {},
+        onUpdateZone,
+        onSetArrowSemantic: () => {},
+        onSetArrowTargetZone: () => {},
+        onSetZoneSemantic: () => {},
+        onDelete: () => {},
+      }),
+    );
+    return zone;
+  }
+
+  afterEach(() => {
+    // No `test.globals: true` in vite.config.ts, so RTL's auto-cleanup never
+    // registers itself; without this, the next test's queries see stale DOM.
+    cleanup();
+  });
+
+  it("empty input does not commit a patch", () => {
+    const onUpdateZone = vi.fn();
+    renderZoneInspector(onUpdateZone);
+    const xInput = screen.getByLabelText("X") as HTMLInputElement;
+
+    fireEvent.change(xInput, { target: { value: "" } });
+
+    expect(onUpdateZone).not.toHaveBeenCalled();
+    expect(xInput.value).toBe("");
+  });
+
+  it("invalid (non-finite) input does not commit a patch", () => {
+    const onUpdateZone = vi.fn();
+    renderZoneInspector(onUpdateZone);
+    const xInput = screen.getByLabelText("X") as HTMLInputElement;
+
+    fireEvent.change(xInput, { target: { value: "not-a-number" } });
+
+    expect(onUpdateZone).not.toHaveBeenCalled();
+  });
+
+  it("a valid out-of-range number still commits with the clamp intact", () => {
+    const onUpdateZone = vi.fn();
+    renderZoneInspector(onUpdateZone);
+    const xInput = screen.getByLabelText("X") as HTMLInputElement;
+
+    fireEvent.change(xInput, { target: { value: "-50" } });
+
+    expect(onUpdateZone).toHaveBeenCalledTimes(1);
+    expect(onUpdateZone).toHaveBeenCalledWith({ x: 0 });
+  });
+
+  it("clearing then retyping a valid number commits only the final value (no 0 in between)", () => {
+    const onUpdateZone = vi.fn();
+    renderZoneInspector(onUpdateZone);
+    const xInput = screen.getByLabelText("X") as HTMLInputElement;
+
+    fireEvent.change(xInput, { target: { value: "" } });
+    fireEvent.change(xInput, { target: { value: "5" } });
+
+    expect(onUpdateZone).toHaveBeenCalledTimes(1);
+    expect(onUpdateZone).toHaveBeenCalledWith({ x: 5 });
   });
 });

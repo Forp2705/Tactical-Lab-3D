@@ -180,18 +180,17 @@ export function inferAiInterpretationFindings({
   arrows: BoardArrow[];
   zones: BoardZone[];
 }): AiFinding[] {
-  const findings: AiFinding[] = [];
-
   // 1) Relaciones jugador->jugador: hecho estructural (existe una flecha real
   //    anclada de objeto a objeto). Nada de plantillas keyed a un semantic.
   const anchoredLinks = arrows.filter(
     (arrow) => arrow.from.kind === "object" && arrow.to.kind === "object",
   );
+  const linkFindings: AiFinding[] = [];
   for (const arrow of anchoredLinks.slice(0, 3)) {
     const from = resolveBoardActor(arrow.from, objects, players);
     const to = resolveBoardActor(arrow.to, objects, players);
     if (from && to) {
-      findings.push({
+      linkFindings.push({
         id: `link:${arrow.id}`,
         text: `${labelBoardActor(from)} ${RELATION_VERB[arrow.semantic]} ${labelBoardActor(to)}.`,
       });
@@ -199,11 +198,12 @@ export function inferAiInterpretationFindings({
   }
 
   // 2) Acciones orientadas a una zona (targetZoneId).
+  const targetFindings: AiFinding[] = [];
   for (const arrow of arrows.filter((arrow) => arrow.targetZoneId).slice(0, 2)) {
     const zone = zones.find((item) => item.id === arrow.targetZoneId);
     if (!zone) continue;
     const from = resolveBoardActor(arrow.from, objects, players);
-    findings.push({
+    targetFindings.push({
       id: `target:${arrow.id}`,
       text: `${from ? labelBoardActor(from) : "Una accion"} se orienta hacia ${zone.label}.`,
     });
@@ -223,9 +223,13 @@ export function inferAiInterpretationFindings({
         id: `zone:${zone.id}`,
         text: `En ${zone.label}: ${own} propios vs ${rival} rivales.`,
         zoneNumber: index + 1,
+        danger: zone.semantic === "danger",
       };
     })
-    .filter((fact): fact is NonNullable<typeof fact> => fact !== null);
+    .filter((fact): fact is NonNullable<typeof fact> => fact !== null)
+    // Prioridad P0.7: zonas de riesgo primero, no reordena el resto (sort
+    // estable) — solo afecta la posicion visual, ninguna zona se descarta.
+    .sort((a, b) => Number(b.danger) - Number(a.danger));
   const zoneTextOccurrences = new Map<string, number>();
   for (const fact of zoneFacts) {
     zoneTextOccurrences.set(
@@ -233,13 +237,25 @@ export function inferAiInterpretationFindings({
       (zoneTextOccurrences.get(fact.text) ?? 0) + 1,
     );
   }
-  for (const fact of zoneFacts) {
+  const zoneFindings: AiFinding[] = zoneFacts.map((fact) => {
     const ambiguous = (zoneTextOccurrences.get(fact.text) ?? 0) > 1;
-    findings.push({
+    return {
       id: fact.id,
       text: ambiguous ? `${fact.text} (zona ${fact.zoneNumber})` : fact.text,
-    });
-  }
+    };
+  });
+
+  // P0.7 resuelto: las lineas de zona (entidad tactica real) NUNCA se
+  // sacrifican por el cap — antes, un board cargado de links/targets podia
+  // empujar zonas 3/4 fuera del slice(0,4) final. El cap ahora aplica solo a
+  // links/targets (menor peso tactico que una zona), con links anclados con
+  // prioridad sobre las acciones-a-zona dentro de ese presupuesto reducido.
+  // Si hay mas de 4 zonas reales con fichas, el total crece por encima de 4:
+  // es la misma decision de producto que ya habilito zoneFacts sin cap en W6.
+  const CAP = 4;
+  const otherBudget = Math.max(0, CAP - zoneFindings.length);
+  const otherFindings = [...linkFindings, ...targetFindings].slice(0, otherBudget);
+  const findings: AiFinding[] = [...otherFindings, ...zoneFindings];
 
   // 4) Degradar con honestidad: decir QUE FALTA en vez de inventar.
   if (findings.length === 0) {
@@ -261,10 +277,7 @@ export function inferAiInterpretationFindings({
     }
   }
 
-  // TODO(P0.7): al topear (los slice de arriba y este), priorizar por
-  // importancia -zonas danger/risk y links anclados- en vez de por orden de
-  // insercion del array, para que una zona relevante no quede afuera.
-  return findings.slice(0, 4);
+  return findings;
 }
 
 // Wrapper delgado: mantiene el contrato string[] preexistente (payload JSON

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   type BoardArrow,
   type BoardArrowSemantic,
@@ -304,6 +305,13 @@ function ZoneInspector({
 // Un campo x/y/w/h a la vez: clampea contra el invariante 0-100 del modelo y
 // descarta input invalido (NaN/Infinity) sin llamar a onUpdate — el input
 // simplemente vuelve a mostrar el ultimo valor committeado.
+//
+// Draft local (W7): el input es controlado por `zone[field]`, pero mientras
+// el usuario borra el campo para retipear, `Number("") === 0` commiteaba un
+// patch con 0 y la zona saltaba. Un string de borrador separado deja que el
+// campo se vea vacio/parcial sin commitear nada hasta que sea un numero
+// finito real; se resincroniza con el valor committeado cuando este cambia
+// por fuera (otra zona seleccionada, undo/redo, clamp) o al perder foco.
 function ZoneGeometryField({
   field,
   label,
@@ -315,20 +323,29 @@ function ZoneGeometryField({
   zone: BoardZone;
   onUpdate: (patch: ZonePatch) => void;
 }) {
+  const committed = zone[field];
+  const [draft, setDraft] = useState(String(committed));
+
+  useEffect(() => {
+    setDraft(String(committed));
+  }, [committed]);
+
   return (
     <label>
       {label}
       <input
         type="number"
-        value={zone[field]}
+        value={draft}
         onChange={(event) => {
-          const patch = zoneGeometryPatch(
-            zone,
-            field,
-            Number(event.target.value),
-          );
+          const raw = event.target.value;
+          setDraft(raw);
+          if (raw.trim() === "") return;
+          const parsed = Number(raw);
+          if (!Number.isFinite(parsed)) return;
+          const patch = zoneGeometryPatch(zone, field, parsed);
           if (patch) onUpdate(patch);
         }}
+        onBlur={() => setDraft(String(committed))}
       />
     </label>
   );
