@@ -36,13 +36,30 @@ npm run coach:smoke
 Tambien podes sourcear el `.env.local` del repo canonico o copiarlo — el
 script lo levanta solo. **Nunca commitear `.env.local` ni imprimir la key.**
 
+### Timeout configurable — `COACH_SMOKE_TIMEOUT_MS`
+
+El timeout del request es 60s por default. Los PASS reales medidos rondan
+50–58s (margen fino), asi que se puede subir (o bajar, para probar el camino
+de timeout) por env var, sin tocar codigo:
+
+```bash
+COACH_SMOKE_TIMEOUT_MS=90000 npm run coach:smoke
+```
+
+- Se espera un numero de **milisegundos > 0**.
+- Valor invalido (no numerico, cero, negativo) → cae al default de 60000ms y
+  el run lo dice explicitamente en el output (nunca se ignora en silencio).
+- El header del run siempre imprime el timeout efectivo
+  (`POST /api/coach-agent (timeout efectivo Xs)...`); es la unica env var
+  cuyo valor se imprime — no es secreto y ayuda al diagnostico.
+
 ## Que valida
 
 | Resultado | Condicion | Exit |
 |---|---|---|
 | `SKIP` | falta `OPENROUTER_API_KEY` | 0 |
 | `PASS` | HTTP 2xx y el body valida `CoachResponseSchema`; imprime status, latencia, `mode` y campos top-level | 0 |
-| `FAIL` | non-2xx (imprime el payload sanitizado del endpoint), timeout (60s), body no-JSON o shape invalido (imprime issues de Zod) | 1 |
+| `FAIL` | non-2xx (imprime el payload sanitizado del endpoint), timeout (60s default, tunable con `COACH_SMOKE_TIMEOUT_MS`), body no-JSON o shape invalido (imprime issues de Zod) | 1 |
 
 Fail honesto verificado: con `OPENROUTER_API_KEY=invalid` el smoke termina en
 `FAIL: status 502 — {"code":"openrouter_unauthorized",...}` en segundos, no se

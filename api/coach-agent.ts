@@ -11,6 +11,7 @@ import { parseIncomingBoardFreeState } from "../src/board/boardFreeStateEvidence
 import type { BoardFreeStateEvidencePacket } from "../src/board/boardFreeStateEvidencePacket.js";
 import {
   badRequest,
+  compactErrorForLog,
   methodNotAllowed,
   publicServerError,
   readJsonBody,
@@ -109,6 +110,7 @@ export default async function handler(
     return;
   }
 
+  const startedAt = Date.now();
   try {
     const { runCoachTurn } = await import("../src/ai/CoachAgent.js");
     // `runCoachTurn` now declares `freeStateEvidence` on its args (mc-17's param
@@ -124,7 +126,18 @@ export default async function handler(
     });
     sendJson(res, 200, response);
   } catch (error) {
-    console.error("[coach-agent] request failed", error);
+    // Log compacto por default: message + status/code del provider + modelo +
+    // duracion. Sin stack ni headers del provider (higiene server-side).
+    // COACH_AGENT_DEBUG=1 habilita el dump completo del error crudo para
+    // diagnostico profundo LOCAL — nunca dejarlo prendido en un deploy.
+    const durationMs = Date.now() - startedAt;
+    const model = process.env.OPENROUTER_MODEL ?? "(default)";
+    console.error(
+      `[coach-agent] request failed: ${compactErrorForLog(error)} | model=${model} | durationMs=${durationMs}`,
+    );
+    if (process.env.COACH_AGENT_DEBUG === "1") {
+      console.error("[coach-agent] debug dump (COACH_AGENT_DEBUG=1)", error);
+    }
     const response = publicServerError(
       error,
       "Coach agent failed to generate a response.",
