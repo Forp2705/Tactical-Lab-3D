@@ -980,7 +980,9 @@ function DroppableSessionArea({
     <div
       ref={setNodeRef}
       style={{
-        outline: isOver ? "2px solid rgba(94, 234, 212, 0.4)" : "none",
+        outline: isOver
+          ? "2px solid color-mix(in oklch, var(--felt-gold, #f6d24b) 60%, transparent)"
+          : "none",
         borderRadius: 16,
       }}
     >
