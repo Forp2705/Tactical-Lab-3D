@@ -6696,7 +6696,10 @@ button.home-cta-gold:hover {
 
 /* `button.` prefix matches the specificity of the cockpit-wide
    `button:not(.secondary)` lime reset so the felt tile background/border
-   are not silently repainted lime. */
+   are not silently repainted lime. `overflow: visible` undoes the global
+   `button { overflow: hidden }` reset (theme.css ~2640): at this tile's
+   naked/narrow width it was clipping the leading glyph of wrapped sublabel
+   text (e.g. "CARGADO" reading as "'ARGADO"). */
 button.home-metric-tile-button {
   font: inherit;
   color: inherit;
@@ -6704,6 +6707,7 @@ button.home-metric-tile-button {
   border: 0;
   box-shadow: none;
   cursor: pointer;
+  overflow: visible;
 }
 
 button.home-metric-tile-button:disabled {
@@ -6951,6 +6955,23 @@ details.home-collapse .home-collapse-body {
   background: color-mix(in oklch, var(--felt-gold) 16%, transparent) !important;
   border-color: color-mix(in oklch, var(--felt-mint) 40%, transparent) !important;
   color: var(--felt-ink) !important;
+}
+
+/* W10 fix - RealCoachOnboarding (home-onboarding-strip) is Sala-only, so its
+   `.btn.primary` CTAs (Empezar con mi equipo / Siguiente / Guardar y
+   terminar / Crear primer foco semanal) were still hitting the cockpit lime
+   reset, same violation as B4. Same gold-small repaint, same specificity
+   trick (`button.` + descendant scope beats `.app-shell button.btn.primary`
+   !important). `.btn.ghost`/`.secondary` here are already neutral (not
+   lime), so they're left alone. */
+.home-command-view .home-onboarding-strip button.btn.primary {
+  background: var(--felt-gold) !important;
+  border: 0 !important;
+  color: var(--felt-bg-3) !important;
+}
+
+.home-command-view .home-onboarding-strip button.btn.primary:hover {
+  background: color-mix(in oklch, var(--felt-gold) 88%, white 12%) !important;
 }
 
 .home-deep-dive-intro {
