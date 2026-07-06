@@ -1980,6 +1980,10 @@ button.danger {
   font-size: 13px;
 }
 
+/* W11 FELT BASE remapeo in situ (mc-21 audit): bg/border teal
+   hardcodeados, global. Sin variantes error/success en el codigo (un
+   solo .toast/.toast.show, sin trigger JS activo), no hay senal que
+   preservar. */
 .toast {
   position: fixed;
   right: 20px;
@@ -1987,8 +1991,8 @@ button.danger {
   z-index: 100;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(7, 13, 18, 0.94);
-  border: 1px solid rgba(94, 234, 212, 0.18);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 15%);
+  border: 1px solid color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
   box-shadow: var(--shadow);
   opacity: 0;
   transform: translateY(8px);
@@ -2678,18 +2682,22 @@ button:hover,
   border-color: rgba(185, 255, 61, 0.48);
 }
 
+/* W11 FELT BASE remapeo in situ: sin type explicito (los mas especificos
+   input[type=text|search] de tactical-ui.css ya heredan --panel-2 felt
+   via token; esto cubre lo que ese selector no alcanza). */
 input,
 select,
 textarea {
-  border-color: rgba(232, 255, 247, 0.12);
-  background: rgba(2, 6, 9, 0.9);
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 12%);
+  color: var(--felt-ink, #f3efe2);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid rgba(185, 255, 61, 0.24);
-  border-color: rgba(185, 255, 61, 0.44);
+  outline: 2px solid color-mix(in oklch, var(--felt-gold, #f6d24b) 24%, transparent);
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 44%, transparent);
 }
 
 .exercise-card,
@@ -3165,18 +3173,30 @@ body::before {
   border-color: rgba(241, 232, 210, 0.1);
 }
 
+/* === W11 FELT BASE (mc-18) remapeo in situ === (REVISE del gate: un
+   append al final del archivo con esta MISMA especificidad quedaba
+   textualmente despues de button.home-cta-gold (~6600) y
+   button.home-context-action (~6846), pisandolos — esos CTAs son mas
+   especificos por clase propia pero EMPATAN especificidad con este
+   reset generico button:not(.secondary)/button.secondary, asi que el
+   que aparece despues en el archivo ganaba. Remapeo de una regla YA
+   EXISTENTE = se edita in situ, no se apila al final.) */
 button:not(.secondary) {
-  color: #071016;
-  background: linear-gradient(180deg, #dff39a, var(--setpiece));
-  border-color: rgba(199, 223, 95, 0.44);
-  box-shadow: 0 14px 34px rgba(199, 223, 95, 0.08);
+  color: var(--felt-bg-3, #0a1d16);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-gold, #f6d24b) 88%, white 12%),
+    var(--felt-gold, #f6d24b)
+  );
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 60%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
 }
 
 button.secondary,
 .file-label {
-  color: var(--chalk);
-  background: rgba(13, 28, 34, 0.9);
-  border-color: rgba(241, 232, 210, 0.13);
+  color: var(--felt-ink, #f3efe2);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
 }
 
 button:hover,
@@ -3184,8 +3204,8 @@ button:hover,
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: rgba(142, 202, 210, 0.42);
-  outline-color: rgba(142, 202, 210, 0.18);
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 55%, transparent);
+  outline-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
 }
 
 .quick-status,
@@ -4578,13 +4598,15 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   gap: 10px;
 }
 
+/* W11 FELT BASE remapeo in situ (mc-21 audit): border/bg hardcodeados
+   teal, visible en Home (Lectura coach colapsada) y Briefing. */
 .weekly-decision-item {
   display: grid;
   gap: 6px;
   padding: 12px;
-  border: 1px solid rgba(94, 234, 212, 0.12);
+  border: 1px solid color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
   border-radius: 16px;
-  background: rgba(5, 11, 16, 0.5);
+  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 10%);
 }
 
 .weekly-decision-item span {
@@ -7719,46 +7741,18 @@ body .app-shell .main.main-home {
   --font-mono: "Space Mono", "IBM Plex Mono", ui-monospace, monospace;
 }
 
-/* Controles globales base (item 5): el reset lime `button:not(.secondary)`
-   (2 ocurrencias mas arriba en este archivo, la ultima en ~3145) pintaba
-   TODO boton primario no marcado `.secondary` en lima/verde-lima. Misma
-   especificidad, aca al final = gana por orden de aparicion sin necesitar
-   !important. Repintado a dorado felt; texto oscuro (felt-bg-3) para AA. */
-button:not(.secondary) {
-  color: var(--felt-bg-3, #0a1d16);
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklch, var(--felt-gold, #f6d24b) 88%, white 12%),
-    var(--felt-gold, #f6d24b)
-  );
-  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 60%, transparent);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
-}
-
-button.secondary,
-.file-label {
-  color: var(--felt-ink, #f3efe2);
-  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
-}
-
-button:hover,
-.file-label:hover {
-  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 55%, transparent);
-  outline-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
-}
-
-/* input/select/textarea sin `type` explicito (los mas especificos
-   `input[type=text|search]` de tactical-ui.css ya heredan --panel-2 felt
-   via token; esta regla generica solo cubre lo que ese selector no
-   alcanza, p.ej. inputs sin atributo type). */
-input,
-select,
-textarea {
-  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 12%);
-  color: var(--felt-ink, #f3efe2);
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
-}
+/* NOTA (REVISE del gate): el reset lime `button:not(.secondary)`, el par
+   `button.secondary`/`.file-label`, el hover combinado y el
+   `input/select/textarea` generico se remapearon IN SITU (theme.css
+   ~3168-3200 y ~2681) en vez de apilarse aca — eran remapeos de reglas
+   YA EXISTENTES, no reglas nuevas, y un append a esta altura del archivo
+   quedaba textualmente despues de CTAs mas especificos por clase pero de
+   igual especificidad (button.home-cta-gold ~6600,
+   button.home-context-action ~6846), pisandolos. Leccion: remapeo de
+   regla existente = editar in situ; esta seccion final es solo para
+   reglas nuevas que no compiten con nada previo (como el
+   `body .app-shell` de abajo, que gana por especificidad sin importar
+   el orden). */
 
 /* Topbar del shell (item 4, AppShell, vistas != home) — mismo lenguaje que
    el sidebar W9: eyebrow/valores mono, borde inferior con acento dorado
@@ -7791,20 +7785,9 @@ body .app-shell .top-stat-strip div {
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
 }
 
-/* Fix puntual post-hold (mc-21 audit): 2 residuos cockpit en componentes
-   compartidos sin dueno de paquete (visibles en Home/Lectura coach
-   colapsada, Briefing, y globalmente para .toast). Sin variantes
-   error/success en el codigo (grep confirma un solo .toast/.toast.show,
-   ninguna clase semantica) asi que no hay senal que preservar aca. */
-.weekly-decision-item {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
-  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 10%);
-}
-
-.toast {
-  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 15%);
-  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
-}
+/* NOTA (REVISE del gate): `.weekly-decision-item` y `.toast` tambien se
+   remapearon IN SITU (theme.css ~4597 y ~1983) por el mismo motivo de
+   arriba — eran remapeos de reglas ya existentes. */
 
 /* === W11 FIXUP AI (mc-21) === */
 
