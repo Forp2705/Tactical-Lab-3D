@@ -25,24 +25,33 @@
   src: url("/fonts/geist-mono-variable.woff2") format("woff2");
 }
 
+/* === W11 FELT BASE (mc-18): remapeo :root #1 de 3 (editado in situ, ver
+   seccion marcada al final del archivo para la excepcion de reversibilidad
+   y el resto de los tokens derivados). Felt es el tema default; el cockpit
+   anterior queda disponible como [data-theme="cockpit"] (tactical-ui.css). */
 :root {
-  --bg: #050b10;
-  --panel: rgba(10, 18, 24, 0.92);
-  --panel-2: rgba(14, 24, 31, 0.88);
-  --line: rgba(102, 180, 183, 0.18);
-  --line-strong: rgba(102, 180, 183, 0.35);
-  --text: #eff7fa;
-  --muted: #9fb4bd;
-  --muted-2: #6f8790;
-  --accent: #5eead4;
-  --accent-2: #60a5fa;
-  --warn: #c7df5f;
-  --danger: #ff7474;
+  --bg: var(--felt-bg-3, #0a1d16);
+  --panel: var(--felt-panel, #16352a);
+  --panel-2: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
+  --line: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+  --line-strong: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  --text: var(--felt-ink, #f3efe2);
+  --muted: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
+  --muted-2: color-mix(in oklch, var(--felt-ink, #f3efe2) 50%, transparent);
+  --accent: var(--felt-gold, #f6d24b);
+  --accent-2: var(--felt-mint, #eafff2);
+  --warn: color-mix(in oklch, var(--felt-gold, #f6d24b), var(--felt-coral, #ff6b5e) 45%);
+  --danger: var(--felt-coral, #ff6b5e);
   --shadow: 0 20px 70px rgba(0, 0, 0, 0.38);
   --radius: 22px;
   --radius-sm: 14px;
-  --font-head: "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  /* Literal stacks, no como fallback hacia --felt-font-*: esos tokens ya
+     usan var(--font-head)/var(--font-body) como SU fallback (linea ~2385),
+     asi que referenciarlos aca crearia una dependencia ciclica (ambas
+     custom properties se invalidarian a computed-value time). */
+  --font-head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Consolas", monospace;
 }
 
 * {
@@ -2343,28 +2352,36 @@ button.danger {
   }
 }
 
+/* === W11 FELT BASE (mc-18): remapeo :root #2 de 3. --chalk/--grass/
+   --grass-deep/--lime/--sky-kit/--setpiece son tokens locales de theme.css
+   (no existen en tactical-ui.css) consumidos directamente por ~66 reglas
+   de componentes viejos (reset lime de button:not(.secondary), eyebrows,
+   nav activo, etc.) — remapearlos aca los felt-iza sin tocar esas reglas
+   una por una. --setpiece pasa a dorado (su uso real es acento/eyebrow, no
+   advertencia literal); --warn se separa a un derivado calido distinto. */
 :root {
-  --bg: #04090d;
-  --panel: rgba(8, 17, 24, 0.94);
-  --panel-2: rgba(12, 25, 34, 0.9);
-  --chalk: #e8fff7;
-  --grass: #167a3f;
-  --grass-deep: #0b3d25;
-  --lime: #b9ff3d;
-  --sky-kit: #38bdf8;
-  --setpiece: #c7df5f;
-  --line: rgba(45, 212, 191, 0.16);
-  --line-strong: rgba(45, 212, 191, 0.38);
-  --text: #f8fafc;
-  --muted: #9fb4bd;
-  --muted-2: #6f8790;
+  --bg: var(--felt-bg-3, #0a1d16);
+  --panel: var(--felt-panel, #16352a);
+  --panel-2: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
+  --chalk: var(--felt-ink, #f3efe2);
+  --grass: var(--felt-bg-1, #16352a);
+  --grass-deep: var(--felt-bg-3, #0a1d16);
+  --lime: var(--felt-gold, #f6d24b);
+  --sky-kit: var(--felt-mint, #eafff2);
+  --setpiece: var(--felt-gold, #f6d24b);
+  --line: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+  --line-strong: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  --text: var(--felt-ink, #f3efe2);
+  --muted: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
+  --muted-2: color-mix(in oklch, var(--felt-ink, #f3efe2) 50%, transparent);
   --accent: var(--lime);
   --accent-2: var(--sky-kit);
-  --warn: var(--setpiece);
-  --danger: #ef4444;
+  --warn: color-mix(in oklch, var(--felt-gold, #f6d24b), var(--felt-coral, #ff6b5e) 45%);
+  --danger: var(--felt-coral, #ff6b5e);
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
-  --font-head: "Avenir Next", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Aptos", "Segoe UI", system-ui, sans-serif;
+  --font-head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Consolas", monospace;
 
   /* Felt-board palette, transplanted verbatim from docs/design/Pizarra.html
      (.board/.pitch/.tok). Distinct from the cockpit --chalk/--lime tokens
@@ -3023,27 +3040,33 @@ video {
   }
 }
 
-/* Refined coach-room direction: calmer, less arcade, aligned with Figma V2. */
+/* Refined coach-room direction: calmer, less arcade, aligned with Figma V2.
+   === W11 FELT BASE (mc-18): remapeo :root #3 de 3 — este es el ultimo
+   :root de theme.css (gana la cascada dentro del archivo sobre los 2
+   anteriores para las props que comparte). Mismos criterios que #1/#2. */
 :root {
-  --bg: #071016;
-  --panel: rgba(14, 26, 31, 0.94);
-  --panel-2: rgba(11, 21, 26, 0.92);
-  --chalk: #f1e8d2;
-  --grass: #1b5b36;
-  --grass-deep: #123d2a;
-  --lime: #c7df5f;
-  --sky-kit: #8ecad2;
-  --setpiece: #c7df5f;
-  --line: rgba(241, 232, 210, 0.12);
-  --line-strong: rgba(241, 232, 210, 0.28);
-  --text: #f1e8d2;
-  --muted: #b9c4be;
-  --muted-2: #7f918b;
-  --accent: var(--setpiece);
+  --bg: var(--felt-bg-3, #0a1d16);
+  --panel: var(--felt-panel, #16352a);
+  --panel-2: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
+  --chalk: var(--felt-ink, #f3efe2);
+  --grass: var(--felt-bg-1, #16352a);
+  --grass-deep: var(--felt-bg-3, #0a1d16);
+  --lime: var(--felt-gold, #f6d24b);
+  --sky-kit: var(--felt-mint, #eafff2);
+  --setpiece: var(--felt-gold, #f6d24b);
+  --line: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+  --line-strong: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  --text: var(--felt-ink, #f3efe2);
+  --muted: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
+  --muted-2: color-mix(in oklch, var(--felt-ink, #f3efe2) 50%, transparent);
+  --accent: var(--lime);
   --accent-2: var(--sky-kit);
-  --warn: var(--setpiece);
-  --danger: #b85a4e;
+  --warn: color-mix(in oklch, var(--felt-gold, #f6d24b), var(--felt-coral, #ff6b5e) 45%);
+  --danger: var(--felt-coral, #ff6b5e);
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.46);
+  --font-head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Consolas", monospace;
 }
 
 body {
@@ -7668,3 +7691,108 @@ body .app-shell .main.main-home {
     max-height: 300px;
   }
 }
+
+/* === W11 FELT BASE (mc-18) === */
+/* Front A: felt pasa a ser el tema default de toda la app (token-swap
+   base). Ver remapeo :root #1/#2/#3 in situ (theme.css ~28, ~2355, ~3044)
+   y el :root de tactical-ui.css (que gana la cascada final para los tokens
+   compartidos, cargando despues de este archivo). Todo lo demas — CSS
+   nuevo o condicional — va aca, al final, por regla del brief. NO se
+   restiliza ninguna vista individual aca; los "peores ofensores" quedan
+   documentados en el worker_done para los fix-ups de mc-19/mc-21/mc-22. */
+
+/* Reversibilidad de los tokens LOCALES de theme.css (--chalk/--grass/
+   --grass-deep/--lime/--sky-kit/--setpiece): no existen en tactical-ui.css,
+   asi que su [data-theme="cockpit"] no alcanza a restaurarlos. Se completa
+   aca, mismo selector/mecanismo, valores = el :root #3 (el que ganaba la
+   cascada dentro de theme.css antes de este remapeo). --grass-1/--grass-2
+   (tactical-ui.css, color de cancha real) no aplican aca. */
+[data-theme="cockpit"] {
+  --chalk: #f1e8d2;
+  --grass: #1b5b36;
+  --grass-deep: #123d2a;
+  --lime: #c7df5f;
+  --sky-kit: #8ecad2;
+  --setpiece: #c7df5f;
+  --font-head: "Avenir Next", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Aptos", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Space Mono", "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* Controles globales base (item 5): el reset lime `button:not(.secondary)`
+   (2 ocurrencias mas arriba en este archivo, la ultima en ~3145) pintaba
+   TODO boton primario no marcado `.secondary` en lima/verde-lima. Misma
+   especificidad, aca al final = gana por orden de aparicion sin necesitar
+   !important. Repintado a dorado felt; texto oscuro (felt-bg-3) para AA. */
+button:not(.secondary) {
+  color: var(--felt-bg-3, #0a1d16);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-gold, #f6d24b) 88%, white 12%),
+    var(--felt-gold, #f6d24b)
+  );
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 60%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+button.secondary,
+.file-label {
+  color: var(--felt-ink, #f3efe2);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+}
+
+button:hover,
+.file-label:hover {
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 55%, transparent);
+  outline-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
+}
+
+/* input/select/textarea sin `type` explicito (los mas especificos
+   `input[type=text|search]` de tactical-ui.css ya heredan --panel-2 felt
+   via token; esta regla generica solo cubre lo que ese selector no
+   alcanza, p.ej. inputs sin atributo type). */
+input,
+select,
+textarea {
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 12%);
+  color: var(--felt-ink, #f3efe2);
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+}
+
+/* Topbar del shell (item 4, AppShell, vistas != home) — mismo lenguaje que
+   el sidebar W9: eyebrow/valores mono, borde inferior con acento dorado
+   tenue. `.eyebrow`/`.chip`/`.btn.ghost` de tactical-ui.css ya heredan
+   felt via token (--muted-2/--panel-2/--text); esto es el toque de
+   identidad que faltaba en el shell compartido. */
+body .app-shell .topbar {
+  border-bottom: 1px solid color-mix(in oklch, var(--felt-gold, #f6d24b) 18%, transparent);
+  padding-bottom: 14px;
+}
+
+body .app-shell .topbar-copy h2 {
+  font-family: var(--felt-font-head, "Bricolage Grotesque", sans-serif);
+}
+
+body .app-shell .topbar-copy p {
+  color: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
+}
+
+/* .top-stat-strip no existe en tactical-ui.css (sin token de por medio) y
+   traia fondo/valor hardcodeados (rgba negro + --lime literal). Se felt-iza
+   directo aca; --lime ya remapeado a dorado en los :root de arriba cubre
+   `.top-stat-strip b`, asi que solo faltan los fondos. */
+body .app-shell .top-stat-strip {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 15%);
+}
+
+body .app-shell .top-stat-strip div {
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
+}
+
+/* === W11 FIXUP AI (mc-21) === */
+
+/* === W11 FIXUP TEAM-SESSIONS (mc-19) === */
+
+/* === W11 FIXUP LIBRARY-MEDIA (mc-22) === */

@@ -1,17 +1,21 @@
 /* ============================================================
    TACTICAL LAB PRO 3D — Sistema de diseño
-   3 temas conmutables vía [data-theme] en <html>:
-   · cockpit    — el ADN actual, oscuro teal/azul, glow sutil
+   4 temas conmutables vía [data-theme] en <html>:
+   · (default)  — felt (W11, mc-18): base dorado/verde felt, tipografia
+                  Bricolage/Familjen/Geist Mono, self-hosted (theme.css)
+   · cockpit    — el ADN anterior (oscuro teal/verde), preservado para
+                  reversibilidad, mismo mecanismo que broadcast/pizarra
    · broadcast  — premium cinematográfico, lime/cyan, vignette
    · pizarra    — editorial / data-dense, chalkboard, monoespaciado
    ============================================================ */
 
 :root {
-  /* tipografía — Bold: display heavyweight, cuerpo Inter, datos mono */
-  --font-display: "Arial Black", "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-head: "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "Space Mono", "IBM Plex Mono", ui-monospace, monospace;
+  /* tipografía — felt: display/head Bricolage Grotesque, cuerpo Familjen
+     Grotesk, datos mono Geist Mono (self-hosted, @font-face en theme.css). */
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Consolas", monospace;
 
   /* escala */
   --radius: 12px;
@@ -21,10 +25,51 @@
   --pad: 18px;
   --dens: 1; /* multiplicador de densidad */
 
-  /* COCKPIT (default) */
-  --bg: #070907;
+  /* FELT (default, W11 mc-18) — reusa los tokens --felt-* definidos en
+     theme.css (~2372); cero hex nuevos de paleta aca. --warn se deriva
+     gold+coral (calido, no dorado puro = no se confunde con --accent).
+     --good/--danger conservan semantica verde/rojo (status dots). */
+  --bg: var(--felt-bg-3, #0a1d16);
   --bg-grad-1: transparent;
   --bg-grad-2: transparent;
+  --panel: var(--felt-panel, #16352a);
+  --panel-2: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
+  --panel-solid: color-mix(in oklch, var(--felt-bg-1, #16352a), black 10%);
+  --line: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+  --line-strong: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  --text: var(--felt-ink, #f3efe2);
+  --muted: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
+  --muted-2: color-mix(in oklch, var(--felt-ink, #f3efe2) 50%, transparent);
+  --accent-h: 45;
+  --accent: var(--felt-gold, #f6d24b);
+  --accent-2: var(--felt-mint, #eafff2);
+  --warn: color-mix(in oklch, var(--felt-gold, #f6d24b), var(--felt-coral, #ff6b5e) 45%);
+  --danger: var(--felt-coral, #ff6b5e);
+  --good: #22c55e;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --glow: none;
+  --grass-1: #0b5a39;
+  --grass-2: #072a1b;
+  --on-accent: var(--felt-bg-3, #0a1d16);
+  --card-extra: none;
+  --hero-extra: none;
+  --accent-strong: var(--felt-gold, #f6d24b);
+  --accent-soft: color-mix(in oklch, var(--felt-gold, #f6d24b) 12%, transparent);
+  --focus-ring: 0 0 0 2px color-mix(in oklch, var(--felt-gold, #f6d24b) 85%, transparent);
+}
+
+/* COCKPIT — tema anterior, preservado para reversibilidad (W11 mc-18).
+   Valores identicos a los que tenia :root antes de este remapeo; activar
+   con [data-theme="cockpit"] en <html>, mismo mecanismo que broadcast y
+   pizarra abajo. --grass-1/--grass-2 no se tocan (color de cancha real,
+   no paleta de tema) asi que no hace falta redeclararlos aca. */
+[data-theme="cockpit"] {
+  --font-display: "Arial Black", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-head: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Space Mono", "IBM Plex Mono", ui-monospace, monospace;
+  --bg: #070907;
   --panel: #0d1110;
   --panel-2: #121816;
   --panel-solid: #18201d;
@@ -39,14 +84,7 @@
   --warn: #facc15;
   --danger: #ef4444;
   --good: #22c55e;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
-  --glow: none;
-  --grass-1: #0b5a39;
-  --grass-2: #072a1b;
   --on-accent: #07110a;
-  --card-extra: none;
-  --hero-extra: none;
   --accent-strong: #22c55e;
   --accent-soft: rgba(74, 222, 128, 0.12);
   --focus-ring: 0 0 0 2px rgba(74, 222, 128, 0.85);
