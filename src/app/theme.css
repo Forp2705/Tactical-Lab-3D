@@ -7791,6 +7791,21 @@ body .app-shell .top-stat-strip div {
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
 }
 
+/* Fix puntual post-hold (mc-21 audit): 2 residuos cockpit en componentes
+   compartidos sin dueno de paquete (visibles en Home/Lectura coach
+   colapsada, Briefing, y globalmente para .toast). Sin variantes
+   error/success en el codigo (grep confirma un solo .toast/.toast.show,
+   ninguna clase semantica) asi que no hay senal que preservar aca. */
+.weekly-decision-item {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 10%);
+}
+
+.toast {
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 15%);
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
+}
+
 /* === W11 FIXUP AI (mc-21) === */
 
 /* === W11 FIXUP TEAM-SESSIONS (mc-19) === */
