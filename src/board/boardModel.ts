@@ -748,6 +748,18 @@ export function generateBoardSessionDraft(
     const durationMin =
       scene.phases.reduce((sum, phase) => sum + phase.durationMin, 0) ||
       board.defaults.sceneDurationMin;
+    // REVIEW W8 (evidencia, sin fix — verdict b): a diferencia del cap de
+    // findings de W7, este .slice(0,4) hoy no corta nada real. Ninguna UI
+    // agrega scene.instructions ni board.instructions (createDefaultBoardScene
+    // siembra exactamente 1 instruccion por escena y no hay accion en
+    // useBoardActions/inspector que empuje mas); board.sessionCoachingPoints
+    // se REEMPLAZA (no crece) en saveBoard con [objective, rule].filter(Boolean),
+    // tope 2. Maximo realista hoy: 1 + 2 = 3, siempre bajo el cap. Ademas
+    // generateBoardSessionDraft/BoardSessionDraft.coachingCues no tiene ningun
+    // consumidor de UI (solo tests/board.test.ts) — es el path de la escritura,
+    // no de la lectura en pantalla. Si en el futuro se agrega una forma de
+    // sumar instructions/sessionCoachingPoints sin limite, revisar este cap
+    // de nuevo (ver W7: findings cap con zonas exentas para el patron a seguir).
     const coachingCues = [
       ...scene.instructions
         .filter(

@@ -1,5 +1,9 @@
 import { type BoardTool, TOOL_DEFS } from "./boardConstants";
-import { clamp } from "./boardGeometry";
+import {
+  clamp,
+  normalizeZoneRect,
+  ZONE_DRAG_CLICK_THRESHOLD,
+} from "./boardGeometry";
 import type {
   BoardArrowEndpoint,
   BoardArrowSemantic,
@@ -179,23 +183,9 @@ export function handleCanvasPress({
     setDrawStart(null);
     return;
   }
-  if (tool === "zone" || tool === "block") {
-    const zone = createTacticalZone(
-      tool === "block" ? "block" : "occupation",
-      clamp(point.x - 10, 1, 78),
-      clamp(point.y - 10, 1, 78),
-      20,
-      16,
-      {
-        label: tool === "block" ? "Bloque" : "Zona",
-        color,
-        tacticalMeaning:
-          tool === "block" ? "Bloque compacto" : "Zona de ocupacion",
-      },
-    );
-    commitScene({ zones: [...scene.zones, zone] });
-    return;
-  }
+  // zone/block ya no se crea en el press: es un drag-to-create real, resuelto
+  // en el pointerup por resolveZoneDragRect/commitZoneDrag (W8) con el
+  // rectangulo completo del gesto (start -> end).
   if (tool === "cone" || tool === "mannequin" || tool === "goal") {
     updateSceneObjects([
       ...scene.objects,
@@ -207,4 +197,67 @@ export function handleCanvasPress({
       ),
     ]);
   }
+}
+
+// 20x16 centrado en el punto — affordance preexistente para clicks sin
+// arrastre real (o arrastre por debajo del umbral). No cambia W6/W7.
+function centeredZoneRect(point: BoardPoint) {
+  return {
+    x: clamp(point.x - 10, 1, 78),
+    y: clamp(point.y - 10, 1, 78),
+    w: 20,
+    h: 16,
+  };
+}
+
+// Resuelve el rectangulo final de una zona/bloque a partir del gesto completo
+// (ancla de pointerdown -> punto de pointerup). Por debajo del umbral de
+// click usa el 20x16 centrado existente; por encima, el rectangulo real del
+// drag (esquinas en cualquier orden, normalizado, con piso de tamano).
+export function resolveZoneDragRect(
+  start: BoardPoint,
+  end: BoardPoint,
+): { x: number; y: number; w: number; h: number } {
+  const dragDistance = Math.max(
+    Math.abs(end.x - start.x),
+    Math.abs(end.y - start.y),
+  );
+  if (dragDistance < ZONE_DRAG_CLICK_THRESHOLD) {
+    return centeredZoneRect(start);
+  }
+  return normalizeZoneRect(start, end);
+}
+
+// Commitea UNA zona/bloque por gesto (pointerup), nunca en cada pointermove
+// — asi el undo registra una sola entrada por zona creada.
+export function commitZoneDrag({
+  tool,
+  start,
+  end,
+  scene,
+  color,
+  commitScene,
+}: {
+  tool: "zone" | "block";
+  start: BoardPoint;
+  end: BoardPoint;
+  scene: BoardScene;
+  color: string;
+  commitScene: (patch: Partial<BoardScene>, record?: boolean) => void;
+}) {
+  const rect = resolveZoneDragRect(start, end);
+  const zone = createTacticalZone(
+    tool === "block" ? "block" : "occupation",
+    rect.x,
+    rect.y,
+    rect.w,
+    rect.h,
+    {
+      label: tool === "block" ? "Bloque" : "Zona",
+      color,
+      tacticalMeaning:
+        tool === "block" ? "Bloque compacto" : "Zona de ocupacion",
+    },
+  );
+  commitScene({ zones: [...scene.zones, zone] });
 }

@@ -8,6 +8,7 @@ import {
   distance,
   endpointPoint,
   layerVisibleForArrow,
+  normalizeZoneRect,
   scaleY,
   shortName,
   slug,
@@ -30,6 +31,37 @@ describe("boardGeometry — pure math", () => {
     expect(scaleY(0)).toBe(0);
     expect(scaleY(50)).toBe(32);
     expect(scaleY(100)).toBe(64);
+  });
+});
+
+describe("boardGeometry — normalizeZoneRect (W8 zone drag-to-create)", () => {
+  it("normalizes corners regardless of drag direction", () => {
+    expect(normalizeZoneRect({ x: 10, y: 10 }, { x: 30, y: 25 })).toEqual({
+      x: 10,
+      y: 10,
+      w: 20,
+      h: 15,
+    });
+    expect(normalizeZoneRect({ x: 30, y: 25 }, { x: 10, y: 10 })).toEqual({
+      x: 10,
+      y: 10,
+      w: 20,
+      h: 15,
+    });
+  });
+
+  it("applies the minimum size floor when the raw drag is smaller", () => {
+    const rect = normalizeZoneRect({ x: 50, y: 50 }, { x: 51, y: 50.5 }, 4);
+    expect(rect.w).toBe(4);
+    expect(rect.h).toBe(4);
+  });
+
+  it("clamps x/y/w/h so the zone never spills past the normalized pitch bounds", () => {
+    const rect = normalizeZoneRect({ x: 90, y: 90 }, { x: 100, y: 100 });
+    expect(rect.x).toBeLessThanOrEqual(100 - rect.w);
+    expect(rect.y).toBeLessThanOrEqual(100 - rect.h);
+    expect(rect.x + rect.w).toBeLessThanOrEqual(100);
+    expect(rect.y + rect.h).toBeLessThanOrEqual(100);
   });
 });
 

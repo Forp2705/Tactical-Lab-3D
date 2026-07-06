@@ -44,8 +44,10 @@ import {
   buildConsequenceOverlay,
 } from "./scenarioBoardConsequence";
 import {
+  commitZoneDrag,
   handleCanvasPress,
   mergeFormationTokens,
+  resolveZoneDragRect,
   tokenFromPlanningPlayer,
 } from "./boardTools";
 import {
@@ -116,6 +118,14 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     before: BoardPoint;
     offset: BoardPoint;
   } | null>(null);
+  // Drag-to-create real de zona/bloque (W8): ancla en pointerdown, preview en
+  // pointermove, commit unico en pointerup. `current` sigue el puntero;
+  // `start` no se muta durante el gesto.
+  const [zoneDrag, setZoneDrag] = useState<{
+    tool: "zone" | "block";
+    start: BoardPoint;
+    current: BoardPoint;
+  } | null>(null);
   const [history, setHistory] = useState<TacticalBoard[]>([]);
   const [future, setFuture] = useState<TacticalBoard[]>([]);
   const [status, setStatus] = useState("Guardado automaticamente");
@@ -163,6 +173,17 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     return () => window.removeEventListener("keydown", onKey);
   }, [drawStart]);
 
+  // Esc cancela un drag-to-create de zona/bloque en curso (mismo gesto de
+  // salida que drawStart, para no dejar el rectangulo colgado).
+  useEffect(() => {
+    if (!zoneDrag) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setZoneDrag(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoneDrag]);
+
   const { selectedObject, selectedArrow, selectedZone } = resolveBoardSelection(
     selection,
     scene,
@@ -188,6 +209,16 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   // Token origen del anclaje en curso (para resaltarlo en el canvas).
   const anchorOriginId =
     drawStart?.kind === "object" ? drawStart.objectId : undefined;
+
+  // Preview del rectangulo de zona/bloque en curso: misma resolucion
+  // (umbral/normalizacion) que el commit final, para que el rubber-band
+  // muestre exactamente lo que se va a crear en el pointerup.
+  const zoneDragPreview = zoneDrag
+    ? {
+        ...resolveZoneDragRect(zoneDrag.start, zoneDrag.current),
+        block: zoneDrag.tool === "block",
+      }
+    : null;
 
   const pushHistory = (snapshot = board) => {
     setHistory((items) => [...items.slice(-24), snapshot]);
@@ -557,9 +588,16 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       }
       return;
     }
-    // Flechas/zonas/equipamiento: targetId se pasa a handleCanvasPress. Las
-    // flechas lo usan para anclar al token; zona/equipamiento lo ignoran y
-    // crean en el punto.
+    // zone/block: ya no crea en el press. Ancla el punto de partida del
+    // rectangulo; el commit real pasa en el pointerup (drag-to-create, W8).
+    if (tool === "zone" || tool === "block") {
+      setDrawStart(null);
+      setZoneDrag({ tool, start: point, current: point });
+      return;
+    }
+    // Flechas/equipamiento: targetId se pasa a handleCanvasPress. Las
+    // flechas lo usan para anclar al token; equipamiento lo ignora y
+    // crea en el punto.
     handleCanvasPress({
       point,
       tool,
@@ -575,6 +613,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   };
 
   const onCanvasPointerMove = (point: BoardPoint) => {
+    if (zoneDrag) {
+      setZoneDrag((prev) => (prev ? { ...prev, current: point } : prev));
+      return;
+    }
     if (!drag) return;
     const next = {
       x: clamp(point.x - drag.offset.x, 2, 98),
@@ -589,6 +631,18 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   };
 
   const onCanvasPointerUp = () => {
+    if (zoneDrag) {
+      commitZoneDrag({
+        tool: zoneDrag.tool,
+        start: zoneDrag.start,
+        end: zoneDrag.current,
+        scene,
+        color,
+        commitScene,
+      });
+      setZoneDrag(null);
+      return;
+    }
     if (!drag) return;
     const object = scene.objects.find((item) => item.id === drag.id);
     if (object && distance(object.position, drag.before) > 0.4) {
@@ -682,6 +736,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     selectedZone,
     activeLayers,
     anchorOriginId,
+    zoneDragPreview,
     aiInterpretation,
     readiness,
     projectLabel: boardProjectLabel(weeklyDecisionThread?.problem),

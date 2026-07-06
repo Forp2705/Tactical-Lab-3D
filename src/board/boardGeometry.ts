@@ -40,6 +40,33 @@ export function distance(a: BoardPoint, b: BoardPoint) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+// Umbral (unidades normalizadas 0-100) para distinguir un click real de un
+// drag intencional al crear zona/bloque. Por debajo, el gesto se trata como
+// click simple y conserva el 20x16 centrado preexistente (W8). Elegido bien
+// por encima del jitter tipico entre pointerdown/pointerup (<1 unidad) y bien
+// por debajo del piso de tamano, para no atrapar drags chicos intencionales.
+export const ZONE_DRAG_CLICK_THRESHOLD = 3;
+
+// Piso de w/h para que un drag real pero muy corto (por encima del umbral de
+// click) no cree una zona practicamente invisible.
+export const ZONE_DRAG_MIN_SIZE = 4;
+
+// Normaliza el rectangulo real de un drag de creacion de zona: las esquinas
+// pueden llegar en cualquier orden (arrastre hacia cualquier direccion), se
+// aplica un piso de tamano y se clampea contra el invariante del schema
+// (x + w <= 100, y + h <= 100 — geometria en 0-100, el render es quien escala).
+export function normalizeZoneRect(
+  start: BoardPoint,
+  end: BoardPoint,
+  minSize = ZONE_DRAG_MIN_SIZE,
+): { x: number; y: number; w: number; h: number } {
+  const x = clamp(Math.min(start.x, end.x), 0, 99);
+  const y = clamp(Math.min(start.y, end.y), 0, 99);
+  const w = clamp(Math.max(Math.abs(end.x - start.x), minSize), 1, 100 - x);
+  const h = clamp(Math.max(Math.abs(end.y - start.y), minSize), 1, 100 - y);
+  return { x, y, w, h };
+}
+
 export function scaleY(y: number) {
   return (y / 100) * PITCH_H;
 }

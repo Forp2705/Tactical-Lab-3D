@@ -32,6 +32,10 @@ type TacticalBoardCanvasProps = {
   opponentFormation: string;
   // Token origen de un anclaje en curso (se resalta mientras se dibuja).
   anchorOriginId?: string;
+  // Rubber-band de un drag-to-create de zona/bloque en curso (W8). Misma
+  // resolucion (umbral/normalizacion) que el commit final del pointerup, asi
+  // que la preview siempre coincide con lo que se va a crear.
+  zoneDragPreview?: { x: number; y: number; w: number; h: number; block: boolean } | null;
   // Proyeccion efimera de RomboIQ (preview); su geometria es identica a la que
   // se commitea al aceptar — solo cambia el estilo (ghost/punteado) para senalar
   // que todavia no es parte de la escena.
@@ -61,6 +65,7 @@ export function TacticalBoardCanvas({
   teamAFormation,
   opponentFormation,
   anchorOriginId,
+  zoneDragPreview,
   consequenceOverlay,
   keyInstructions,
   onSelect,
@@ -100,6 +105,7 @@ export function TacticalBoardCanvas({
         activeLayers={activeLayers}
         zoom={zoom}
         anchorOriginId={anchorOriginId}
+        zoneDragPreview={zoneDragPreview}
         consequenceOverlay={consequenceOverlay}
         onSelect={onSelect}
         onPointerDown={onPointerDown}
@@ -128,6 +134,7 @@ function TacticalPitch({
   activeLayers,
   zoom,
   anchorOriginId,
+  zoneDragPreview,
   consequenceOverlay,
   onSelect,
   onPointerDown,
@@ -143,6 +150,7 @@ function TacticalPitch({
   activeLayers: Set<string>;
   zoom: number;
   anchorOriginId?: string;
+  zoneDragPreview?: { x: number; y: number; w: number; h: number; block: boolean } | null;
   consequenceOverlay: ConsequenceOverlay | null;
   onSelect: (selection: Selection) => void;
   onPointerDown: (point: BoardPoint, targetId?: string) => void;
@@ -247,6 +255,21 @@ function TacticalPitch({
           </text>
         </g>
       ))}
+
+      {zoneDragPreview ? (
+        <rect
+          x={zoneDragPreview.x}
+          y={scaleY(zoneDragPreview.y)}
+          width={zoneDragPreview.w}
+          height={scaleY(zoneDragPreview.h)}
+          rx="1.2"
+          className="board-zone-draft"
+          fill="none"
+          stroke={color}
+          strokeDasharray="1.6 1.2"
+          strokeWidth={0.6}
+        />
+      ) : null}
 
       {visibleArrows.map((arrow) => {
         const start = endpointPoint(arrow.from, scene.objects);
