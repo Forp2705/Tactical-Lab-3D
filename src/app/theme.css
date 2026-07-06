@@ -6683,11 +6683,12 @@ button.home-cta-gold:hover {
   max-height: 100%;
 }
 
+/* W12: lineas del campo tenues sobre el pitch oscuro (mockup). */
 .home-board-pitch-outline {
   fill: none;
   stroke: var(--felt-line);
   stroke-width: 0.4;
-  opacity: 0.6;
+  opacity: 0.45;
 }
 
 .home-board-empty-copy {
@@ -7648,11 +7649,14 @@ body .app-shell .main.main-home {
   color: var(--felt-gold);
 }
 
-/* W10 — pitch VERDE felt (no negro) con grilla milimetrada: las dos capas
-   repeating (h+v, celda 14px, --felt-line a ~10% efectivo) van sobre el
-   gradiente pero debajo del SVG — lineas de campo y fichas viven en el svg,
-   siempre encima del fondo. min-height 420 = >=55% del viewport 768; el cap
-   46vh del breakpoint 1366 de arriba queda anulado por orden de cascada. */
+/* W10/W12 — pitch verde OSCURO y limpio (mockup W9): gradiente bg-2->bg-3
+   sin tinte mint (W12: el mix con --felt-mint 8% lo dejaba claro-tecnico) y
+   grilla milimetrada bajada de 12% a 4% efectivo — apenas perceptible, el
+   mockup casi no la muestra (feedback directo del usuario). Las capas
+   repeating (h+v, celda 14px) van sobre el gradiente pero debajo del SVG —
+   lineas de campo y fichas viven en el svg, siempre encima del fondo.
+   min-height 420 = >=55% del viewport 768; el cap 46vh del breakpoint 1366
+   de arriba queda anulado por orden de cascada. */
 .home-board-pitch {
   min-height: 420px;
   max-height: 480px;
@@ -7660,19 +7664,15 @@ body .app-shell .main.main-home {
   background:
     repeating-linear-gradient(
       to bottom,
-      color-mix(in oklch, var(--felt-line) 12%, transparent) 0 1px,
+      color-mix(in oklch, var(--felt-line) 4%, transparent) 0 1px,
       transparent 1px 14px
     ),
     repeating-linear-gradient(
       to right,
-      color-mix(in oklch, var(--felt-line) 12%, transparent) 0 1px,
+      color-mix(in oklch, var(--felt-line) 4%, transparent) 0 1px,
       transparent 1px 14px
     ),
-    linear-gradient(
-      165deg,
-      color-mix(in oklch, var(--felt-bg-1), var(--felt-mint) 8%) 0%,
-      var(--felt-bg-2) 100%
-    );
+    linear-gradient(165deg, var(--felt-bg-2) 0%, var(--felt-bg-3) 100%);
 }
 
 /* W10 — el SVG llena el panel (cap 340px, antes 220). */
