@@ -6399,8 +6399,10 @@ button.home-masthead-rival-button {
 .home-paper {
   position: relative;
   /* W10 - fixed width, not fluid 100% of the column, so felt shows around
-     the papers (spec section 2.1). */
-  width: 420px;
+     the papers (spec section 2.1). W12 (mc-18 punto 2): ~13% mas angosto
+     (420 -> 365) para que respire mas felt alrededor y el contenido se lea
+     mas alto que ancho. */
+  width: 365px;
   max-width: 100%;
   justify-self: start;
   padding: 18px 20px 20px;
@@ -6414,16 +6416,17 @@ button.home-masthead-rival-button {
 
 /* W10 */
 .home-paper-session {
-  width: 310px;
-  margin-left: clamp(40px, 12%, 90px);
+  width: 265px;
+  margin-left: clamp(50px, 15%, 100px);
 }
 
+/* W12 (mc-18 punto 2): stagger un poco mas marcado que el -2/+2 previo. */
 .home-paper:nth-of-type(1) {
-  transform: rotate(-2deg);
+  transform: rotate(-3deg);
 }
 
 .home-paper:nth-of-type(2) {
-  transform: rotate(2deg);
+  transform: rotate(3deg);
 }
 
 .home-paper-tape {
@@ -6573,11 +6576,16 @@ button.home-masthead-rival-button {
 button.home-paper-link-cta {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   width: auto;
   padding: 0;
   border: 0;
+  /* W12 (mc-18 punto 2): el reset `.btn` de tactical-ui deja un box-shadow de
+     slab (0 14px 34px) colgando debajo del link, que se leia como un resabio
+     de highlight/sombra sucia bajo el texto. El link es texto plano: sin
+     sombra. */
   background: none;
+  box-shadow: none;
   color: var(--felt-bg-3);
   font-family: var(--felt-font-mono);
   font-weight: 800;
@@ -6592,6 +6600,7 @@ button.home-paper-link-cta {
 button.home-paper-link-cta::after {
   content: "\2197";
   text-decoration: none;
+  line-height: 1;
 }
 
 button.home-paper-link-cta:hover {
@@ -6603,6 +6612,7 @@ button.home-paper-secondary-link {
   padding: 0;
   border: 0;
   background: none;
+  box-shadow: none;
   color: color-mix(in oklch, var(--felt-bg-3) 65%, transparent);
   font-family: var(--felt-font-mono);
   font-size: 10px;
@@ -6844,6 +6854,8 @@ button.home-next-step-cta {
   gap: 8px;
 }
 
+/* W12 (mc-18 punto 4): borde mas tenue y fondo casi transparente — el strip
+   competia en presencia con los papeles/tablero de arriba. */
 .home-context-strip {
   display: flex;
   align-items: center;
@@ -6851,18 +6863,18 @@ button.home-next-step-cta {
   flex-wrap: wrap;
   max-height: 44px;
   padding: 10px 14px;
-  border: 1px solid var(--felt-panel-line);
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 70%);
   border-radius: 10px;
-  background: var(--felt-panel);
+  background: color-mix(in oklch, var(--felt-panel), transparent 55%);
 }
 
 .home-context-label {
   font-family: var(--felt-font-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--felt-ink);
+  color: color-mix(in oklch, var(--felt-ink) 82%, transparent);
 }
 
 button.home-context-action {
@@ -6883,10 +6895,13 @@ button.home-context-action {
 /* W10 - B2/B3/B4 uniform collapsed rows (Lectura coach / Quick Start /
    Observacion manual). Native <details>: cheap, accessible, keyboard-native
    toggle. */
+/* W12 (mc-18 punto 4): mismos ajustes de presencia que .home-context-strip —
+   borde tenue, fondo casi transparente, tipografia un punto mas chica -
+   estos 4 collapses competian visualmente con el primer viewport. */
 details.home-collapse {
-  border: 1px solid var(--felt-panel-line);
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 70%);
   border-radius: 10px;
-  background: var(--felt-panel);
+  background: color-mix(in oklch, var(--felt-panel), transparent 55%);
   overflow: hidden;
 }
 
@@ -6901,11 +6916,11 @@ details.home-collapse > summary {
   cursor: pointer;
   list-style: none;
   font-family: var(--felt-font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--felt-ink);
+  color: color-mix(in oklch, var(--felt-ink) 88%, transparent);
 }
 
 details.home-collapse > summary::-webkit-details-marker {
@@ -7244,12 +7259,18 @@ body .app-shell .sidebar {
   font-family: var(--felt-font-body);
 }
 
-/* E2 — marca: rombo + wordmark + subtitulo mono INICIO · FOCO MD-3 · 4-3-3 */
+/* E2 — marca: rombo + wordmark + subtitulo mono INICIO · FOCO MD-3 · 4-3-3.
+   W12: la linea dorada vive en .brand > div (columna de texto), no en
+   .brand entero, para que no se extienda por debajo del logo (mockup:
+   linea acotada al ancho del wordmark). */
 body .app-shell .brand {
   gap: 12px;
-  margin-bottom: 10px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid color-mix(in oklch, var(--felt-gold) 60%, transparent);
+  margin-bottom: 14px;
+}
+
+body .app-shell .brand > div {
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid color-mix(in oklch, var(--felt-gold) 85%, transparent);
 }
 
 body .app-shell .brand-mark {
@@ -7304,18 +7325,23 @@ body .app-shell .nav-section-label::before {
 body .app-shell .nav button.nav-btn {
   grid-template-columns: auto minmax(0, 1fr) auto !important;
   gap: 10px;
-  min-height: 40px !important;
-  padding: 8px 10px !important;
+  min-height: 42px !important;
+  padding: 9px 10px !important;
   border-radius: 10px;
   color: color-mix(in oklch, var(--felt-ink) 82%, transparent) !important;
   background: transparent !important;
   border: 1px solid transparent !important;
 }
 
+/* W12: tactical-ui.css apaga este marcador con `content: none !important;
+   display: none !important` (selector .app-shell .nav .nav-btn::before, sin
+   `body`/`button`); hay que igualar !important en ambas props para que el
+   bullet sobrio del mockup vuelva a pintarse. */
 body .app-shell .nav button.nav-btn::before {
-  content: "";
-  width: 9px;
-  height: 9px;
+  content: "" !important;
+  display: block !important;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   border: 1.5px solid color-mix(in oklch, var(--felt-ink) 55%, transparent);
 }
@@ -7325,9 +7351,14 @@ body .app-shell .nav button.nav-btn:hover {
   color: var(--felt-ink) !important;
 }
 
+/* W12 (mc-18 punto 1c): activo sobrio — solo texto dorado + bullet lleno,
+   sin pill/caja rellena (era background+border dorado, leia como boton). */
 body .app-shell .nav button.nav-btn.active {
-  background: color-mix(in oklch, var(--felt-gold) 13%, transparent) !important;
-  border-color: color-mix(in oklch, var(--felt-gold) 42%, transparent) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  /* tactical-ui.css deja un inset ring de 1px (.app-shell .nav .nav-btn.active,
+     !important) que seguia leyendose como un resto de caja. */
+  box-shadow: none !important;
   color: var(--felt-gold) !important;
 }
 
@@ -7339,7 +7370,7 @@ body .app-shell .nav button.nav-btn.active::before {
 body .app-shell .nav button.nav-btn .nav-label {
   font-family: var(--felt-font-head);
   font-size: 12.5px !important;
-  font-weight: 750 !important;
+  font-weight: 650 !important;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: normal;
@@ -7382,11 +7413,13 @@ body .app-shell .side-foot {
   gap: 10px;
   margin-top: auto;
 }
+/* W12 (mc-18 punto 1e): Proyecto local pasa a tratamiento plano — el
+   <details> interno (.project-more summary, ya mono/discreto) ya no necesita
+   la caja de card por debajo. */
 body .app-shell .side-foot .status-card {
-  border: 1px solid var(--felt-panel-line);
-  background: var(--felt-panel);
+  border: 0;
+  background: transparent;
   color: var(--felt-ink);
-  border-radius: 12px;
 }
 
 body .app-shell .side-foot button.btn.ghost,
@@ -7402,15 +7435,16 @@ body .app-shell .side-foot .file-label.btn.ghost:hover {
   border-color: color-mix(in oklch, var(--felt-gold) 50%, transparent) !important;
 }
 
+/* W12 (mc-18 punto 1e): perfil pasa a tratamiento plano (avatar + texto,
+   sin card) como el pie del mockup. */
 body .app-shell .staff-profile {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--felt-panel-line);
-  border-radius: 12px;
-  background: var(--felt-panel);
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
 }
 
 body .app-shell .staff-profile-avatar {
