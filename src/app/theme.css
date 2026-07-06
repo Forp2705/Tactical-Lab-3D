@@ -7792,5 +7792,193 @@ body .app-shell .top-stat-strip div {
 /* === W11 FIXUP AI (mc-21) === */
 
 /* === W11 FIXUP TEAM-SESSIONS (mc-19) === */
+/* Fix-up per-vista sobre la base mc-18: Evolucion (TeamView chrome + marco
+   HTML del LineupLab), Sesion (planner + microciclo) y el empty-state de
+   Pizarra. Solo re-declara selectores que retienen hardcodes cockpit
+   (teal/lime/azul/navy) que el token-swap no alcanza. Semanticos que se
+   CONSERVAN a proposito: propio-teal/rival-rojo (sketch-thumbs de sesion,
+   dots del shape-minimap, canvas 3D), alert-row.info azul / .error rojo,
+   status-dot de disponibilidad, barras de carga. */
+
+/* Eyebrows/labels mono (gate item 3), scoped a estas vistas. .lab-panel-card
+   h4 ya es dorado via --setpiece; aca solo gana la voz mono. */
+.team-mock-view .panel-eyebrow,
+.team-mock-view .eyebrow,
+.session-layout .panel-eyebrow,
+.session-layout .eyebrow,
+.lab-panel-card h4,
+.rombo-board-empty .eyebrow {
+  font-family: var(--felt-font-mono);
+}
+
+/* Paneles base de Evolucion/Sesion: salen del navy cockpit (grupo ~3191 que
+   comparte selector con vistas de mc-21/mc-22 — aca solo las clases de este
+   paquete) hacia la superficie felt del resto de la app. */
+.team-card,
+.session-block,
+.micro-day,
+.summary-tile,
+.lineup-item,
+.lab-panel-card {
+  border-color: color-mix(in oklch, var(--felt-line), transparent 80%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-bg-1), black 16%),
+    color-mix(in oklch, var(--felt-bg-3), black 8%)
+  );
+}
+
+/* --- Evolucion: marco HTML del Lineup Lab (el canvas three.js queda) --- */
+.lineup-lab {
+  border-color: color-mix(in oklch, var(--felt-line), transparent 80%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-bg-2), black 4%),
+    color-mix(in oklch, var(--felt-bg-3), black 14%)
+  );
+}
+
+.lineup-lab-topbar {
+  border-bottom-color: color-mix(in oklch, var(--felt-line), transparent 84%);
+  background: color-mix(in oklch, var(--felt-bg-3), black 22%);
+}
+
+.lineup-lab-canvas {
+  border-color: color-mix(in oklch, var(--felt-line), transparent 84%);
+  background: color-mix(in oklch, var(--felt-bg-3), black 26%);
+}
+
+.lineup-lab-panel {
+  border-left-color: color-mix(in oklch, var(--felt-line), transparent 84%);
+  background: color-mix(in oklch, var(--felt-bg-3), black 30%);
+}
+
+.shape-row {
+  background: color-mix(in oklch, var(--felt-bg-3), black 20%);
+}
+
+.shape-row-wrap.active {
+  outline-color: color-mix(in oklch, var(--felt-gold), transparent 45%);
+}
+
+.metrics-grid div,
+.distance-list div,
+.rival-row {
+  border-color: color-mix(in oklch, var(--felt-line), transparent 88%);
+  background: color-mix(in oklch, var(--felt-bg-3), black 18%);
+}
+
+.metrics-grid b {
+  color: var(--felt-ink);
+}
+
+/* Plantel: fila activa pasa de crema/teal a la seleccion dorada felt.
+   Ink oscuro (felt-bg-3 casi negro-verde) sobre dorado >= 4.5:1. */
+.player-row {
+  color: var(--felt-ink);
+  border-color: color-mix(in oklch, var(--felt-line), transparent 88%);
+  background: color-mix(in oklch, var(--felt-bg-2), black 10%);
+}
+
+.player-row.active {
+  color: color-mix(in oklch, var(--felt-bg-3), black 20%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-gold) 88%, white 12%),
+    var(--felt-gold)
+  );
+  outline-color: color-mix(in oklch, var(--felt-gold), transparent 40%);
+}
+
+.player-row.active small,
+.player-row.active b {
+  color: color-mix(in oklch, var(--felt-bg-3), black 20%);
+}
+
+/* Numero de camiseta: chip celeste cockpit -> mint felt con tinta oscura. */
+.num {
+  color: color-mix(in oklch, var(--felt-bg-3), black 20%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-mint), white 30%),
+    var(--felt-mint)
+  );
+}
+
+/* Segmented de formaciones/tabs SOLO dentro de Evolucion (el .segmented
+   compartido de viewer/post-match pertenece a mc-21/mc-22). */
+.team-mock-view .segmented button.active {
+  color: color-mix(in oklch, var(--felt-bg-3), black 20%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-gold) 88%, white 12%),
+    var(--felt-gold)
+  );
+  border-color: color-mix(in oklch, var(--felt-gold) 60%, transparent);
+}
+
+/* --- Sesion: contenedor neutro de alertas felt; warn conserva semantica
+   de advertencia via --warn (derivado gold+coral, distinto del acento),
+   info/error quedan azul/rojo como estaban. --- */
+.alert-row {
+  border-color: color-mix(in oklch, var(--felt-line), transparent 80%);
+  background: color-mix(in oklch, var(--felt-bg-3), black 14%);
+}
+
+.alert-row.warn {
+  border-color: color-mix(in oklch, var(--warn), transparent 45%);
+  background: color-mix(in oklch, var(--warn), transparent 90%);
+}
+
+.summary-tile::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--felt-gold), transparent 90%)
+  );
+}
+
+/* Borde-acento de los bloques que nacieron de una pizarra. */
+.session-board-block {
+  border-color: color-mix(in oklch, var(--felt-gold), transparent 70%);
+}
+
+.session-drawer-search:focus {
+  border-color: color-mix(in oklch, var(--felt-gold), transparent 45%);
+}
+
+/* --- Pizarra: SOLO el empty-state (resto del board ya es felt y es de
+   mc-21). Cubre tambien ghost-scene y error-boundary, que comparten
+   .rombo-board-empty con un unico boton .primary. --- */
+.rombo-board-empty {
+  color: var(--felt-ink);
+  background: var(--felt-bg-3);
+}
+
+.rombo-board-empty .eyebrow {
+  color: var(--felt-gold);
+}
+
+.rombo-board-empty h2 {
+  font-family: var(--felt-font-head);
+}
+
+.rombo-board-empty-actions .primary {
+  color: color-mix(in oklch, var(--felt-bg-3), black 20%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-gold) 88%, white 12%),
+    var(--felt-gold)
+  );
+  border-color: color-mix(in oklch, var(--felt-gold) 60%, transparent);
+}
+
+/* "Nueva pizarra" mantiene jerarquia secundaria frente al CTA primario
+   (antes azul-vs-lime; ahora dorado-vs-panel). */
+.rombo-board-empty-actions button:not(.primary) {
+  color: var(--felt-ink);
+  background: color-mix(in oklch, var(--felt-bg-2), black 6%);
+  border-color: color-mix(in oklch, var(--felt-line), transparent 82%);
+}
 
 /* === W11 FIXUP LIBRARY-MEDIA (mc-22) === */
