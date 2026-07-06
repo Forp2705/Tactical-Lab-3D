@@ -40,6 +40,26 @@ export function safeErrorStatus(error: unknown) {
   return error instanceof ZodError || error instanceof SyntaxError ? 400 : 500;
 }
 
+// Resumen compacto de un error para logs server-side: message + status/code
+// del provider si vienen en el error (el SDK de OpenAI los adjunta), SIN
+// headers del provider y SIN stack. Para el dump completo usar el flag de
+// debug del endpoint (p.ej. COACH_AGENT_DEBUG=1), nunca el log por default.
+export function compactErrorForLog(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+  const parts = [error.message];
+  const status = (error as { status?: unknown }).status;
+  if (typeof status === "number" || typeof status === "string") {
+    parts.push(`status=${status}`);
+  }
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === "number" || typeof code === "string") {
+    parts.push(`code=${code}`);
+  }
+  return parts.join(" | ");
+}
+
 export function publicServerError(error: unknown, fallbackMessage: string) {
   const message = error instanceof Error ? error.message : "";
   const normalized = message.toLowerCase();
