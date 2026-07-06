@@ -6240,7 +6240,26 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   border-radius: 20px;
   color: var(--felt-ink);
   font-family: var(--felt-font-body);
+  /* W10 - vignette (darkens edges, center breathes) + secondary highlight
+     over the board zone + subtle cross-grain, layered on top of the W9
+     highlight/rayado/base stack. Backgrounds stack with the first-listed
+     layer on top, so the vignette/highlight/grain go first. */
   background: radial-gradient(
+      140% 120% at 50% 38%,
+      transparent 58%,
+      rgba(0, 0, 0, 0.18) 100%
+    ),
+    radial-gradient(
+      55% 40% at 82% 8%,
+      rgba(255, 255, 255, 0.035),
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      117deg,
+      rgba(255, 255, 255, 0.012) 0 2px,
+      transparent 2px 6px
+    ),
+    radial-gradient(
       120% 90% at 18% 0%,
       rgba(255, 255, 255, 0.05),
       transparent 55%
@@ -6312,37 +6331,54 @@ button.home-masthead-rival-button {
 }
 
 /* Main content grid: papers column (~58%) + tactical board panel (~42%),
-   leaving the right-hand gap mc-21 fills with the full E8 implementation. */
+   leaving the right-hand gap mc-21 fills with the full E8 implementation.
+   W10: align-items stretch so the board panel (mc-21) can fill the row
+   height set by the papers column instead of sizing to its own content. */
 .home-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .home-papers-col {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 22px;
+  /* W10 - felt gap between papers (spec 28-48px) */
+  gap: 36px;
+  align-content: start;
+  justify-items: start;
 }
 
 /* E6/E7 - papers (tarjeta papel claro sobre felt) */
 .home-paper {
   position: relative;
+  /* W10 - fixed width, not fluid 100% of the column, so felt shows around
+     the papers (spec section 2.1). */
+  width: 420px;
+  max-width: 100%;
+  justify-self: start;
   padding: 18px 20px 20px;
   border-radius: 4px;
   background: var(--felt-ink);
   color: var(--felt-bg-3);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  /* W10 - deeper, detached shadow ("apoyado" not "pegado") */
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
   font-family: var(--felt-font-body);
 }
 
+/* W10 */
+.home-paper-session {
+  width: 310px;
+  margin-left: clamp(40px, 12%, 90px);
+}
+
 .home-paper:nth-of-type(1) {
-  transform: rotate(-1.4deg);
+  transform: rotate(-2deg);
 }
 
 .home-paper:nth-of-type(2) {
-  transform: rotate(1deg);
+  transform: rotate(2deg);
 }
 
 .home-paper-tape {
@@ -6354,6 +6390,13 @@ button.home-masthead-rival-button {
   background: color-mix(in oklch, var(--felt-gold) 55%, transparent);
   transform: rotate(-3deg);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* W10 - vary the second paper's tape so the two papers don't look cloned */
+.home-paper-session .home-paper-tape {
+  left: 50%;
+  margin-left: -34px;
+  transform: rotate(3deg);
 }
 
 .home-paper-eyebrow {
@@ -6379,7 +6422,7 @@ button.home-masthead-rival-button {
   margin: 0 0 10px;
   font-family: var(--felt-font-head);
   font-weight: 800;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1.22;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -6405,7 +6448,7 @@ button.home-masthead-rival-button {
   margin: 0 0 12px;
   font-family: var(--felt-font-head);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--felt-coral-ink);
   transform: rotate(-1.2deg);
 }
@@ -6471,10 +6514,66 @@ button.home-masthead-rival-button {
   color: color-mix(in oklch, var(--felt-bg-3) 60%, transparent);
 }
 
-/* Shared gold CTA used by both papers, the board panel and the next-step
-   mini-card. Kept independent from `.btn.primary` (accent teal) so it never
-   has to fight that rule's cascade/specificity. `button.` prefix matches the
-   specificity of the cockpit-wide `button:not(.secondary)` lime reset. */
+/* W10 - papers no longer carry a full-width gold slab CTA (mockup keeps the
+   single dorado slab on the board panel only). Papers get a compact link
+   affordance instead: mono, underlined, ink-on-paper. `button.` prefix
+   matches the cockpit-wide lime reset's specificity. */
+.home-paper-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+button.home-paper-link-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--felt-bg-3);
+  font-family: var(--felt-font-mono);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+button.home-paper-link-cta::after {
+  content: "\2197";
+  text-decoration: none;
+}
+
+button.home-paper-link-cta:hover {
+  color: var(--felt-coral-ink);
+}
+
+button.home-paper-secondary-link {
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: color-mix(in oklch, var(--felt-bg-3) 65%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Shared gold CTA used by the board panel (mc-21) and the next-step
+   mini-card - the single full-width dorado slab in the first viewport (W10:
+   papers moved to the link CTA above). Kept independent from `.btn.primary`
+   (accent teal) so it never has to fight that rule's cascade/specificity.
+   `button.` prefix matches the specificity of the cockpit-wide
+   `button:not(.secondary)` lime reset. */
 button.home-cta-gold {
   display: inline-flex;
   align-items: center;
@@ -6558,60 +6657,57 @@ button.home-cta-gold:hover {
   color: color-mix(in oklch, var(--felt-ink) 65%, transparent);
 }
 
-/* Mini-card SIGUIENTE PASO */
-.home-next-step {
+/* W10 - fila inferior combinada: metricas desnudas (izq) + siguiente paso
+   (der) en UNA sola fila, <=88px de alto (spec seccion 4). DOM order stays
+   next-step-then-metrics (mobile stacking order, spec seccion 7); `order`
+   flips the visual position at desktop widths only. */
+.home-bottom-row {
   display: grid;
-  gap: 10px;
-  padding: 16px 18px;
-  border: 1px solid var(--felt-panel-line);
-  border-radius: 12px;
-  background: var(--felt-panel);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  max-height: 88px;
 }
 
-.home-next-step .panel-eyebrow {
-  color: var(--felt-mint);
-  font-size: 11px;
+.home-bottom-row .home-metrics {
+  order: 1;
 }
 
-.home-next-step h3 {
-  margin: 0;
-  font-family: var(--felt-font-head);
-  font-size: 17px;
+.home-bottom-row .home-next-step {
+  order: 2;
 }
 
-button.home-next-step-cta {
-  width: auto;
-  justify-self: start;
-  padding: 9px 18px;
-}
-
-/* E9 - 3 metrics */
+/* E9 - 3 metrics, W10: desnudas, sin card, apoyadas directo sobre el felt. */
 .home-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 48px;
+  min-width: 0;
 }
 
 .home-metric-tile {
   display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border: 1px solid var(--felt-panel-line);
-  border-radius: 10px;
-  background: var(--felt-panel);
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
   text-align: left;
 }
 
 /* `button.` prefix matches the specificity of the cockpit-wide
    `button:not(.secondary)` lime reset so the felt tile background/border
-   are not silently repainted lime. */
+   are not silently repainted lime. `overflow: visible` undoes the global
+   `button { overflow: hidden }` reset (theme.css ~2640): at this tile's
+   naked/narrow width it was clipping the leading glyph of wrapped sublabel
+   text (e.g. "CARGADO" reading as "'ARGADO"). */
 button.home-metric-tile-button {
   font: inherit;
   color: inherit;
-  background: var(--felt-panel);
-  border-color: var(--felt-panel-line);
+  background: none;
+  border: 0;
   box-shadow: none;
   cursor: pointer;
+  overflow: visible;
 }
 
 button.home-metric-tile-button:disabled {
@@ -6619,25 +6715,263 @@ button.home-metric-tile-button:disabled {
   opacity: 0.6;
 }
 
+button.home-metric-tile-button:not(:disabled):hover .home-metric-big {
+  filter: brightness(1.12);
+}
+
+button.home-metric-tile-button:not(:disabled):hover .home-metric-sub {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, var(--felt-gold) 60%, transparent);
+}
+
 .home-metric-big {
   font-family: var(--felt-font-head);
-  font-size: 30px;
+  font-size: 36px;
   font-weight: 800;
   color: var(--felt-gold);
 }
 
+/* W10 - alternating gold/ink/gold pattern from the mockup */
+.home-metrics > *:nth-child(2) .home-metric-big {
+  color: var(--felt-ink);
+}
+
 .home-metric-sub {
   font-family: var(--felt-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.05em;
+  font-size: 10px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: color-mix(in oklch, var(--felt-ink) 65%, transparent);
 }
 
+/* Mini-strip SIGUIENTE PASO: sin card pesada, comparte fila con las
+   metricas (W10). */
+.home-next-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.home-next-step .panel-eyebrow {
+  flex-shrink: 0;
+  color: var(--felt-mint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.home-next-step h3 {
+  flex: 1 1 auto;
+  margin: 0;
+  /* floor > 0: overflow:hidden + white-space:nowrap zero out the flex
+     automatic minimum size, so without an explicit floor this collapses to
+     ~0 width under a tight container (eyebrow + gold CTA both flex-shrink:0
+     at 390px). */
+  min-width: 72px;
+  max-width: 260px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--felt-font-head);
+  font-size: 14px;
+}
+
+button.home-next-step-cta {
+  width: auto;
+  flex-shrink: 0;
+  justify-self: start;
+  padding: 9px 18px;
+}
+
 .home-lower-zone {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   margin-top: 4px;
+}
+
+/* W10 - B1 contexto activo: strip de una linea, switch demo/real a 1 click,
+   sin <details>. */
+.home-context-strip-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.home-context-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  max-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--felt-panel-line);
+  border-radius: 10px;
+  background: var(--felt-panel);
+}
+
+.home-context-label {
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--felt-ink);
+}
+
+button.home-context-action {
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--felt-gold);
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* W10 - B2/B3/B4 uniform collapsed rows (Lectura coach / Quick Start /
+   Observacion manual). Native <details>: cheap, accessible, keyboard-native
+   toggle. */
+details.home-collapse {
+  border: 1px solid var(--felt-panel-line);
+  border-radius: 10px;
+  background: var(--felt-panel);
+  overflow: hidden;
+}
+
+details.home-collapse > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 0;
+  max-height: 52px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--felt-ink);
+}
+
+details.home-collapse > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.home-collapse > summary::marker {
+  content: "";
+}
+
+details.home-collapse > summary::after {
+  content: "+";
+  font-size: 15px;
+  font-weight: 400;
+  color: color-mix(in oklch, var(--felt-ink) 65%, transparent);
+}
+
+details.home-collapse[open] > summary::after {
+  content: "\2212";
+}
+
+details.home-collapse .home-collapse-body {
+  padding: 0 14px 16px;
+}
+
+/* Single wrapping flex item for summary content, so the ::after +/-
+   indicator (a flex item on the summary itself) is always exactly the 2nd
+   item regardless of how many pieces the summary's own content has. */
+.home-collapse-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Boceto rapido rides inside the Quick Start summary row; its click must not
+   bubble to <summary> and toggle the details (preventDefault/stopPropagation
+   applied in HomeView.tsx). */
+.home-collapse-summary-action {
+  flex-shrink: 0;
+  text-transform: none;
+}
+
+/* Neutralize the nested cards' own chrome so they sit flush inside the
+   collapse body instead of double-boxing (border/bg already come from
+   details.home-collapse). Higher specificity than tactical-ui.css's plain
+   `.coach-report-card` / `.home-action-block` / `.quick-observation-card`
+   (and their `.app-shell`-scoped !important variants) so this wins
+   regardless of load order. */
+.home-command-view details.home-collapse .coach-report-card,
+.home-command-view details.home-collapse .home-action-block,
+.home-command-view details.home-collapse .quick-observation-card,
+.home-command-view details.home-collapse .command-summary-card {
+  border: 0 !important;
+  background: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* W10 B4 - cockpit lime/teal cleanup inside Observacion manual: gold small
+   CTA, felt outline secondary actions, felt chip. `button.` prefix matches
+   the cockpit lime reset's specificity. */
+.home-command-view details.home-collapse .quick-observation-card button.btn.primary {
+  width: auto;
+  background: var(--felt-gold) !important;
+  border: 0 !important;
+  color: var(--felt-bg-3) !important;
+  font-family: var(--felt-font-mono);
+  font-weight: 800;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  padding: 8px 16px;
+}
+
+.home-command-view details.home-collapse .quick-observation-card button.btn.primary:hover {
+  background: color-mix(in oklch, var(--felt-gold) 88%, white 12%) !important;
+}
+
+.home-command-view details.home-collapse .quick-observation-card button.secondary,
+.home-command-view details.home-collapse .quick-observation-card button.btn.ghost {
+  background: transparent !important;
+  border: 1px solid var(--felt-line) !important;
+  color: var(--felt-ink) !important;
+}
+
+.home-command-view details.home-collapse .ai-context-chip {
+  background: color-mix(in oklch, var(--felt-gold) 16%, transparent) !important;
+  border-color: color-mix(in oklch, var(--felt-mint) 40%, transparent) !important;
+  color: var(--felt-ink) !important;
+}
+
+/* W10 fix - RealCoachOnboarding (home-onboarding-strip) is Sala-only, so its
+   `.btn.primary` CTAs (Empezar con mi equipo / Siguiente / Guardar y
+   terminar / Crear primer foco semanal) were still hitting the cockpit lime
+   reset, same violation as B4. Same gold-small repaint, same specificity
+   trick (`button.` + descendant scope beats `.app-shell button.btn.primary`
+   !important). `.btn.ghost`/`.secondary` here are already neutral (not
+   lime), so they're left alone. */
+.home-command-view .home-onboarding-strip button.btn.primary {
+  background: var(--felt-gold) !important;
+  border: 0 !important;
+  color: var(--felt-bg-3) !important;
+}
+
+.home-command-view .home-onboarding-strip button.btn.primary:hover {
+  background: color-mix(in oklch, var(--felt-gold) 88%, white 12%) !important;
 }
 
 .home-deep-dive-intro {
@@ -6649,39 +6983,54 @@ button.home-metric-tile-button:disabled {
     padding: 14px 16px 20px;
   }
 
-  .home-paper:nth-of-type(1) {
-    transform: rotate(-1deg);
-  }
-
-  .home-paper:nth-of-type(2) {
-    transform: rotate(0.8deg);
-  }
+  /* W10 - tilt does NOT reduce at this breakpoint (the mockup IS this
+     viewport); it only cancels at <=720px (mobile rule further below). */
 
   .home-board-pitch {
     max-height: 46vh;
   }
 }
 
-/* 1366x768 obligatorio (acceptance 4): compact enough that masthead, both
-   papers (title + first block row), the board CTA and the 3 metrics clear
-   the fold with no scroll. Quick Start / lower zone / deep-dive may fall
-   below it (explicitly permitted). */
+/* 1366x768 obligatorio (acceptance 4/W10 seccion 1): compact enough that
+   masthead, both papers (title complete / heading + 1st row), the board CTA
+   and the combined metrics+siguiente-paso row clear the fold with no
+   scroll. Quick Start / lower zone / deep-dive may fall below it
+   (explicitly permitted). Budget: masthead 48 + gap 12 + main-grid 540 +
+   gap 12 + bottom-row 88 + padding <= 724 (W10-ACCEPTANCE.md seccion 1.2). */
 @media (max-width: 1366px) and (max-height: 820px) {
   .home-command-view {
     gap: 10px !important;
-    padding: 10px 14px 16px;
+    padding: 10px 14px 12px;
   }
 
   .home-main-grid {
     gap: 12px;
   }
 
+  .home-lower-zone {
+    gap: 8px;
+  }
+
+  .home-context-strip-wrap {
+    gap: 6px;
+  }
+
   .home-papers-col {
-    gap: 12px;
+    gap: 28px;
   }
 
   .home-paper {
     padding: 12px 14px 14px;
+  }
+
+  .home-paper-problem {
+    max-height: 260px;
+    overflow: hidden;
+  }
+
+  .home-paper-session {
+    max-height: 200px;
+    overflow: hidden;
   }
 
   .home-paper-eyebrow {
@@ -6691,7 +7040,7 @@ button.home-metric-tile-button:disabled {
   .home-paper-title {
     margin-bottom: 6px;
     font-size: 17px;
-    -webkit-line-clamp: 2;
+    line-height: 1.18;
   }
 
   .home-paper-body {
@@ -6705,10 +7054,6 @@ button.home-metric-tile-button:disabled {
 
   .home-paper-chips {
     margin-bottom: 8px;
-  }
-
-  button.home-cta-gold {
-    padding: 8px 14px;
   }
 
   .home-paper-blocks {
@@ -6726,13 +7071,13 @@ button.home-metric-tile-button:disabled {
     gap: 8px;
   }
 
-  .home-board-pitch {
-    max-height: 30vh;
-  }
+  /* W10 - the 30vh cap here was the cause of the "tablero enano": it made
+     mc-21's panel size to a tiny pitch regardless of the stretched row
+     height. Removed so mc-21 controls pitch height from the BOARD PANEL
+     section (theme.css W9 BOARD PANEL) against the stretched row instead. */
 
-  .home-next-step {
-    padding: 8px 12px;
-    gap: 6px;
+  .home-bottom-row {
+    max-height: none;
   }
 }
 
@@ -6758,23 +7103,70 @@ button.home-metric-tile-button:disabled {
     max-height: 420px;
   }
 
-  .home-paper:nth-of-type(1),
-  .home-paper:nth-of-type(2) {
-    transform: rotate(0deg);
+  /* W10 seccion 7 (tablet): el tilt de los papeles SE MANTIENE (solo se
+     anula a <=720px, ver query mobile mas abajo) - a diferencia del ancho
+     100% que W9 aplicaba aca, el ancho fijo tambien se mantiene. */
+
+  /* W10 - tablet: metrics/next-step split into 2 rows (metrics keeps its
+     own 3-across row, next-step strip below); order reset so DOM order
+     (next-step, then metrics) governs the stack. */
+  .home-bottom-row {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: none;
+    gap: 10px;
+  }
+
+  .home-bottom-row .home-metrics,
+  .home-bottom-row .home-next-step {
+    order: 0;
   }
 }
 
 @media (max-width: 720px) {
-  .home-metrics {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .home-board-pitch {
     max-height: 320px;
   }
 
   .home-paper-title {
     font-size: 19px;
+  }
+
+  .home-paper:nth-of-type(1),
+  .home-paper:nth-of-type(2) {
+    transform: rotate(0deg);
+  }
+
+  .home-paper-problem,
+  .home-paper-session {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  /* W10 - metrics stay a naked row of 3 at mobile (spec seccion 7: hoy
+     apilan, ahora fila de 3), sized down to fit 390px. */
+  .home-metrics {
+    gap: 14px;
+  }
+
+  .home-metric-big {
+    font-size: 23px;
+  }
+
+  .home-metric-sub {
+    font-size: 9px;
+  }
+
+  /* W10 - siguiente paso strip: wrap onto 2 lines at mobile widths instead
+     of forcing horizontal overflow (eyebrow + long titulo + gold CTA don't
+     fit one line under 390px). */
+  .home-next-step {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .home-next-step h3 {
+    flex-basis: 100%;
+    max-width: 100%;
   }
 }
 

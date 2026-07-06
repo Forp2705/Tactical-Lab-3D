@@ -27,7 +27,7 @@ import {
 import { resolveExerciseSelection } from "@/app/viewerSelection";
 import { useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { FirstRunChooser } from "./FirstRunChooser";
 import { HomeMasthead, hasRivalGuard } from "./HomeMasthead";
 import { HomeMetrics } from "./HomeMetrics";
@@ -65,6 +65,8 @@ export function HomeView() {
       ...exerciseVariants,
     ]);
   const [quickObservation, setQuickObservation] = useState("");
+  const weeklyDetailsRef = useRef<HTMLDetailsElement>(null);
+  const observationDetailsRef = useRef<HTMLDetailsElement>(null);
   const availablePlayers = useMemo(
     () =>
       teamPlayers.filter((player) => player.status === "available").length,
@@ -177,6 +179,19 @@ export function HomeView() {
     }
   }
 
+  function openLecturaCompleta() {
+    const el = weeklyDetailsRef.current;
+    if (!el) return;
+    el.open = true;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  useEffect(() => {
+    if (quickObservation.trim() && observationDetailsRef.current) {
+      observationDetailsRef.current.open = true;
+    }
+  }, [quickObservation]);
+
   return (
     <div className="view-enter grid home-command-view" style={{ gap: 16 }}>
       <FirstRunChooser isVirgin={isVirginWorkspace} />
@@ -198,6 +213,7 @@ export function HomeView() {
             rivalChipLabel={rivalChipLabel}
             baseFormation={baseFormationChip}
             onOpenDiagnostico={openDiagnostico}
+            onOpenLecturaCompleta={openLecturaCompleta}
           />
           <HomeSessionPaper
             sessionName={session.name}
@@ -209,30 +225,35 @@ export function HomeView() {
         <HomeTacticalBoardPanel />
       </div>
 
-      <section className="home-next-step">
-        <span className="panel-eyebrow">SIGUIENTE PASO</span>
-        <h3>{nextAction.title}</h3>
-        <button
-          type="button"
-          className="home-cta-gold home-next-step-cta"
-          onClick={nextAction.onClick}
-        >
-          {nextAction.cta}
-        </button>
-      </section>
+      <div className="home-bottom-row">
+        {/* DOM order kept as next-step then metrics (matches mobile
+            stacking order, W10 spec 7); `order` in CSS flips the visual
+            position to metrics-left/next-step-right at desktop widths. */}
+        <section className="home-next-step">
+          <span className="panel-eyebrow">SIGUIENTE PASO</span>
+          <h3 title={nextAction.title}>{nextAction.title}</h3>
+          <button
+            type="button"
+            className="home-cta-gold home-next-step-cta"
+            onClick={nextAction.onClick}
+          >
+            {nextAction.cta}
+          </button>
+        </section>
 
-      <HomeMetrics
-        loadPercentValue={loadPercentValue}
-        loadPeakLabel={loadPeakLabel}
-        availablePlayers={availablePlayers}
-        totalPlayers={teamPlayers.length}
-        reportsCount={reports.length}
-        onOpenEvolucion={() => useAppStore.getState().setView("team")}
-        onOpenPostPartido={() => {
-          useAppStore.getState().setAiMode("postMatch");
-          useAppStore.getState().setView("ai");
-        }}
-      />
+        <HomeMetrics
+          loadPercentValue={loadPercentValue}
+          loadPeakLabel={loadPeakLabel}
+          availablePlayers={availablePlayers}
+          totalPlayers={teamPlayers.length}
+          reportsCount={reports.length}
+          onOpenEvolucion={() => useAppStore.getState().setView("team")}
+          onOpenPostPartido={() => {
+            useAppStore.getState().setAiMode("postMatch");
+            useAppStore.getState().setView("ai");
+          }}
+        />
+      </div>
 
       <div className="home-lower-zone">
         {workspaceMode === "real" && !isTeamIdentityBootstrapped(teamIdentity) ? (
@@ -240,31 +261,118 @@ export function HomeView() {
             <RealCoachOnboarding identity={teamIdentity} />
           </section>
         ) : null}
-        <section className="home-mode-strip">
-          <WorkspaceModeCard workspaceMode={workspaceMode} />
+
+        <section className="home-context-strip-wrap">
+          <div className="home-context-strip">
+            <span className="home-context-label">
+              CONTEXTO ACTIVO · MODO {workspaceMode === "demo" ? "DEMO" : "REAL"}
+            </span>
+            {workspaceMode === "demo" ? (
+              <button
+                type="button"
+                className="home-context-action"
+                onClick={() => useAppStore.getState().loadRealWorkspace()}
+              >
+                Pasar a equipo real
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="home-context-action"
+                onClick={() => useAppStore.getState().loadDemoWorkspace()}
+              >
+                Cargar demo
+              </button>
+            )}
+          </div>
           {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
-            <TeamSetupPrompt identity={teamIdentity} />
+            <details className="home-collapse">
+              <summary>
+                <span className="home-collapse-summary-row">
+                  SETUP MINIMO · DEFINI LA IDENTIDAD DEL EQUIPO
+                </span>
+              </summary>
+              <div className="home-collapse-body">
+                <TeamSetupPrompt identity={teamIdentity} />
+              </div>
+            </details>
           ) : null}
         </section>
 
-        <WeeklyDecisionCard
-          model={weeklyDecisionCard}
-          title="Lectura coach de la semana"
-          detailsLabel="La evidencia completa y la trazabilidad quedan como detalle secundario."
-        />
+        <details className="home-collapse" ref={weeklyDetailsRef}>
+          <summary>
+            <span className="home-collapse-summary-row">
+              LECTURA COACH DE LA SEMANA
+              {weeklyDecisionCard
+                ? ` · CONFIANZA ${weeklyDecisionCard.confidenceLabel.toUpperCase()} ${Math.round(weeklyDecisionCard.confidence * 100)}%`
+                : ""}
+            </span>
+          </summary>
+          <div className="home-collapse-body">
+            <WeeklyDecisionCard
+              model={weeklyDecisionCard}
+              title="Lectura coach de la semana"
+              detailsLabel="La evidencia completa y la trazabilidad quedan como detalle secundario."
+            />
+          </div>
+        </details>
 
-        <QuickStartPanel
-          sessionHasBlocks={session.blocks.length > 0}
-          weeklyDecisionThread={weeklyDecisionThread}
-          activeDayLabel={activeDay.label}
-        />
+        <details className="home-collapse">
+          <summary>
+            <span className="home-collapse-summary-row">
+              <span>QUICK START · Que te esta costando esta semana?</span>
+              <span
+                className="home-collapse-summary-action"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+              >
+                <QuickSketchLauncher
+                  buttonClassName="secondary sm"
+                  buttonLabel="Boceto rapido"
+                  buttonTitle="Abrir un boceto rapido desde Sala"
+                  panelTitle="Boceto rapido para esta semana"
+                  buildDraft={() =>
+                    buildContextualSketchDraft({
+                      title: buildQuickSketchTitle([
+                        "Boceto",
+                        weeklyDecisionThread?.problem,
+                        activeDay.label,
+                      ]),
+                      tacticalFocus:
+                        weeklyDecisionThread?.sessionIntent?.objective ??
+                        weeklyDecisionThread?.problem,
+                      sourceLabel: "Sala semanal",
+                    })
+                  }
+                />
+              </span>
+            </span>
+          </summary>
+          <div className="home-collapse-body">
+            <QuickStartPanel sessionHasBlocks={session.blocks.length > 0} />
+          </div>
+        </details>
 
-        <QuickObservationPanel
-          draft={quickObservation}
-          observations={manualObservations}
-          weeklyDecisionThread={weeklyDecisionThread}
-          setDraft={setQuickObservation}
-        />
+        <details className="home-collapse" ref={observationDetailsRef}>
+          <summary>
+            <span className="home-collapse-summary-row">
+              <span>OBSERVACION MANUAL</span>
+              <span className="ai-context-chip">
+                {manualObservations.length} guardadas
+              </span>
+            </span>
+          </summary>
+          <div className="home-collapse-body">
+            <QuickObservationPanel
+              draft={quickObservation}
+              observations={manualObservations}
+              weeklyDecisionThread={weeklyDecisionThread}
+              setDraft={setQuickObservation}
+            />
+          </div>
+        </details>
       </div>
 
       <details className="home-deep-dive">
@@ -517,12 +625,8 @@ type NextAction = {
 
 const QuickStartPanel = memo(function QuickStartPanel({
   sessionHasBlocks,
-  weeklyDecisionThread,
-  activeDayLabel,
 }: {
   sessionHasBlocks: boolean;
-  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
-  activeDayLabel: string;
 }) {
   function start(templateId: string) {
     if (
@@ -538,31 +642,6 @@ const QuickStartPanel = memo(function QuickStartPanel({
 
   return (
     <section className="home-action-block quick-start-block">
-      <div className="section-title home-action-head">
-        <div>
-          <span className="panel-eyebrow">Quick Start</span>
-          <h3>Que te esta costando esta semana?</h3>
-        </div>
-        <QuickSketchLauncher
-          buttonClassName="secondary sm"
-          buttonLabel="Boceto rapido"
-          buttonTitle="Abrir un boceto rapido desde Sala"
-          panelTitle="Boceto rapido para esta semana"
-          buildDraft={() =>
-            buildContextualSketchDraft({
-              title: buildQuickSketchTitle([
-                "Boceto",
-                weeklyDecisionThread?.problem,
-                activeDayLabel,
-              ]),
-              tacticalFocus:
-                weeklyDecisionThread?.sessionIntent?.objective ??
-                weeklyDecisionThread?.problem,
-              sourceLabel: "Sala semanal",
-            })
-          }
-        />
-      </div>
       <p className="muted-panel">
         Elegi un problema y RomboIQ arma una sesion entrenable al instante, con
         ejercicios reales del catalogo. Sin configurar plantel ni esperar al
@@ -632,13 +711,6 @@ const QuickObservationPanel = memo(function QuickObservationPanel({
 
   return (
     <section className="quick-observation-card card">
-      <div className="section-title">
-        <div>
-          <span className="panel-eyebrow">Observacion manual</span>
-          <h3>Captura del staff</h3>
-        </div>
-        <span className="ai-context-chip">{observations.length} guardadas</span>
-      </div>
       <p className="muted-panel">
         Guarda una lectura corta. Cuenta como evidencia actual, con menor peso
         que video o post-partido estructurado.
@@ -740,48 +812,6 @@ const QuickObservationPanel = memo(function QuickObservationPanel({
         </p>
       )}
     </section>
-  );
-});
-
-const WorkspaceModeCard = memo(function WorkspaceModeCard({
-  workspaceMode,
-}: {
-  workspaceMode: "demo" | "real";
-}) {
-  return (
-    <article className="command-summary-card">
-      <span className="eyebrow">Contexto activo</span>
-      <h3>{workspaceMode === "demo" ? "Modo demo" : "Equipo real"}</h3>
-      <p>
-        {workspaceMode === "demo"
-          ? "Usas la semana piloto con identidad y relato preconfigurados."
-          : "El equipo real arranca limpio. El Coach no debe asumir identidad si no la defines."}
-      </p>
-      <div className="home-action-strip">
-        <button
-          type="button"
-          className="home-action"
-          onClick={() => useAppStore.getState().loadDemoWorkspace()}
-        >
-          <div className="lr-icon">DM</div>
-          <div>
-            <b>Cargar demo</b>
-            <small>Usar caso piloto</small>
-          </div>
-        </button>
-        <button
-          type="button"
-          className="home-action"
-          onClick={() => useAppStore.getState().loadRealWorkspace()}
-        >
-          <div className="lr-icon">RT</div>
-          <div>
-            <b>Equipo real</b>
-            <small>Trabajar sin narrativa sembrada</small>
-          </div>
-        </button>
-      </div>
-    </article>
   );
 });
 

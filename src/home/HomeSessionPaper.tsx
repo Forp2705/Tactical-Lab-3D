@@ -61,8 +61,8 @@ export function HomeSessionPaper({
           </p>
         </>
       )}
-      <button type="button" className="home-cta-gold home-paper-cta" onClick={onOpen}>
-        {isEmpty ? "ARMAR SESION" : "ABRIR SESION"}
+      <button type="button" className="home-paper-link-cta" onClick={onOpen}>
+        {isEmpty ? "Armar sesion" : "Abrir sesion"}
       </button>
     </article>
   );
