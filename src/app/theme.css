@@ -6937,7 +6937,14 @@ body .app-shell .nav-details-copy {
 }
 
 /* Pie del sidebar: bloque usuario (E5) + Proyecto local (existente, queda
-   debajo colapsado). */
+   debajo colapsado). Neutraliza el `.app-shell .side-foot { display: none
+   !important }` de tactical-ui.css:1594 (capa cockpit previa que escondia el
+   pie entero): el acceptance exige ambos bloques visibles en el pie. */
+body .app-shell .side-foot {
+  display: grid !important;
+  gap: 10px;
+  margin-top: auto;
+}
 body .app-shell .side-foot .status-card {
   border: 1px solid var(--felt-panel-line);
   background: var(--felt-panel);
@@ -7065,6 +7072,17 @@ body .app-shell .staff-profile-form-actions button.btn.ghost {
   box-shadow: none !important;
 }
 
+/* El scrim es un <button>, asi que el reset cockpit `button:not(.secondary)`
+   (lime, mas especifico que `.nav-scrim`) lo pintaba verde-lima a pantalla
+   completa. Bug pre-existente en todo el off-canvas <=1180; se corrige aca
+   porque el menu-toggle de Sala lo vuelve visible en la vista principal. */
+body .app-shell button.nav-scrim {
+  background: rgba(0, 0, 0, 0.55) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
 /* Riesgo 2 — menu-toggle propio de Sala. El show/hide viene de las reglas
    existentes de .menu-toggle (none en desktop, grid !important <=1180 en
    tactical-ui.css); aca solo se posiciona y se pinta felt. z-index 35: por
@@ -7075,6 +7093,9 @@ body .app-shell .main button.sala-menu-toggle {
   top: 12px;
   left: 12px;
   z-index: 35;
+  /* .icon-btn fija 38x38 y clipea el texto MENU */
+  width: auto;
+  height: auto;
   padding: 9px 12px;
   border: 1px solid color-mix(in oklch, var(--felt-line), transparent 55%) !important;
   border-radius: 10px;
@@ -7086,6 +7107,16 @@ body .app-shell .main button.sala-menu-toggle {
   text-transform: uppercase;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
   cursor: pointer;
+}
+
+/* Si el drawer quedo abierto (navOpen) y la ventana crece a >1180, el scrim
+   —position estatica fuera del media query mobile— se convierte en item de
+   la grilla del shell y desplaza al sidebar de columna. Edge pre-existente
+   de resize; a >1180 el off-canvas no existe, asi que el scrim tampoco. */
+@media (min-width: 1181px) {
+  body .app-shell .nav-scrim {
+    display: none;
+  }
 }
 
 /* E1 — marco exterior oscuro decorativo, solo desktop (>1180): a <=1180 no
