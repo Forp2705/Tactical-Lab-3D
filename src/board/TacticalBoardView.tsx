@@ -217,6 +217,7 @@ function TacticalBoardWorkspace({
           teamAFormation={a.teamAFormation}
           opponentFormation={board.opponent.formation}
           anchorOriginId={a.anchorOriginId}
+          zoneDragPreview={a.zoneDragPreview}
           consequenceOverlay={a.consequenceOverlay}
           keyInstructions={{
             objective: a.problem.objective,

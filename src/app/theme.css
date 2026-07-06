@@ -4910,6 +4910,12 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   stroke: rgba(255, 116, 116, 0.78);
 }
 
+/* Rubber-band del drag-to-create de zona/bloque (W8): sigue el color de dibujo
+   activo, punteado para marcar que todavia no es parte de la escena. */
+.board-zone-draft {
+  pointer-events: none;
+}
+
 .board-scene-strip {
   display: flex;
   gap: 8px;

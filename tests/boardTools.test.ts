@@ -7,10 +7,12 @@ import {
 import type { PlanningBoardPlayer } from "../src/board/productBoardTypes";
 import { type BoardObject, createPlayerToken } from "../src/board";
 import {
+  commitZoneDrag,
   handleCanvasPress,
   labelForTool,
   makeEquipmentLikeObject,
   mergeFormationTokens,
+  resolveZoneDragRect,
   semanticForTool,
   tokenFromPlanningPlayer,
 } from "../src/board/boardTools";
@@ -275,7 +277,7 @@ describe("boardTools — handleCanvasPress", () => {
     expect(arrow.semantic).toBe("pass");
   });
 
-  it("zone tool appends a zone", () => {
+  it("zone tool no longer creates on press — drag-to-create commits on pointerup instead (W8)", () => {
     const commitScene = vi.fn();
     const scene = freshScene();
     handleCanvasPress({
@@ -289,9 +291,7 @@ describe("boardTools — handleCanvasPress", () => {
       commitScene,
       updateSceneObjects: vi.fn(),
     });
-    expect(commitScene.mock.calls[0][0].zones).toHaveLength(
-      scene.zones.length + 1,
-    );
+    expect(commitScene).not.toHaveBeenCalled();
   });
 
   it("equipment tools append a scene object", () => {
@@ -311,5 +311,83 @@ describe("boardTools — handleCanvasPress", () => {
     expect(updateSceneObjects.mock.calls[0][0]).toHaveLength(
       scene.objects.length + 1,
     );
+  });
+});
+
+describe("boardTools — resolveZoneDragRect (W8 drag-to-create)", () => {
+  it("a click with no movement keeps the existing 20x16 centered rect", () => {
+    const rect = resolveZoneDragRect({ x: 40, y: 40 }, { x: 40, y: 40 });
+    expect(rect).toEqual({ x: 30, y: 30, w: 20, h: 16 });
+  });
+
+  it("movement below the click threshold still falls back to the centered rect", () => {
+    const rect = resolveZoneDragRect({ x: 40, y: 40 }, { x: 42, y: 41 });
+    expect(rect).toEqual({ x: 30, y: 30, w: 20, h: 16 });
+  });
+
+  it("a real drag past the threshold uses the actual rectangle, corners in any order", () => {
+    const forward = resolveZoneDragRect({ x: 20, y: 20 }, { x: 40, y: 30 });
+    expect(forward).toEqual({ x: 20, y: 20, w: 20, h: 10 });
+
+    // dragged from bottom-right back to top-left — same rect, normalized.
+    const reversed = resolveZoneDragRect({ x: 40, y: 30 }, { x: 20, y: 20 });
+    expect(reversed).toEqual({ x: 20, y: 20, w: 20, h: 10 });
+  });
+
+  it("floors a real-but-tiny drag so it never creates an invisible zone", () => {
+    const rect = resolveZoneDragRect({ x: 50, y: 50 }, { x: 53.2, y: 50.5 });
+    expect(rect.w).toBe(4);
+    expect(rect.h).toBe(4);
+  });
+
+  it("clamps a drag near the pitch edge to stay inside the normalized bounds", () => {
+    const rect = resolveZoneDragRect({ x: 95, y: 95 }, { x: 100, y: 100 });
+    expect(rect.x + rect.w).toBeLessThanOrEqual(100);
+    expect(rect.y + rect.h).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("boardTools — commitZoneDrag (W8: one undo entry per zone, on pointerup)", () => {
+  function freshScene(): BoardScene {
+    return createDefaultBoard("Test").scenes[0];
+  }
+
+  it("commits exactly one zone with the resolved drag rectangle", () => {
+    const commitScene = vi.fn();
+    const scene = freshScene();
+    commitZoneDrag({
+      tool: "zone",
+      start: { x: 20, y: 20 },
+      end: { x: 40, y: 30 },
+      scene,
+      color: "#1677ff",
+      commitScene,
+    });
+    expect(commitScene).toHaveBeenCalledTimes(1);
+    const zones = commitScene.mock.calls[0][0].zones;
+    expect(zones).toHaveLength(scene.zones.length + 1);
+    const created = zones.at(-1);
+    expect(created).toMatchObject({
+      semantic: "occupation",
+      x: 20,
+      y: 20,
+      w: 20,
+      h: 10,
+    });
+  });
+
+  it("uses the block semantic for the block tool", () => {
+    const commitScene = vi.fn();
+    const scene = freshScene();
+    commitZoneDrag({
+      tool: "block",
+      start: { x: 10, y: 10 },
+      end: { x: 10, y: 10 },
+      scene,
+      color: "#1677ff",
+      commitScene,
+    });
+    const created = commitScene.mock.calls[0][0].zones.at(-1);
+    expect(created.semantic).toBe("block");
   });
 });
