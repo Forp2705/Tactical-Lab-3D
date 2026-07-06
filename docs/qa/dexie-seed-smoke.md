@@ -46,6 +46,12 @@ Definidos en `src/state/db.ts`:
 | Forma de la fila | `{ key: string, value: <snapshot>, savedAt: number }` |
 | Backup automatico pre-migracion | `key = "backup:latest"` |
 | Campo del ejemplo canonico | `value.selectedExerciseId` (string, top-level del snapshot) |
+| Campo de la vista activa | `value.view` (enum interno, top-level del snapshot) |
+
+Valores de `value.view` (enum en `src/state/db.ts`): `home`, `library`, `viewer`,
+`team`, `sessions`, `video`, `ai`, `player`, `board`. **Son ids internos, no los labels
+del nav**: "Biblioteca" (bajo el grupo colapsado "Avanzado") es `library`, "Pizarra" es
+`board`, "Evolucion" es `team`, "Diagnostico" es `ai`.
 
 Notas:
 
@@ -64,7 +70,10 @@ Los pasos (b), (c) y (d) van **pegados**, en ese orden, sin nada en el medio:
 
 1. **(a) Precondicion**: la app tiene que haber corrido al menos una vez ≥8 s (o haber
    pasado por un flush) para que exista la fila `latest`. Si no existe, el snippet de
-   seed falla a proposito con un error claro — no la fabriques a mano.
+   seed falla a proposito con un error claro — no la fabriques a mano. En un contexto
+   Playwright fresco, primero hay que resolver el chooser de primer arranque
+   ("Explorar demo" / "Empezar desde cero"); para este smoke usar "Explorar demo",
+   que es el modo con catalogo.
 2. **(b) Seed** via `page.evaluate` contra IndexedDB: leer la fila `latest`, mutar la
    clave objetivo, escribir la fila de vuelta.
 3. **(c) Reload inmediato**: `await page.reload()` como instruccion siguiente al seed.
@@ -166,15 +175,43 @@ const snapshot = await page.evaluate(async () => {
 expect(snapshot.selectedExerciseId).toBe(SEED_ID);
 ```
 
-### 4.3 Assert de DOM (complementario, tambien inmediato)
+### 4.3 Assert de DOM (deterministico: seedear tambien `value.view`)
+
+Los textos de este assert solo se renderizan en ciertas vistas: el panel de detalle
+con el `<h2>` del titulo vive en Biblioteca (`view = "library"`), y el aviso de
+no-disponible existe en Biblioteca y en Cancha 3D (`"viewer"`). La app restaura al
+recargar la **ultima vista persistida** (`value.view`, misma fila `latest`), asi que si
+la ultima vista fue otra (p.ej. Pizarra), el assert DOM inmediato no encuentra nada
+aunque el seed y el read-back de DB (4.2) sean correctos — y navegar a Biblioteca
+despues del reload violaria el ritual atomico (falso negativo real de mc-20 en W7).
+
+La solucion es deterministica: el seed de 4.1 ya es read-modify-write sobre la fila
+`latest`, y `value.view` vive en esa misma fila. Fijar **ambos campos en el mismo
+write** hace que el reload aterrice directo en Biblioteca, sin navegacion posterior.
+El store aplica `view` del snapshot tal cual (spread en `loadSnapshot`,
+`src/state/useAppStore.ts`), sin re-resolverla — verificado en vivo (§6).
+
+En el seed de 4.1, junto a la linea que muta `selectedExerciseId`, agregar:
 
 ```ts
-// Caso positivo (id real): el panel de detalle muestra ese ejercicio.
+row.value.selectedExerciseId = seedId;
+row.value.view = "library"; // vista que renderiza los textos del assert DOM
+```
+
+Y el assert DOM, inmediato post-reload igual que 4.2:
+
+```ts
+// Caso positivo (id real): el panel de detalle de Biblioteca muestra ese ejercicio.
+// OJO strict mode: en "library" el titulo aparece dos veces (card <h3> de la grilla
+// + <h2> del panel de detalle); anclar al panel con level: 2.
 await expect(
-  page.getByRole("heading", { name: "Rondo 4v2 a dos zonas con cambio vertical" }),
+  page.getByRole("heading", {
+    level: 2,
+    name: "Rondo 4v2 a dos zonas con cambio vertical",
+  }),
 ).toBeVisible();
 
-// Caso dangling (id retirado): estado honesto, aviso explicito en Biblioteca.
+// Caso dangling (id retirado): estado honesto, aviso explicito en el panel.
 await expect(
   page.getByText("ya no esta disponible en el catalogo"),
 ).toBeVisible();
@@ -213,3 +250,21 @@ Corrido contra `npm run dev` (Vite, puerto 5174) con Playwright, en `main` (`e21
   ~20 s entre seed y reload → un tick de autosave de la pagina viva re-escribio
   `"rondo-4v2-salida"` antes del reload y el read-back post-reload ya no contenia el
   seed.
+
+Assert DOM deterministico (4.3 con seed de `value.view`), corrido el 2026-07-05 contra
+`npm run dev` (puerto 5173) en `main` (`55150a0`), partiendo en ambas rutas de la
+precondicion real de mc-20 (ultima vista persistida = Pizarra, `view = "board"`):
+
+- **Caso dangling**: seed `{ selectedExerciseId: "w8-qa-sentinel-retirado", view:
+  "library" }` en un solo write + reload atomico → read-back inmediato devolvio ambos
+  campos seedeados y el DOM mostro el aviso honesto en el panel de detalle de
+  Biblioteca **sin ninguna navegacion post-reload** (1 solo match del texto).
+- **Caso positivo**: seed `{ selectedExerciseId: "rondo-4v2-dos-zonas", view:
+  "library" }` + reload atomico → read-back inmediato correcto y el `<h2>` del panel
+  mostro "Rondo 4v2 a dos zonas con cambio vertical", sin aviso de no-disponible.
+  Confirmado en vivo el duplicado de strict mode: `getByRole("heading", { name })` sin
+  `level` matcheo 2 elementos (card de la grilla + panel); con `level: 2`, exactamente 1.
+- **Por que era no-deterministico antes**: con `view = "board"` persistida y seed solo de
+  `selectedExerciseId`, el reload aterriza en Pizarra y ninguno de los dos textos del
+  assert DOM existe en el DOM, con DB perfectamente seedeada (el hallazgo original de
+  mc-20 consumiendo este doc).
