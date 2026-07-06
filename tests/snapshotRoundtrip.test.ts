@@ -40,6 +40,7 @@ describe("saveSnapshot / loadSnapshot — round-trip real via Dexie", () => {
       layers: s.layers,
       team: s.team,
       workspaceMode: s.workspaceMode,
+      staffProfile: { name: "Marcela Bosio", role: "Asistente tactica" },
       teamIdentity: s.teamIdentity,
       gameModel: s.gameModel,
       opponentScout: s.opponentScout,
@@ -68,6 +69,11 @@ describe("saveSnapshot / loadSnapshot — round-trip real via Dexie", () => {
     expect(loaded?.session.id).toBe(snapshot.session.id);
     expect(loaded?.microcycle.id).toBe(snapshot.microcycle.id);
     expect(loaded?.aiPrompt).toBe(snapshot.aiPrompt);
+    // W9: el perfil de staff viaja por el mismo camino Dexie que el resto.
+    expect(loaded?.staffProfile).toEqual({
+      name: "Marcela Bosio",
+      role: "Asistente tactica",
+    });
   });
 
   it("devuelve null si no hay snapshot guardado", async () => {

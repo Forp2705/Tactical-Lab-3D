@@ -194,6 +194,15 @@ const snapshotShape = {
     lineups: z.array(LineupSchema),
   }),
   workspaceMode: z.enum(["demo", "real"]).default("real"),
+  // Campo aditivo con default (mismo patron que viewerQuality/personalSpace):
+  // snapshots pre-W9 sin staffProfile parsean con el fallback vacio, sin
+  // necesidad de bump de version ni entrada en MIGRATIONS.
+  staffProfile: z
+    .object({
+      name: z.string().default(""),
+      role: z.string().default(""),
+    })
+    .default({ name: "", role: "" }),
   teamIdentity: TeamIdentitySetupSchema.default({}),
   gameModel: GameModelSchema.default(DEFAULT_GAME_MODEL),
   opponentScout: OpponentScoutSchema.default(DEFAULT_OPPONENT_SCOUT),
@@ -437,6 +446,7 @@ function migrateSnapshot(snapshot: NormalizedAppSnapshot): NormalizedAppSnapshot
       id: teamId,
     },
     workspaceMode: migrated.workspaceMode ?? "real",
+    staffProfile: migrated.staffProfile ?? { name: "", role: "" },
     teamIdentity: migrated.teamIdentity ?? {},
     gameModel: migrated.gameModel ?? DEFAULT_GAME_MODEL,
     opponentScout: migrated.opponentScout ?? DEFAULT_OPPONENT_SCOUT,

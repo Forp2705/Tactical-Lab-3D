@@ -81,6 +81,16 @@ describe("parseSnapshot", () => {
     expect(parsed?.viewerQuality).toBe("medium");
   });
 
+  it("un snapshot pre-W9 sin staffProfile parsea con el fallback vacio", () => {
+    const base = snapshotFromDefaults();
+    const legacy = { ...base } as Record<string, unknown>;
+    delete legacy.staffProfile;
+
+    const parsed = parseSnapshot(legacy);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.staffProfile).toEqual({ name: "", role: "" });
+  });
+
   it("preserva el hilo semanal y observaciones manuales", () => {
     const base = snapshotFromDefaults();
     const parsed = parseSnapshot(base);

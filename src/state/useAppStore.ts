@@ -108,6 +108,15 @@ export type LibraryRecentOpen = {
   at: string;
 };
 
+// Perfil local del staff (sidebar). No hay sesion/auth: es identidad
+// presentacional persistida en el snapshot local.
+export type StaffProfile = {
+  name: string;
+  role: string;
+};
+
+export const EMPTY_STAFF_PROFILE: StaffProfile = { name: "", role: "" };
+
 export type VideoMoment = "firstHalf" | "secondHalf" | "extraTime" | "unknown";
 
 export type VideoEventSeverity = "low" | "medium" | "high";
@@ -318,6 +327,7 @@ type AppState = {
   layers: Record<Layer, boolean>;
   team: TeamState;
   workspaceMode: WorkspaceMode;
+  staffProfile: StaffProfile;
   teamIdentity: TeamIdentitySetup;
   gameModel: GameModel;
   opponentScout: OpponentScout;
@@ -455,6 +465,7 @@ type AppState = {
   markInitialized: () => void;
   setAiMode: (mode: AiMode) => void;
   setAiPrompt: (prompt: string) => void;
+  setStaffProfile: (profile: StaffProfile) => void;
   recordCoachAnswer: (answer: CollectedAnswer) => void;
   clearCoachAnswer: (questionId: string) => void;
   applyCoachTurnResult: (response: CoachResponse) => void;
@@ -772,6 +783,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   showPress: true,
   personalSpace: false,
   layers: defaultLayers,
+  // Fuera de create*WorkspaceState a proposito: el perfil del staff es de la
+  // persona, no del workspace, y sobrevive al switch demo/real.
+  staffProfile: EMPTY_STAFF_PROFILE,
   opponentScout: DEFAULT_OPPONENT_SCOUT,
   lineupLab: initialLineupLab,
   tags: [],
@@ -1699,6 +1713,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   markInitialized: () => set({ initialized: true }),
   setAiMode: (aiMode) => set({ aiMode, coachInterview: initialCoachInterview }),
+  setStaffProfile: (profile) =>
+    set({
+      staffProfile: {
+        name: profile.name.trim(),
+        role: profile.role.trim(),
+      },
+    }),
   setAiPrompt: (prompt) =>
     set((state) => ({
       aiPrompt: prompt,
