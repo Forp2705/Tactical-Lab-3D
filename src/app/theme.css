@@ -7796,3 +7796,226 @@ body .app-shell .top-stat-strip div {
 /* === W11 FIXUP TEAM-SESSIONS (mc-19) === */
 
 /* === W11 FIXUP LIBRARY-MEDIA (mc-22) === */
+/* Alcance: Video (PESADO), Cancha 3D/chrome del viewer (LIVIANO), Biblioteca
+   (LIVIANO en CSS), Briefing (NINGUNO, vista testigo - solo verificacion
+   en vivo, ver W11-ACCEPTANCE.md). Todo felt via tokens --felt- y color-mix;
+   los pocos hex literales que aparecen abajo ya existian en la MISMA regla
+   (documentado inline), no son paleta nueva. Semanticos preservados:
+   warn de evidencia de video, leyenda equipo propio/rival del viewer,
+   cancha verde de los mini-pitch de Biblioteca. Canvas three.js, canvas de
+   tracking (draws JS) y logica de tags/tracks quedan intactos: solo chrome
+   HTML. */
+
+/* --- Video + tagging / Tracking asistido (~20 hardcodes teal/sky/lime,
+   acceptance ficha Video). */
+#trackingCanvas {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  background: var(--felt-bg-3, #0a1d16);
+}
+
+.tracking-status {
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 18%, transparent);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
+}
+
+.tracking-status small {
+  background: color-mix(in oklch, var(--felt-gold, #f6d24b) 14%, transparent);
+}
+
+.video-evidence-panel {
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 16%, transparent);
+  background: radial-gradient(
+      circle at 0% 0%,
+      color-mix(in oklch, var(--felt-gold, #f6d24b) 8%, transparent),
+      transparent 32%
+    ), color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 6%);
+}
+
+.video-evidence-count {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 86%);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 10%);
+}
+
+/* .low / .warning son estado real (confianza baja del tracking asistido /
+   aviso), no decoracion: se recolorean a --warn felt (calido gold+coral)
+   en vez del lime crudo de cockpit, conservando la lectura de alerta. */
+.video-evidence-count.low {
+  border-color: color-mix(in oklch, var(--warn), transparent 78%);
+  background: color-mix(in oklch, var(--warn), transparent 92%);
+}
+
+.video-evidence-warning {
+  border-color: color-mix(in oklch, var(--warn), transparent 76%);
+  background: color-mix(in oklch, var(--warn), transparent 90%);
+}
+
+.video-evidence-item {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  background: color-mix(in oklch, white 3%, transparent);
+}
+
+.video-evidence-item.low {
+  background: color-mix(in oklch, var(--warn), transparent 94%);
+}
+
+.video-scan-panel {
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 20%, transparent);
+  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 4%);
+}
+
+/* Los chips son <button>: `button:not(.secondary)` (mc-18, especificidad
+   0,1,1) le gana al `.scan-pattern` suelto (0,1,0) y pinta TODOS los
+   inactivos como boton dorado solido, dejando el activo (0,2,0, que si
+   gana) como el mas apagado - exactamente al reves de lo esperado.
+   Detectado en vivo. Se sube especificidad con el contenedor padre para
+   que el estado base tambien gane. */
+.video-scan-patterns .scan-pattern {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 80%);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 12%);
+  color: var(--muted);
+}
+
+.video-scan-patterns .scan-pattern.active {
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 55%, transparent);
+  background: color-mix(in oklch, var(--felt-gold, #f6d24b), transparent 82%);
+  color: var(--felt-gold, #f6d24b);
+}
+
+.video-scan-result {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  border-left-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 70%, transparent);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 10%);
+}
+
+.track-review-item {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
+}
+
+.video-evidence-panel .panel-eyebrow,
+.video-scan-panel .panel-eyebrow {
+  font-family: var(--felt-font-mono, "Geist Mono", monospace);
+  letter-spacing: 0.1em;
+}
+
+/* --- Cancha 3D (viewer): chrome alrededor del canvas three.js, que queda
+   intacto. */
+
+/* Regresion detectada en vivo: el remap global de --sky-kit (decorativo en
+   otras vistas, ahora felt-mint) tambien repinta esta leyenda semantica
+   "Equipo propio" (antes sky-blue), acceptance hazard global #4. Se
+   restaura el mismo azul que ya convive en el box-shadow de esta regla
+   (56, 189, 248 = #38bdf8) sin tocar el token --sky-kit, que otras vistas
+   siguen usando para decoracion. */
+.viewer-team-legend .own {
+  background: #38bdf8;
+}
+
+/* Segmented de camara top/iso/broadcast: activo dorado. Scoped a
+   .viewer-stage para no tocar el mismo `.segmented` de otras vistas
+   (Diagnostico, Post-Partido, Evolucion), que resuelven su propio activo
+   en sus fix-ups. */
+.viewer-stage .segmented button.active {
+  color: var(--felt-bg-3, #0a1d16);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--felt-gold, #f6d24b) 88%, white 12%),
+    var(--felt-gold, #f6d24b)
+  );
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 60%, transparent);
+}
+
+/* Toggle-cards de capas (Separacion/Zonas/etc): el estado activo hoy es
+   parchment crema (#f1e8d2/#d7c8a8, herencia --chalk) -> "papel felt sin
+   cinta" (acceptance ficha Cancha 3D): mismo par ink/paper que usa Sala
+   para sus papeles, pero sin la cinta ni la rotacion (exclusivas de esa
+   vista). */
+.viewer-toggle-card.active {
+  color: var(--felt-bg-3, #0a1d16);
+  background: var(--felt-ink, #f3efe2);
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 45%, transparent);
+}
+
+.viewer-toggle-card.active b,
+.viewer-toggle-card.active span {
+  color: var(--felt-bg-3, #0a1d16);
+}
+
+.viewer-panel-card .panel-eyebrow,
+.viewer-hud-kicker {
+  font-family: var(--felt-font-mono, "Geist Mono", monospace);
+  letter-spacing: 0.1em;
+}
+
+/* --- Biblioteca: el "papel dorado" de las cards enteras (el cambio visual
+   mas grande de la app, acceptance ficha Biblioteca) ya lo resuelve el
+   reset global button:not(.secondary) de mc-18: .exercise-card es un
+   <button>, y esa regla tiene mayor especificidad que .exercise-card sola.
+   Solo faltan los 2 selectores propios (selected/active) + stat-tiles. */
+.exercise-card.selected {
+  outline-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 55%, transparent);
+}
+
+/* Mismo problema de especificidad que .scan-pattern (Video): el chip es un
+   <button>, `button:not(.secondary)` (0,1,1) le gana a `.smart-filter-chip`
+   suelto (0,1,0) y pinta TODOS los filtros inactivos como boton dorado
+   solido (los 4, en vivo), dejando el activo (que si gana con 0,2,0) mas
+   apagado que los que no estan aplicados. Se sube especificidad con el
+   contenedor padre para que el estado base tambien gane. */
+.library-smart-filters .smart-filter-chip {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 84%);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
+  color: var(--text);
+}
+
+.library-smart-filters .smart-filter-chip.active {
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 55%, transparent);
+  background: color-mix(in oklch, var(--felt-gold, #f6d24b), transparent 84%);
+  color: var(--felt-gold, #f6d24b);
+}
+
+/* Idem: el favorito (boton circular ☆/★) sin marcar tambien caia al reset
+   global y se veia como una moneda dorada solida en TODAS las cards, sin
+   distinguir favorito de no-favorito. El color del favorito real (.active,
+   #f5c451) no se toca, pero SI su fondo: sin este fix el mismo reset global
+   le pone gradiente dorada de fondo detras del texto dorado (#f5c451 sobre
+   dorado), AA rota. */
+.exercise-card-wrap .favorite-toggle:not(.active) {
+  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), transparent 20%);
+  color: color-mix(in oklch, var(--felt-ink, #f3efe2), transparent 35%);
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 80%);
+}
+
+.exercise-card-wrap .favorite-toggle.active {
+  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), transparent 8%);
+}
+
+.custom-tag {
+  border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 42%, transparent);
+  background: color-mix(in oklch, var(--felt-gold, #f6d24b), transparent 84%);
+  color: var(--felt-gold, #f6d24b);
+}
+
+.coach-room-strip div {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  background: linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--felt-bg-1, #16352a), black 4%),
+      color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 8%)
+    ),
+    radial-gradient(
+      circle at 95% 0%,
+      color-mix(in oklch, var(--felt-gold, #f6d24b) 10%, transparent),
+      transparent 42%
+    );
+}
+
+.exercise-import-panel {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 4%);
+}
+
+.library-layout .panel-eyebrow {
+  font-family: var(--felt-font-mono, "Geist Mono", monospace);
+  letter-spacing: 0.1em;
+}
