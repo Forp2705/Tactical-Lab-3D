@@ -6780,4 +6780,327 @@ button.home-metric-tile-button:disabled {
 
 /* === W9 SHELL (mc-19) === */
 
+/* Sidebar felt GLOBAL (acceptance regla madre): la nav es compartida por
+   todas las vistas. El fondo felt del contenido sigue siendo solo de Sala
+   (.home-command-view, mc-18). Los selectores usan el prefijo
+   `body .app-shell ...` para superar en especificidad a las capas legacy con
+   !important de tactical-ui.css (que carga despues de este archivo) y al
+   lock `body .app-shell .nav button.nav-btn` de mas arriba en este archivo
+   (misma especificidad, esta seccion va despues y gana). */
+
+body .app-shell .sidebar {
+  background:
+    radial-gradient(
+      120% 70% at 20% 0%,
+      rgba(255, 255, 255, 0.045),
+      transparent 55%
+    ),
+    repeating-linear-gradient(
+      27deg,
+      rgba(255, 255, 255, 0.012) 0 2px,
+      transparent 2px 5px
+    ),
+    linear-gradient(180deg, var(--felt-bg-1) 0%, var(--felt-bg-2) 48%, var(--felt-bg-3) 100%) !important;
+  border-right: 1px solid color-mix(in oklch, var(--felt-line), transparent 82%) !important;
+  box-shadow: none;
+  color: var(--felt-ink);
+  font-family: var(--felt-font-body);
+}
+
+/* E2 — marca: rombo + wordmark + subtitulo mono INICIO · FOCO MD-3 · 4-3-3 */
+body .app-shell .brand {
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid color-mix(in oklch, var(--felt-gold) 60%, transparent);
+}
+
+body .app-shell .brand-mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklch, var(--felt-gold) 40%, transparent) !important;
+  background: var(--felt-bg-3) !important;
+  box-shadow: none !important;
+}
+
+body .app-shell .brand h1 {
+  color: var(--felt-ink);
+  font-family: var(--felt-font-head);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+body .app-shell .brand p.brand-subtitle {
+  margin: 4px 0 0;
+  color: color-mix(in oklch, var(--felt-gold) 85%, var(--felt-ink));
+  font-family: var(--felt-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+/* E4 — grupos de nav: labels mono chicos con guion, items sobrios con
+   circulo; activo dorado AA sobre felt. El nav-code queda oculto (regla
+   existente de tactical-ui) y el circulo lo aporta ::before. */
+body .app-shell .nav-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 10px 4px;
+  color: color-mix(in oklch, var(--felt-gold) 72%, var(--felt-ink));
+  font-family: var(--felt-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+body .app-shell .nav-section-label::before {
+  content: "";
+  width: 14px;
+  height: 1px;
+  background: color-mix(in oklch, var(--felt-gold) 55%, transparent);
+}
+
+body .app-shell .nav button.nav-btn {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  gap: 10px;
+  min-height: 40px !important;
+  padding: 8px 10px !important;
+  border-radius: 10px;
+  color: color-mix(in oklch, var(--felt-ink) 82%, transparent) !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+body .app-shell .nav button.nav-btn::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in oklch, var(--felt-ink) 55%, transparent);
+}
+
+body .app-shell .nav button.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--felt-ink) !important;
+}
+
+body .app-shell .nav button.nav-btn.active {
+  background: color-mix(in oklch, var(--felt-gold) 13%, transparent) !important;
+  border-color: color-mix(in oklch, var(--felt-gold) 42%, transparent) !important;
+  color: var(--felt-gold) !important;
+}
+
+body .app-shell .nav button.nav-btn.active::before {
+  border-color: var(--felt-gold);
+  background: var(--felt-gold);
+}
+
+body .app-shell .nav button.nav-btn .nav-label {
+  font-family: var(--felt-font-head);
+  font-size: 12.5px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: normal;
+}
+
+body .app-shell .nav button.nav-btn .nav-dot {
+  background: transparent !important;
+}
+
+body .app-shell .nav button.nav-btn.active .nav-dot {
+  background: var(--felt-gold) !important;
+  box-shadow: none !important;
+}
+
+body .app-shell .nav-more summary,
+body .app-shell .project-more summary {
+  color: color-mix(in oklch, var(--felt-ink) 62%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+}
+
+body .app-shell .nav-more summary {
+  margin: 12px 10px 0;
+}
+
+body .app-shell .nav-details-copy {
+  margin: 4px 10px 4px;
+  padding: 0;
+  color: color-mix(in oklch, var(--felt-ink) 55%, transparent);
+  font-size: 11px;
+}
+
+/* Pie del sidebar: bloque usuario (E5) + Proyecto local (existente, queda
+   debajo colapsado). */
+body .app-shell .side-foot .status-card {
+  border: 1px solid var(--felt-panel-line);
+  background: var(--felt-panel);
+  color: var(--felt-ink);
+  border-radius: 12px;
+}
+
+body .app-shell .side-foot button.btn.ghost,
+body .app-shell .side-foot .file-label.btn.ghost {
+  background: color-mix(in oklch, var(--felt-ink) 8%, transparent) !important;
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 72%) !important;
+  color: var(--felt-ink) !important;
+  box-shadow: none !important;
+}
+
+body .app-shell .side-foot button.btn.ghost:hover,
+body .app-shell .side-foot .file-label.btn.ghost:hover {
+  border-color: color-mix(in oklch, var(--felt-gold) 50%, transparent) !important;
+}
+
+body .app-shell .staff-profile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--felt-panel-line);
+  border-radius: 12px;
+  background: var(--felt-panel);
+}
+
+body .app-shell .staff-profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--felt-gold);
+  color: var(--felt-bg-3);
+  font-family: var(--felt-font-head);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.staff-profile-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+body .app-shell .staff-profile-name {
+  color: var(--felt-ink);
+  font-family: var(--felt-font-head);
+  font-size: 13px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body .app-shell .staff-profile-role {
+  color: color-mix(in oklch, var(--felt-ink) 72%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body .app-shell button.staff-profile-edit {
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in oklch, var(--felt-gold) 82%, var(--felt-ink));
+  font-family: var(--felt-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+body .app-shell button.staff-profile-edit:hover {
+  border-color: color-mix(in oklch, var(--felt-gold) 50%, transparent);
+}
+
+body .app-shell .staff-profile-form {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+body .app-shell .staff-profile-field {
+  display: grid;
+  gap: 4px;
+  color: color-mix(in oklch, var(--felt-ink) 65%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body .app-shell .staff-profile-field input {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 68%);
+  border-radius: 8px;
+  background: color-mix(in oklch, var(--felt-bg-3), black 12%);
+  color: var(--felt-ink);
+  font-family: var(--felt-font-body);
+  font-size: 12.5px;
+}
+
+.staff-profile-form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+body .app-shell .staff-profile-form-actions button.btn.ghost {
+  background: color-mix(in oklch, var(--felt-ink) 8%, transparent) !important;
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 72%) !important;
+  color: var(--felt-ink) !important;
+  box-shadow: none !important;
+}
+
+/* Riesgo 2 — menu-toggle propio de Sala. El show/hide viene de las reglas
+   existentes de .menu-toggle (none en desktop, grid !important <=1180 en
+   tactical-ui.css); aca solo se posiciona y se pinta felt. z-index 35: por
+   encima del contenido y del marco (30), por debajo del scrim (40), del
+   sidebar off-canvas (50) y del first-run chooser (80). */
+body .app-shell .main button.sala-menu-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 35;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 55%) !important;
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--felt-bg-3) 94%, black) !important;
+  color: var(--felt-gold) !important;
+  font-family: var(--felt-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
+  cursor: pointer;
+}
+
+/* E1 — marco exterior oscuro decorativo, solo desktop (>1180): a <=1180 no
+   roba ancho util. pointer-events none: nunca intercepta clicks. Excluido en
+   modo presentacion. */
+@media (min-width: 1181px) {
+  body .app-shell:not(.presentation-shell)::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    border: 10px solid color-mix(in oklch, var(--felt-bg-3), black 35%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--felt-gold) 20%, transparent);
+  }
+}
+
 /* === W9 BOARD PANEL (mc-21) === */

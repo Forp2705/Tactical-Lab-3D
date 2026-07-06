@@ -219,6 +219,7 @@ export function App() {
         layers: state.layers,
         team: state.team,
         workspaceMode: state.workspaceMode,
+        staffProfile: state.staffProfile,
         teamIdentity: state.teamIdentity,
         gameModel: state.gameModel,
         opponentScout: state.opponentScout,

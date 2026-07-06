@@ -6,7 +6,12 @@ import {
   saveSnapshot,
 } from "@/state/db";
 import { useAppStore } from "@/state/useAppStore";
-import { type ChangeEvent, type ReactNode, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useState,
+} from "react";
 
 type NavView =
   | "home"
@@ -27,35 +32,53 @@ type NavItem = {
   onSelect?: () => void;
 };
 
-// Pizarra primero: es la experiencia principal del producto. El resto del
-// flujo semanal sigue accesible; sesiones/biblioteca pasan a Avanzado.
-const LOOP_NAV: NavItem[] = [
-  { view: "board", code: "01", label: "Pizarra" },
-  { view: "home", code: "02", label: "Sala" },
+// Nav W9 en dos grupos + Avanzado (acceptance E4, orden del mockup). Las 10
+// entradas cubren las 9 vistas: Diagnostico y Post-Partido son la misma vista
+// `ai` con aiMode distinto.
+const PLAN_NAV: NavItem[] = [
+  { view: "home", code: "01", label: "Sala" },
   {
     view: "ai",
-    code: "03",
+    code: "02",
     label: "Diagnostico",
     isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("coach"),
   },
+  { view: "team", code: "03", label: "Evolucion" },
   {
     view: "ai",
     code: "04",
-    label: "Post-partido",
+    label: "Post-Partido",
     isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
     onSelect: () => useAppStore.getState().setAiMode("postMatch"),
   },
-  { view: "team", code: "05", label: "Evolucion" },
+];
+
+const TOOLS_NAV: NavItem[] = [
+  { view: "viewer", code: "05", label: "Cancha 3D" },
+  { view: "video", code: "06", label: "Video + Tracking" },
 ];
 
 const ADVANCED_NAV: NavItem[] = [
-  { view: "sessions", code: "SES", label: "Sesion" },
-  { view: "library", code: "LIB", label: "Biblioteca" },
-  { view: "viewer", code: "3D", label: "Cancha 3D" },
-  { view: "video", code: "VID", label: "Video" },
-  { view: "player", code: "PL", label: "Briefing" },
+  { view: "board", code: "07", label: "Pizarra" },
+  { view: "sessions", code: "08", label: "Sesion" },
+  { view: "library", code: "09", label: "Biblioteca" },
+  { view: "player", code: "10", label: "Briefing" },
 ];
+
+// Label de la vista activa para el subtitulo de marca (E2). Sala se lee como
+// INICIO (texto de producto del mockup), el resto reusa su eyebrow.
+function brandViewLabel(view: NavView) {
+  return view === "home" ? "Inicio" : metaFor(view)[0];
+}
+
+// Duplicado deliberado de currentMicrocycleDay (HomeView.tsx): importar el
+// helper desde src/home acoplaria el shell a una vista. Es una preferencia
+// fija a MD-3, no un derivado de fecha.
+function focoDayLabel(days: Record<string, unknown>) {
+  const preferred = Object.keys(days).find((day) => day === "MD-3");
+  return preferred ?? Object.keys(days)[0] ?? "MD-3";
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const view = useAppStore((state) => state.view);
@@ -63,7 +86,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const exerciseVariants = useAppStore((state) => state.exerciseVariants);
   const presentationMode = useAppStore((state) => state.presentationMode);
+  const microcycleDays = useAppStore((state) => state.microcycle.days);
+  const baseFormation = useAppStore(
+    (state) => state.teamIdentity.baseFormation,
+  );
   const [navOpen, setNavOpen] = useState(false);
+  // E2: INICIO · FOCO MD-3 · 4-3-3; el segmento formacion se omite si esta
+  // vacia (workspace real sin setup) — nunca se muestra un placeholder.
+  const brandSubtitle = [
+    brandViewLabel(view),
+    `Foco ${focoDayLabel(microcycleDays)}`,
+    baseFormation.trim() || null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const { exercise: selectedExercise, missing: selectedExerciseMissing } =
     resolveExerciseSelection(selectedExerciseId, [
       ...catalog,
@@ -88,11 +124,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             <img className="brand-mark" src="/romboiq-mark.svg" alt="RomboIQ" />
             <div>
               <h1>RomboIQ</h1>
+              <p className="brand-subtitle">{brandSubtitle}</p>
             </div>
           </div>
           <nav className="nav">
-            <span className="nav-section-label">Principal</span>
-            {LOOP_NAV.map((item) => (
+            <span className="nav-section-label">El plan de la semana</span>
+            {PLAN_NAV.map((item) => (
+              <NavButton
+                key={`${item.code}-${item.label}`}
+                item={item}
+                onNavigate={() => setNavOpen(false)}
+              />
+            ))}
+            <span className="nav-section-label">Herramientas</span>
+            {TOOLS_NAV.map((item) => (
               <NavButton
                 key={`${item.code}-${item.label}`}
                 item={item}
@@ -114,6 +159,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </details>
           </nav>
           <div className="side-foot">
+            <StaffProfileBlock />
             <div className="status-card project-actions compact-project-actions">
               <details className="project-more">
                 <summary>Proyecto local</summary>
@@ -145,6 +191,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
       )}
       <main className="main">
+        {!presentationMode && view === "home" ? (
+          // Riesgo 2 (acceptance seccion 4): el topbar no se renderiza en
+          // Sala, asi que a <=1180 la nav quedaba inalcanzable. Este boton
+          // flotante reusa el show/hide existente de .menu-toggle (visible
+          // solo <=1180) y abre el mismo off-canvas navOpen + scrim.
+          <button
+            type="button"
+            className="icon-btn menu-toggle sala-menu-toggle"
+            aria-label="Abrir menu"
+            onClick={() => setNavOpen(true)}
+          >
+            Menu
+          </button>
+        ) : null}
         {presentationMode || view === "home" ? null : (
           <header className="topbar">
             <div className="topbar-copy">
@@ -205,6 +265,107 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
         {children}
       </main>
+    </div>
+  );
+}
+
+// E5 — bloque usuario: perfil staff local editable in situ, sin sesion ni
+// link salir. Fallback honesto sin nombre: avatar CT + "Cuerpo tecnico".
+function StaffProfileBlock() {
+  const staffProfile = useAppStore((state) => state.staffProfile);
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftRole, setDraftRole] = useState("");
+  const name = staffProfile.name.trim();
+  const role = staffProfile.role.trim();
+  const initials = name
+    ? name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() ?? "")
+        .join("")
+    : "CT";
+
+  function startEditing() {
+    setDraftName(name);
+    setDraftRole(role);
+    setEditing(true);
+  }
+
+  function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    useAppStore.getState().setStaffProfile({
+      name: draftName,
+      role: draftRole,
+    });
+    setEditing(false);
+    // Persistencia inmediata: sin esto el perfil dependeria del proximo tick
+    // de autosave (8s) para sobrevivir un reload.
+    void saveProject();
+  }
+
+  if (editing) {
+    return (
+      <form className="staff-profile staff-profile-form" onSubmit={save}>
+        <label className="staff-profile-field">
+          Nombre
+          <input
+            type="text"
+            value={draftName}
+            maxLength={60}
+            placeholder="Nombre y apellido"
+            onChange={(event) => setDraftName(event.target.value)}
+          />
+        </label>
+        <label className="staff-profile-field">
+          Rol
+          <input
+            type="text"
+            value={draftRole}
+            maxLength={60}
+            placeholder="Cuerpo tecnico"
+            onChange={(event) => setDraftRole(event.target.value)}
+          />
+        </label>
+        <div className="staff-profile-form-actions">
+          <button type="submit" className="btn ghost">
+            Guardar
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => setEditing(false)}
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <div className="staff-profile">
+      <span className="staff-profile-avatar" aria-hidden="true">
+        {initials}
+      </span>
+      <div className="staff-profile-copy">
+        {name ? (
+          <>
+            <b className="staff-profile-name">{name}</b>
+            <span className="staff-profile-role">{role || "Cuerpo tecnico"}</span>
+          </>
+        ) : (
+          <span className="staff-profile-role">Cuerpo tecnico</span>
+        )}
+      </div>
+      <button
+        type="button"
+        className="staff-profile-edit"
+        aria-label="Editar perfil de staff"
+        onClick={startEditing}
+      >
+        Editar
+      </button>
     </div>
   );
 }
@@ -362,6 +523,7 @@ function snapshotFromState(state: ReturnType<typeof useAppStore.getState>) {
     layers: state.layers,
     team: state.team,
     workspaceMode: state.workspaceMode,
+    staffProfile: state.staffProfile,
     teamIdentity: state.teamIdentity,
     gameModel: state.gameModel,
     opponentScout: state.opponentScout,
