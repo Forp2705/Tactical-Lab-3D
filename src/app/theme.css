@@ -7526,6 +7526,17 @@ body .app-shell .main button.sala-menu-toggle {
   }
 }
 
+/* Addendum W10: el padding cockpit de .main (tactical-ui.css:253, ~70px
+   verticales) no tiene variante compacta y revienta el tope de pagina de
+   Sala (1188px > 1150 en real vacio a 1366). En Sala solo separa el felt del
+   marco, asi que se compacta SOLO en la vista Sala via el hook .main-home
+   (AppShell). Solo vertical: el horizontal queda igual para no mover los
+   presupuestos de ancho de la portada de mc-18. */
+body .app-shell .main.main-home {
+  padding-top: 10px;
+  padding-bottom: 12px;
+}
+
 /* === W9 BOARD PANEL (mc-21) === */
 
 /* Chip mono arriba-derecha: board.title o shape.name (ya clampeado a ~16 en

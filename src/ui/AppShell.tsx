@@ -190,7 +190,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
       )}
-      <main className="main">
+      {/* main-home: hook estable para el override compacto de padding de la
+          vista Sala (addendum W10) sin depender de :has() en CSS. */}
+      <main className={view === "home" ? "main main-home" : "main"}>
         {!presentationMode && view === "home" ? (
           // Riesgo 2 (acceptance seccion 4): el topbar no se renderiza en
           // Sala, asi que a <=1180 la nav quedaba inalcanzable. Este boton
