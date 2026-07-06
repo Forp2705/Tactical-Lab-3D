@@ -7135,3 +7135,53 @@ body .app-shell .main button.sala-menu-toggle {
 }
 
 /* === W9 BOARD PANEL (mc-21) === */
+
+/* Chip mono arriba-derecha: board.title o shape.name (ya clampeado a ~16 en
+   homeBoardPreview; el ellipsis CSS es solo red de seguridad de layout). */
+.home-board-chip {
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--felt-gold);
+}
+
+/* Fichas SVG (unidades = user units del viewBox 64x100). */
+.home-board-token-a {
+  fill: var(--felt-gold);
+  stroke: color-mix(in oklch, var(--felt-bg-3) 55%, transparent);
+  stroke-width: 0.3;
+}
+
+.home-board-token-num {
+  fill: var(--felt-bg-3);
+  font-family: var(--felt-font-mono);
+  font-size: 2.6px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.home-board-token-role {
+  fill: color-mix(in oklch, var(--felt-ink) 55%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 1.9px;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+}
+
+.home-board-token-b {
+  fill: color-mix(in oklch, var(--felt-ink) 10%, transparent);
+  stroke: color-mix(in oklch, var(--felt-ink) 45%, transparent);
+  stroke-width: 0.35;
+}
+
+.home-board-ball {
+  fill: var(--felt-ink);
+  stroke: var(--felt-bg-3);
+  stroke-width: 0.2;
+}

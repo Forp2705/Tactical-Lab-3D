@@ -1,22 +1,76 @@
 import { useAppStore } from "@/state/useAppStore";
+import { useMemo } from "react";
+import {
+  deriveHomeBoardPreview,
+  type HomeBoardPreviewToken,
+} from "./homeBoardPreview";
 
 /**
- * Stub for W9 (mc-18): only renders the E8 empty case (no active board, no
- * shape). mc-21 extends this same file to add the board/shape read-only
- * render (priority 1/2 from the acceptance doc); the layout/classes below
- * (`.home-board-panel*`) are the hook for that.
+ * E8 (mc-21): panel TABLERO TACTICO de Sala. Render estrictamente read-only
+ * (SVG local, cero imports del editor de Pizarra): board activo > shape mas
+ * reciente de LineupLab > vacio. La derivacion vive en homeBoardPreview.ts
+ * (pura y testeada); aca solo se escala 0-100 -> viewBox y se pintan fichas.
  */
+
+const FIELD_X = 2;
+const FIELD_Y = 2;
+const FIELD_W = 60;
+const FIELD_H = 96;
+
+function sx(x: number) {
+  return FIELD_X + (x / 100) * FIELD_W;
+}
+
+function sy(y: number) {
+  return FIELD_Y + (y / 100) * FIELD_H;
+}
+
 export function HomeTacticalBoardPanel() {
+  const tacticalBoards = useAppStore((state) => state.tacticalBoards);
+  const activeBoardId = useAppStore((state) => state.activeBoardId);
+  const activeBoardSceneId = useAppStore((state) => state.activeBoardSceneId);
+  const shapes = useAppStore((state) => state.lineupLab.shapes);
+  const players = useAppStore((state) => state.team.players);
+
+  const preview = useMemo(
+    () =>
+      deriveHomeBoardPreview({
+        tacticalBoards,
+        activeBoardId,
+        activeBoardSceneId,
+        shapes,
+        players,
+      }),
+    [tacticalBoards, activeBoardId, activeBoardSceneId, shapes, players],
+  );
+
+  const hasBoard = preview.kind === "board";
+  const chip = preview.kind === "empty" ? null : preview.chip;
+  const tokens = preview.kind === "empty" ? [] : preview.tokens;
+  const ball = preview.kind === "board" ? preview.ball : null;
+
   return (
     <aside className="home-board-panel">
       <div className="home-board-panel-head">
         <span className="panel-eyebrow">TABLERO TACTICO</span>
+        {chip ? (
+          <span className="home-board-chip" title={chip}>
+            {chip}
+          </span>
+        ) : null}
       </div>
-      <div className="home-board-pitch home-board-pitch-empty">
+      <div
+        className={`home-board-pitch${preview.kind === "empty" ? " home-board-pitch-empty" : ""}`}
+      >
         <svg
           className="home-board-pitch-svg"
           viewBox="0 0 64 100"
-          aria-hidden="true"
+          role="img"
+          aria-label={
+            preview.kind === "empty"
+              ? "Tablero sin pizarra activa"
+              : `Tablero: ${chip}`
+          }
         >
           <rect
             className="home-board-pitch-outline"
@@ -42,19 +96,56 @@ export function HomeTacticalBoardPanel() {
             width="36"
             height="16"
           />
+          {tokens.map((token) => (
+            <BoardToken key={token.id} token={token} />
+          ))}
+          {ball ? (
+            <circle
+              className="home-board-ball"
+              cx={sx(ball.x)}
+              cy={sy(ball.y)}
+              r="1.2"
+            />
+          ) : null}
         </svg>
-        <p className="home-board-empty-copy">Sin pizarra activa</p>
+        {preview.kind === "empty" ? (
+          <p className="home-board-empty-copy">Sin pizarra activa</p>
+        ) : null}
       </div>
       <button
         type="button"
         className="home-cta-gold home-board-cta"
         onClick={() => {
-          useAppStore.getState().createTacticalBoardFromWeeklyFocus();
-          useAppStore.getState().setView("board");
+          const store = useAppStore.getState();
+          if (!hasBoard) store.createTacticalBoardFromWeeklyFocus();
+          store.setView("board");
         }}
       >
-        CREAR PIZARRA
+        {hasBoard ? "ABRIR PIZARRA" : "CREAR PIZARRA"}
       </button>
     </aside>
+  );
+}
+
+function BoardToken({ token }: { token: HomeBoardPreviewToken }) {
+  const cx = sx(token.x);
+  const cy = sy(token.y);
+  if (token.team === "B") {
+    return <circle className="home-board-token-b" cx={cx} cy={cy} r="2.4" />;
+  }
+  return (
+    <g>
+      <circle className="home-board-token-a" cx={cx} cy={cy} r="2.7" />
+      {token.number != null ? (
+        <text className="home-board-token-num" x={cx} y={cy}>
+          {token.number}
+        </text>
+      ) : null}
+      {token.role ? (
+        <text className="home-board-token-role" x={cx} y={cy + 4.6}>
+          {token.role.slice(0, 3).toUpperCase()}
+        </text>
+      ) : null}
+    </g>
   );
 }
