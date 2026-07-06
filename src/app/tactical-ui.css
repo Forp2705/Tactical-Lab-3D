@@ -1968,6 +1968,10 @@ body .app-shell .brand-mark {
   gap: 10px !important;
 }
 
+.quick-start-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .app-shell button.home-action {
   min-height: 64px !important;
   border-radius: 12px !important;
