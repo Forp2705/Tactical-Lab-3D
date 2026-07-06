@@ -7793,6 +7793,177 @@ body .app-shell .top-stat-strip div {
 
 /* === W11 FIXUP AI (mc-21) === */
 
+/* Diagnostico (.ai-cockpit) + Post-Partido (.post-match-layout). tactical-ui.css
+   se importa DESPUES de este archivo y ya normaliza casi todos los paneles AI
+   con tokens (!important); aca solo se corrige lo que sigue vivo en runtime.
+   Donde hay que ganarle a un !important de tactical-ui se usa mayor
+   especificidad + !important. */
+
+/* Eyebrows y micro-labels de las dos vistas IA en mono felt (mismo patron que
+   .home-command-view). El color dorado ya viene de --setpiece/--lime remapeados. */
+:is(.ai-cockpit, .post-match-layout) .panel-eyebrow,
+:is(.ai-cockpit, .post-match-layout) .ai-metric-pill span,
+:is(.ai-cockpit, .post-match-layout) .ai-status-line span,
+:is(.ai-cockpit, .post-match-layout) .ai-context-row span,
+:is(.ai-cockpit, .post-match-layout) .interview-missing span,
+:is(.ai-cockpit, .post-match-layout) .interview-question-head span,
+:is(.ai-cockpit, .post-match-layout) .interview-question-head b,
+:is(.ai-cockpit, .post-match-layout) .confidence-badge span,
+:is(.ai-cockpit, .post-match-layout) .trust-card span,
+:is(.ai-cockpit, .post-match-layout) .evidence-card-head span,
+:is(.ai-cockpit, .post-match-layout) .video-evidence-count span,
+:is(.ai-cockpit, .post-match-layout) .coach-main-read span,
+:is(.ai-cockpit, .post-match-layout) .coach-report-card > span,
+:is(.ai-cockpit, .post-match-layout) .ai-reflection dt {
+  font-family: var(--felt-font-mono);
+}
+
+/* Semaforo de confianza del coach: tactical-ui aplana todo .confidence-chip a
+   dorado con !important y solo re-asserta .warn. ok/medium/warn conservan
+   señal (verde/amarillo/coral), no se doran. Clase doblada para ganarle
+   tambien a `.app-shell .confidence-chip.warn` de tactical-ui. */
+.app-shell .confidence-chip.confidence-chip.ok {
+  border-color: color-mix(in oklch, var(--good) 42%, transparent) !important;
+  background: color-mix(in oklch, var(--good) 12%, transparent) !important;
+  color: var(--good) !important;
+}
+
+.app-shell .confidence-chip.confidence-chip.medium {
+  border-color: color-mix(in oklch, var(--warn) 42%, transparent) !important;
+  background: color-mix(in oklch, var(--warn) 10%, transparent) !important;
+  color: var(--warn) !important;
+}
+
+.app-shell .confidence-chip.confidence-chip.warn {
+  border-color: color-mix(in oklch, var(--danger) 40%, transparent) !important;
+  background: color-mix(in oklch, var(--danger) 10%, transparent) !important;
+  color: color-mix(in oklch, var(--danger) 80%, var(--text)) !important;
+}
+
+/* ok = verde tambien en meter y status del agente (coherente con el chip;
+   el gradiente base warn->mint y los tonos medium/warn ya son semanticos). */
+.confidence-meter.ok span {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--good) 55%, var(--accent-2)),
+    var(--good)
+  );
+}
+
+.ai-status-line.ok b {
+  color: var(--good);
+}
+
+/* Contraste vs modelo de juego: .positive quedo aplanado a borde neutro por
+   tactical-ui; se restaura verde (espejo del patron .warning que tactical-ui
+   ya trae en warn). */
+.app-shell .trust-card.positive {
+  border-color: color-mix(in oklch, var(--good) 30%, transparent) !important;
+  background: linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--good) 5%, var(--panel-2)),
+      var(--panel-2)
+    ) !important;
+}
+
+/* Mensajes de exito (guardar reporte / feedback): verde semantico, borde sky
+   cockpit fuera. */
+.success-text {
+  border-color: color-mix(in oklch, var(--good) 35%, transparent);
+  background: color-mix(in oklch, var(--good) 10%, var(--panel-2));
+  color: var(--text);
+}
+
+/* Restos teal/lime de theme.css sin contraparte token en tactical-ui. */
+.confidence-badge {
+  border-color: color-mix(in oklch, var(--accent) 26%, var(--line));
+  background: var(--accent-soft);
+}
+
+.ai-action-group {
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+
+.ai-evidence-empty {
+  border-color: var(--line-strong);
+  background: color-mix(in oklch, var(--panel-2) 55%, transparent);
+}
+
+.evidence-group-head > span {
+  border-color: color-mix(in oklch, var(--accent) 26%, var(--line));
+}
+
+/* El error del agente es un .ai-card: tactical-ui lo aplana a --line con
+   !important; se re-asserta el borde danger con mas especificidad. */
+.app-shell .ai-card.ai-error-card {
+  border-color: color-mix(in oklch, var(--danger) 35%, transparent) !important;
+}
+
+/* WeeklyDecisionCard es compartida (Home/Sala y PlayerView tambien la usan):
+   el borde teal cockpit de .weekly-decision-item se corrige scoped SOLO en
+   Diagnostico para no mover Home (pixel-perfect) ni el paquete de mc-22. */
+.ai-cockpit .weekly-decision-item {
+  border-color: var(--line);
+  background: color-mix(in oklch, var(--panel-2) 80%, transparent);
+}
+
+.ai-cockpit .weekly-decision-item span {
+  font-family: var(--felt-font-mono);
+}
+
+/* Simple/Avanzado del post-match: .segmented-control no tenia CSS propio y
+   ambos botones caian en el dorado global button:not(.secondary) sin
+   distincion de estado. Se replica el patron .segmented (solo activo dorado). */
+.post-match-layout .segmented-control {
+  display: inline-flex;
+  gap: 3px;
+  width: fit-content;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+
+.post-match-layout .segmented-control button {
+  border: 0;
+  padding: 7px 13px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.post-match-layout .segmented-control button.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Evidencia de video embebida en post-partido: clases compartidas con
+   VideoView (paquete mc-22); fix scoped SOLO a esta vista para no pisar el
+   suyo. .low conserva señal warn. */
+.post-match-layout .video-evidence-count {
+  border-color: var(--line);
+}
+
+.post-match-layout .video-evidence-count.low {
+  border-color: color-mix(in oklch, var(--warn) 34%, transparent);
+  background: color-mix(in oklch, var(--warn) 8%, transparent);
+}
+
+/* El hover/focus global (theme.css ~3182) usa sky cockpit hardcodeado; se
+   re-apunta a dorado solo dentro de las dos vistas IA. */
+:is(.ai-cockpit, .post-match-layout) button:hover,
+:is(.ai-cockpit, .post-match-layout) .file-label:hover,
+:is(.ai-cockpit, .post-match-layout) input:focus,
+:is(.ai-cockpit, .post-match-layout) select:focus,
+:is(.ai-cockpit, .post-match-layout) textarea:focus {
+  border-color: color-mix(in oklch, var(--accent) 42%, var(--line));
+  outline-color: color-mix(in oklch, var(--accent) 22%, transparent);
+}
+
 /* === W11 FIXUP TEAM-SESSIONS (mc-19) === */
 
 /* === W11 FIXUP LIBRARY-MEDIA (mc-22) === */
