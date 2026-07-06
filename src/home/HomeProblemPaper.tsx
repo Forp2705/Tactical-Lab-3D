@@ -11,6 +11,7 @@ export function HomeProblemPaper({
   rivalChipLabel,
   baseFormation,
   onOpenDiagnostico,
+  onOpenLecturaCompleta,
 }: {
   activeDiagnosis: string;
   objective?: string;
@@ -19,6 +20,7 @@ export function HomeProblemPaper({
   rivalChipLabel?: string;
   baseFormation?: string;
   onOpenDiagnostico: () => void;
+  onOpenLecturaCompleta: () => void;
 }) {
   const isEmpty = !activeDiagnosis.trim();
 
@@ -53,13 +55,22 @@ export function HomeProblemPaper({
           </div>
         </>
       )}
-      <button
-        type="button"
-        className="home-cta-gold home-paper-cta"
-        onClick={onOpenDiagnostico}
-      >
-        ABRIR DIAGNOSTICO
-      </button>
+      <div className="home-paper-actions">
+        <button
+          type="button"
+          className="home-paper-link-cta"
+          onClick={onOpenDiagnostico}
+        >
+          Abrir diagnostico
+        </button>
+        <button
+          type="button"
+          className="home-paper-secondary-link"
+          onClick={onOpenLecturaCompleta}
+        >
+          ver lectura completa
+        </button>
+      </div>
     </article>
   );
 }
