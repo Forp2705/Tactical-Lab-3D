@@ -17,12 +17,7 @@ import {
   buildContextualSketchDraft,
   buildQuickSketchTitle,
 } from "@/sketch";
-import {
-  EvidenceChip,
-  LoopProgress,
-  PatternCard,
-  PitchViz,
-} from "@/ui/tacticalPrimitives";
+import { LoopProgress, PatternCard, PitchViz } from "@/ui/tacticalPrimitives";
 import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 import { PROBLEM_TEMPLATES } from "@/sessions/problemTemplates";
 import {
@@ -34,6 +29,11 @@ import { useAppStore } from "@/state/useAppStore";
 import { summarizeVideoEvidence } from "@/video/videoEvidence";
 import { memo, useMemo, useState } from "react";
 import { FirstRunChooser } from "./FirstRunChooser";
+import { HomeMasthead, hasRivalGuard } from "./HomeMasthead";
+import { HomeMetrics } from "./HomeMetrics";
+import { HomeProblemPaper } from "./HomeProblemPaper";
+import { type HomeSessionBlockRow, HomeSessionPaper } from "./HomeSessionPaper";
+import { HomeTacticalBoardPanel } from "./HomeTacticalBoardPanel";
 import { derivePatternPitchOverlays } from "./patternPitchOverlays";
 import { RealCoachOnboarding } from "./RealCoachOnboarding";
 import { TeamTimeline } from "./TeamTimeline";
@@ -109,6 +109,39 @@ export function HomeView() {
     [gameModel, opponentScout],
   );
   const activeDay = currentMicrocycleDay(microcycle.days);
+  const activeDayConfig = Object.entries(microcycle.days).find(
+    ([day]) => day === activeDay.label,
+  )?.[1];
+  const loadPercentValue = loadPercent(activeDayConfig?.targetLoad ?? "med");
+  const peakDay = useMemo(
+    () =>
+      Object.entries(microcycle.days).find(
+        ([, config]) => config.targetLoad === "high",
+      )?.[0],
+    [microcycle.days],
+  );
+  const loadPeakLabel = peakDay ? `PICO ${peakDay}` : "SIN PICO PLANIFICADO";
+  const rivalChipLabel = hasRivalGuard(opponentScout)
+    ? `VS ${opponentScout.rival.toUpperCase()}`
+    : undefined;
+  const baseFormationChip = teamIdentity.baseFormation.trim() || undefined;
+  const latestManualObservation = manualObservations[0]?.text;
+  const sessionBlockRows: HomeSessionBlockRow[] = useMemo(
+    () =>
+      session.blocks.map((block) => {
+        const { exercise, missing } = resolveExerciseSelection(
+          block.exerciseId,
+          [...catalog, ...exerciseVariants],
+        );
+        return {
+          id: block.id,
+          title: missing ? "" : exercise.title,
+          missing,
+          durationMin: block.durationMin,
+        };
+      }),
+    [exerciseVariants, session.blocks],
+  );
 
   const recentReports = useMemo(
     () =>
@@ -133,79 +166,113 @@ export function HomeView() {
     [weeklyDecisionThread],
   );
 
+  function openDiagnostico() {
+    useAppStore.getState().setAiMode("coach");
+    useAppStore.getState().setView("ai");
+  }
+
+  function openSession() {
+    if (!useAppStore.getState().createSessionFromWeeklyThread()) {
+      useAppStore.getState().setView("sessions");
+    }
+  }
+
   return (
     <div className="view-enter grid home-command-view" style={{ gap: 16 }}>
       <FirstRunChooser isVirgin={isVirginWorkspace} />
-      <section className="hero command-hero">
-        <div className="command-hero-copy">
-        <span className="eyebrow">RomboIQ / {activeDay.label}</span>
-        <h2 className="home-title">Sala semanal</h2>
-        <p className="home-subtitle">
-          El problema de la semana, la evidencia, la sesion y la revision en
-          una sola lectura.
-        </p>
-        <div className="home-next-action">
-          <span className="eyebrow">Siguiente paso</span>
-          <h3>{nextAction.title}</h3>
-          <p>{nextAction.body}</p>
-        </div>
-        <p className="home-hero-intent">
-          Primero decision. Despues detalle, trazabilidad y revision.
-        </p>
-        <div className="toolbar compact" style={{ marginBottom: 0, flexWrap: "wrap" }}>
-          <button type="button" className="btn primary" onClick={nextAction.onClick}>
-            {nextAction.cta}
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => {
-              useAppStore.getState().createTacticalBoardFromWeeklyFocus();
-            }}
-          >
-            Crear pizarra tactica
-          </button>
-          <QuickSketchLauncher
-            buttonClassName="secondary"
-            buttonLabel="Boceto rapido"
-            buttonTitle="Abrir un boceto rapido desde Sala"
-            panelTitle="Boceto rapido para esta semana"
-            buildDraft={() =>
-              buildContextualSketchDraft({
-                title: buildQuickSketchTitle([
-                  "Boceto",
-                  weeklyDecisionThread?.problem,
-                  activeDay.label,
-                ]),
-                tacticalFocus:
-                  weeklyDecisionThread?.sessionIntent?.objective ??
-                  weeklyDecisionThread?.problem,
-                sourceLabel: "Sala semanal",
-              })
-            }
+
+      <HomeMasthead
+        opponentScout={opponentScout}
+        diaFoco={activeDay.label}
+        objective={activeDayConfig?.objective ?? ""}
+        onOpenScout={() => useAppStore.getState().setView("team")}
+      />
+
+      <div className="home-main-grid">
+        <div className="home-papers-col">
+          <HomeProblemPaper
+            activeDiagnosis={activeDiagnosis}
+            objective={weeklyDecisionThread?.sessionIntent?.objective}
+            annotation={latestManualObservation}
+            diaFoco={activeDay.label}
+            rivalChipLabel={rivalChipLabel}
+            baseFormation={baseFormationChip}
+            onOpenDiagnostico={openDiagnostico}
+          />
+          <HomeSessionPaper
+            sessionName={session.name}
+            blocks={sessionBlockRows}
+            totalDuration={session.computed?.totalDuration ?? 0}
+            onOpen={openSession}
           />
         </div>
+        <HomeTacticalBoardPanel />
+      </div>
+
+      <section className="home-next-step">
+        <span className="panel-eyebrow">SIGUIENTE PASO</span>
+        <h3>{nextAction.title}</h3>
+        <button
+          type="button"
+          className="home-cta-gold home-next-step-cta"
+          onClick={nextAction.onClick}
+        >
+          {nextAction.cta}
+        </button>
+      </section>
+
+      <HomeMetrics
+        loadPercentValue={loadPercentValue}
+        loadPeakLabel={loadPeakLabel}
+        availablePlayers={availablePlayers}
+        totalPlayers={teamPlayers.length}
+        reportsCount={reports.length}
+        onOpenEvolucion={() => useAppStore.getState().setView("team")}
+        onOpenPostPartido={() => {
+          useAppStore.getState().setAiMode("postMatch");
+          useAppStore.getState().setView("ai");
+        }}
+      />
+
+      <div className="home-lower-zone">
+        {workspaceMode === "real" && !isTeamIdentityBootstrapped(teamIdentity) ? (
+          <section className="home-onboarding-strip">
+            <RealCoachOnboarding identity={teamIdentity} />
+          </section>
+        ) : null}
+        <section className="home-mode-strip">
+          <WorkspaceModeCard workspaceMode={workspaceMode} />
+          {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
+            <TeamSetupPrompt identity={teamIdentity} />
+          ) : null}
+        </section>
+
+        <WeeklyDecisionCard
+          model={weeklyDecisionCard}
+          title="Lectura coach de la semana"
+          detailsLabel="La evidencia completa y la trazabilidad quedan como detalle secundario."
+        />
+
+        <QuickStartPanel
+          sessionHasBlocks={session.blocks.length > 0}
+          weeklyDecisionThread={weeklyDecisionThread}
+          activeDayLabel={activeDay.label}
+        />
+
+        <QuickObservationPanel
+          draft={quickObservation}
+          observations={manualObservations}
+          weeklyDecisionThread={weeklyDecisionThread}
+          setDraft={setQuickObservation}
+        />
+      </div>
+
+      <details className="home-deep-dive">
+        <summary>Ver detalle operativo</summary>
+        <div className="home-deep-dive-body">
+      <div className="home-deep-dive-intro">
         <div className="command-loop-row">
           <LoopProgress active={loopStage(session.blocks.length, reports.length, patterns.length)} />
-        </div>
-        <div className="command-status-row">
-          <EvidenceChip
-            type="staff"
-            label={`${availablePlayers}/${teamPlayers.length} disponibles`}
-          />
-          <EvidenceChip
-            type="report"
-            label={`${recentReports.length} reportes recientes`}
-          />
-          <EvidenceChip
-            type="observation"
-            label={`${evidence.total} evidencias de video`}
-          />
-          <EvidenceChip
-            type="staff"
-            label={`${manualObservations.length} observaciones manuales`}
-          />
-        </div>
         </div>
         <div className="command-hero-pitch">
           <PitchViz
@@ -248,49 +315,7 @@ export function HomeView() {
             </div>
           </div>
         </div>
-      </section>
-      <QuickStartPanel sessionHasBlocks={session.blocks.length > 0} />
-
-      {workspaceMode === "real" && !isTeamIdentityBootstrapped(teamIdentity) ? (
-        <section className="home-onboarding-strip">
-          <RealCoachOnboarding identity={teamIdentity} />
-        </section>
-      ) : null}
-      <section className="home-mode-strip">
-        <WorkspaceModeCard workspaceMode={workspaceMode} />
-        {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
-          <TeamSetupPrompt identity={teamIdentity} />
-        ) : null}
-      </section>
-
-      <WeeklyWorkflowPanel
-        activeDiagnosis={activeDiagnosis}
-        latestReport={latestReport}
-        nextAction={nextAction}
-        primaryPattern={primaryPattern}
-        session={session}
-        weeklyDecision={weeklyDecision}
-        weeklyDecisionThread={weeklyDecisionThread}
-      />
-
-      <WeeklyDecisionCard
-        model={weeklyDecisionCard}
-        title="Lectura coach de la semana"
-        detailsLabel="La evidencia completa y la trazabilidad quedan como detalle secundario."
-      />
-
-      <QuickObservationPanel
-        draft={quickObservation}
-        observations={manualObservations}
-        weeklyDecisionThread={weeklyDecisionThread}
-        setDraft={setQuickObservation}
-      />
-
-      <TacticalHomeActions nextAction={nextAction} />
-
-      <details className="home-deep-dive">
-        <summary>Ver detalle operativo</summary>
-        <div className="home-deep-dive-body">
+      </div>
       <CommandSummaryPanel
         activeDay={activeDay.label}
         availablePlayers={availablePlayers}
@@ -492,8 +517,12 @@ type NextAction = {
 
 const QuickStartPanel = memo(function QuickStartPanel({
   sessionHasBlocks,
+  weeklyDecisionThread,
+  activeDayLabel,
 }: {
   sessionHasBlocks: boolean;
+  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
+  activeDayLabel: string;
 }) {
   function start(templateId: string) {
     if (
@@ -514,6 +543,25 @@ const QuickStartPanel = memo(function QuickStartPanel({
           <span className="panel-eyebrow">Quick Start</span>
           <h3>Que te esta costando esta semana?</h3>
         </div>
+        <QuickSketchLauncher
+          buttonClassName="secondary sm"
+          buttonLabel="Boceto rapido"
+          buttonTitle="Abrir un boceto rapido desde Sala"
+          panelTitle="Boceto rapido para esta semana"
+          buildDraft={() =>
+            buildContextualSketchDraft({
+              title: buildQuickSketchTitle([
+                "Boceto",
+                weeklyDecisionThread?.problem,
+                activeDayLabel,
+              ]),
+              tacticalFocus:
+                weeklyDecisionThread?.sessionIntent?.objective ??
+                weeklyDecisionThread?.problem,
+              sourceLabel: "Sala semanal",
+            })
+          }
+        />
       </div>
       <p className="muted-panel">
         Elegi un problema y RomboIQ arma una sesion entrenable al instante, con
@@ -537,122 +585,6 @@ const QuickStartPanel = memo(function QuickStartPanel({
           </button>
         ))}
       </div>
-    </section>
-  );
-});
-
-const WeeklyWorkflowPanel = memo(function WeeklyWorkflowPanel({
-  activeDiagnosis,
-  latestReport,
-  nextAction,
-  primaryPattern,
-  session,
-  weeklyDecision,
-  weeklyDecisionThread,
-}: {
-  activeDiagnosis: string;
-  latestReport?: SavedPostMatchReport;
-  nextAction: NextAction;
-  primaryPattern?: TeamPattern;
-  session: ReturnType<typeof useAppStore.getState>["session"];
-  weeklyDecision: ReturnType<typeof buildWeeklyDecisionSummary>;
-  weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
-}) {
-  return (
-    <section className="home-workflow-grid">
-      <article className="card workflow-card primary">
-        <span className="eyebrow">Diagnostico activo</span>
-        <h3>
-          {activeDiagnosis
-            ? shorten(activeDiagnosis, 94)
-            : "Todavia no hay un problema tactico formulado."}
-        </h3>
-        <p>
-          {activeDiagnosis
-            ? "Este es el problema que hoy conecta lectura, sesion y revision."
-            : "Carga una observacion concreta para convertir la semana en un flujo guiado."}
-        </p>
-        <button
-          type="button"
-          className="btn primary"
-          onClick={() => {
-            useAppStore.getState().setAiMode("coach");
-            useAppStore.getState().setView("ai");
-          }}
-        >
-          Abrir diagnostico
-        </button>
-      </article>
-
-      <article className="card workflow-card">
-        <span className="eyebrow">Entrenamiento conectado</span>
-        <h3>{session.name}</h3>
-        <p>
-          {session.blocks.length
-            ? `${session.blocks.length} bloques / ${session.computed?.totalDuration ?? 0} minutos para trabajar el problema de la semana.`
-            : "Todavia no hay una sesion conectada al diagnostico."}
-        </p>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => {
-            if (!useAppStore.getState().createSessionFromWeeklyThread()) {
-              useAppStore.getState().setView("sessions");
-            }
-          }}
-        >
-          Abrir sesion
-        </button>
-      </article>
-
-      <article className="card workflow-card">
-        <span className="eyebrow">Ultimo post-partido</span>
-        <h3>
-          {latestReport
-            ? `vs ${latestReport.report.matchContext.opponent}`
-            : "Sin revision reciente"}
-        </h3>
-        <p>
-          {latestReport
-            ? shorten(latestReport.report.executiveSummary, 130)
-            : "Todavia no hay reporte guardado para alimentar el siguiente diagnostico."}
-        </p>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => {
-            useAppStore.getState().setAiMode("postMatch");
-            useAppStore.getState().setView("ai");
-          }}
-        >
-          Revisar partido
-        </button>
-      </article>
-
-      <article className="card workflow-card">
-        <span className="eyebrow">Evolucion</span>
-        <h3>
-          {weeklyDecision.recommendedFocus
-            ? shorten(weeklyDecision.recommendedFocus.title, 78)
-            : primaryPattern
-              ? shorten(primaryPattern.statement, 78)
-            : "Sin patron recurrente confirmado"}
-        </h3>
-        <p>
-          {weeklyDecision.recommendedFocus
-            ? shorten(weeklyDecision.recommendedFocus.reason, 132)
-            : primaryPattern
-              ? "El equipo ya tiene una historia tactica. Usa evolucion para decidir que repetir y que corregir."
-            : "La evolucion se activa cuando post-partido empieza a dejar un historial comparable."}
-        </p>
-        <button
-          type="button"
-          className="btn ghost"
-          onClick={() => useAppStore.getState().setView("team")}
-        >
-          Ver evolucion
-        </button>
-      </article>
     </section>
   );
 });
@@ -807,87 +739,6 @@ const QuickObservationPanel = memo(function QuickObservationPanel({
           falta entrar a Video.
         </p>
       )}
-    </section>
-  );
-});
-
-const TacticalHomeActions = memo(function TacticalHomeActions({
-  nextAction,
-}: {
-  nextAction: NextAction;
-}) {
-  const actions = [
-    {
-      title: nextAction.cta,
-      eyebrow: "Siguiente paso recomendado",
-      body: nextAction.body,
-      code: "GO",
-      onClick: nextAction.onClick,
-    },
-    {
-      title: "Diagnosticar",
-      eyebrow: "Observacion -> diagnostico",
-      body: "Plantea un problema tactico. Si falta evidencia, el Coach pregunta antes de cerrar una lectura.",
-      code: "AI",
-      onClick: () => {
-        useAppStore.getState().setAiMode("coach");
-        useAppStore.getState().setView("ai");
-      },
-    },
-    {
-      title: "Revisar",
-      eyebrow: "Partido -> reporte",
-      body: "Resultado, rival y tres notas. Suficiente para generar un informe corto sin abrumar.",
-      code: "PM",
-      onClick: () => {
-        useAppStore.getState().setAiMode("postMatch");
-        useAppStore.getState().setView("ai");
-      },
-    },
-    {
-      title: "Armar sesion",
-      eyebrow: "Diagnostico -> entrenamiento",
-      body: "Revisa bloques, carga y ejercicios sugeridos para convertir ajustes en trabajo de cancha.",
-      code: "MD",
-      onClick: () => {
-        if (!useAppStore.getState().createSessionFromWeeklyThread()) {
-          useAppStore.getState().setView("sessions");
-        }
-      },
-    },
-    {
-      title: "Preparar XI",
-      eyebrow: "Lineup Lab -> contexto",
-      body: "Ajusta el equipo, guarda shapes y usa metricas geometricas como contexto tactico.",
-      code: "XI",
-      onClick: () => useAppStore.getState().setView("team"),
-    },
-  ];
-
-  return (
-    <section className="home-action-block">
-      <div className="section-title home-action-head">
-        <div>
-          <span className="panel-eyebrow">Acciones principales</span>
-          <h3>Que hacer ahora</h3>
-        </div>
-      </div>
-      <div className="home-action-strip">
-        {actions.map((action) => (
-          <button
-            type="button"
-            className="home-action"
-            key={action.title}
-            onClick={action.onClick}
-          >
-            <div className="lr-icon">{action.code}</div>
-            <div>
-              <b>{action.title}</b>
-              <small>{action.eyebrow}</small>
-            </div>
-          </button>
-        ))}
-      </div>
     </section>
   );
 });
@@ -1485,7 +1336,7 @@ function loopStage(
   return "diagnosticar";
 }
 
-function currentMicrocycleDay(days: Record<string, { targetLoad: string }>) {
+function currentMicrocycleDay(days: Record<string, { targetLoad: string; objective: string }>) {
   const preferred = Object.keys(days).find((day) => day === "MD-3");
   return { label: preferred ?? Object.keys(days)[0] ?? "MD-3" };
 }
@@ -1499,20 +1350,6 @@ function loadPercent(load: string) {
 function shorten(text: string, max: number) {
   if (text.length <= max) return text;
   return `${text.slice(0, max - 1).trim()}…`;
-}
-
-function manualObservationsToEvidenceText(
-  observations: ReturnType<typeof useAppStore.getState>["manualObservations"],
-) {
-  return observations
-    .map((observation) =>
-      [
-        "Observacion manual",
-        observation.text,
-        "no confirmada por video",
-      ].join(" | "),
-    )
-    .join("\n");
 }
 
 function formatObservationDate(value: string) {

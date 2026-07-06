@@ -42,7 +42,9 @@ describe("Weekly Coach Immediacy Pass", () => {
   it("renders Boceto rapido from Sala", () => {
     const markup = renderToStaticMarkup(<HomeView />);
     expect(markup).toContain("Boceto rapido");
-    expect(markup).toContain("Sala semanal");
+    // W9 (mc-18) reskin dropped the "Sala semanal" hero title in favor of the
+    // felt masthead + PROBLEMA DE LA SEMANA paper; assert on that instead.
+    expect(markup).toContain("PROBLEMA DE LA SEMANA");
   });
 
   it("renders Boceto rapido and create-from-focus on an empty session", () => {
