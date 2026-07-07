@@ -6288,11 +6288,20 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   /* W10 - vignette (darkens edges, center breathes) + secondary highlight
      over the board zone + subtle cross-grain, layered on top of the W9
      highlight/rayado/base stack. Backgrounds stack with the first-listed
-     layer on top, so the vignette/highlight/grain go first. */
+     layer on top, so the vignette/highlight/grain go first.
+     W14 - felt vivo: vignette un paso mas honda + grano feTurbulence (tile
+     160px, alpha tope 0.05 via feColorMatrix — no compromete AA) + lampara
+     radial sobre la zona de papeles. */
   background: radial-gradient(
       140% 120% at 50% 38%,
-      transparent 58%,
-      rgba(0, 0, 0, 0.18) 100%
+      transparent 56%,
+      rgba(0, 0, 0, 0.22) 100%
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(
+      70% 55% at 34% 26%,
+      rgba(255, 255, 255, 0.05),
+      transparent 62%
     ),
     radial-gradient(
       55% 40% at 82% 8%,
@@ -6425,8 +6434,9 @@ button.home-masthead-rival-button:hover {
   border-radius: 4px;
   background: var(--felt-ink);
   color: var(--felt-bg-3);
-  /* W10 - deeper, detached shadow ("apoyado" not "pegado") */
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  /* W10 - deeper, detached shadow ("apoyado" not "pegado"); W14 - un paso
+     mas profunda (papel "tirado" del mockup). */
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.52), 0 3px 8px rgba(0, 0, 0, 0.32);
   font-family: var(--felt-font-body);
 }
 
@@ -6436,30 +6446,34 @@ button.home-masthead-rival-button:hover {
   margin-left: clamp(50px, 15%, 100px);
 }
 
-/* W12 (mc-18 punto 2): stagger un poco mas marcado que el -2/+2 previo. */
+/* W12 (mc-18 punto 2): stagger un poco mas marcado que el -2/+2 previo.
+   W14: tirado mas organico — rotaciones NO simetricas (papeles reales no
+   caen en angulos espejados) + la sesion sube apenas hacia el problema. */
 .home-paper:nth-of-type(1) {
-  transform: rotate(-3deg);
+  transform: rotate(-2.4deg);
 }
 
 .home-paper:nth-of-type(2) {
-  transform: rotate(3deg);
+  transform: rotate(2.1deg) translateY(-6px);
 }
 
+/* W14: cinta centrada arriba (mockup), mas ancha en el papel problema. */
 .home-paper-tape {
   position: absolute;
   top: -10px;
-  left: 28px;
-  width: 68px;
+  left: 50%;
+  width: 84px;
   height: 20px;
+  margin-left: -42px;
   background: color-mix(in oklch, var(--felt-gold) 55%, transparent);
-  transform: rotate(-3deg);
+  transform: rotate(-2deg);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 /* W10 - vary the second paper's tape so the two papers don't look cloned */
 .home-paper-session .home-paper-tape {
-  left: 50%;
-  margin-left: -34px;
+  width: 64px;
+  margin-left: -32px;
   transform: rotate(3deg);
 }
 
@@ -6474,29 +6488,18 @@ button.home-masthead-rival-button:hover {
   color: color-mix(in oklch, var(--felt-bg-3) 70%, transparent);
 }
 
-/* W13 (mc-18): clamp a 1 linea - "Semana piloto - compactar tras perdida"
-   envolvia y ensuciaba el eyebrow (mockup: header en 1 sola linea). */
-.home-paper-session-name {
-  display: inline-block;
-  max-width: 150px;
-  margin-left: 8px;
-  overflow: hidden;
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: bottom;
-}
+/* W14: .home-paper-session-name eliminada — el eyebrow paso a "SESION DE
+   HOY" limpio (mockup); el nombre real vive en title= del papel. */
 
 .home-paper-title {
   margin: 0 0 10px;
   font-family: var(--felt-font-head);
   font-weight: 800;
-  /* W13 (mc-18, catalogo W11 #3): 24 -> 28px, escala poster del mockup. */
-  font-size: 28px;
-  line-height: 1.22;
+  /* W13 (mc-18, catalogo W11 #3): 24 -> 28px, escala poster del mockup.
+     W14: 30px + tracking apretado — lectura display sin cambiar el texto. */
+  font-size: 30px;
+  line-height: 1.16;
+  letter-spacing: -0.015em;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -7167,12 +7170,12 @@ details.home-collapse .home-collapse-body {
     margin-bottom: 4px;
   }
 
-  /* W13 (mc-18, catalogo W11 #3): 17 -> 21px (spec 22-26, compacto se queda
-     un poco por debajo del piso para no arriesgar el fold). */
+  /* W13 (mc-18, catalogo W11 #3): 17 -> 21px. W14: 23px lh 1.15 — entra en
+     la spec 22-26 sin arriesgar el fold (3 lineas ~79px vs cap 290). */
   .home-paper-title {
     margin-bottom: 6px;
-    font-size: 21px;
-    line-height: 1.18;
+    font-size: 23px;
+    line-height: 1.15;
   }
 
   .home-paper-body {

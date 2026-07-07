@@ -21,11 +21,11 @@ export function HomeSessionPaper({
   const remaining = blocks.length - visibleBlocks.length;
 
   return (
-    <article className="home-paper home-paper-session">
+    // W14: eyebrow limpio del mockup; el nombre real de la sesion queda
+    // discoverable via title (hover) y en la vista Sesion.
+    <article className="home-paper home-paper-session" title={sessionName}>
       <span className="home-paper-tape" aria-hidden="true" />
-      <span className="panel-eyebrow home-paper-eyebrow">
-        SESION ACTIVA <span className="mono home-paper-session-name">{sessionName}</span>
-      </span>
+      <span className="panel-eyebrow home-paper-eyebrow">SESION DE HOY</span>
       <h3 className="home-paper-title home-paper-title-sm">
         {isEmpty ? "SIN SESION ARMADA" : "BLOQUES"}
       </h3>
