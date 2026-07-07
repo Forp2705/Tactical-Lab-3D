@@ -1,12 +1,10 @@
-import { type DraftPlayer, FORMATIONS } from "../boardConstants";
+import type { DraftPlayer } from "../boardConstants";
 import type { PlanningBoardPlayer } from "../productBoardTypes";
 
 type TacticalBoardRosterPanelProps = {
-  teamAFormation: string;
   draft: DraftPlayer;
   editingPlayerId: string | null;
   roster: PlanningBoardPlayer[];
-  onApplyOwnFormation: (formation: string) => void;
   onDraftChange: (draft: DraftPlayer) => void;
   onSavePlayerDraft: () => void;
   onAssignPlayerToPitch: (player: PlanningBoardPlayer) => void;
@@ -14,12 +12,13 @@ type TacticalBoardRosterPanelProps = {
   onDeleteRosterPlayer: (playerId: string) => void;
 };
 
+// W15: la seccion Distribucion se elimino — sus botones llamaban la MISMA
+// applyOwnFormation que el select del canvas (fuente unica de formacion).
+// El plantel vive colapsado por defecto: el editor respira y 1366 entra.
 export function TacticalBoardRosterPanel({
-  teamAFormation,
   draft,
   editingPlayerId,
   roster,
-  onApplyOwnFormation,
   onDraftChange,
   onSavePlayerDraft,
   onAssignPlayerToPitch,
@@ -27,25 +26,9 @@ export function TacticalBoardRosterPanel({
   onDeleteRosterPlayer,
 }: TacticalBoardRosterPanelProps) {
   return (
-    <>
-      <section>
-        <h2>Distribucion</h2>
-        <div className="rombo-formation-grid">
-          {FORMATIONS.map((formation) => (
-            <button
-              type="button"
-              key={formation}
-              className={teamAFormation === formation ? "active" : ""}
-              onClick={() => onApplyOwnFormation(formation)}
-            >
-              {formation}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2>Mi equipo / Plantel</h2>
+    <section>
+      <details className="rombo-roster-collapse">
+        <summary>Mi equipo / Plantel · {roster.length}</summary>
         <div className="rombo-player-form">
           <input
             placeholder="Nombre"
@@ -109,7 +92,7 @@ export function TacticalBoardRosterPanel({
             </article>
           ))}
         </div>
-      </section>
-    </>
+      </details>
+    </section>
   );
 }

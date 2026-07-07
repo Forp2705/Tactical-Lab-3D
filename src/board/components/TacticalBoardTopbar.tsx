@@ -2,7 +2,6 @@ import { VIEW_OPTIONS } from "../boardConstants";
 import type { CurrentBoardView } from "../productBoardTypes";
 
 type TacticalBoardTopbarProps = {
-  projectLabel: string;
   currentView: CurrentBoardView;
   canUndo: boolean;
   canRedo: boolean;
@@ -13,8 +12,9 @@ type TacticalBoardTopbarProps = {
   onSaveBoard: () => void;
 };
 
+// W15: sin marca ni titulo propios — duplicaban el sidebar y el header de
+// vista (doble branding prohibido por LENGUAJE-ROMBOIQ). Barra solo-controles.
 export function TacticalBoardTopbar({
-  projectLabel,
   currentView,
   canUndo,
   canRedo,
@@ -26,11 +26,6 @@ export function TacticalBoardTopbar({
 }: TacticalBoardTopbarProps) {
   return (
     <header className="rombo-board-topbar">
-      <div className="rombo-brand">RomboIQ</div>
-      <div className="rombo-title-block">
-        <h1>Pizarra tactica</h1>
-        <p>Proyecto: {projectLabel}</p>
-      </div>
       <button type="button" onClick={onAddScene}>
         Nueva escena
       </button>

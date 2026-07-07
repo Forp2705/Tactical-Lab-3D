@@ -19,6 +19,13 @@ import { TacticalBoardView } from "../src/board/TacticalBoardView";
  * one real player so the first own token is roster-linked (an unlinked token
  * is documented, by design, to NOT survive a formation change — see
  * boardTools.ts mergeFormationTokens and RECHECK-W1.md).
+ *
+ * W15: the Distribucion buttons were removed (single formation source); the
+ * trigger is now the own-formation <select> on the canvas toolbar — it calls
+ * the SAME applyOwnFormation, so the crash-class detection power is intact.
+ * The own select is found by its display value (own default 4-3-3; the
+ * opponent select shows 4-4-2, so the query stays unique). Tree-mounted
+ * anchor moved from the removed topbar title to the "Nueva escena" control.
  */
 
 const seededPlayers = demoPlayers.slice(0, 1);
@@ -82,14 +89,14 @@ describe("Pizarra render: hydrate/persist crash class (P0 of w1)", () => {
     expect(roleInput.value).toBe("QA-ROLE");
 
     // 5: default formation is 4-3-3 (createDefaultBoard) -> 4-4-2 is a real change.
-    const formationButton = screen.getByRole("button", { name: "4-4-2" });
-    fireEvent.click(formationButton);
+    const ownFormationSelect = screen.getByDisplayValue("4-3-3");
+    fireEvent.change(ownFormationSelect, { target: { value: "4-4-2" } });
 
     // (a) no "Maximum update depth exceeded" thrown by React.
     assertNoMaxUpdateDepthError();
 
-    // (b) tree still mounted, not blank: topbar heading + full own token set.
-    expect(screen.getByText("Pizarra tactica")).toBeTruthy();
+    // (b) tree still mounted, not blank: topbar control + full own token set.
+    expect(screen.getByRole("button", { name: "Nueva escena" })).toBeTruthy();
     expect(document.querySelectorAll("circle.token.own")).toHaveLength(11);
 
     // (c) FIX 2a contract: the roster-linked token's edited role survives the
@@ -105,11 +112,11 @@ describe("Pizarra render: hydrate/persist crash class (P0 of w1)", () => {
 
     // No selection at all: the inspector shows the scene summary, not a
     // player form. Change formation directly.
-    const formationButton = screen.getByRole("button", { name: "4-4-2" });
-    fireEvent.click(formationButton);
+    const ownFormationSelect = screen.getByDisplayValue("4-3-3");
+    fireEvent.change(ownFormationSelect, { target: { value: "4-4-2" } });
 
     assertNoMaxUpdateDepthError();
-    expect(screen.getByText("Pizarra tactica")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nueva escena" })).toBeTruthy();
     expect(document.querySelectorAll("circle.token.own")).toHaveLength(11);
   });
 });

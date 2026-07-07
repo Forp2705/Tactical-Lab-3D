@@ -194,8 +194,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
       )}
       {/* main-home: hook estable para el override compacto de padding de la
-          vista Sala (addendum W10) sin depender de :has() en CSS. */}
-      <main className={view === "home" ? "main main-home" : "main"}>
+          vista Sala (addendum W10) sin depender de :has() en CSS.
+          W15: la Pizarra (primera vista reformada) respira el felt-stage
+          compartido detras de su contenido. */}
+      <main
+        className={
+          view === "home"
+            ? "main main-home"
+            : view === "board"
+              ? "main felt-stage"
+              : "main"
+        }
+      >
         {!presentationMode && view === "home" ? (
           // Riesgo 2 (acceptance seccion 4): el topbar no se renderiza en
           // Sala, asi que a <=1180 la nav quedaba inalcanzable. Este boton
