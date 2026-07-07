@@ -716,6 +716,28 @@ function createSeededLineupLab(): LineupLabStoreState {
   };
 }
 
+/* W13 (mc-21): scout demo sembrado para que el masthead/papel de Inicio
+   luzcan como W9-MOCKUP-HOME.png ("VS ATLETICO NORTE" + anotacion coral).
+   updatedAt fijo y en el pasado: cualquier edicion del usuario gana por
+   recencia, igual que el createdAt de la shape W12. Real sigue en
+   DEFAULT_OPPONENT_SCOUT (honesto, sin rival). */
+const DEMO_OPPONENT_SCOUT: OpponentScout = {
+  ...DEFAULT_OPPONENT_SCOUT,
+  rival: "Atletico Norte",
+  probableSystem: "4-2-3-1",
+  pressing: "Presion alta tras perdida",
+  vulnerabilities: ["Espalda de los interiores cuando saltan a presionar"],
+  updatedAt: "2026-06-01T12:00:00.000Z",
+};
+
+const DEMO_MANUAL_OBSERVATION: ManualObservation = {
+  id: "obs-demo-1",
+  teamId: seededTeam.id,
+  text: "El 6 queda solo entre lineas",
+  createdAt: "2026-06-01T12:00:00.000Z",
+  source: "home",
+};
+
 const seededWeeklyDecisionThread: WeeklyDecisionThread = {
   id: "weekly-thread-seed",
   teamId: seededTeam.id,
@@ -753,6 +775,7 @@ function createRealWorkspaceState() {
     weeklyDecisionThread: null as WeeklyDecisionThread | null,
     aiPrompt: "",
     lineupLab: initialLineupLab,
+    opponentScout: DEFAULT_OPPONENT_SCOUT,
   };
 }
 
@@ -764,10 +787,11 @@ function createDemoWorkspaceState() {
     gameModel: DEFAULT_GAME_MODEL,
     session: seededSession,
     microcycle: seededMicrocycle,
-    manualObservations: [] as ManualObservation[],
+    manualObservations: [DEMO_MANUAL_OBSERVATION] as ManualObservation[],
     weeklyDecisionThread: seededWeeklyDecisionThread,
     aiPrompt: PILOT_DIAGNOSIS_PROMPT,
     lineupLab: createSeededLineupLab(),
+    opponentScout: DEMO_OPPONENT_SCOUT,
   };
 }
 
@@ -823,7 +847,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Fuera de create*WorkspaceState a proposito: el perfil del staff es de la
   // persona, no del workspace, y sobrevive al switch demo/real.
   staffProfile: EMPTY_STAFF_PROFILE,
-  opponentScout: DEFAULT_OPPONENT_SCOUT,
   tags: [],
   tracks: [],
   aiMode: "coach",
