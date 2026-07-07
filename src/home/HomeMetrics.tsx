@@ -20,8 +20,12 @@ export function HomeMetrics({
   return (
     <section className="home-metrics">
       <div className="home-metric-tile">
-        <b className="home-metric-big">{loadPercentValue}%</b>
-        <small className="home-metric-sub">CARGA PLAN · {loadPeakLabel}</small>
+        <b className="home-metric-big">
+          {hasPlayers ? `${loadPercentValue}%` : "—"}
+        </b>
+        <small className="home-metric-sub">
+          {hasPlayers ? `CARGA PLAN · ${loadPeakLabel}` : "CARGA PLAN"}
+        </small>
       </div>
       <button
         type="button"
