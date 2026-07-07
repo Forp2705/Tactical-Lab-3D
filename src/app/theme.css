@@ -6361,13 +6361,20 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
    cockpit-wide `button:not(.secondary)` reset (tactical-ui.css-style lime
    gradient) so these felt buttons are not silently repainted lime.
    W13: underline pasa a hover-only (el mockup no subraya el rival en
-   reposo); el affordance de click se mantiene con cursor + hover. */
+   reposo); el affordance de click se mantiene con cursor + hover.
+   W13-FIX: `font: inherit` pisaba el font-size/weight/family de
+   `.home-masthead-rival` (misma especificidad 0-1-1, esta regla va despues
+   -> ganaba) y dejaba el rival en el variant boton (rival cargado) a 16px;
+   se saca el shorthand para que `.home-masthead-rival` gobierne tipografia.
+   `color` explicito por la misma razon: `button:not(.secondary)` (0-1-1,
+   reset generico) pisaba el color de `.home-masthead-rival` (0-1-0) y
+   dejaba el texto en --felt-bg-3 (oscuro, se leia apagado sobre el felt). */
 button.home-masthead-rival-button {
   background: none;
   border: 0;
   padding: 0;
   cursor: pointer;
-  font: inherit;
+  color: var(--felt-ink);
 }
 
 button.home-masthead-rival-button:hover {
