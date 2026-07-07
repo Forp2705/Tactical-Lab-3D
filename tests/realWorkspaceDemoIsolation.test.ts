@@ -4,6 +4,7 @@ import { pilotReportsSeed } from "../src/demo/pilotReports";
 import { detectTeamPatterns } from "../src/ai/patternDetection";
 import type { SavedPostMatchReport } from "../src/ai/post-match/schemas";
 import type { WeeklyDecisionThread } from "../src/state/weeklyDecisionThread";
+import { DEFAULT_OPPONENT_SCOUT } from "../src/scout/opponentScout";
 
 /**
  * Regression coverage for issue E (demo contamination in real workspace) —
@@ -104,6 +105,36 @@ describe("F4 — real workspace derives no demo evolution/team patterns", () => 
     // this just documents that `detectTeamPatterns` has no hardcoded demo
     // strings of its own; everything flows from the `reports` it receives.
     expect(Array.isArray(demoPatterns)).toBe(true);
+  });
+});
+
+describe("W13 — demo seeds opponent scout + manual observation per-workspace (masthead/paper del mockup)", () => {
+  it("loadDemoWorkspace seeds the demo rival scout so the masthead renders VS <rival>", () => {
+    useAppStore.getState().loadDemoWorkspace();
+    const scout = useAppStore.getState().opponentScout;
+
+    expect(scout.rival).toBe("Atletico Norte");
+    // Something beyond the name: the seed must be real scout data (feeds the
+    // coach context in demo), not just a masthead label.
+    expect(scout.probableSystem.trim().length).toBeGreaterThan(0);
+  });
+
+  it("loadDemoWorkspace seeds exactly one manual observation (the paper's coral annotation), tagged to the demo team", () => {
+    useAppStore.getState().loadDemoWorkspace();
+    const state = useAppStore.getState();
+
+    expect(state.manualObservations).toHaveLength(1);
+    expect(state.manualObservations[0]?.source).toBe("home");
+    expect(state.manualObservations[0]?.teamId).toBe(state.team.id);
+    expect(state.manualObservations[0]?.text.trim().length).toBeGreaterThan(0);
+  });
+
+  it("switching demo → real resets the scout to its honest default (no rival leak)", () => {
+    useAppStore.getState().loadDemoWorkspace();
+    expect(useAppStore.getState().opponentScout.rival).toBe("Atletico Norte");
+
+    useAppStore.getState().loadRealWorkspace();
+    expect(useAppStore.getState().opponentScout).toEqual(DEFAULT_OPPONENT_SCOUT);
   });
 });
 
