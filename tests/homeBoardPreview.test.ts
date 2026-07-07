@@ -7,6 +7,7 @@ import {
   deriveHomeBoardPreview,
   toVerticalPitch,
 } from "../src/home/homeBoardPreview";
+import { useAppStore } from "../src/state/useAppStore";
 import type { LineupLabShape } from "../src/state/useAppStore";
 
 function makePlayer(id: string, num: number): Player {
@@ -222,5 +223,51 @@ describe("deriveHomeBoardPreview — rama shape", () => {
     // GK propio (x=7 horizontal) queda abajo en el pitch vertical.
     expect(known?.y).toBe(93);
     expect(unknown?.number).toBeUndefined();
+  });
+});
+
+describe("deriveHomeBoardPreview — rama demo (W12: seed del workspace demo)", () => {
+  it("el workspace demo siembra una shape y el preview muestra el XI con dorsales", () => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    useAppStore.getState().loadDemoWorkspace();
+    const state = useAppStore.getState();
+
+    const preview = deriveHomeBoardPreview({
+      tacticalBoards: state.tacticalBoards,
+      activeBoardId: state.activeBoardId,
+      activeBoardSceneId: state.activeBoardSceneId,
+      shapes: state.lineupLab.shapes,
+      players: state.team.players,
+    });
+
+    if (preview.kind !== "shape") throw new Error("expected shape branch");
+    expect(preview.chip).toBe("4-3-3 base");
+    expect(preview.tokens).toHaveLength(11);
+    // Todos los tokens resuelven contra el plantel demo: dorsal real, sin invento.
+    for (const token of preview.tokens) {
+      expect(token.team).toBe("A");
+      expect(token.number).toBeGreaterThanOrEqual(1);
+      expect(token.number).toBeLessThanOrEqual(11);
+    }
+    // GK propio abajo del pitch vertical (x=7 horizontal -> y=93).
+    const gk = preview.tokens.find((token) => token.number === 1);
+    expect(gk?.y).toBe(93);
+  });
+
+  it("el workspace real NO siembra shapes: el vacio honesto queda intacto", () => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    useAppStore.getState().loadDemoWorkspace();
+    useAppStore.getState().loadRealWorkspace();
+    const state = useAppStore.getState();
+
+    expect(state.lineupLab.shapes).toHaveLength(0);
+    const preview = deriveHomeBoardPreview({
+      tacticalBoards: state.tacticalBoards,
+      activeBoardId: state.activeBoardId,
+      activeBoardSceneId: state.activeBoardSceneId,
+      shapes: state.lineupLab.shapes,
+      players: state.team.players,
+    });
+    expect(preview).toEqual({ kind: "empty" });
   });
 });
