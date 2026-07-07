@@ -155,6 +155,14 @@ describe("F5/F8 — switching demo → real clears/scopes demo-only data without
     }
   });
 
+  it("switching demo → real does not leak the W12 seeded lineup-lab shape (real keeps its honest empty board)", () => {
+    useAppStore.getState().loadDemoWorkspace();
+    expect(useAppStore.getState().lineupLab.shapes.length).toBeGreaterThan(0);
+
+    useAppStore.getState().loadRealWorkspace();
+    expect(useAppStore.getState().lineupLab.shapes).toHaveLength(0);
+  });
+
   it("a freshly created real weeklyDecisionThread is preserved as real user data (not nulled or replaced by the seed)", () => {
     useAppStore.getState().loadRealWorkspace();
     expect(useAppStore.getState().weeklyDecisionThread).toBeNull();

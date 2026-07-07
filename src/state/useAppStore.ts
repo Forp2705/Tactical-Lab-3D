@@ -681,6 +681,41 @@ const seededTeam: TeamState = {
   model: "4-3-3 agresivo, presion tras perdida y ataques por banda",
 };
 
+/* W12 (mc-21): shape demo sembrada para que el TABLERO TACTICO de Sala
+   muestre fichas en demo (rama shape del preview) en vez del vacio. XI del
+   plantel demo sobre el 4-3-3 base de FORMATIONS (coords 0-100 en cancha
+   horizontal: x = largo con arco propio en x=0, y = ancho). createdAt fijo
+   y en el pasado: el seed es deterministico y cualquier shape publicada por
+   el usuario (Date.now()) le gana por recencia. Real sigue vacio. */
+function createSeededLineupLab(): LineupLabStoreState {
+  return {
+    shapes: [
+      {
+        id: "demo-shape-433-base",
+        name: "4-3-3 base",
+        phase: "buildup",
+        positions: {
+          pl_1: { x: 7, y: 50 }, // GK
+          pl_3: { x: 24, y: 20 }, // LB
+          pl_4: { x: 23, y: 41 }, // CB
+          pl_5: { x: 23, y: 59 }, // CB
+          pl_2: { x: 24, y: 80 }, // RB
+          pl_10: { x: 47, y: 32 }, // CM izq
+          pl_6: { x: 42, y: 50 }, // CDM
+          pl_8: { x: 47, y: 68 }, // CM der
+          pl_11: { x: 73, y: 22 }, // LW
+          pl_9: { x: 80, y: 50 }, // ST
+          pl_7: { x: 73, y: 78 }, // RW
+        },
+        notes: "Shape base del plantel demo.",
+        createdAt: Date.UTC(2026, 4, 1, 12, 0, 0),
+      },
+    ],
+    savedTransitions: [],
+    pendingShapeId: null,
+  };
+}
+
 const seededWeeklyDecisionThread: WeeklyDecisionThread = {
   id: "weekly-thread-seed",
   teamId: seededTeam.id,
@@ -717,6 +752,7 @@ function createRealWorkspaceState() {
     manualObservations: [] as ManualObservation[],
     weeklyDecisionThread: null as WeeklyDecisionThread | null,
     aiPrompt: "",
+    lineupLab: initialLineupLab,
   };
 }
 
@@ -731,6 +767,7 @@ function createDemoWorkspaceState() {
     manualObservations: [] as ManualObservation[],
     weeklyDecisionThread: seededWeeklyDecisionThread,
     aiPrompt: PILOT_DIAGNOSIS_PROMPT,
+    lineupLab: createSeededLineupLab(),
   };
 }
 
@@ -787,7 +824,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   // persona, no del workspace, y sobrevive al switch demo/real.
   staffProfile: EMPTY_STAFF_PROFILE,
   opponentScout: DEFAULT_OPPONENT_SCOUT,
-  lineupLab: initialLineupLab,
   tags: [],
   tracks: [],
   aiMode: "coach",
@@ -1487,7 +1523,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       coachInterview: initialCoachInterview,
       pendingPostMatchImport: null,
       coachShapeContext: null,
-      lineupLab: initialLineupLab,
     })),
   loadRealWorkspace: () =>
     set((state) => ({
@@ -1496,7 +1531,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       coachInterview: initialCoachInterview,
       pendingPostMatchImport: null,
       coachShapeContext: null,
-      lineupLab: initialLineupLab,
     })),
   updateTeamIdentity: (patch) =>
     set((state) => {
