@@ -112,14 +112,17 @@ export function TacticalBoardCanvas({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       />
-      <div className="rombo-key-instructions">
-        <strong>Instrucciones clave</strong>
+      {/* W15: colapsado por defecto — abierto tapaba el pitch; el summary es
+          la unica superficie clickeable (el resto sigue pointer-events:none
+          para no robarle eventos a la cancha, invariante W4). */}
+      <details className="rombo-key-instructions">
+        <summary>Instrucciones clave</summary>
         <ul>
           <li>{keyInstructions.objective}</li>
           <li>{keyInstructions.rule}</li>
           <li>{keyInstructions.successCondition}</li>
         </ul>
-      </div>
+      </details>
     </section>
   );
 }

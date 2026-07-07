@@ -177,7 +177,6 @@ function TacticalBoardWorkspace({
   return (
     <section className="rombo-board-shell">
       <TacticalBoardTopbar
-        projectLabel={a.projectLabel}
         currentView={a.currentView}
         canUndo={a.canUndo}
         canRedo={a.canRedo}
@@ -234,11 +233,9 @@ function TacticalBoardWorkspace({
 
         <aside className="rombo-right-panel">
           <TacticalBoardRosterPanel
-            teamAFormation={a.teamAFormation}
             draft={a.draft}
             editingPlayerId={a.editingPlayerId}
             roster={a.roster}
-            onApplyOwnFormation={a.applyOwnFormation}
             onDraftChange={a.setDraft}
             onSavePlayerDraft={a.savePlayerDraft}
             onAssignPlayerToPitch={a.assignPlayerToPitch}

@@ -5204,34 +5204,11 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   border-bottom: 0;
 }
 
-.rombo-brand {
-  font-family: var(--felt-font-head);
-  font-weight: 900;
-  font-size: 18px;
-  letter-spacing: -0.02em;
-  color: var(--felt-ink);
-  padding-right: 18px;
-  border-right: 1px solid var(--felt-line);
-}
-
-.rombo-title-block {
-  min-width: 220px;
-  margin-right: auto;
-}
-
-.rombo-title-block h1 {
-  margin: 0;
-  font-family: var(--felt-font-head);
-  font-weight: 800;
-  text-transform: uppercase;
-  font-size: 20px;
-  line-height: 1.15;
-}
-
-.rombo-title-block p {
-  margin: 3px 0 0;
-  color: #94a3b8;
-  font-size: 12px;
+/* W15: .rombo-brand y .rombo-title-block eliminadas — el topbar interno ya
+   no lleva marca/titulo (doble branding); es una barra solo-controles. El
+   select de vista empuja el grupo derecho. */
+.rombo-board-select {
+  margin-left: auto;
 }
 
 .rombo-board-shell button,
@@ -5342,13 +5319,22 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   gap: 6px;
 }
 
+/* W15: la fila de estado se aquieta (LENGUAJE: chips discretos, no pildoras
+   dashboard) — texto mono tenue sin cajas; los chips del footer quedan. */
 .rombo-board-health {
-  gap: 8px;
-  padding-block: 6px;
-  background: rgba(4, 10, 18, 0.72);
+  gap: 14px;
+  padding-block: 4px;
+  background: transparent;
 }
 
-.rombo-board-health span,
+.rombo-board-health span {
+  color: color-mix(in oklch, var(--felt-mint) 62%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .rombo-board-footer strong {
   /* Mono chip treatment transplanted from Pizarra.html .ttl/.pk labels. */
   border: 1px solid var(--felt-line);
@@ -5360,9 +5346,12 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   font-size: 12px;
 }
 
+/* W15: columna derecha 500 -> 340px 1-col (con Distribucion eliminada y el
+   plantel colapsado ya no la necesita) — el editor entra a 1366 sin recorte
+   horizontal (168+minmax+340+gaps+sidebar <= 1366, medido en vivo). */
 .rombo-board-layout {
   display: grid;
-  grid-template-columns: 168px minmax(560px, 0.95fr) 500px;
+  grid-template-columns: 168px minmax(0, 1fr) 340px;
   align-items: start;
   gap: 12px;
   min-height: 0;
@@ -5531,9 +5520,11 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 }
 
 /* Line/fill colors transplanted from Pizarra.html .pitch markings
-   (circ/box/six use rgba(243,239,226,.45-.8), same felt-line family). */
+   (circ/box/six use rgba(243,239,226,.45-.8), same felt-line family).
+   W15: fill al felt oscuro (mix bg-2/bg-3) — el verde plano brillante era
+   ajeno a la identidad; mismo look que el panel de tablero de la Sala. */
 .pitch-bg {
-  fill: rgba(11, 78, 34, 0.88);
+  fill: color-mix(in oklch, var(--felt-bg-2) 55%, var(--felt-bg-3));
 }
 
 .pitch-lines,
@@ -5664,35 +5655,76 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   stroke-width: 0.25;
 }
 
+/* W15: ahora es <details> colapsado por defecto — abierto tapaba el pitch.
+   El contenedor conserva pointer-events:none (invariante W4: no robar
+   eventos a la cancha); SOLO el summary es clickeable. */
 .rombo-key-instructions {
   position: absolute;
   left: 50%;
   bottom: 18px;
   width: min(280px, 44%);
-  border: 1px solid rgba(74, 222, 128, 0.35);
-  border-radius: 8px;
-  padding: 12px 14px;
-  background: rgba(2, 6, 23, 0.68);
   color: #dcfce7;
   font-size: 12px;
-  /* Solo texto estatico adentro (sin botones/scroll): no debe robar eventos
-     de puntero a la cancha SVG que tiene debajo. */
   pointer-events: none;
 }
 
-.rombo-key-instructions strong {
-  color: #4ade80;
-  text-transform: uppercase;
-  font-size: 11px;
+.rombo-key-instructions[open] {
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 8px;
+  padding: 8px 14px 12px;
+  background: rgba(2, 6, 23, 0.68);
 }
 
+.rombo-key-instructions summary {
+  display: inline-block;
+  pointer-events: auto;
+  cursor: pointer;
+  list-style: none;
+  padding: 3px 9px;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.68);
+  color: #4ade80;
+  text-transform: uppercase;
+  font-family: var(--felt-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+}
+
+.rombo-key-instructions summary::-webkit-details-marker {
+  display: none;
+}
+
+.rombo-key-instructions[open] summary {
+  border: 0;
+  padding: 0 0 6px;
+  background: transparent;
+}
+
+/* W15: 2 columnas -> 1 (la columna paso de 500 a 340px). */
 .rombo-right-panel {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 10px;
   max-height: calc(100vh - 170px);
   overflow: auto;
+}
+
+/* W15: plantel colapsado por defecto — summary con el mismo tratamiento
+   eyebrow mono de los h2 del panel. */
+.rombo-roster-collapse summary {
+  cursor: pointer;
+  color: var(--felt-mint);
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rombo-roster-collapse[open] summary {
+  margin-bottom: 10px;
 }
 
 .rombo-right-panel section {
@@ -6012,12 +6044,9 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 }
 
 @media (max-width: 1280px) {
+  /* W15: la col derecha ya es 340 base; aca baja un paso mas. */
   .rombo-board-layout {
-    grid-template-columns: 160px minmax(520px, 1fr) 420px;
-  }
-
-  .rombo-right-panel {
-    grid-template-columns: 1fr;
+    grid-template-columns: 160px minmax(0, 1fr) 300px;
   }
 }
 
@@ -6285,13 +6314,20 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   border-radius: 20px;
   color: var(--felt-ink);
   font-family: var(--felt-font-body);
-  /* W10 - vignette (darkens edges, center breathes) + secondary highlight
-     over the board zone + subtle cross-grain, layered on top of the W9
-     highlight/rayado/base stack. Backgrounds stack with the first-listed
-     layer on top, so the vignette/highlight/grain go first.
-     W14 - felt vivo: vignette un paso mas honda + grano feTurbulence (tile
-     160px, alpha tope 0.05 via feColorMatrix — no compromete AA) + lampara
-     radial sobre la zona de papeles. */
+}
+
+/* W10 - vignette (darkens edges, center breathes) + secondary highlight
+   over the board zone + subtle cross-grain, layered on top of the W9
+   highlight/rayado/base stack. Backgrounds stack with the first-listed
+   layer on top, so the vignette/highlight/grain go first.
+   W14 - felt vivo: vignette un paso mas honda + grano feTurbulence (tile
+   160px, alpha tope 0.05 via feColorMatrix — no compromete AA) + lampara
+   radial sobre la zona de papeles.
+   W15 - stack extraido a .felt-stage (LENGUAJE-ROMBOIQ: escenario de toda
+   vista reformada); la Sala lo consume por el selector agrupado, sin
+   cambiar un pixel. */
+.home-command-view,
+.felt-stage {
   background: radial-gradient(
       140% 120% at 50% 38%,
       transparent 56%,
