@@ -50,9 +50,7 @@ export function HomeSessionPaper({
             ))}
             {remaining > 0 ? (
               <li className="home-paper-block-row home-paper-block-more">
-                <span className="home-paper-block-title">
-                  +{remaining} mas · {totalDuration}' total
-                </span>
+                <span className="home-paper-block-title">+{remaining} mas</span>
               </li>
             ) : null}
           </ol>

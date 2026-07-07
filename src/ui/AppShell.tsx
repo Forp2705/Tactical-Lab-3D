@@ -91,11 +91,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     (state) => state.teamIdentity.baseFormation,
   );
   const [navOpen, setNavOpen] = useState(false);
-  // E2: INICIO · FOCO MD-3 · 4-3-3; el segmento formacion se omite si esta
-  // vacia (workspace real sin setup) — nunca se muestra un placeholder.
+  // E2: INICIO · MD-3 · 4-3-3 (W13: sin prefijo "Foco", entra en 1 linea);
+  // el segmento formacion se omite si esta vacia (workspace real sin setup)
+  // — nunca se muestra un placeholder.
   const brandSubtitle = [
     brandViewLabel(view),
-    `Foco ${focoDayLabel(microcycleDays)}`,
+    focoDayLabel(microcycleDays),
     baseFormation.trim() || null,
   ]
     .filter(Boolean)
@@ -123,7 +124,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="brand">
             <img className="brand-mark" src="/romboiq-mark.svg" alt="RomboIQ" />
             <div>
-              <h1>RomboIQ</h1>
+              <h1>
+                Rombo<span className="brand-iq">IQ</span>
+              </h1>
               <p className="brand-subtitle">{brandSubtitle}</p>
             </div>
           </div>
@@ -351,23 +354,24 @@ function StaffProfileBlock() {
         {initials}
       </span>
       <div className="staff-profile-copy">
-        {name ? (
-          <>
-            <b className="staff-profile-name">{name}</b>
-            <span className="staff-profile-role">{role || "Cuerpo tecnico"}</span>
-          </>
-        ) : (
-          <span className="staff-profile-role">Cuerpo tecnico</span>
-        )}
+        <b className="staff-profile-name">{name || "Cuerpo tecnico"}</b>
+        <span className="staff-profile-role-row">
+          {role ? <span className="staff-profile-role">{role}</span> : null}
+          {role ? (
+            <span className="staff-profile-role-sep" aria-hidden="true">
+              ·
+            </span>
+          ) : null}
+          <button
+            type="button"
+            className="staff-profile-edit"
+            aria-label="Editar perfil de staff"
+            onClick={startEditing}
+          >
+            Editar
+          </button>
+        </span>
       </div>
-      <button
-        type="button"
-        className="staff-profile-edit"
-        aria-label="Editar perfil de staff"
-        onClick={startEditing}
-      >
-        Editar
-      </button>
     </div>
   );
 }

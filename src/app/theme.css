@@ -6345,23 +6345,39 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   text-align: right;
 }
 
+/* W13 (mc-18): escala poster (mockup "VS ATLETICO NORTE" grande) - 15 -> 26px.
+   clamp() acota el crecimiento si un fallback largo ("PROXIMO RIVAL A
+   DEFINIR") amenaza con envolver a 2 lineas dentro del presupuesto de
+   masthead (~48px). */
 .home-masthead-rival {
   font-family: var(--felt-font-head);
   font-weight: 800;
-  font-size: 15px;
+  font-size: clamp(22px, 2vw, 26px);
   letter-spacing: 0.01em;
   color: var(--felt-ink);
 }
 
 /* `button.` prefix (element + class) matches the specificity of the
    cockpit-wide `button:not(.secondary)` reset (tactical-ui.css-style lime
-   gradient) so these felt buttons are not silently repainted lime. */
+   gradient) so these felt buttons are not silently repainted lime.
+   W13: underline pasa a hover-only (el mockup no subraya el rival en
+   reposo); el affordance de click se mantiene con cursor + hover.
+   W13-FIX: `font: inherit` pisaba el font-size/weight/family de
+   `.home-masthead-rival` (misma especificidad 0-1-1, esta regla va despues
+   -> ganaba) y dejaba el rival en el variant boton (rival cargado) a 16px;
+   se saca el shorthand para que `.home-masthead-rival` gobierne tipografia.
+   `color` explicito por la misma razon: `button:not(.secondary)` (0-1-1,
+   reset generico) pisaba el color de `.home-masthead-rival` (0-1-0) y
+   dejaba el texto en --felt-bg-3 (oscuro, se leia apagado sobre el felt). */
 button.home-masthead-rival-button {
   background: none;
   border: 0;
   padding: 0;
   cursor: pointer;
-  font: inherit;
+  color: var(--felt-ink);
+}
+
+button.home-masthead-rival-button:hover {
   text-decoration: underline;
   text-decoration-color: color-mix(in oklch, var(--felt-gold) 60%, transparent);
   text-underline-offset: 3px;
@@ -6458,19 +6474,28 @@ button.home-masthead-rival-button {
   color: color-mix(in oklch, var(--felt-bg-3) 70%, transparent);
 }
 
+/* W13 (mc-18): clamp a 1 linea - "Semana piloto - compactar tras perdida"
+   envolvia y ensuciaba el eyebrow (mockup: header en 1 sola linea). */
 .home-paper-session-name {
+  display: inline-block;
+  max-width: 150px;
   margin-left: 8px;
+  overflow: hidden;
   font-size: 10.5px;
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .home-paper-title {
   margin: 0 0 10px;
   font-family: var(--felt-font-head);
   font-weight: 800;
-  font-size: 24px;
+  /* W13 (mc-18, catalogo W11 #3): 24 -> 28px, escala poster del mockup. */
+  font-size: 28px;
   line-height: 1.22;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -6554,6 +6579,19 @@ button.home-masthead-rival-button {
   color: color-mix(in oklch, var(--felt-bg-3) 65%, transparent);
   font-style: italic;
   white-space: normal;
+}
+
+/* W13 (mc-18): duraciones del papel sesion sin pill (mockup: "15'" mono
+   plano). Scoped a block-row para NO tocar los chips del papel problema
+   (MD-3 / VS / 4-3-3, `.home-paper-chips .chip.home-paper-chip`), que el
+   mockup si tiene como chips. */
+.home-paper-block-row .chip.home-paper-chip {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  color: color-mix(in oklch, var(--felt-bg-3) 60%, transparent);
 }
 
 .home-paper-footnote {
@@ -6780,9 +6818,12 @@ button.home-metric-tile-button:not(:disabled):hover .home-metric-sub {
   text-decoration-color: color-mix(in oklch, var(--felt-gold) 60%, transparent);
 }
 
+/* W13 (mc-18): escala poster (mockup "92% / 12/14 / 03" enormes) - 36 -> 50px.
+   El override mobile <=720 (:7212, 23px) y el patron oro/ink/oro (abajo)
+   quedan igual. */
 .home-metric-big {
   font-family: var(--felt-font-head);
-  font-size: 36px;
+  font-size: 50px;
   font-weight: 800;
   color: var(--felt-gold);
 }
@@ -6835,11 +6876,35 @@ button.home-metric-tile-button:not(:disabled):hover .home-metric-sub {
   font-size: 14px;
 }
 
+/* W13 (mc-18, acceptance W10 D3): demote a link - el mockup tiene UN solo
+   slab dorado (el tablero, mc-21); este CTA hoy hereda `.home-cta-gold` (mismo
+   elemento, misma especificidad 0-1-1, y esta regla ya va DESPUES en el
+   archivo asi que gana la cascada sobre lo que se pise aca). Mismo
+   tratamiento texto-plano que `.home-paper-link-cta`. */
 button.home-next-step-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   width: auto;
   flex-shrink: 0;
   justify-self: start;
-  padding: 9px 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--felt-gold);
+  font-family: var(--felt-font-mono);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+button.home-next-step-cta:hover {
+  color: color-mix(in oklch, var(--felt-gold) 88%, white 12%);
 }
 
 .home-lower-zone {
@@ -7084,13 +7149,17 @@ details.home-collapse .home-collapse-body {
     padding: 12px 14px 14px;
   }
 
+  /* W13 (mc-18): 260 -> 290px - compensa el crecimiento de titulo (D7) y
+     mantiene el papel sin recortar contenido real. */
   .home-paper-problem {
-    max-height: 260px;
+    max-height: 290px;
     overflow: hidden;
   }
 
+  /* W13 (mc-18): 200 -> 232px - con el header de 1 linea (D6) el contenido
+     real queda acotado a ~224px (3 filas + "+N mas" + footnote + CTA). */
   .home-paper-session {
-    max-height: 200px;
+    max-height: 232px;
     overflow: hidden;
   }
 
@@ -7098,9 +7167,11 @@ details.home-collapse .home-collapse-body {
     margin-bottom: 4px;
   }
 
+  /* W13 (mc-18, catalogo W11 #3): 17 -> 21px (spec 22-26, compacto se queda
+     un poco por debajo del piso para no arriesgar el fold). */
   .home-paper-title {
     margin-bottom: 6px;
-    font-size: 17px;
+    font-size: 21px;
     line-height: 1.18;
   }
 
@@ -7260,7 +7331,8 @@ body .app-shell .sidebar {
   font-family: var(--felt-font-body);
 }
 
-/* E2 — marca: rombo + wordmark + subtitulo mono INICIO · FOCO MD-3 · 4-3-3.
+/* E2 — marca: rombo + wordmark ("Rombo" + caja "IQ") + subtitulo mono
+   INICIO · MD-3 · 4-3-3 (W13: se cae el prefijo "Foco", ver AppShell.tsx).
    W12: la linea dorada vive en .brand > div (columna de texto), no en
    .brand entero, para que no se extienda por debajo del logo (mockup:
    linea acotada al ancho del wordmark). */
@@ -7290,6 +7362,14 @@ body .app-shell .brand h1 {
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+/* W13 (mc-18): "IQ" en caja dorada (mockup: "ROMBO[IQ]"). */
+body .app-shell .brand h1 .brand-iq {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--felt-gold);
+  color: var(--felt-bg-3);
 }
 
 body .app-shell .brand p.brand-subtitle {
@@ -7437,10 +7517,13 @@ body .app-shell .side-foot .file-label.btn.ghost:hover {
 }
 
 /* W12 (mc-18 punto 1e): perfil pasa a tratamiento plano (avatar + texto,
-   sin card) como el pie del mockup. */
+   sin card) como el pie del mockup. W13 (mc-18, addendum W12 #6): 3 col ->
+   2 col (avatar | copy) - "Editar" deja de ser una 3ra columna del grid y
+   pasa a vivir inline dentro de la 2da linea de copy (mockup: "Marcelo B."
+   / "CUERPO TECNICO · SALIR"). */
 body .app-shell .staff-profile {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   padding: 4px 2px;
@@ -7488,22 +7571,42 @@ body .app-shell .staff-profile-role {
   white-space: nowrap;
 }
 
+/* W13 (mc-18): linea 2 del perfil - rol + separador + "Editar", todo en la
+   misma fila (mockup: "CUERPO TECNICO · SALIR"). */
+body .app-shell .staff-profile-role-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+body .app-shell .staff-profile-role-sep {
+  color: color-mix(in oklch, var(--felt-ink) 50%, transparent);
+  font-size: 9.5px;
+}
+
+/* W13 (mc-18): "Editar" pasa de boton-caja a link inline (mismo tratamiento
+   mono dorado que los CTA de papel), ya que ahora vive dentro de la 2da
+   linea de copy en vez de ser una 3ra columna del grid del perfil. */
 body .app-shell button.staff-profile-edit {
-  padding: 4px 7px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: color-mix(in oklch, var(--felt-gold) 82%, var(--felt-ink));
   font-family: var(--felt-font-mono);
   font-size: 9.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   box-shadow: none;
   cursor: pointer;
 }
 
 body .app-shell button.staff-profile-edit:hover {
-  border-color: color-mix(in oklch, var(--felt-gold) 50%, transparent);
+  color: var(--felt-gold);
 }
 
 body .app-shell .staff-profile-form {
