@@ -7949,16 +7949,28 @@ body .app-shell .topbar-copy p {
 }
 
 /* .top-stat-strip no existe en tactical-ui.css (sin token de por medio) y
-   traia fondo/valor hardcodeados (rgba negro + --lime literal). Se felt-iza
-   directo aca; --lime ya remapeado a dorado en los :root de arriba cubre
-   `.top-stat-strip b`, asi que solo faltan los fondos. */
+   traia fondo/valor hardcodeados (rgba negro + --lime literal). W11 lo
+   felt-izo; W16 lo AQUIETA del todo (LENGUAJE-ROMBOIQ: prohibido el patron
+   pildora-dashboard): sin cajas ni bordes, labels mono tenues y valores
+   dorados en linea — la info queda, la decoracion muere. Aplica a TODAS las
+   vistas que rinden el topbar. */
 body .app-shell .top-stat-strip {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
-  background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 15%);
+  min-width: 0;
+  padding: 0;
+  gap: 18px;
+  border: 0;
+  background: transparent;
 }
 
 body .app-shell .top-stat-strip div {
-  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
+  padding: 0;
+  background: transparent;
+}
+
+body .app-shell .top-stat-strip span {
+  color: color-mix(in oklch, var(--felt-ink, #f3efe2) 55%, transparent);
+  font-family: var(--felt-font-mono);
+  letter-spacing: 0.08em;
 }
 
 /* NOTA (REVISE del gate): `.weekly-decision-item` y `.toast` tambien se

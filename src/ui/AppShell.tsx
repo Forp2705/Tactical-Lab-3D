@@ -268,13 +268,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 Modo presentacion
               </button>
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={exportViewerPng}
-              >
-                Exportar PNG
-              </button>
+              {/* W16: exportViewerPng busca el canvas 3D (.canvas-wrap) — en
+                  la Pizarra no existe y el boton era un no-op silencioso
+                  (catalogo gate W15). El board tiene su propio export en el
+                  panel IA (useBoardActions.exportImage). */}
+              {view === "board" ? null : (
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={exportViewerPng}
+                >
+                  Exportar PNG
+                </button>
+              )}
             </div>
           </header>
         )}
