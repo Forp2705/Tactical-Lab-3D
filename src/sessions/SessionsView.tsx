@@ -166,16 +166,29 @@ export function SessionsView() {
         setDragMeta(null);
       }}
     >
-      <section className="session-layout">
-        <div className="team-card">
-          <div className="section-title">
+      <section className="session-layout felt-stage">
+        <div className="team-card session-sheet">
+          {/* W19 REGION FLUJO (mc-19): cabecera de sesion - session.name se
+              agrega aca en fase 2. No implementado en esta ola. */}
+          <div className="section-title session-sheet-header">
             <div>
               <span className="panel-eyebrow">Diagnostico -&gt; campo</span>
-              <h3>Sesion como respuesta tactica</h3>
+              <h4>{shorten(sessionIntent.problem, 140)}</h4>
+              <div className="session-intent-row">
+                <span>
+                  <b>Objetivo</b> {sessionIntent.objective}
+                </span>
+                <span>
+                  <b>Senal</b> {sessionIntent.successSignal}
+                </span>
+                <span>
+                  <b>Revision</b> {sessionIntent.nextReview}
+                </span>
+              </div>
             </div>
-            <div className="toolbar compact" style={{ marginBottom: 0 }}>
+            <div className="toolbar compact session-sheet-actions">
               <QuickSketchLauncher
-                buttonClassName="secondary"
+                buttonClassName="secondary sm"
                 buttonLabel="Boceto rapido"
                 buttonTitle="Abrir un boceto rapido desde Sesion"
                 panelTitle="Boceto rapido para la sesion"
@@ -195,7 +208,7 @@ export function SessionsView() {
               />
               <button
                 type="button"
-                className="secondary"
+                className="secondary sm"
                 disabled={!session.blocks.length}
                 onClick={() => setPitchSideOpen(true)}
               >
@@ -203,43 +216,36 @@ export function SessionsView() {
               </button>
               <button
                 type="button"
-                onClick={() => void exportSessionPdf(session.blocks, computed)}
+                className="btn primary"
+                onClick={() => void exportSessionPdf(session.blocks, computed, exerciseVariants)}
               >
                 Exportar PDF
               </button>
             </div>
           </div>
-          <div className="session-origin-card">
-            <span className="eyebrow">Foco semanal</span>
-            <h4>{shorten(sessionIntent.problem, 110)}</h4>
-            <div className="session-intent-grid compact">
-              <div className="session-intent-item">
-                <span>Objetivo</span>
-                <b>{sessionIntent.objective}</b>
-              </div>
-              <div className="session-intent-item">
-                <span>Senal de exito</span>
-                <b>{sessionIntent.successSignal}</b>
-              </div>
-              <div className="session-intent-item">
-                <span>Revision partido</span>
-                <b>{sessionIntent.nextReview}</b>
-              </div>
-            </div>
-          </div>
-          <div className="session-summary" style={{ marginTop: 12 }}>
-            <div className="summary-tile">
-              <b>{session.blocks.length}</b>
-              Ejercicios
-            </div>
-            <div className="summary-tile">
-              <b>{computed.totalDuration}'</b>
-              Duracion
-            </div>
-            <div className="summary-tile">
-              <b>{computed.totalLoad}</b>
-              Carga
-            </div>
+          <div className="session-totals-row">
+            <span className="session-totals-chip">
+              {session.blocks.length} ejercicios
+            </span>
+            <span className="session-totals-chip">{computed.totalDuration}'</span>
+            <span className="session-totals-chip">carga {computed.totalLoad}</span>
+            {computed.materials.length ? (
+              <span className="session-totals-chip">
+                materiales:{" "}
+                {computed.materials
+                  .map((material) => `${material.qty} ${material.name}`)
+                  .join(", ")}
+              </span>
+            ) : null}
+            {alerts.map((alert) => (
+              <span
+                key={alert.message}
+                className={`session-alert-chip ${alert.severity}`}
+                title={alert.message}
+              >
+                {alertChipLabel(alert.message)}
+              </span>
+            ))}
           </div>
           <DroppableSessionArea id="session-dropzone">
             <SortableContext
@@ -256,6 +262,9 @@ export function SessionsView() {
                     />
                   ))
                 ) : (
+                  // W19 REGION FLUJO (mc-19): CTA "Crear sesion desde foco
+                  // semanal" hoy solo dispara el store (no-op de flujo mas
+                  // alla de eso) - el flip del thread es de mc-19.
                   <div className="muted-panel">
                     <p style={{ marginTop: 0 }}>
                       Arrastra ejercicios desde Biblioteca o crea un borrador
@@ -291,9 +300,52 @@ export function SessionsView() {
               </div>
             </SortableContext>
           </DroppableSessionArea>
+
+          <details className="home-collapse session-microcycle-details">
+            <summary>
+              <span className="home-collapse-summary-row">
+                Semana competitiva · Microciclo
+              </span>
+            </summary>
+            <div className="home-collapse-body">
+              <div className="microcycle-grid" style={{ marginTop: 12 }}>
+                {Object.entries(microcycle.days).map(([day, value]) => (
+                  <div className="micro-day" key={day}>
+                    <strong>{day}</strong>
+                    <p>{value.objective}</p>
+                    <LoadMeter load={value.targetLoad} label={day} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <h4>Alertas</h4>
+                {alerts.length ? (
+                  alerts.map((alert) => (
+                    <div
+                      className={`alert-row ${alert.severity}`}
+                      key={alert.message}
+                    >
+                      {alert.message}
+                    </div>
+                  ))
+                ) : (
+                  <p className="muted">Sin alertas relevantes.</p>
+                )}
+              </div>
+              <div className="toolbar" style={{ marginTop: 14 }}>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => window.print()}
+                >
+                  Imprimir vista
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
 
-        <div className="team-card">
+        <div className="team-card session-catalog-rail">
           <span className="panel-eyebrow">Ejercicios disponibles</span>
           <h3>Catalogo para arrastrar</h3>
           <p className="muted-panel">
@@ -339,44 +391,6 @@ export function SessionsView() {
               la busqueda para encontrar mas rapido.
             </p>
           )}
-        </div>
-
-        <div className="team-card">
-          <span className="panel-eyebrow">Semana competitiva</span>
-          <h3>Microciclo</h3>
-          <div className="microcycle-grid" style={{ marginTop: 12 }}>
-            {Object.entries(microcycle.days).map(([day, value]) => (
-              <div className="micro-day" key={day}>
-                <strong>{day}</strong>
-                <p>{value.objective}</p>
-                <LoadMeter load={value.targetLoad} label={day} />
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 14 }}>
-            <h4>Alertas</h4>
-            {alerts.length ? (
-              alerts.map((alert) => (
-                <div
-                  className={`alert-row ${alert.severity}`}
-                  key={alert.message}
-                >
-                  {alert.message}
-                </div>
-              ))
-            ) : (
-              <p className="muted">Sin alertas relevantes.</p>
-            )}
-          </div>
-          <div className="toolbar" style={{ marginTop: 14 }}>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => window.print()}
-            >
-              Imprimir vista
-            </button>
-          </div>
         </div>
       </section>
       <DragOverlay>
@@ -487,27 +501,20 @@ const SessionBlockCard = memo(function SessionBlockCard({
         className="session-block"
         {...attributes}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "24px 1fr auto",
-            gap: 10,
-            alignItems: "start",
-          }}
-          {...listeners}
-        >
-          <strong>{index + 1}</strong>
-          <div>
-            <b>Ejercicio retirado del catalogo</b>
-            <br />
-            <small>
-              Este bloque referencia un ejercicio que ya no esta disponible (
-              {block.exerciseId}).
-            </small>
+        <div className="session-block-row">
+          <div className="session-block-row-drag" {...listeners}>
+            <strong className="session-block-index">{index + 1}</strong>
+            <div className="session-block-title">
+              <b>Ejercicio retirado del catalogo</b>
+              <small>
+                Este bloque referencia un ejercicio que ya no esta disponible (
+                {block.exerciseId}).
+              </small>
+            </div>
           </div>
           <button
             type="button"
-            className="secondary"
+            className="secondary sm"
             onClick={() => removeSessionBlock(block.id)}
           >
             Quitar bloque
@@ -562,113 +569,122 @@ const SessionBlockCard = memo(function SessionBlockCard({
       className="session-block"
       {...attributes}
     >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "24px 1fr auto",
-          gap: 10,
-          alignItems: "start",
-        }}
-        {...listeners}
-      >
-        <strong>{index + 1}</strong>
-        <div>
-          <b>{exercise.title}</b>
-          <br />
-          <small>
-            {exercise.phase} - {exercise.principle} - {exercise.intensity}
-          </small>
+      <div className="session-block-row">
+        <div className="session-block-row-drag" {...listeners}>
+          <strong className="session-block-index">{index + 1}</strong>
+          <div className="session-block-title">
+            <b>{exercise.title}</b>
+            <small>
+              {exercise.phase} · {exercise.principle} · {exercise.intensity}
+            </small>
+          </div>
+        </div>
+        <div className="session-block-duration">
+          <input
+            type="number"
+            min={1}
+            value={block.durationMin}
+            onChange={(event) =>
+              updateSessionBlock(block.id, {
+                durationMin: Number(event.target.value),
+              })
+            }
+          />
+          <span className="muted">RPE {exercise.rpe}</span>
+        </div>
+        <div className="session-block-attach-flags" aria-label="Adjuntos del bloque">
+          {block.sketchId ? <span title="Tiene boceto adjunto">✎</span> : null}
+          {block.boardId ? <span title="Tiene pizarra tactica adjunta">▦</span> : null}
+          {/* W19 REGION BLOQUE (mc-22): el boton "Ver en cancha 3D" se
+              cablea aca - se deja el espacio en la fila, no implementado
+              en esta ola. */}
         </div>
         <button
           type="button"
-          className="secondary"
+          className="secondary sm"
           onClick={() => removeSessionBlock(block.id)}
         >
           Quitar
         </button>
       </div>
-      <PitchViz
-        compact
-        title="Preview tactico"
-        subtitle={`${exercise.phase} / ${exercise.principle}`}
-        overlays={previewOverlays}
-      />
-      <div className="session-intent-grid">
-        <div className="session-intent-item">
-          <span>Problema</span>
-          <b>{blockIntent.problem}</b>
-        </div>
-        <div className="session-intent-item">
-          <span>Objetivo</span>
-          <b>{blockIntent.objective}</b>
-        </div>
-        <div className="session-intent-item">
-          <span>Senal</span>
-          <b>{blockIntent.successSignal}</b>
-        </div>
-        <div className="session-intent-item">
-          <span>Revision</span>
-          <b>{blockIntent.nextReview}</b>
-        </div>
-      </div>
-      <SessionBlockSketch
-        block={block}
-        exerciseTitle={exercise.title}
-        sketches={sketches}
-        pendingAttachId={pendingAttachId}
-        onPendingAttachChange={setPendingAttachId}
-        onAttach={(sketchId) => {
-          attachSketchToSessionBlock(block.id, sketchId);
-          setPendingAttachId("");
-        }}
-        onDetach={() => detachSketchFromSessionBlock(block.id)}
-        onEdit={(sketch) => setEditingSketch(sketch)}
-        onCreate={() => {
-          const id = createSketch({ title: `Boceto - ${exercise.title}` });
-          attachSketchToSessionBlock(block.id, id);
-          const created = useAppStore.getState().sketches.find((entry) => entry.id === id);
-          if (created) setEditingSketch(created);
-        }}
-      />
-      <SessionBlockBoard
-        block={block}
-        boards={tacticalBoards}
-        pendingAttachId={pendingBoardAttachId}
-        onPendingAttachChange={setPendingBoardAttachId}
-        onAttach={(boardId, sceneId) => {
-          attachBoardToSessionBlock(block.id, boardId, sceneId);
-          setPendingBoardAttachId("");
-        }}
-        onDetach={() => detachBoardFromSessionBlock(block.id)}
-        onOpen={(boardId, sceneId) => useAppStore.getState().openTacticalBoard(boardId, sceneId)}
-        onCreateBlock={(boardId, sceneId) => createSessionBlockFromBoardScene(boardId, sceneId)}
-      />
-      {editingSketch && (
-        <div className="session-sketch-editor">
-          <QuickSketchView
-            sketch={editingSketch}
-            onSave={(sketch) => {
-              updateSketch(sketch.id, sketch);
-              setEditingSketch(null);
-            }}
-            onCancel={() => setEditingSketch(null)}
+
+      <details className="home-collapse session-block-detail">
+        <summary>
+          <span className="home-collapse-summary-row">
+            Detalle, boceto y pizarra
+          </span>
+        </summary>
+        <div className="home-collapse-body">
+          <PitchViz
+            compact
+            title="Preview tactico"
+            subtitle={`${exercise.phase} / ${exercise.principle}`}
+            overlays={previewOverlays}
           />
+          <div className="session-intent-grid">
+            <div className="session-intent-item">
+              <span>Problema</span>
+              <b>{blockIntent.problem}</b>
+            </div>
+            <div className="session-intent-item">
+              <span>Objetivo</span>
+              <b>{blockIntent.objective}</b>
+            </div>
+            <div className="session-intent-item">
+              <span>Senal</span>
+              <b>{blockIntent.successSignal}</b>
+            </div>
+            <div className="session-intent-item">
+              <span>Revision</span>
+              <b>{blockIntent.nextReview}</b>
+            </div>
+          </div>
+          <SessionBlockSketch
+            block={block}
+            exerciseTitle={exercise.title}
+            sketches={sketches}
+            pendingAttachId={pendingAttachId}
+            onPendingAttachChange={setPendingAttachId}
+            onAttach={(sketchId) => {
+              attachSketchToSessionBlock(block.id, sketchId);
+              setPendingAttachId("");
+            }}
+            onDetach={() => detachSketchFromSessionBlock(block.id)}
+            onEdit={(sketch) => setEditingSketch(sketch)}
+            onCreate={() => {
+              const id = createSketch({ title: `Boceto - ${exercise.title}` });
+              attachSketchToSessionBlock(block.id, id);
+              const created = useAppStore.getState().sketches.find((entry) => entry.id === id);
+              if (created) setEditingSketch(created);
+            }}
+          />
+          <SessionBlockBoard
+            block={block}
+            boards={tacticalBoards}
+            pendingAttachId={pendingBoardAttachId}
+            onPendingAttachChange={setPendingBoardAttachId}
+            onAttach={(boardId, sceneId) => {
+              attachBoardToSessionBlock(block.id, boardId, sceneId);
+              setPendingBoardAttachId("");
+            }}
+            onDetach={() => detachBoardFromSessionBlock(block.id)}
+            onOpen={(boardId, sceneId) => useAppStore.getState().openTacticalBoard(boardId, sceneId)}
+            onCreateBlock={(boardId, sceneId) => createSessionBlockFromBoardScene(boardId, sceneId)}
+          />
+          {editingSketch && (
+            <div className="session-sketch-editor">
+              <QuickSketchView
+                sketch={editingSketch}
+                onSave={(sketch) => {
+                  updateSketch(sketch.id, sketch);
+                  setEditingSketch(null);
+                }}
+                onCancel={() => setEditingSketch(null)}
+              />
+            </div>
+          )}
         </div>
-      )}
-      <div className="toolbar">
-        <input
-          type="number"
-          min={1}
-          value={block.durationMin}
-          style={{ width: 88 }}
-          onChange={(event) =>
-            updateSessionBlock(block.id, {
-              durationMin: Number(event.target.value),
-            })
-          }
-        />
-        <span className="muted">RPE {exercise.rpe}</span>
-      </div>
+      </details>
     </div>
   );
 });
@@ -1030,15 +1046,32 @@ export function recomputeFallback(
 async function exportSessionPdf(
   blocks: Session["blocks"],
   computed: NonNullable<Session["computed"]>,
+  exerciseVariants: Exercise[] = [],
 ) {
   // Diferimos @react-pdf/renderer: solo se carga al exportar.
   const { exportSessionPdf: runExport } = await import("./sessionPdf");
-  await runExport(blocks, computed);
+  await runExport(blocks, computed, exerciseVariants);
 }
 
 function shorten(text: string, max: number) {
   if (text.length <= max) return text;
   return `${text.slice(0, max - 1).trim()}...`;
+}
+
+// W19: etiqueta corta y puramente presentacional para el chip semaforo de
+// la linea de totales - MicrocycleAlerts.ts no se toca (Alert solo tiene
+// severity+message, sin campo `code`). Si el mensaje no matchea ningun
+// patron conocido, se muestra completo (nunca se inventa un texto mas
+// corto que no represente la alerta real).
+function alertChipLabel(message: string): string {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("no incluye abp")) return "sin ABP";
+  if (normalized.includes("dias seguidos de carga alta")) return "racha de carga alta";
+  if (normalized.includes("carga estimada alta")) return "carga alta";
+  if (normalized.includes("aparece") && normalized.includes("veces en la sesion")) {
+    return "ejercicio repetido";
+  }
+  return message;
 }
 
 export function readSessionIntent(

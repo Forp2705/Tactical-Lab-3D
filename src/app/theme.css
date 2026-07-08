@@ -8324,6 +8324,250 @@ body .app-shell .top-stat-strip span {
   outline-color: color-mix(in oklch, var(--accent) 22%, transparent);
 }
 
+/* === W19 SESION HOJA (mc-18) === */
+
+/* Hoja de sesion: 2 columnas (hoja ~1.7fr + catalogo rail 300-360px) en vez
+   de las 3 de tactical-ui.css (hoja/catalogo/microciclo, ~3098 en ese
+   archivo) — microciclo ahora vive en un <details> DENTRO de la hoja.
+   `.team-layout` (Evolucion) comparte la regla base combinada de mas
+   arriba en este archivo y NO se toca. `body .session-layout` (2 clases)
+   le gana en especificidad a `.session-layout` sola de tactical-ui.css
+   (que carga despues sin !important) sin necesitar !important. */
+body .session-layout {
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 360px);
+}
+
+@media (max-width: 1420px) and (min-width: 1181px) {
+  body .session-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.9fr);
+  }
+}
+
+/* Cabecera de hoja (zona 2 del acceptance): eyebrow + titulo comprimido +
+   fila mono de objetivo/senal/revision, ya NO la grilla de 3 cajas
+   (`.session-intent-grid` sigue viva para el detalle POR BLOQUE, colapsado
+   — aca es una fila nueva, no un remap de esa clase compartida). */
+.session-sheet-header {
+  align-items: flex-start;
+}
+
+.session-sheet-header h4 {
+  margin: 4px 0 6px;
+  color: var(--felt-ink);
+  font-family: var(--felt-font-head);
+  font-size: 17px;
+  line-height: 1.32;
+}
+
+.session-intent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  color: color-mix(in oklch, var(--felt-ink) 80%, transparent);
+  font-size: 12px;
+}
+
+.session-intent-row b {
+  margin-right: 4px;
+  color: color-mix(in oklch, var(--felt-ink) 58%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.session-sheet-actions {
+  flex-shrink: 0;
+}
+
+.session-sheet-actions button.secondary {
+  padding: 7px 12px;
+  font-size: 11.5px;
+}
+
+/* Linea de totales (zona 3): reemplaza los 3 `.summary-tile` caja. Chips
+   mono discretos — mismo idioma que `.ai-context-chip`/`.ai-context-strip`
+   de Diagnostico, clase propia para no heredar ningun reset de boton (son
+   `<span>`, no `<button>`). Materiales NACE aca (solo lectura de
+   `computed.materials`, cero cambio de store/schema). */
+.session-totals-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.session-totals-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 72%);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--felt-ink) 5%, transparent);
+  color: color-mix(in oklch, var(--felt-ink) 88%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Chips semaforo de alerta: re-ubican el render de `computeMicrocycleAlerts`
+   (el modulo NO se toca) junto a los totales. Tres tonos semanticos
+   distintos derivados de tokens felt (mint/warn/coral) — cero hex nuevo. */
+.session-alert-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+.session-alert-chip.info {
+  border: 1px solid color-mix(in oklch, var(--felt-mint, #eafff2) 45%, transparent);
+  background: color-mix(in oklch, var(--felt-mint, #eafff2) 12%, transparent);
+  color: var(--felt-mint, #eafff2);
+}
+
+.session-alert-chip.warn {
+  border: 1px solid color-mix(in oklch, var(--warn) 45%, transparent);
+  background: color-mix(in oklch, var(--warn) 12%, transparent);
+  color: var(--warn);
+}
+
+.session-alert-chip.error {
+  border: 1px solid color-mix(in oklch, var(--felt-coral, #ff6b5e) 45%, transparent);
+  background: color-mix(in oklch, var(--felt-coral, #ff6b5e) 12%, transparent);
+  color: var(--felt-coral, #ff6b5e);
+}
+
+/* Bloques comprimidos (zona 4, el centro pedido): 999px -> fila ~120-160px.
+   PitchViz/intent-grid/attach de boceto y pizarra COLAPSAN en
+   `details.home-collapse` (clase global de Sala W18, sin scope a
+   `.home-command-view` en su base — se reusa tal cual, misma jerarquia
+   visual app-wide). */
+.session-block {
+  padding: 10px 14px;
+  gap: 8px;
+}
+
+.session-block-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-block-row-drag {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: grab;
+}
+
+.session-block-index {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--felt-ink) 10%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+}
+
+.session-block-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-block-title b {
+  overflow: hidden;
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-block-title small {
+  overflow: hidden;
+  color: color-mix(in oklch, var(--felt-ink) 62%, transparent);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-block-duration {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-block-duration input {
+  width: 64px;
+}
+
+.session-block-duration .muted {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.session-block-attach-flags {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  min-width: 28px;
+  color: color-mix(in oklch, var(--felt-gold) 75%, var(--felt-ink));
+}
+
+.session-block-detail .home-collapse-body {
+  display: grid;
+  gap: 12px;
+}
+
+.session-microcycle-details {
+  margin-top: 16px;
+}
+
+.session-microcycle-details .microcycle-grid {
+  margin-top: 0 !important;
+}
+
+/* Chips Favoritos/Recientes/Mis ejercicios del catalogo: mismo bug de
+   especificidad ya resuelto en Library (theme.css ~8684, comentario propio
+   con el detalle) — `.smart-filter-chip` (boton sin `.secondary`) pierde
+   contra el reset global `button:not(.secondary)` y cae al gradiente
+   dorado SIEMPRE, activo o no. Replico el patron con el contenedor propio
+   que ya existia (`.session-drawer-filters`), pero DESATURADO: aca son 3
+   filtros con valor "0", no una seleccion real como el favorito de
+   Biblioteca. */
+.session-drawer-filters .smart-filter-chip {
+  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 74%);
+  background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
+  color: color-mix(in oklch, var(--felt-ink, #f3efe2) 80%, transparent);
+  font-family: var(--felt-font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.session-drawer-filters .smart-filter-chip span {
+  opacity: 0.7;
+}
+
+.session-drawer-filters .smart-filter-chip.active {
+  border-color: color-mix(in oklch, var(--felt-ink, #f3efe2), transparent 40%);
+  background: color-mix(in oklch, var(--felt-ink, #f3efe2) 12%, transparent);
+  color: var(--felt-ink, #f3efe2);
+}
+
 /* === W11 FIXUP TEAM-SESSIONS (mc-19) === */
 /* Fix-up per-vista sobre la base mc-18: Evolucion (TeamView chrome + marco
    HTML del LineupLab), Sesion (planner + microciclo) y el empty-state de
