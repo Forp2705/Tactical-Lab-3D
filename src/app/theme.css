@@ -6964,10 +6964,14 @@ button.home-next-step-cta:hover {
   color: color-mix(in oklch, var(--felt-gold) 88%, white 12%);
 }
 
+/* W18 (mc-18): mas respiro - la zona baja arrancaba pegada a la fila de
+   metricas y las tiras se leian como bloque monolitico y denso (feedback
+   directo del usuario). Vive bajo el fold del demo, asi que este cambio no
+   mueve el presupuesto de fold (papers/tablero/metricas). */
 .home-lower-zone {
   display: grid;
-  gap: 12px;
-  margin-top: 4px;
+  gap: 18px;
+  margin-top: 14px;
 }
 
 /* W10 - B1 contexto activo: strip de una linea, switch demo/real a 1 click,
@@ -6978,17 +6982,20 @@ button.home-next-step-cta:hover {
 }
 
 /* W12 (mc-18 punto 4): borde mas tenue y fondo casi transparente — el strip
-   competia en presencia con los papeles/tablero de arriba. */
+   competia en presencia con los papeles/tablero de arriba.
+   W18 (mc-18): pierde la caja del todo — es META (modo demo/real + switch),
+   no una tira operativa como las `details.home-collapse` de abajo; queda
+   como linea mono un escalon por debajo de esas. */
 .home-context-strip {
   display: flex;
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
   max-height: 44px;
-  padding: 10px 14px;
-  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 70%);
-  border-radius: 10px;
-  background: color-mix(in oklch, var(--felt-panel), transparent 55%);
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .home-context-label {
@@ -7021,11 +7028,60 @@ button.home-context-action {
 /* W12 (mc-18 punto 4): mismos ajustes de presencia que .home-context-strip —
    borde tenue, fondo casi transparente, tipografia un punto mas chica -
    estos 4 collapses competian visualmente con el primer viewport. */
+/* W18 (mc-18): jerarquia - border-left propio (mismo tono que el resto en
+   reposo) que se dora al abrir; hover/[open] suben un paso el fondo para que
+   las tiras no se lean como bloque monolitico clonado. */
 details.home-collapse {
   border: 1px solid color-mix(in oklch, var(--felt-line), transparent 70%);
+  border-left: 3px solid color-mix(in oklch, var(--felt-line), transparent 70%);
   border-radius: 10px;
   background: color-mix(in oklch, var(--felt-panel), transparent 55%);
   overflow: hidden;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+details.home-collapse:hover {
+  background: color-mix(in oklch, var(--felt-panel), transparent 42%);
+}
+
+details.home-collapse[open] {
+  border-left-color: color-mix(in oklch, var(--felt-gold) 55%, transparent);
+  background: color-mix(in oklch, var(--felt-panel), transparent 38%);
+}
+
+/* W18 (mc-18): FICHA DEL EQUIPO - que el DT defina nombre/categoria/sistema
+   es la decision primordial de un workspace real recien empezado (feedback
+   directo del usuario), no otra tira operativa mas. Canto dorado PERMANENTE
+   (no solo en [open], a diferencia del resto de las tiras) + radial sutil +
+   summary un paso mas grande/dorado. Un nivel arriba de las tiras, un
+   escalon por debajo de papeles/tablero (gateados W12-14). */
+details.home-collapse.home-collapse-setup {
+  border-left-color: color-mix(in oklch, var(--felt-gold) 70%, transparent);
+  background:
+    radial-gradient(
+      120% 160% at 100% 0%,
+      color-mix(in oklch, var(--felt-gold) 8%, transparent),
+      transparent 60%
+    ),
+    color-mix(in oklch, var(--felt-panel), transparent 45%);
+}
+
+details.home-collapse.home-collapse-setup:hover,
+details.home-collapse.home-collapse-setup[open] {
+  border-left-color: color-mix(in oklch, var(--felt-gold) 80%, transparent);
+  background:
+    radial-gradient(
+      120% 160% at 100% 0%,
+      color-mix(in oklch, var(--felt-gold) 8%, transparent),
+      transparent 60%
+    ),
+    color-mix(in oklch, var(--felt-panel), transparent 32%);
+}
+
+details.home-collapse.home-collapse-setup > summary {
+  padding-block: 14px;
+  font-size: 11px;
+  color: color-mix(in oklch, var(--felt-gold) 80%, var(--felt-ink));
 }
 
 details.home-collapse > summary {
@@ -7054,11 +7110,13 @@ details.home-collapse > summary::marker {
   content: "";
 }
 
+/* W18 (mc-18): affordance +/- dorado en vez de ink apagado - hoy se leia
+   muerto/decorativo, no como un control interactivo. */
 details.home-collapse > summary::after {
   content: "+";
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 400;
-  color: color-mix(in oklch, var(--felt-ink) 65%, transparent);
+  color: color-mix(in oklch, var(--felt-gold) 65%, transparent);
 }
 
 details.home-collapse[open] > summary::after {
@@ -7067,6 +7125,36 @@ details.home-collapse[open] > summary::after {
 
 details.home-collapse .home-collapse-body {
   padding: 0 14px 16px;
+}
+
+/* W18 (mc-18): controles embebidos en los summaries (chip de Observacion
+   manual, boton "Boceto rapido" del QuickSketchLauncher dentro de Quick
+   Start) pasan de pill blanca/generica a mono fantasma - transparente,
+   borde felt tenue, hover dorado. Scope exacto a `details.home-collapse >
+   summary` para NO tocar `.ai-context-chip`/`.secondary.sm` en el resto de
+   la app (Diagnostico, otras vistas). `.home-command-view` prefix +
+   3 clases para ganarle en especificidad al remap existente
+   `.home-command-view details.home-collapse .ai-context-chip` (theme.css
+   mas abajo, W12) que de otro modo pintaria la pill dorada de vuelta. */
+.home-command-view details.home-collapse > summary .ai-context-chip,
+.home-command-view details.home-collapse > summary button.secondary.sm {
+  max-width: none;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 62%) !important;
+  border-radius: 999px;
+  background: transparent !important;
+  color: color-mix(in oklch, var(--felt-ink) 85%, transparent) !important;
+  font-family: var(--felt-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: none !important;
+}
+
+.home-command-view details.home-collapse > summary button.secondary.sm:hover {
+  border-color: color-mix(in oklch, var(--felt-gold) 55%, transparent) !important;
+  color: var(--felt-ink) !important;
 }
 
 /* Single wrapping flex item for summary content, so the ::after +/-
@@ -7140,6 +7228,24 @@ details.home-collapse .home-collapse-body {
   color: var(--felt-ink) !important;
 }
 
+/* W18 (mc-18): mismo tratamiento ficha que .home-collapse-setup - definir
+   el equipo es la MISMA decision primordial cuando todavia ni siquiera
+   existe el details de setup (real, sin identidad bootstrapeada). Hoy
+   .home-onboarding-strip no tenia caja propia (solo los botones internos
+   de mas abajo), asi que se leia como texto suelto flotando sobre el felt. */
+.home-command-view .home-onboarding-strip {
+  padding: 16px 18px;
+  border-left: 4px solid color-mix(in oklch, var(--felt-gold) 70%, transparent);
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      120% 160% at 100% 0%,
+      color-mix(in oklch, var(--felt-gold) 8%, transparent),
+      transparent 60%
+    ),
+    color-mix(in oklch, var(--felt-panel), transparent 35%);
+}
+
 /* W10 fix - RealCoachOnboarding (home-onboarding-strip) is Sala-only, so its
    `.btn.primary` CTAs (Empezar con mi equipo / Siguiente / Guardar y
    terminar / Crear primer foco semanal) were still hitting the cockpit lime
@@ -7190,8 +7296,12 @@ details.home-collapse .home-collapse-body {
     gap: 12px;
   }
 
+  /* W18 (mc-18): la zona baja vive bajo el fold de este query (papers/
+     tablero/metricas ya cerraron arriba); mas gap aca no mueve el
+     presupuesto de fold, solo el respiro de lo que sigue debajo. */
   .home-lower-zone {
-    gap: 8px;
+    gap: 12px;
+    margin-top: 10px;
   }
 
   .home-context-strip-wrap {

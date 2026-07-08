@@ -286,10 +286,10 @@ export function HomeView() {
             )}
           </div>
           {workspaceMode === "real" && !isTeamIdentityConfigured(teamIdentity) ? (
-            <details className="home-collapse">
+            <details className="home-collapse home-collapse-setup">
               <summary>
                 <span className="home-collapse-summary-row">
-                  SETUP MINIMO · DEFINI LA IDENTIDAD DEL EQUIPO
+                  TU EQUIPO · NOMBRE, CATEGORIA Y SISTEMA DE JUEGO
                 </span>
               </summary>
               <div className="home-collapse-body">
