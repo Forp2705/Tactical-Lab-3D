@@ -6691,6 +6691,17 @@ button.home-paper-link-cta:hover {
   color: var(--felt-coral-ink);
 }
 
+/* W17 fase 2 (mc-19): el link mono base usa tinta de papel (--felt-bg-3),
+   ilegible sobre las cards oscuras del cockpit del coach; ahi va la variante
+   gold (mismo tratamiento que button.home-next-step-cta). */
+.coach-report button.home-paper-link-cta {
+  color: var(--felt-gold);
+}
+
+.coach-report button.home-paper-link-cta:hover {
+  color: color-mix(in oklch, var(--felt-gold) 88%, white 12%);
+}
+
 button.home-paper-secondary-link {
   width: auto;
   padding: 0;

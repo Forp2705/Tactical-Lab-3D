@@ -1609,6 +1609,16 @@ function AdviceResult({
             >
               Exportar diagnostico
             </button>
+            {/* W17 fase 2 (mc-19): salida del diagnostico hacia la Pizarra.
+                Link mono por LENGUAJE-ROMBOIQ (un solo slab dorado por vista
+                = "Consultar Coach"); setView no toca aiMode. */}
+            <button
+              type="button"
+              className="home-paper-link-cta"
+              onClick={() => useAppStore.getState().setView("board")}
+            >
+              Llevar a la pizarra
+            </button>
           </div>
         </section>
       </div>
@@ -2551,6 +2561,25 @@ function EmptyState({
         Cuando consultes, la respuesta va a mostrar lectura, evidencia usada,
         acciones posibles y nivel de confianza.
       </p>
+      {/* W17 fase 2 (mc-19): sin respuesta activa el diagnostico igual tiene
+          salida hacia Sesion y Pizarra — links mono discretos (LENGUAJE),
+          mismos destinos que la nav lateral; setView no toca aiMode. */}
+      <div className="toolbar compact" style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          className="home-paper-link-cta"
+          onClick={() => useAppStore.getState().setView("sessions")}
+        >
+          Armar sesion
+        </button>
+        <button
+          type="button"
+          className="home-paper-link-cta"
+          onClick={() => useAppStore.getState().setView("board")}
+        >
+          Abrir pizarra
+        </button>
+      </div>
       {shapeContext ? (
         <div className="football-report-grid" style={{ marginTop: 14 }}>
           <PitchViz
