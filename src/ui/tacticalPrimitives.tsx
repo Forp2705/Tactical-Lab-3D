@@ -7,11 +7,16 @@ export function ConfidenceMeter({
   label,
   reason,
   compact = false,
+  displayValue,
 }: {
   value: number;
   label?: string;
   reason?: string;
   compact?: boolean;
+  // W17 H3: cuando la escala de origen es cualitativa (un enum, no un numero
+  // medido), el texto reemplaza al porcentaje y la barra queda como fill
+  // cualitativo — la UI no inventa precision decimal.
+  displayValue?: string;
 }) {
   const percent = Math.max(0, Math.min(100, Math.round(value * 100)));
   const tone: ConfidenceTone =
@@ -21,9 +26,16 @@ export function ConfidenceMeter({
     <div className={`tl-confidence ${tone} ${compact ? "compact" : ""}`}>
       <div className="tl-confidence-head">
         <span>{label ?? "Confianza"}</span>
-        <b>{percent}%</b>
+        <b>{displayValue ?? `${percent}%`}</b>
       </div>
-      <div className="tl-meter" aria-label={`Confianza ${percent}%`}>
+      <div
+        className="tl-meter"
+        aria-label={
+          displayValue
+            ? `${label ?? "Confianza"}: ${displayValue}`
+            : `Confianza ${percent}%`
+        }
+      >
         <i style={{ width: `${percent}%` }} />
       </div>
       {reason && !compact ? <small>{reason}</small> : null}

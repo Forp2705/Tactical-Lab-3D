@@ -39,6 +39,7 @@ import {
 } from "@/ui/tacticalPrimitives";
 import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 import { type CoachShapeContext, useAppStore } from "@/state/useAppStore";
+import { hasOpponentScoutData, type OpponentScout } from "@/scout/opponentScout";
 import {
   summarizeVideoEvidence,
   videoEvidenceToTagsText,
@@ -75,6 +76,8 @@ type CockpitContext = {
   videoTags: number;
   videoTracks: number;
   manualObservations: number;
+  latestObservationText: string | null;
+  scoutToken: string;
   recentReports: SavedPostMatchReport[];
   acceptedMemory: Array<{
     reportId: string;
@@ -83,6 +86,44 @@ type CockpitContext = {
   }>;
   teamPatterns: TeamPattern[];
 };
+
+// W17 (mc-21, punto 5): resumen contable de lo que se envia al coach al
+// disparar una consulta, congelado en estado local (ver runCoachAgent).
+// Mismos campos/valores que ya viajan via buildCoachRuntimeContext — esto
+// solo los muestra, no cambia el payload.
+export type SentContextSnapshot = {
+  shapeLabel: string;
+  squadLabel: string;
+  scoutLabel: string;
+  observationsLabel: string;
+  reportsLabel: string;
+};
+
+export function buildSentContextSnapshot(params: {
+  coachShapeContext: CoachShapeContext | null;
+  lineupLabShapes: Array<{ name: string }>;
+  availablePlayers: number;
+  totalPlayers: number;
+  opponentScout: OpponentScout;
+  manualObservationsCount: number;
+  reportsCount: number;
+}): SentContextSnapshot {
+  const shapeName =
+    params.coachShapeContext?.selectedShapeName ??
+    params.lineupLabShapes[0]?.name ??
+    null;
+  const scoutHasData = hasOpponentScoutData(params.opponentScout);
+
+  return {
+    shapeLabel: shapeName ? `Shape: ${shapeName}` : "Sin shape activo",
+    squadLabel: `Disponibles ${params.availablePlayers}/${params.totalPlayers}`,
+    scoutLabel: scoutHasData
+      ? `Scout: ${params.opponentScout.rival}`
+      : "Sin scout de rival",
+    observationsLabel: `Observaciones: ${params.manualObservationsCount}`,
+    reportsLabel: `Reportes recientes: ${params.reportsCount}`,
+  };
+}
 
 type CoachEvidenceCitation = CoachMatchAdvice["evidenceCitations"][number];
 
@@ -93,10 +134,7 @@ type EvidenceViewModel = {
   bucket: EvidenceBucket;
   sourceLabel: string;
   modeLabel: string;
-  date?: string;
-  opponent?: string;
-  score?: string;
-  relevance: number;
+  relevance?: number;
 };
 
 export function AiView() {
@@ -115,6 +153,9 @@ export function AiView() {
   const tracksCount = useAppStore((state) => state.tracks.length);
   const sessionBlockCount = useAppStore((state) => state.session.blocks.length);
   const allManualObservations = useAppStore((state) => state.manualObservations);
+  const opponentScout = useAppStore((state) => state.opponentScout);
+  const tacticalBoards = useAppStore((state) => state.tacticalBoards);
+  const activeBoardId = useAppStore((state) => state.activeBoardId);
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const exerciseVariants = useAppStore((state) => state.exerciseVariants);
@@ -130,6 +171,8 @@ export function AiView() {
   const [responseMode, setResponseMode] =
     useState<CoachResponse["mode"] | null>(null);
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
+  const [sentContextSnapshot, setSentContextSnapshot] =
+    useState<SentContextSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
@@ -196,6 +239,24 @@ export function AiView() {
     coachShapeContext != null
       ? (coachShapeContext.rivalReference?.length ?? 0) > 0
       : null;
+  // W17 (mc-21, H1/H3): scout y pizarra son hechos contables independientes
+  // del shape/rivalReference de arriba — nunca se omiten en silencio, siempre
+  // rinden un token "sin X" cuando no hay dato (W17-CONTEXT-AUDIT.md).
+  const scoutHasData = hasOpponentScoutData(opponentScout);
+  const scoutToken = scoutHasData
+    ? `Rival: ${opponentScout.rival}${
+        opponentScout.probableSystem.trim()
+          ? ` · ${opponentScout.probableSystem.trim()}`
+          : ""
+      }`
+    : "Sin scout de rival";
+  const activeBoard = activeBoardId
+    ? (tacticalBoards.find((board) => board.id === activeBoardId) ?? null)
+    : null;
+  const boardToken = activeBoard
+    ? `Pizarra: ${activeBoard.title} · ${activeBoard.scenes.length} escenas`
+    : "Sin pizarra activa";
+  const latestObservationText = manualObservations[0]?.text ?? null;
   const cockpitContext = useMemo(
     () => ({
       availablePlayers,
@@ -218,6 +279,8 @@ export function AiView() {
       videoTags: tagsCount,
       videoTracks: tracksCount,
       manualObservations: manualObservations.length,
+      latestObservationText,
+      scoutToken,
       recentReports,
       acceptedMemory,
       teamPatterns,
@@ -227,9 +290,11 @@ export function AiView() {
       acceptedMemory,
       availablePlayers,
       coachShapeContext,
+      latestObservationText,
       lineupLabShapes,
       lineupLabTransitions.length,
       recentReports,
+      scoutToken,
       selectedExercise.title,
       selectedExerciseMissing,
       sessionBlockCount,
@@ -274,6 +339,27 @@ export function AiView() {
   }) {
     if (!input || loading) return;
     const runtimeState = useAppStore.getState();
+    // W17 (mc-21, punto 5 / H4 de mc-17 absorbido): congelar un resumen
+    // contable de lo que se esta por enviar, al momento de disparar la
+    // consulta (cubre las 3 vias: boton, submitInterviewAnswers y
+    // skipInterviewAndRunHypothesis, todas pasan por aca). Solo presentacion
+    // — no cambia que viaja a buildCoachRuntimeContext debajo.
+    const scopedObservationsForSnapshot = runtimeState.manualObservations.filter(
+      (observation) => observation.teamId === runtimeState.team.id,
+    );
+    setSentContextSnapshot(
+      buildSentContextSnapshot({
+        coachShapeContext: runtimeState.coachShapeContext,
+        lineupLabShapes: runtimeState.lineupLab.shapes,
+        availablePlayers: runtimeState.team.players.filter(
+          (player) => player.status === "available",
+        ).length,
+        totalPlayers: runtimeState.team.players.length,
+        opponentScout: runtimeState.opponentScout,
+        manualObservationsCount: scopedObservationsForSnapshot.length,
+        reportsCount: cockpitContext.recentReports.length,
+      }),
+    );
     const coachContext = buildCoachRuntimeContext(
       runtimeState.workspaceMode,
       runtimeState.team,
@@ -374,48 +460,37 @@ export function AiView() {
   return (
     <>
       <AiModeTabs mode={mode} setMode={setMode} />
-      <section className="ai-cockpit">
-        <header className="ai-cockpit-hero team-card">
-          <div>
-            <span className="panel-eyebrow">Diagnostico semanal</span>
-            <h3>Decision tactica con evidencia visible</h3>
-            <p>
-              Formula el problema, distingue hipotesis de diagnostico y baja
-              una accion concreta a la semana.
-            </p>
-          </div>
-          <div className="ai-hero-metrics" aria-label="Resumen del agente">
-            <MetricPill
-              label="Plantel"
-              value={`${cockpitContext.availablePlayers}/${teamPlayers.length}`}
-            />
-            <MetricPill label="Shapes" value={cockpitContext.shapes} />
-            <MetricPill
-              label="Evidencia"
-              value={
+      <section className="ai-cockpit felt-stage">
+        <div className="ai-cockpit-stack">
+          <main className="ai-workbench">
+            {/* W17 REGION CONTEXTO (mc-21): franja de contexto pre-pregunta.
+                Funcional, pero NO le apliques aca los fixes de
+                W17-CONTEXT-AUDIT.md (fila de scout, rename del chip de rival,
+                observacion en texto en vez de conteo) — son de mc-21. */}
+            <ContextStrip
+              activeShapeName={activeShapeName}
+              formation={activeShapeFormation}
+              availablePlayers={availablePlayers}
+              totalPlayers={teamPlayers.length}
+              rivalInContext={rivalInContext}
+              scoutToken={scoutToken}
+              boardToken={boardToken}
+              evidenceCount={
                 cockpitContext.videoTags +
                 cockpitContext.videoTracks +
                 cockpitContext.manualObservations
               }
+              reportsCount={cockpitContext.recentReports.length}
+              agentStatus={agentStatus}
+              onGoToEvolucion={() => useAppStore.getState().setView("team")}
             />
-            <MetricPill
-              label="Reportes"
-              value={cockpitContext.recentReports.length}
-            />
-          </div>
-        </header>
 
-        <div className="ai-cockpit-stack">
-          <main className="ai-workbench">
             <section className="ai-command-card team-card">
               <div className="section-title">
                 <div>
                   <span className="panel-eyebrow">Consulta tactica</span>
                   <h3>Problema a resolver</h3>
                 </div>
-                <span className="ai-context-chip">
-                  {cockpitContext.activeShape}
-                </span>
               </div>
               <textarea
                 placeholder="Describi el problema tactico, el contexto del partido, el sistema propio, el rival o el comportamiento que queres analizar."
@@ -428,30 +503,27 @@ export function AiView() {
                 <button
                   type="button"
                   className="btn primary"
-                  disabled={!input || loading || agentStatus?.openRouterConfigured === false}
+                  disabled={
+                    !input ||
+                    loading ||
+                    agentStatus?.openRouterConfigured === false ||
+                    agentStatusError !== null
+                  }
                   onClick={() => void runCoachAgent()}
                 >
                   {loading
                     ? "Analizando..."
                     : agentStatus?.openRouterConfigured === false
                       ? "IA no disponible en este entorno"
-                      : "Consultar Coach"}
+                      : agentStatusError
+                        ? "Estado del agente sin verificar"
+                        : "Consultar Coach"}
                 </button>
                 <span>
                   Usa plantel, shapes publicados, reportes, memoria y evidencia
                   disponible para sostener la lectura.
                 </span>
               </div>
-              <CoachContextSummary
-                activeShapeName={activeShapeName}
-                formation={activeShapeFormation}
-                availablePlayers={availablePlayers}
-                totalPlayers={teamPlayers.length}
-                rivalInContext={rivalInContext}
-                onGoToEvolucion={() =>
-                  useAppStore.getState().setView("team")
-                }
-              />
               {agentStatus?.openRouterConfigured === false ? (
                 <div className="tester-edge-state">
                   <b>Diagnostico en vivo no disponible</b>
@@ -462,10 +534,20 @@ export function AiView() {
                   </small>
                 </div>
               ) : null}
-              {error ? (
-                <div className="ai-card ai-error-card" role="alert">
-                  <b>Error del agente</b>
-                  <p>{error}</p>
+              {agentStatusError ? (
+                <div className="tester-edge-state warn">
+                  <b>Estado del agente sin verificar</b>
+                  <small>
+                    No se pudo confirmar si la IA esta disponible; la consulta
+                    queda pausada para no fallar en silencio.
+                  </small>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => void refreshAgentStatus()}
+                  >
+                    Reintentar verificacion
+                  </button>
                 </div>
               ) : null}
               {loading ? <CoachThinkingPanel /> : null}
@@ -476,6 +558,45 @@ export function AiView() {
               title="Decision de la semana"
               detailsLabel="El reporte completo y el contexto tecnico quedan debajo como detalle secundario."
             />
+
+            {/* W17 (mc-21, punto 5): snapshot contable de lo enviado en la
+                ultima consulta — se congela en runCoachAgent, no en cada
+                render, para que quede fijo aunque el contexto vivo cambie
+                despues. Solo aparece tras la primera consulta. */}
+            {sentContextSnapshot ? (
+              <div className="ai-context-strip" role="status">
+                <span className="panel-eyebrow">El coach recibio</span>
+                <div className="ai-context-strip-row">
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.shapeLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.squadLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.scoutLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.observationsLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.reportsLabel}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* W17 REGION RESPUESTA (mc-17): error card + entrevista +
+                respuesta corta / empty viven en esta zona. Componelas aca,
+                pero NO apliques los fixes de W17-TRUST-AUDIT.md (relevancia
+                65%, enum crudo, % inventado, error crudo, score-pill) —
+                son de mc-17. */}
+            {error ? (
+              <div className="ai-card ai-error-card" role="alert">
+                <b>Error del agente</b>
+                <p>{humanizeAgentError(error)}</p>
+              </div>
+            ) : null}
 
             {coachInterview.active && coachInterview.questions.length ? (
               <InterviewPanel
@@ -502,7 +623,6 @@ export function AiView() {
               />
             ) : !coachInterview.active || !coachInterview.questions.length ? (
               <EmptyState
-                context={cockpitContext}
                 shapeContext={coachShapeContext}
                 weeklyDecisionThread={weeklyDecisionThread}
               />
@@ -524,6 +644,9 @@ export function AiView() {
                 loading={loading}
                 onRefresh={() => void refreshAgentStatus()}
               />
+              {/* W17 REGION CONTEXTO (mc-21): fila de scout / rename rival /
+                  observacion en texto (W17-CONTEXT-AUDIT.md) van aca — no
+                  implementado en esta ola. */}
               <ActiveContextPanel
                 context={cockpitContext}
                 shapeContext={coachShapeContext}
@@ -542,12 +665,23 @@ export function AiView() {
   );
 }
 
-function CoachContextSummary({
+// W17: fusiona el viejo CoachContextSummary (shape/formacion/plantel/rival)
+// con los datos que antes vivian en el hero muerto (evidencia, reportes) +
+// estado IA, en UNA franja de chips mono ANTES del textarea (acceptance
+// criterio 4). Nada de esto viaja distinto al agente: son los mismos campos
+// de cockpitContext/agentStatus que ya se enviaban, solo cambia donde se
+// muestran.
+function ContextStrip({
   activeShapeName,
   formation,
   availablePlayers,
   totalPlayers,
   rivalInContext,
+  scoutToken,
+  boardToken,
+  evidenceCount,
+  reportsCount,
+  agentStatus,
   onGoToEvolucion,
 }: {
   activeShapeName: string | null;
@@ -555,17 +689,27 @@ function CoachContextSummary({
   availablePlayers: number;
   totalPlayers: number;
   rivalInContext: boolean | null;
+  scoutToken: string;
+  boardToken: string;
+  evidenceCount: number;
+  reportsCount: number;
+  agentStatus: AgentStatus | null;
   onGoToEvolucion: () => void;
 }) {
+  const iaToken = agentStatus?.openRouterConfigured
+    ? `IA ${agentStatus.openRouterModel || "activa"}`
+    : "IA no disponible";
+
   if (!activeShapeName) {
     return (
-      <div className="ai-context-summary" role="status">
+      <div className="ai-context-strip" role="status">
         <span className="panel-eyebrow">Contexto del coach</span>
-        <div
-          className="toolbar compact"
-          style={{ flexWrap: "wrap", marginTop: 6, alignItems: "center" }}
-        >
+        <div className="ai-context-strip-row">
           <span className="ai-context-chip">Sin shape activo</span>
+          {/* W17 (mc-21, H1/H3): scout y pizarra son hechos independientes del
+              shape — se muestran igual aunque no haya shape publicado. */}
+          <span className="ai-context-chip">{scoutToken}</span>
+          <span className="ai-context-chip">{boardToken}</span>
           <button type="button" className="btn ghost" onClick={onGoToEvolucion}>
             Ir a Evolucion a publicar un shape
           </button>
@@ -581,17 +725,19 @@ function CoachContextSummary({
     rivalInContext == null
       ? null
       : rivalInContext
-        ? "Rival presente"
-        : "Sin rival en el contexto",
+        ? "Referencia visual rival presente"
+        : "Sin referencia visual rival",
+    scoutToken,
+    boardToken,
+    `Evidencia ${evidenceCount}`,
+    `Reportes ${reportsCount}`,
+    iaToken,
   ].filter((token): token is string => Boolean(token));
 
   return (
-    <div className="ai-context-summary" role="status">
+    <div className="ai-context-strip" role="status">
       <span className="panel-eyebrow">Contexto del coach</span>
-      <div
-        className="toolbar compact"
-        style={{ flexWrap: "wrap", marginTop: 6 }}
-      >
+      <div className="ai-context-strip-row">
         {tokens.map((token) => (
           <span className="ai-context-chip" key={token}>
             {token}
@@ -646,6 +792,38 @@ function impactLabel(value: ContextualQuestion["expectedImpactOnDiagnosis"]) {
     high: "impacto alto",
     medium: "impacto medio",
     low: "impacto bajo",
+  };
+  return labels[value];
+}
+
+// W17 (misma clase que H2, hallado en vivo): el estado del hilo semanal
+// tambien llegaba crudo ("trained") al EmptyState.
+function weeklyThreadStatusLabel(
+  value: "open" | "trained" | "reviewed" | "evolved",
+) {
+  const labels: Record<typeof value, string> = {
+    open: "Abierto",
+    trained: "Entrenado",
+    reviewed: "Revisado",
+    evolved: "Evolucionado",
+  };
+  return labels[value];
+}
+
+// W17 H2: el DT nunca ve el enum crudo del schema (lección W2B).
+function tacticalDomainLabel(value: ContextualQuestion["category"]) {
+  const labels: Record<ContextualQuestion["category"], string> = {
+    defense: "Defensa",
+    pressing: "Presion",
+    block: "Bloque",
+    buildUp: "Salida de pelota",
+    defensiveTransition: "Transicion defensiva",
+    offensiveTransition: "Transicion ofensiva",
+    attack: "Ataque",
+    setPieces: "Pelota parada",
+    duels: "Duelos",
+    physicalEmotional: "Fisico y emocional",
+    systemLineup: "Sistema y once",
   };
   return labels[value];
 }
@@ -831,16 +1009,8 @@ function AgentStatusPanel({
         />
       </div>
       {statusError ? <p className="muted-panel">{statusError}</p> : null}
-      {status && !status.openRouterConfigured ? (
-        <div className="tester-edge-state">
-          <b>Coach IA no disponible</b>
-          <small>
-            Configura la clave server-side antes de un piloto con diagnostico en
-            vivo. Mientras tanto, usa Sala, Sesion, Post-partido y Evolucion
-            para mostrar el flujo completo sin mensajes rotos.
-          </small>
-        </div>
-      ) : null}
+      {/* W17 dedup: el aviso sin-key vive UNA vez en la command card; aca
+          queda solo la StatusLine de OpenRouter. */}
       {lastRun.state === "error" ? (
         <div className="tester-edge-state warn">
           <b>El proveedor no respondio bien</b>
@@ -917,6 +1087,9 @@ function ActiveContextPanel({
           label="Shapes"
           value={`${context.shapes} shapes / ${context.transitions} transiciones`}
         />
+        {/* W17 (mc-21, H1): fila espejo del scout — mismo token que la franja
+            de arriba, nunca omitida. */}
+        <ContextRow label="Scout rival" value={context.scoutToken} />
         <ContextRow label="Ejercicio actual" value={context.currentExercise} />
         <ContextRow
           label="Sesion"
@@ -931,6 +1104,19 @@ function ActiveContextPanel({
           value={`${context.manualObservations} capturas del staff`}
         />
       </div>
+      {/* W17 (mc-21, H4 propio): texto real de la observacion mas reciente,
+          no solo el conteo de arriba — mismo patron que RecentReportsPanel. */}
+      {context.latestObservationText ? (
+        <div className="ai-mini-list">
+          <div className="ai-mini-item">
+            <b>Ultima observacion</b>
+            <small>{context.manualObservations} en total</small>
+            <p>{context.latestObservationText}</p>
+          </div>
+        </div>
+      ) : (
+        <p className="muted-panel">Sin observaciones manuales cargadas.</p>
+      )}
     </section>
   );
 }
@@ -1020,7 +1206,9 @@ function PatternsPanel({ patterns }: { patterns: TeamPattern[] }) {
   );
 }
 
-function InterviewPanel({
+// W17 H2/H3: exportado para test de render (zustand v5 lee getInitialState
+// en SSR, asi que el panel se testea directo con props).
+export function InterviewPanel({
   questions,
   audit,
   drafts,
@@ -1043,7 +1231,9 @@ function InterviewPanel({
     (audit?.missing.length ?? 0) + (audit?.covered.length ?? 0),
     1,
   );
-  const evidenceValue =
+  // W17 H3: el enum de evidencia solo define un fill cualitativo de barra;
+  // el numero nunca se muestra (seria precision inventada sobre 4 niveles).
+  const evidenceFill =
     audit?.evidenceStrength === "sufficient"
       ? 0.85
       : audit?.evidenceStrength === "partial"
@@ -1051,6 +1241,9 @@ function InterviewPanel({
         : audit?.evidenceStrength === "weak"
           ? 0.35
           : 0.18;
+  const evidenceLabel = audit
+    ? evidenceStrengthLabel(audit.evidenceStrength)
+    : "Baja";
 
   return (
     <section className="coach-report interview-panel">
@@ -1067,11 +1260,10 @@ function InterviewPanel({
           </p>
         </div>
         <ConfidenceMeter
-          value={evidenceValue}
+          value={evidenceFill}
           label="Evidencia"
-          reason={`${answered}/${criticalTotal} datos criticos respondidos. Estado: ${
-            audit ? evidenceStrengthLabel(audit.evidenceStrength) : "Baja"
-          }.`}
+          displayValue={evidenceLabel}
+          reason={`${answered}/${criticalTotal} datos criticos respondidos.`}
         />
       </header>
 
@@ -1132,7 +1324,7 @@ function QuestionCard({
   return (
     <article className="interview-question-card">
       <div className="interview-question-head">
-        <span>{question.category}</span>
+        <span>{tacticalDomainLabel(question.category)}</span>
         <b>{impactLabel(question.expectedImpactOnDiagnosis)}</b>
         <EvidenceChip
           type="staff"
@@ -1363,41 +1555,10 @@ function AdviceResult({
         </div>
         <ConfidenceMeter
           value={advice.reflection.confidence}
+          label="Confianza declarada"
           reason={advice.reflection.missingInformation}
         />
       </header>
-
-      <section className="coach-report-card decision-summary-card">
-        <div className="section-title">
-          <div>
-            <span className="panel-eyebrow">Decision semanal</span>
-            <h4>Lectura principal y siguiente accion</h4>
-          </div>
-          <ConfidenceBadge confidence={advice.reflection.confidence} compact />
-        </div>
-        <div className="problem-breakdown-grid">
-          <div className="problem-breakdown-item">
-            <span>Lectura principal</span>
-            <b>{advice.probableCause}</b>
-          </div>
-          <div className="problem-breakdown-item">
-            <span>Ajuste recomendado</span>
-            <b>{advice.mainAdjustment}</b>
-          </div>
-          <div className="problem-breakdown-item">
-            <span>Que sabe</span>
-            <b>
-              {currentEvidence
-                ? `${currentEvidence} evidencia(s) del caso actual`
-                : "Sin evidencia actual confirmada"}
-            </b>
-          </div>
-          <div className="problem-breakdown-item">
-            <span>Que falta validar</span>
-            <b>{advice.reflection.missingInformation}</b>
-          </div>
-        </div>
-      </section>
 
       <ProblemBreakdownPanel advice={advice} />
 
@@ -1447,6 +1608,16 @@ function AdviceResult({
               onClick={() => exportCoachDiagnosisHtml(advice, { prompt })}
             >
               Exportar diagnostico
+            </button>
+            {/* W17 fase 2 (mc-19): salida del diagnostico hacia la Pizarra.
+                Link mono por LENGUAJE-ROMBOIQ (un solo slab dorado por vista
+                = "Consultar Coach"); setView no toca aiMode. */}
+            <button
+              type="button"
+              className="home-paper-link-cta"
+              onClick={() => useAppStore.getState().setView("board")}
+            >
+              Llevar a la pizarra
             </button>
           </div>
         </section>
@@ -1779,6 +1950,11 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
   );
 }
 
+// W17 H3: el numero es autoevaluacion del coach, no una metrica medida por
+// la app — el badge declara la fuente y los umbrales del semaforo.
+const CONFIDENCE_LEGEND =
+  "Confianza declarada por el coach sobre su propia lectura (no es una metrica medida). Semaforo: 75%+ usable, 55-74% con cautela, menos de 55% limitada.";
+
 function ConfidenceBadge({
   confidence,
   compact,
@@ -1791,17 +1967,20 @@ function ConfidenceBadge({
 
   if (compact) {
     return (
-      <span className={`confidence-chip ${tone}`}>
-        {percent}% confianza
+      <span className={`confidence-chip ${tone}`} title={CONFIDENCE_LEGEND}>
+        {percent}% declarada
       </span>
     );
   }
 
   return (
-    <div className="confidence-badge">
-      <span>Confianza</span>
+    <div className="confidence-badge" title={CONFIDENCE_LEGEND}>
+      <span>Confianza declarada por el coach</span>
       <b>{percent}%</b>
-      <small>{confidenceLabel(tone)}</small>
+      <small>
+        {confidenceLabel(tone)} - 75%+ usable / 55-74% con cautela / -55%
+        limitada
+      </small>
     </div>
   );
 }
@@ -1970,19 +2149,22 @@ function EvidenceCard({ item }: { item: EvidenceViewModel }) {
     <article className={`ai-evidence-item ${item.bucket}`}>
       <div className="evidence-card-head">
         <span>{item.sourceLabel}</span>
-        <b>{Math.round(item.relevance * 100)}%</b>
+        {item.relevance != null ? (
+          <b>{Math.round(item.relevance * 100)}%</b>
+        ) : (
+          <small>relevancia s/d</small>
+        )}
       </div>
       <strong>{item.citation.title}</strong>
       <div className="evidence-meta">
         <small>{item.modeLabel}</small>
-        {item.date ? <small>{item.date}</small> : null}
-        {item.opponent ? <small>vs {item.opponent}</small> : null}
-        {item.score ? <small className="score-pill">{item.score}</small> : null}
       </div>
       <p>{item.citation.excerpt}</p>
-      <div className="evidence-score" aria-label="Relevancia">
-        <span style={{ width: `${Math.round(item.relevance * 100)}%` }} />
-      </div>
+      {item.relevance != null ? (
+        <div className="evidence-score" aria-label="Relevancia">
+          <span style={{ width: `${Math.round(item.relevance * 100)}%` }} />
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -2192,15 +2374,6 @@ async function requestAgentStatus(): Promise<AgentStatus> {
   return statusPayload;
 }
 
-function MetricPill({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="ai-metric-pill">
-      <span>{label}</span>
-      <b>{value}</b>
-    </div>
-  );
-}
-
 function StatusLine({
   label,
   value,
@@ -2373,11 +2546,9 @@ function DiagnosisSessionPanel({ plan }: { plan: ReturnType<typeof buildSessionP
 }
 
 function EmptyState({
-  context,
   shapeContext,
   weeklyDecisionThread,
 }: {
-  context: CockpitContext;
   shapeContext: CoachShapeContext | null;
   weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
 }) {
@@ -2390,17 +2561,24 @@ function EmptyState({
         Cuando consultes, la respuesta va a mostrar lectura, evidencia usada,
         acciones posibles y nivel de confianza.
       </p>
-      <div className="ai-empty-grid">
-        <ContextRow label="Equipo" value={context.teamModel} />
-        <ContextRow label="Shape" value={context.activeShape} />
-        <ContextRow
-          label="Reportes recientes"
-          value={String(context.recentReports.length)}
-        />
-        <ContextRow
-          label="Memoria validada"
-          value={String(context.acceptedMemory.length)}
-        />
+      {/* W17 fase 2 (mc-19): sin respuesta activa el diagnostico igual tiene
+          salida hacia Sesion y Pizarra — links mono discretos (LENGUAJE),
+          mismos destinos que la nav lateral; setView no toca aiMode. */}
+      <div className="toolbar compact" style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          className="home-paper-link-cta"
+          onClick={() => useAppStore.getState().setView("sessions")}
+        >
+          Armar sesion
+        </button>
+        <button
+          type="button"
+          className="home-paper-link-cta"
+          onClick={() => useAppStore.getState().setView("board")}
+        >
+          Abrir pizarra
+        </button>
       </div>
       {shapeContext ? (
         <div className="football-report-grid" style={{ marginTop: 14 }}>
@@ -2457,7 +2635,10 @@ function EmptyState({
               label="Revision"
               value={weeklyDecisionThread.nextReviewCriteria[0] ?? "A definir"}
             />
-            <ContextRow label="Estado" value={weeklyDecisionThread.status} />
+            <ContextRow
+              label="Estado"
+              value={weeklyThreadStatusLabel(weeklyDecisionThread.status)}
+            />
           </div>
         </div>
       ) : null}
@@ -2564,24 +2745,22 @@ function isManualObservationCitation(citation: CoachEvidenceCitation) {
   );
 }
 
-function buildEvidenceViewModel(
+// W17 H1/H6: exportado para test. La relevancia solo existe si la cita la
+// declara (nada de 65% por defecto) y no se scrapea fecha/rival/score del
+// texto: sin metadata estructurada en la cita, no se muestra metadata.
+export function buildEvidenceViewModel(
   citations: CoachEvidenceCitation[],
 ): EvidenceViewModel[] {
-  return citations.map((citation) => {
-    const meta = extractEvidenceMeta(
-      `${citation.sourceId} ${citation.title} ${citation.excerpt}`,
-    );
-    return {
-      citation,
-      bucket: bucketForCitation(citation),
-      sourceLabel: labelForSourceType(citation.sourceType),
-      modeLabel: modeLabelForCitation(citation),
-      date: meta.date,
-      opponent: meta.opponent,
-      score: meta.score,
-      relevance: Math.max(0, Math.min(1, citation.relevance ?? 0.65)),
-    };
-  });
+  return citations.map((citation) => ({
+    citation,
+    bucket: bucketForCitation(citation),
+    sourceLabel: labelForSourceType(citation.sourceType),
+    modeLabel: modeLabelForCitation(citation),
+    relevance:
+      citation.relevance == null
+        ? undefined
+        : Math.max(0, Math.min(1, citation.relevance)),
+  }));
 }
 
 function bucketForCitation(citation: CoachEvidenceCitation): EvidenceBucket {
@@ -2606,22 +2785,6 @@ function modeLabelForCitation(citation: CoachEvidenceCitation) {
     knowledge: "Usado como contexto tactico",
   };
   return labels[citation.sourceType];
-}
-
-function extractEvidenceMeta(text: string) {
-  const date = text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
-  const altDate = text.match(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/)?.[0];
-  const score = text.match(/\b\d{1,2}\s*[-–]\s*\d{1,2}\b/)?.[0];
-  const opponentMatch = text.match(
-    /(?:vs|contra)\s+([^|()\-.,;]+(?:\s+[^|()\-.,;]+)?)/i,
-  );
-  const opponent = opponentMatch?.[1]?.trim();
-
-  return {
-    date: date ?? altDate,
-    opponent,
-    score: score?.replace(/\s/g, ""),
-  };
 }
 
 function memoryCategoryLabel(category: MemoryCandidate["category"]) {
