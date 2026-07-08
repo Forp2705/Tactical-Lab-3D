@@ -93,10 +93,7 @@ type EvidenceViewModel = {
   bucket: EvidenceBucket;
   sourceLabel: string;
   modeLabel: string;
-  date?: string;
-  opponent?: string;
-  score?: string;
-  relevance: number;
+  relevance?: number;
 };
 
 export function AiView() {
@@ -415,14 +412,21 @@ export function AiView() {
                 <button
                   type="button"
                   className="btn primary"
-                  disabled={!input || loading || agentStatus?.openRouterConfigured === false}
+                  disabled={
+                    !input ||
+                    loading ||
+                    agentStatus?.openRouterConfigured === false ||
+                    agentStatusError !== null
+                  }
                   onClick={() => void runCoachAgent()}
                 >
                   {loading
                     ? "Analizando..."
                     : agentStatus?.openRouterConfigured === false
                       ? "IA no disponible en este entorno"
-                      : "Consultar Coach"}
+                      : agentStatusError
+                        ? "Estado del agente sin verificar"
+                        : "Consultar Coach"}
                 </button>
                 <span>
                   Usa plantel, shapes publicados, reportes, memoria y evidencia
@@ -437,6 +441,22 @@ export function AiView() {
                     resto del flujo sigue disponible para demo, revision y
                     preparacion semanal.
                   </small>
+                </div>
+              ) : null}
+              {agentStatusError ? (
+                <div className="tester-edge-state warn">
+                  <b>Estado del agente sin verificar</b>
+                  <small>
+                    No se pudo confirmar si la IA esta disponible; la consulta
+                    queda pausada para no fallar en silencio.
+                  </small>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => void refreshAgentStatus()}
+                  >
+                    Reintentar verificacion
+                  </button>
                 </div>
               ) : null}
               {loading ? <CoachThinkingPanel /> : null}
@@ -456,7 +476,7 @@ export function AiView() {
             {error ? (
               <div className="ai-card ai-error-card" role="alert">
                 <b>Error del agente</b>
-                <p>{error}</p>
+                <p>{humanizeAgentError(error)}</p>
               </div>
             ) : null}
 
@@ -648,6 +668,38 @@ function impactLabel(value: ContextualQuestion["expectedImpactOnDiagnosis"]) {
   return labels[value];
 }
 
+// W17 (misma clase que H2, hallado en vivo): el estado del hilo semanal
+// tambien llegaba crudo ("trained") al EmptyState.
+function weeklyThreadStatusLabel(
+  value: "open" | "trained" | "reviewed" | "evolved",
+) {
+  const labels: Record<typeof value, string> = {
+    open: "Abierto",
+    trained: "Entrenado",
+    reviewed: "Revisado",
+    evolved: "Evolucionado",
+  };
+  return labels[value];
+}
+
+// W17 H2: el DT nunca ve el enum crudo del schema (lección W2B).
+function tacticalDomainLabel(value: ContextualQuestion["category"]) {
+  const labels: Record<ContextualQuestion["category"], string> = {
+    defense: "Defensa",
+    pressing: "Presion",
+    block: "Bloque",
+    buildUp: "Salida de pelota",
+    defensiveTransition: "Transicion defensiva",
+    offensiveTransition: "Transicion ofensiva",
+    attack: "Ataque",
+    setPieces: "Pelota parada",
+    duels: "Duelos",
+    physicalEmotional: "Fisico y emocional",
+    systemLineup: "Sistema y once",
+  };
+  return labels[value];
+}
+
 function buildCoachRuntimeContext(
   workspaceMode: ReturnType<typeof useAppStore.getState>["workspaceMode"],
   team: ReturnType<typeof useAppStore.getState>["team"],
@@ -829,16 +881,8 @@ function AgentStatusPanel({
         />
       </div>
       {statusError ? <p className="muted-panel">{statusError}</p> : null}
-      {status && !status.openRouterConfigured ? (
-        <div className="tester-edge-state">
-          <b>Coach IA no disponible</b>
-          <small>
-            Configura la clave server-side antes de un piloto con diagnostico en
-            vivo. Mientras tanto, usa Sala, Sesion, Post-partido y Evolucion
-            para mostrar el flujo completo sin mensajes rotos.
-          </small>
-        </div>
-      ) : null}
+      {/* W17 dedup: el aviso sin-key vive UNA vez en la command card; aca
+          queda solo la StatusLine de OpenRouter. */}
       {lastRun.state === "error" ? (
         <div className="tester-edge-state warn">
           <b>El proveedor no respondio bien</b>
@@ -1018,7 +1062,9 @@ function PatternsPanel({ patterns }: { patterns: TeamPattern[] }) {
   );
 }
 
-function InterviewPanel({
+// W17 H2/H3: exportado para test de render (zustand v5 lee getInitialState
+// en SSR, asi que el panel se testea directo con props).
+export function InterviewPanel({
   questions,
   audit,
   drafts,
@@ -1041,7 +1087,9 @@ function InterviewPanel({
     (audit?.missing.length ?? 0) + (audit?.covered.length ?? 0),
     1,
   );
-  const evidenceValue =
+  // W17 H3: el enum de evidencia solo define un fill cualitativo de barra;
+  // el numero nunca se muestra (seria precision inventada sobre 4 niveles).
+  const evidenceFill =
     audit?.evidenceStrength === "sufficient"
       ? 0.85
       : audit?.evidenceStrength === "partial"
@@ -1049,6 +1097,9 @@ function InterviewPanel({
         : audit?.evidenceStrength === "weak"
           ? 0.35
           : 0.18;
+  const evidenceLabel = audit
+    ? evidenceStrengthLabel(audit.evidenceStrength)
+    : "Baja";
 
   return (
     <section className="coach-report interview-panel">
@@ -1065,11 +1116,10 @@ function InterviewPanel({
           </p>
         </div>
         <ConfidenceMeter
-          value={evidenceValue}
+          value={evidenceFill}
           label="Evidencia"
-          reason={`${answered}/${criticalTotal} datos criticos respondidos. Estado: ${
-            audit ? evidenceStrengthLabel(audit.evidenceStrength) : "Baja"
-          }.`}
+          displayValue={evidenceLabel}
+          reason={`${answered}/${criticalTotal} datos criticos respondidos.`}
         />
       </header>
 
@@ -1130,7 +1180,7 @@ function QuestionCard({
   return (
     <article className="interview-question-card">
       <div className="interview-question-head">
-        <span>{question.category}</span>
+        <span>{tacticalDomainLabel(question.category)}</span>
         <b>{impactLabel(question.expectedImpactOnDiagnosis)}</b>
         <EvidenceChip
           type="staff"
@@ -1361,6 +1411,7 @@ function AdviceResult({
         </div>
         <ConfidenceMeter
           value={advice.reflection.confidence}
+          label="Confianza declarada"
           reason={advice.reflection.missingInformation}
         />
       </header>
@@ -1745,6 +1796,11 @@ function EvidencePanel({ evidenceItems }: { evidenceItems: EvidenceViewModel[] }
   );
 }
 
+// W17 H3: el numero es autoevaluacion del coach, no una metrica medida por
+// la app — el badge declara la fuente y los umbrales del semaforo.
+const CONFIDENCE_LEGEND =
+  "Confianza declarada por el coach sobre su propia lectura (no es una metrica medida). Semaforo: 75%+ usable, 55-74% con cautela, menos de 55% limitada.";
+
 function ConfidenceBadge({
   confidence,
   compact,
@@ -1757,17 +1813,20 @@ function ConfidenceBadge({
 
   if (compact) {
     return (
-      <span className={`confidence-chip ${tone}`}>
-        {percent}% confianza
+      <span className={`confidence-chip ${tone}`} title={CONFIDENCE_LEGEND}>
+        {percent}% declarada
       </span>
     );
   }
 
   return (
-    <div className="confidence-badge">
-      <span>Confianza</span>
+    <div className="confidence-badge" title={CONFIDENCE_LEGEND}>
+      <span>Confianza declarada por el coach</span>
       <b>{percent}%</b>
-      <small>{confidenceLabel(tone)}</small>
+      <small>
+        {confidenceLabel(tone)} - 75%+ usable / 55-74% con cautela / -55%
+        limitada
+      </small>
     </div>
   );
 }
@@ -1936,19 +1995,22 @@ function EvidenceCard({ item }: { item: EvidenceViewModel }) {
     <article className={`ai-evidence-item ${item.bucket}`}>
       <div className="evidence-card-head">
         <span>{item.sourceLabel}</span>
-        <b>{Math.round(item.relevance * 100)}%</b>
+        {item.relevance != null ? (
+          <b>{Math.round(item.relevance * 100)}%</b>
+        ) : (
+          <small>relevancia s/d</small>
+        )}
       </div>
       <strong>{item.citation.title}</strong>
       <div className="evidence-meta">
         <small>{item.modeLabel}</small>
-        {item.date ? <small>{item.date}</small> : null}
-        {item.opponent ? <small>vs {item.opponent}</small> : null}
-        {item.score ? <small className="score-pill">{item.score}</small> : null}
       </div>
       <p>{item.citation.excerpt}</p>
-      <div className="evidence-score" aria-label="Relevancia">
-        <span style={{ width: `${Math.round(item.relevance * 100)}%` }} />
-      </div>
+      {item.relevance != null ? (
+        <div className="evidence-score" aria-label="Relevancia">
+          <span style={{ width: `${Math.round(item.relevance * 100)}%` }} />
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -2400,7 +2462,10 @@ function EmptyState({
               label="Revision"
               value={weeklyDecisionThread.nextReviewCriteria[0] ?? "A definir"}
             />
-            <ContextRow label="Estado" value={weeklyDecisionThread.status} />
+            <ContextRow
+              label="Estado"
+              value={weeklyThreadStatusLabel(weeklyDecisionThread.status)}
+            />
           </div>
         </div>
       ) : null}
@@ -2507,24 +2572,22 @@ function isManualObservationCitation(citation: CoachEvidenceCitation) {
   );
 }
 
-function buildEvidenceViewModel(
+// W17 H1/H6: exportado para test. La relevancia solo existe si la cita la
+// declara (nada de 65% por defecto) y no se scrapea fecha/rival/score del
+// texto: sin metadata estructurada en la cita, no se muestra metadata.
+export function buildEvidenceViewModel(
   citations: CoachEvidenceCitation[],
 ): EvidenceViewModel[] {
-  return citations.map((citation) => {
-    const meta = extractEvidenceMeta(
-      `${citation.sourceId} ${citation.title} ${citation.excerpt}`,
-    );
-    return {
-      citation,
-      bucket: bucketForCitation(citation),
-      sourceLabel: labelForSourceType(citation.sourceType),
-      modeLabel: modeLabelForCitation(citation),
-      date: meta.date,
-      opponent: meta.opponent,
-      score: meta.score,
-      relevance: Math.max(0, Math.min(1, citation.relevance ?? 0.65)),
-    };
-  });
+  return citations.map((citation) => ({
+    citation,
+    bucket: bucketForCitation(citation),
+    sourceLabel: labelForSourceType(citation.sourceType),
+    modeLabel: modeLabelForCitation(citation),
+    relevance:
+      citation.relevance == null
+        ? undefined
+        : Math.max(0, Math.min(1, citation.relevance)),
+  }));
 }
 
 function bucketForCitation(citation: CoachEvidenceCitation): EvidenceBucket {
@@ -2549,22 +2612,6 @@ function modeLabelForCitation(citation: CoachEvidenceCitation) {
     knowledge: "Usado como contexto tactico",
   };
   return labels[citation.sourceType];
-}
-
-function extractEvidenceMeta(text: string) {
-  const date = text.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
-  const altDate = text.match(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/)?.[0];
-  const score = text.match(/\b\d{1,2}\s*[-–]\s*\d{1,2}\b/)?.[0];
-  const opponentMatch = text.match(
-    /(?:vs|contra)\s+([^|()\-.,;]+(?:\s+[^|()\-.,;]+)?)/i,
-  );
-  const opponent = opponentMatch?.[1]?.trim();
-
-  return {
-    date: date ?? altDate,
-    opponent,
-    score: score?.replace(/\s/g, ""),
-  };
 }
 
 function memoryCategoryLabel(category: MemoryCandidate["category"]) {
