@@ -1,11 +1,13 @@
 import { catalog } from "@/data";
-import type { Session } from "@/data";
+import type { Exercise, Session } from "@/data";
 import { Document, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
 
 export async function exportSessionPdf(
   blocks: Session["blocks"],
   computed: NonNullable<Session["computed"]>,
+  exerciseVariants: Exercise[] = [],
 ) {
+  const availableExercises = [...catalog, ...exerciseVariants];
   const styles = StyleSheet.create({
     page: {
       padding: 28,
@@ -37,15 +39,27 @@ export async function exportSessionPdf(
             <Text key={objective}>• {objective}</Text>
           ))}
         </View>
+        {computed.materials.length ? (
+          <View style={styles.section}>
+            <Text style={styles.label}>Materiales</Text>
+            {computed.materials.map((material) => (
+              <Text key={material.name}>
+                • {material.qty} {material.name}
+              </Text>
+            ))}
+          </View>
+        ) : null}
         <View style={styles.section}>
           <Text style={styles.label}>Bloques</Text>
           {blocks.map((block: Session["blocks"][number], index: number) => {
-            const exercise = catalog.find((item) => item.id === block.exerciseId);
+            const exercise = availableExercises.find((item) => item.id === block.exerciseId);
             return (
               <View key={block.id} style={styles.block}>
                 <Text>
-                  {index + 1}. {exercise?.title ?? block.exerciseId} -{" "}
-                  {block.durationMin} min
+                  {index + 1}.{" "}
+                  {exercise?.title ??
+                    `Ejercicio retirado del catalogo (${block.exerciseId})`}{" "}
+                  - {block.durationMin} min
                 </Text>
                 <Text>{exercise?.objective.primary}</Text>
               </View>
