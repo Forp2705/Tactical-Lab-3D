@@ -26,6 +26,7 @@ describe("deriveTacticalReads — lateralBias (la feature estrella)", () => {
     expect(lateral?.text).toMatch(/izquierdo/i);
     expect(lateral?.text).toMatch(/\+20/);
     expect(lateral?.grounded).toBe(true);
+    expect(lateral?.overlaySide).toBe("left");
   });
 
   it("mismo caso con dir -1 (ataque hacia -x) invierte la lectura a el lado derecho", () => {
@@ -102,6 +103,7 @@ describe("deriveTacticalReads — blockHeight", () => {
     const reads = deriveTacticalReads(scene, 1);
     const block = reads.find((r) => r.kind === "blockHeight");
     expect(block?.text).toMatch(/bajo/i);
+    expect(block?.overlayX).toBeCloseTo(16, 0);
   });
 
   it("linea defensiva en el tercio alto -> lectura de bloque alto", () => {

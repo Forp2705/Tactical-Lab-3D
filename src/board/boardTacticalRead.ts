@@ -37,6 +37,11 @@ export type TacticalRead = {
   confidence: TacticalReadConfidence;
   evidenceLevel: TacticalReadEvidence;
   grounded: true;
+  // Render-only geometry for the ephemeral canvas overlay (never sent to the
+  // coach, never rendered as raw text — the chip only ever shows `text`).
+  // Set only for the two kinds the overlay covers this wave.
+  overlaySide?: "left" | "right"; // lateralBias: which band is loaded
+  overlayX?: number; // blockHeight: raw x (0-100) for the ghost line
 };
 
 // Same regex-on-role pattern as GK_ROLE/CB_ROLE in scenarioBoardConsequence.ts.
@@ -114,8 +119,9 @@ function deriveLateralBiasRead(
   if (Math.abs(diff) < LATERAL_BIAS_THRESHOLD) return null; // balanced shape
 
   const magnitude = Math.round(Math.abs(diff));
-  const advancedSide = diff > 0 ? "izquierdo" : "derecho";
-  const laggingSide = diff > 0 ? "derecho" : "izquierdo";
+  const advancedIsLeft = diff > 0;
+  const advancedSide = advancedIsLeft ? "izquierdo" : "derecho";
+  const laggingSide = advancedIsLeft ? "derecho" : "izquierdo";
   const bothFromRole = left.fromRole && right.fromRole;
 
   return {
@@ -126,6 +132,7 @@ function deriveLateralBiasRead(
       magnitude >= LATERAL_BIAS_HIGH_CONFIDENCE ? "high" : "medium",
     evidenceLevel: bothFromRole ? "sufficient" : "partial",
     grounded: true,
+    overlaySide: advancedIsLeft ? "left" : "right",
   };
 }
 
@@ -160,6 +167,8 @@ function deriveBlockHeightRead(
       : depth > BLOCK_THIRD_HIGH
         ? "alto"
         : "medio";
+  const avgRawX =
+    backs.reduce((sum, o) => sum + o.position.x, 0) / backs.length;
 
   return {
     id: "block-height",
@@ -168,6 +177,7 @@ function deriveBlockHeightRead(
     confidence: backs.length >= 3 ? "high" : "medium",
     evidenceLevel: backs.length >= 3 ? "sufficient" : "partial",
     grounded: true,
+    overlayX: avgRawX,
   };
 }
 

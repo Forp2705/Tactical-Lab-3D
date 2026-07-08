@@ -18,6 +18,7 @@ import {
 import { arrowStyle } from "../boardActionStyle";
 import type { BoardObject, BoardPoint, BoardScene } from "../boardModel";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
+import type { TacticalRead } from "../boardTacticalRead";
 
 type TacticalBoardCanvasProps = {
   svgRef: MutableRefObject<SVGSVGElement | null>;
@@ -40,6 +41,12 @@ type TacticalBoardCanvasProps = {
   // se commitea al aceptar — solo cambia el estilo (ghost/punteado) para senalar
   // que todavia no es parte de la escena.
   consequenceOverlay: ConsequenceOverlay | null;
+  // Reactive board engine (mc-21): ephemeral snapshot shown ONLY on drop
+  // (pointerup), cleared by its own timeout in useBoardActions — never
+  // driven by pointermove, never a toast/dialog (W4 pointer-events + no
+  // dialogs invariants). `key` forces the pulse animation to restart on
+  // every new drop even if the reads are identical to the last one.
+  tacticalOverlay: { reads: TacticalRead[]; key: number } | null;
   keyInstructions: {
     objective: string;
     rule: string;
@@ -67,6 +74,7 @@ export function TacticalBoardCanvas({
   anchorOriginId,
   zoneDragPreview,
   consequenceOverlay,
+  tacticalOverlay,
   keyInstructions,
   onSelect,
   onPointerDown,
@@ -107,6 +115,7 @@ export function TacticalBoardCanvas({
         anchorOriginId={anchorOriginId}
         zoneDragPreview={zoneDragPreview}
         consequenceOverlay={consequenceOverlay}
+        tacticalOverlay={tacticalOverlay}
         onSelect={onSelect}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -139,6 +148,7 @@ function TacticalPitch({
   anchorOriginId,
   zoneDragPreview,
   consequenceOverlay,
+  tacticalOverlay,
   onSelect,
   onPointerDown,
   onPointerMove,
@@ -155,6 +165,7 @@ function TacticalPitch({
   anchorOriginId?: string;
   zoneDragPreview?: { x: number; y: number; w: number; h: number; block: boolean } | null;
   consequenceOverlay: ConsequenceOverlay | null;
+  tacticalOverlay: { reads: TacticalRead[]; key: number } | null;
   onSelect: (selection: Selection) => void;
   onPointerDown: (point: BoardPoint, targetId?: string) => void;
   onPointerMove: (point: BoardPoint) => void;
@@ -361,6 +372,41 @@ function TacticalPitch({
           <text x="2" y="4" className="board-overlay-label" fontSize="3">
             Proyección de RomboIQ
           </text>
+        </g>
+      ) : null}
+
+      {/* Reactive board engine (mc-21): ephemeral read shown only on drop
+          (tacticalOverlay is set/cleared in useBoardActions' onCanvasPointerUp,
+          never on pointermove). pointer-events:none on both shapes — same
+          invariant as .board-overlay-zone/.board-overlay-arrow (W4): this
+          must never steal the drag/drag-to-create gestures from the pitch. */}
+      {tacticalOverlay ? (
+        <g
+          className="board-tactical-overlay"
+          key={tacticalOverlay.key}
+          pointerEvents="none"
+        >
+          {tacticalOverlay.reads.map((read) =>
+            read.kind === "lateralBias" && read.overlaySide ? (
+              <rect
+                key={read.id}
+                x={0}
+                y={scaleY(read.overlaySide === "left" ? 0 : 50)}
+                width={PITCH_W}
+                height={scaleY(50)}
+                className="board-tactical-overlay-band"
+              />
+            ) : read.kind === "blockHeight" && read.overlayX !== undefined ? (
+              <line
+                key={read.id}
+                x1={read.overlayX}
+                y1={0}
+                x2={read.overlayX}
+                y2={PITCH_H}
+                className="board-tactical-overlay-line"
+              />
+            ) : null,
+          )}
         </g>
       ) : null}
 

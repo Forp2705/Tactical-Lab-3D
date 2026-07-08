@@ -218,6 +218,7 @@ function TacticalBoardWorkspace({
           anchorOriginId={a.anchorOriginId}
           zoneDragPreview={a.zoneDragPreview}
           consequenceOverlay={a.consequenceOverlay}
+          tacticalOverlay={a.tacticalOverlay}
           keyInstructions={{
             objective: a.problem.objective,
             rule: a.exercise.rule,
@@ -274,6 +275,7 @@ function TacticalBoardWorkspace({
 
           <TacticalBoardAiPanel
             aiInterpretation={a.aiInterpretation}
+            tacticalReads={a.tacticalReads}
             layers={a.layers}
             payload={a.payload}
             attachBlockId={a.attachBlockId}
