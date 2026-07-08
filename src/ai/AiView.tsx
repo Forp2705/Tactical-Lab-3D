@@ -374,48 +374,35 @@ export function AiView() {
   return (
     <>
       <AiModeTabs mode={mode} setMode={setMode} />
-      <section className="ai-cockpit">
-        <header className="ai-cockpit-hero team-card">
-          <div>
-            <span className="panel-eyebrow">Diagnostico semanal</span>
-            <h3>Decision tactica con evidencia visible</h3>
-            <p>
-              Formula el problema, distingue hipotesis de diagnostico y baja
-              una accion concreta a la semana.
-            </p>
-          </div>
-          <div className="ai-hero-metrics" aria-label="Resumen del agente">
-            <MetricPill
-              label="Plantel"
-              value={`${cockpitContext.availablePlayers}/${teamPlayers.length}`}
-            />
-            <MetricPill label="Shapes" value={cockpitContext.shapes} />
-            <MetricPill
-              label="Evidencia"
-              value={
+      <section className="ai-cockpit felt-stage">
+        <div className="ai-cockpit-stack">
+          <main className="ai-workbench">
+            {/* W17 REGION CONTEXTO (mc-21): franja de contexto pre-pregunta.
+                Funcional, pero NO le apliques aca los fixes de
+                W17-CONTEXT-AUDIT.md (fila de scout, rename del chip de rival,
+                observacion en texto en vez de conteo) — son de mc-21. */}
+            <ContextStrip
+              activeShapeName={activeShapeName}
+              formation={activeShapeFormation}
+              availablePlayers={availablePlayers}
+              totalPlayers={teamPlayers.length}
+              rivalInContext={rivalInContext}
+              evidenceCount={
                 cockpitContext.videoTags +
                 cockpitContext.videoTracks +
                 cockpitContext.manualObservations
               }
+              reportsCount={cockpitContext.recentReports.length}
+              agentStatus={agentStatus}
+              onGoToEvolucion={() => useAppStore.getState().setView("team")}
             />
-            <MetricPill
-              label="Reportes"
-              value={cockpitContext.recentReports.length}
-            />
-          </div>
-        </header>
 
-        <div className="ai-cockpit-stack">
-          <main className="ai-workbench">
             <section className="ai-command-card team-card">
               <div className="section-title">
                 <div>
                   <span className="panel-eyebrow">Consulta tactica</span>
                   <h3>Problema a resolver</h3>
                 </div>
-                <span className="ai-context-chip">
-                  {cockpitContext.activeShape}
-                </span>
               </div>
               <textarea
                 placeholder="Describi el problema tactico, el contexto del partido, el sistema propio, el rival o el comportamiento que queres analizar."
@@ -442,16 +429,6 @@ export function AiView() {
                   disponible para sostener la lectura.
                 </span>
               </div>
-              <CoachContextSummary
-                activeShapeName={activeShapeName}
-                formation={activeShapeFormation}
-                availablePlayers={availablePlayers}
-                totalPlayers={teamPlayers.length}
-                rivalInContext={rivalInContext}
-                onGoToEvolucion={() =>
-                  useAppStore.getState().setView("team")
-                }
-              />
               {agentStatus?.openRouterConfigured === false ? (
                 <div className="tester-edge-state">
                   <b>Diagnostico en vivo no disponible</b>
@@ -462,12 +439,6 @@ export function AiView() {
                   </small>
                 </div>
               ) : null}
-              {error ? (
-                <div className="ai-card ai-error-card" role="alert">
-                  <b>Error del agente</b>
-                  <p>{error}</p>
-                </div>
-              ) : null}
               {loading ? <CoachThinkingPanel /> : null}
             </section>
 
@@ -476,6 +447,18 @@ export function AiView() {
               title="Decision de la semana"
               detailsLabel="El reporte completo y el contexto tecnico quedan debajo como detalle secundario."
             />
+
+            {/* W17 REGION RESPUESTA (mc-17): error card + entrevista +
+                respuesta corta / empty viven en esta zona. Componelas aca,
+                pero NO apliques los fixes de W17-TRUST-AUDIT.md (relevancia
+                65%, enum crudo, % inventado, error crudo, score-pill) —
+                son de mc-17. */}
+            {error ? (
+              <div className="ai-card ai-error-card" role="alert">
+                <b>Error del agente</b>
+                <p>{error}</p>
+              </div>
+            ) : null}
 
             {coachInterview.active && coachInterview.questions.length ? (
               <InterviewPanel
@@ -502,7 +485,6 @@ export function AiView() {
               />
             ) : !coachInterview.active || !coachInterview.questions.length ? (
               <EmptyState
-                context={cockpitContext}
                 shapeContext={coachShapeContext}
                 weeklyDecisionThread={weeklyDecisionThread}
               />
@@ -524,6 +506,9 @@ export function AiView() {
                 loading={loading}
                 onRefresh={() => void refreshAgentStatus()}
               />
+              {/* W17 REGION CONTEXTO (mc-21): fila de scout / rename rival /
+                  observacion en texto (W17-CONTEXT-AUDIT.md) van aca — no
+                  implementado en esta ola. */}
               <ActiveContextPanel
                 context={cockpitContext}
                 shapeContext={coachShapeContext}
@@ -542,12 +527,21 @@ export function AiView() {
   );
 }
 
-function CoachContextSummary({
+// W17: fusiona el viejo CoachContextSummary (shape/formacion/plantel/rival)
+// con los datos que antes vivian en el hero muerto (evidencia, reportes) +
+// estado IA, en UNA franja de chips mono ANTES del textarea (acceptance
+// criterio 4). Nada de esto viaja distinto al agente: son los mismos campos
+// de cockpitContext/agentStatus que ya se enviaban, solo cambia donde se
+// muestran.
+function ContextStrip({
   activeShapeName,
   formation,
   availablePlayers,
   totalPlayers,
   rivalInContext,
+  evidenceCount,
+  reportsCount,
+  agentStatus,
   onGoToEvolucion,
 }: {
   activeShapeName: string | null;
@@ -555,16 +549,20 @@ function CoachContextSummary({
   availablePlayers: number;
   totalPlayers: number;
   rivalInContext: boolean | null;
+  evidenceCount: number;
+  reportsCount: number;
+  agentStatus: AgentStatus | null;
   onGoToEvolucion: () => void;
 }) {
+  const iaToken = agentStatus?.openRouterConfigured
+    ? `IA ${agentStatus.openRouterModel || "activa"}`
+    : "IA no disponible";
+
   if (!activeShapeName) {
     return (
-      <div className="ai-context-summary" role="status">
+      <div className="ai-context-strip" role="status">
         <span className="panel-eyebrow">Contexto del coach</span>
-        <div
-          className="toolbar compact"
-          style={{ flexWrap: "wrap", marginTop: 6, alignItems: "center" }}
-        >
+        <div className="ai-context-strip-row">
           <span className="ai-context-chip">Sin shape activo</span>
           <button type="button" className="btn ghost" onClick={onGoToEvolucion}>
             Ir a Evolucion a publicar un shape
@@ -583,15 +581,15 @@ function CoachContextSummary({
       : rivalInContext
         ? "Rival presente"
         : "Sin rival en el contexto",
+    `Evidencia ${evidenceCount}`,
+    `Reportes ${reportsCount}`,
+    iaToken,
   ].filter((token): token is string => Boolean(token));
 
   return (
-    <div className="ai-context-summary" role="status">
+    <div className="ai-context-strip" role="status">
       <span className="panel-eyebrow">Contexto del coach</span>
-      <div
-        className="toolbar compact"
-        style={{ flexWrap: "wrap", marginTop: 6 }}
-      >
+      <div className="ai-context-strip-row">
         {tokens.map((token) => (
           <span className="ai-context-chip" key={token}>
             {token}
@@ -1366,38 +1364,6 @@ function AdviceResult({
           reason={advice.reflection.missingInformation}
         />
       </header>
-
-      <section className="coach-report-card decision-summary-card">
-        <div className="section-title">
-          <div>
-            <span className="panel-eyebrow">Decision semanal</span>
-            <h4>Lectura principal y siguiente accion</h4>
-          </div>
-          <ConfidenceBadge confidence={advice.reflection.confidence} compact />
-        </div>
-        <div className="problem-breakdown-grid">
-          <div className="problem-breakdown-item">
-            <span>Lectura principal</span>
-            <b>{advice.probableCause}</b>
-          </div>
-          <div className="problem-breakdown-item">
-            <span>Ajuste recomendado</span>
-            <b>{advice.mainAdjustment}</b>
-          </div>
-          <div className="problem-breakdown-item">
-            <span>Que sabe</span>
-            <b>
-              {currentEvidence
-                ? `${currentEvidence} evidencia(s) del caso actual`
-                : "Sin evidencia actual confirmada"}
-            </b>
-          </div>
-          <div className="problem-breakdown-item">
-            <span>Que falta validar</span>
-            <b>{advice.reflection.missingInformation}</b>
-          </div>
-        </div>
-      </section>
 
       <ProblemBreakdownPanel advice={advice} />
 
@@ -2192,15 +2158,6 @@ async function requestAgentStatus(): Promise<AgentStatus> {
   return statusPayload;
 }
 
-function MetricPill({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="ai-metric-pill">
-      <span>{label}</span>
-      <b>{value}</b>
-    </div>
-  );
-}
-
 function StatusLine({
   label,
   value,
@@ -2373,11 +2330,9 @@ function DiagnosisSessionPanel({ plan }: { plan: ReturnType<typeof buildSessionP
 }
 
 function EmptyState({
-  context,
   shapeContext,
   weeklyDecisionThread,
 }: {
-  context: CockpitContext;
   shapeContext: CoachShapeContext | null;
   weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"];
 }) {
@@ -2390,18 +2345,6 @@ function EmptyState({
         Cuando consultes, la respuesta va a mostrar lectura, evidencia usada,
         acciones posibles y nivel de confianza.
       </p>
-      <div className="ai-empty-grid">
-        <ContextRow label="Equipo" value={context.teamModel} />
-        <ContextRow label="Shape" value={context.activeShape} />
-        <ContextRow
-          label="Reportes recientes"
-          value={String(context.recentReports.length)}
-        />
-        <ContextRow
-          label="Memoria validada"
-          value={String(context.acceptedMemory.length)}
-        />
-      </div>
       {shapeContext ? (
         <div className="football-report-grid" style={{ marginTop: 14 }}>
           <PitchViz

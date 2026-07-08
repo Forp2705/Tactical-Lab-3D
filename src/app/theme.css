@@ -1239,9 +1239,16 @@ button.danger {
   color: var(--warn);
 }
 
+/* W17 (mc-18): felt-stage vivo como escenario de fondo (LENGUAJE-ROMBOIQ) +
+   padding/radius propios, ya que .felt-stage en si es solo el stack de
+   `background` (theme.css W9 SALA), sin layout. */
 .ai-cockpit {
   display: grid;
   gap: 18px;
+  padding: 20px 22px 30px;
+  border-radius: 20px;
+  color: var(--felt-ink);
+  font-family: var(--felt-font-body);
 }
 
 .ai-cockpit-hero {
@@ -7976,6 +7983,50 @@ body .app-shell .top-stat-strip span {
 /* NOTA (REVISE del gate): `.weekly-decision-item` y `.toast` tambien se
    remapearon IN SITU (theme.css ~4597 y ~1983) por el mismo motivo de
    arriba — eran remapeos de reglas ya existentes. */
+
+/* === W17 AI COCKPIT (mc-18) === */
+
+/* Franja de contexto pre-pregunta (zona 2 del acceptance): reemplaza el
+   ai-cockpit-hero muerto + CoachContextSummary. Clases nuevas, sin
+   contraparte previa en theme.css/tactical-ui.css. */
+.ai-context-strip {
+  display: grid;
+  gap: 6px;
+}
+
+.ai-context-strip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* `.ai-context-chip` es compartida (tactical-ui.css la pinta como pildora
+   rellena dorado-tinta con !important; Sala la reusa distinto, scoped en
+   `.home-command-view details.home-collapse .ai-context-chip`). Acceptance
+   criterio 3 pide chip MONO discreto (borde >=70% transparente, sin
+   relleno) especificamente para esta franja — se scopea a
+   `.ai-context-strip` y se gana el !important de tactical-ui con mayor
+   especificidad + !important propio (mismo patron documentado en W11
+   FIXUP AI mas abajo). */
+.ai-cockpit .ai-context-strip .ai-context-chip {
+  max-width: none;
+  border: 1px solid color-mix(in oklch, var(--felt-line), transparent 72%) !important;
+  background: color-mix(in oklch, var(--felt-ink) 5%, transparent) !important;
+  color: color-mix(in oklch, var(--felt-ink) 85%, transparent) !important;
+  font-family: var(--felt-font-mono);
+  font-weight: 700;
+  text-transform: none;
+}
+
+/* Zona 3 (pregunta): QuestionCards de la entrevista alineadas a paneles
+   tenues sobre felt (acceptance fila InterviewPanel) — solo tratamiento,
+   `question.category` sigue crudo (fix de contenido es mc-17,
+   W17-TRUST-AUDIT.md H2, ver region marcada en AiView.tsx). */
+.ai-cockpit .interview-question-card {
+  background: color-mix(in oklch, var(--felt-ink) 4%, transparent) !important;
+  border-color: color-mix(in oklch, var(--felt-line), transparent 70%) !important;
+}
 
 /* === W11 FIXUP AI (mc-21) === */
 
