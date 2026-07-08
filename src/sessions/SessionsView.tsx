@@ -67,6 +67,9 @@ export function SessionsView() {
   const libraryFavoriteIds = useAppStore((state) => state.libraryFavoriteIds);
   const libraryRecentOpens = useAppStore((state) => state.libraryRecentOpens);
   const [dragMeta, setDragMeta] = useState<DragMeta>(null);
+  // W19 (mc-19, H1): true cuando el CTA del empty no pudo crear sesion
+  // (sin problema semanal activo) — antes era un no-op silencioso.
+  const [emptyCtaBlocked, setEmptyCtaBlocked] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState("");
   const [drawerFilter, setDrawerFilter] = useState<DrawerFilter>("all");
   const [pitchSideOpen, setPitchSideOpen] = useState(false);
@@ -76,13 +79,24 @@ export function SessionsView() {
   const computed =
     session.computed ?? recomputeFallback(session.blocks, exerciseVariants);
   const sessionIntent = useMemo(
-    () => readSessionIntent(session.staffNotes, aiPrompt, weeklyDecisionThread),
-    [aiPrompt, session.staffNotes, weeklyDecisionThread],
+    () =>
+      readSessionIntent(
+        session.staffNotes,
+        aiPrompt,
+        weeklyDecisionThread,
+        session.name,
+      ),
+    [aiPrompt, session.staffNotes, session.name, weeklyDecisionThread],
   );
   const alerts = useMemo(
     () =>
-      computeMicrocycleAlerts(microcycle, { ...session, computed }, catalog),
-    [microcycle, session, computed],
+      // W19 (mc-19, H4): catalogo + variantes propias — con solo `catalog`,
+      // un bloque ABP hecho con un ejercicio del coach daba falso "sin ABP".
+      computeMicrocycleAlerts(microcycle, { ...session, computed }, [
+        ...catalog,
+        ...exerciseVariants,
+      ]),
+    [microcycle, session, computed, exerciseVariants],
   );
 
   const blockIds = useMemo(
@@ -168,11 +182,18 @@ export function SessionsView() {
     >
       <section className="session-layout felt-stage">
         <div className="team-card session-sheet">
-          {/* W19 REGION FLUJO (mc-19): cabecera de sesion - session.name se
-              agrega aca en fase 2. No implementado en esta ola. */}
+          {/* W19 REGION FLUJO (mc-19): cabecera de sesion. H6 — el nombre de
+              la sesion creada (p.ej. "Quick Start - ...") es el feedback de
+              QUE se creo al aterrizar; antes solo alimentaba el label del
+              boceto y nunca se veia. */}
           <div className="section-title session-sheet-header">
             <div>
               <span className="panel-eyebrow">Diagnostico -&gt; campo</span>
+              {session.name ? (
+                <small className="muted" style={{ display: "block" }}>
+                  {session.name}
+                </small>
+              ) : null}
               <h4>{shorten(sessionIntent.problem, 140)}</h4>
               <div className="session-intent-row">
                 <span>
@@ -262,22 +283,46 @@ export function SessionsView() {
                     />
                   ))
                 ) : (
-                  // W19 REGION FLUJO (mc-19): CTA "Crear sesion desde foco
-                  // semanal" hoy solo dispara el store (no-op de flujo mas
-                  // alla de eso) - el flip del thread es de mc-19.
+                  // W19 REGION FLUJO (mc-19): H1 — sin problema semanal
+                  // activo, createSessionFromWeeklyThread retorna false y el
+                  // CTA era un no-op silencioso; ahora explica y ofrece el
+                  // camino a Diagnostico (patron de fallback de la Sala).
                   <div className="muted-panel">
                     <p style={{ marginTop: 0 }}>
                       Arrastra ejercicios desde Biblioteca o crea un borrador
                       guiado desde el foco semanal.
                     </p>
+                    {emptyCtaBlocked ? (
+                      <p className="muted" style={{ marginTop: 0 }}>
+                        Todavia no hay un problema semanal activo para armar la
+                        sesion. Diagnostica primero o arrastra ejercicios desde
+                        el catalogo de al lado.
+                      </p>
+                    ) : null}
                     <div className="toolbar compact" style={{ marginBottom: 0, flexWrap: "wrap" }}>
                       <button
                         type="button"
                         className="btn primary"
-                        onClick={() => useAppStore.getState().createSessionFromWeeklyThread()}
+                        onClick={() =>
+                          setEmptyCtaBlocked(
+                            !useAppStore.getState().createSessionFromWeeklyThread(),
+                          )
+                        }
                       >
                         Crear sesion desde foco semanal
                       </button>
+                      {emptyCtaBlocked ? (
+                        <button
+                          type="button"
+                          className="home-next-step-cta"
+                          onClick={() => {
+                            useAppStore.getState().setAiMode("coach");
+                            useAppStore.getState().setView("ai");
+                          }}
+                        >
+                          Abrir diagnostico
+                        </button>
+                      ) : null}
                       <QuickSketchLauncher
                         buttonClassName="secondary"
                         buttonLabel="Boceto rapido"
@@ -1078,7 +1123,27 @@ export function readSessionIntent(
   staffNotes: string | undefined,
   aiPrompt: string,
   weeklyDecisionThread: ReturnType<typeof useAppStore.getState>["weeklyDecisionThread"],
+  sessionName?: string,
 ) {
+  // W19 (mc-19, H3): una sesion Quick Start se materializa desde un template
+  // SIN tocar el thread activo; si el header priorizara el thread, mostraria
+  // el problema VIEJO mientras los bloques muestran el del template. Para
+  // esas sesiones el intent sale de sus propios staffNotes (tags que escribe
+  // buildSessionPlanFromProblemTemplate) y no del thread.
+  if (sessionName?.startsWith("Quick Start")) {
+    return {
+      problem:
+        extractTaggedNote(staffNotes, "Problema") ||
+        "Todavia no hay un diagnostico activo enlazado a esta sesion.",
+      objective:
+        extractTaggedNote(staffNotes, "Objetivo tactico") ||
+        "Transformar el problema tactico en una respuesta entrenable.",
+      successSignal:
+        extractTaggedNote(staffNotes, "Senal de exito") ||
+        "Definir que comportamiento debe aparecer en el siguiente partido.",
+      nextReview: "Revisar el ajuste en el siguiente partido.",
+    };
+  }
   const threadIntent = weeklyDecisionThread?.sessionIntent;
   return {
     problem:

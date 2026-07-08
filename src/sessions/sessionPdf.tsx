@@ -56,8 +56,10 @@ export async function exportSessionPdf(
             return (
               <View key={block.id} style={styles.block}>
                 <Text>
-                  {index + 1}. {exercise?.title ?? block.exerciseId} -{" "}
-                  {block.durationMin} min
+                  {index + 1}.{" "}
+                  {exercise?.title ??
+                    `Ejercicio retirado del catalogo (${block.exerciseId})`}{" "}
+                  - {block.durationMin} min
                 </Text>
                 <Text>{exercise?.objective.primary}</Text>
               </View>

@@ -559,11 +559,16 @@ function isSessionLinkedToThread(
       ...session.blocks.map((block) => block.notes ?? ""),
     ].join("\n"),
   );
+  // W19 (mc-19, H5): `includes("")` es true para cualquier texto — sin estos
+  // guards, un thread sin sessionIntent (o con problema vacio) "linkeaba"
+  // con TODA sesion y el flip trained se disparaba siempre.
+  const problem = normalizeObservationText(thread.problem);
+  const objective = normalizeObservationText(
+    thread.sessionIntent?.objective ?? "",
+  );
   return (
-    text.includes(normalizeObservationText(thread.problem)) ||
-    text.includes(
-      normalizeObservationText(thread.sessionIntent?.objective ?? ""),
-    )
+    (problem !== "" && text.includes(problem)) ||
+    (objective !== "" && text.includes(objective))
   );
 }
 
@@ -1398,22 +1403,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     const session = get().session;
     const blocks = [...session.blocks, nextBlock];
     const thread = get().weeklyDecisionThread;
+    const nextSession = {
+      ...session,
+      blocks,
+      computed: recomputeSession(blocks, get().exerciseVariants),
+    };
+    // W19 (mc-19, H5): un drop manual de catalogo solo marca el hilo semanal
+    // como entrenado si la sesion esta realmente ligada al problema del
+    // thread; antes CUALQUIER drop flipeaba status y fabricaba sessionIntent.
+    const trainsThread =
+      thread !== null && isSessionLinkedToThread(nextSession, thread);
     set({
-      session: {
-        ...session,
-        blocks,
-        computed: recomputeSession(blocks, get().exerciseVariants),
-      },
-      weeklyDecisionThread: thread
-        ? {
-            ...thread,
-            sessionIntent:
-              thread.sessionIntent ??
-              buildSessionIntentFromProblem(thread.problem),
-            status: "trained",
-            updatedAt: new Date().toISOString(),
-          }
-        : thread,
+      session: nextSession,
+      weeklyDecisionThread:
+        thread && trainsThread
+          ? {
+              ...thread,
+              status: "trained",
+              updatedAt: new Date().toISOString(),
+            }
+          : thread,
     });
   },
   updateSessionBlock: (id, patch) =>
