@@ -39,6 +39,7 @@ import {
 } from "@/ui/tacticalPrimitives";
 import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 import { type CoachShapeContext, useAppStore } from "@/state/useAppStore";
+import { hasOpponentScoutData, type OpponentScout } from "@/scout/opponentScout";
 import {
   summarizeVideoEvidence,
   videoEvidenceToTagsText,
@@ -75,6 +76,8 @@ type CockpitContext = {
   videoTags: number;
   videoTracks: number;
   manualObservations: number;
+  latestObservationText: string | null;
+  scoutToken: string;
   recentReports: SavedPostMatchReport[];
   acceptedMemory: Array<{
     reportId: string;
@@ -83,6 +86,44 @@ type CockpitContext = {
   }>;
   teamPatterns: TeamPattern[];
 };
+
+// W17 (mc-21, punto 5): resumen contable de lo que se envia al coach al
+// disparar una consulta, congelado en estado local (ver runCoachAgent).
+// Mismos campos/valores que ya viajan via buildCoachRuntimeContext — esto
+// solo los muestra, no cambia el payload.
+export type SentContextSnapshot = {
+  shapeLabel: string;
+  squadLabel: string;
+  scoutLabel: string;
+  observationsLabel: string;
+  reportsLabel: string;
+};
+
+export function buildSentContextSnapshot(params: {
+  coachShapeContext: CoachShapeContext | null;
+  lineupLabShapes: Array<{ name: string }>;
+  availablePlayers: number;
+  totalPlayers: number;
+  opponentScout: OpponentScout;
+  manualObservationsCount: number;
+  reportsCount: number;
+}): SentContextSnapshot {
+  const shapeName =
+    params.coachShapeContext?.selectedShapeName ??
+    params.lineupLabShapes[0]?.name ??
+    null;
+  const scoutHasData = hasOpponentScoutData(params.opponentScout);
+
+  return {
+    shapeLabel: shapeName ? `Shape: ${shapeName}` : "Sin shape activo",
+    squadLabel: `Disponibles ${params.availablePlayers}/${params.totalPlayers}`,
+    scoutLabel: scoutHasData
+      ? `Scout: ${params.opponentScout.rival}`
+      : "Sin scout de rival",
+    observationsLabel: `Observaciones: ${params.manualObservationsCount}`,
+    reportsLabel: `Reportes recientes: ${params.reportsCount}`,
+  };
+}
 
 type CoachEvidenceCitation = CoachMatchAdvice["evidenceCitations"][number];
 
@@ -115,6 +156,9 @@ export function AiView() {
   const tracksCount = useAppStore((state) => state.tracks.length);
   const sessionBlockCount = useAppStore((state) => state.session.blocks.length);
   const allManualObservations = useAppStore((state) => state.manualObservations);
+  const opponentScout = useAppStore((state) => state.opponentScout);
+  const tacticalBoards = useAppStore((state) => state.tacticalBoards);
+  const activeBoardId = useAppStore((state) => state.activeBoardId);
   const weeklyDecisionThread = useAppStore((state) => state.weeklyDecisionThread);
   const selectedExerciseId = useAppStore((state) => state.selectedExerciseId);
   const exerciseVariants = useAppStore((state) => state.exerciseVariants);
@@ -130,6 +174,8 @@ export function AiView() {
   const [responseMode, setResponseMode] =
     useState<CoachResponse["mode"] | null>(null);
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
+  const [sentContextSnapshot, setSentContextSnapshot] =
+    useState<SentContextSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
@@ -196,6 +242,24 @@ export function AiView() {
     coachShapeContext != null
       ? (coachShapeContext.rivalReference?.length ?? 0) > 0
       : null;
+  // W17 (mc-21, H1/H3): scout y pizarra son hechos contables independientes
+  // del shape/rivalReference de arriba — nunca se omiten en silencio, siempre
+  // rinden un token "sin X" cuando no hay dato (W17-CONTEXT-AUDIT.md).
+  const scoutHasData = hasOpponentScoutData(opponentScout);
+  const scoutToken = scoutHasData
+    ? `Rival: ${opponentScout.rival}${
+        opponentScout.probableSystem.trim()
+          ? ` · ${opponentScout.probableSystem.trim()}`
+          : ""
+      }`
+    : "Sin scout de rival";
+  const activeBoard = activeBoardId
+    ? (tacticalBoards.find((board) => board.id === activeBoardId) ?? null)
+    : null;
+  const boardToken = activeBoard
+    ? `Pizarra: ${activeBoard.title} · ${activeBoard.scenes.length} escenas`
+    : "Sin pizarra activa";
+  const latestObservationText = manualObservations[0]?.text ?? null;
   const cockpitContext = useMemo(
     () => ({
       availablePlayers,
@@ -218,6 +282,8 @@ export function AiView() {
       videoTags: tagsCount,
       videoTracks: tracksCount,
       manualObservations: manualObservations.length,
+      latestObservationText,
+      scoutToken,
       recentReports,
       acceptedMemory,
       teamPatterns,
@@ -227,9 +293,11 @@ export function AiView() {
       acceptedMemory,
       availablePlayers,
       coachShapeContext,
+      latestObservationText,
       lineupLabShapes,
       lineupLabTransitions.length,
       recentReports,
+      scoutToken,
       selectedExercise.title,
       selectedExerciseMissing,
       sessionBlockCount,
@@ -274,6 +342,27 @@ export function AiView() {
   }) {
     if (!input || loading) return;
     const runtimeState = useAppStore.getState();
+    // W17 (mc-21, punto 5 / H4 de mc-17 absorbido): congelar un resumen
+    // contable de lo que se esta por enviar, al momento de disparar la
+    // consulta (cubre las 3 vias: boton, submitInterviewAnswers y
+    // skipInterviewAndRunHypothesis, todas pasan por aca). Solo presentacion
+    // — no cambia que viaja a buildCoachRuntimeContext debajo.
+    const scopedObservationsForSnapshot = runtimeState.manualObservations.filter(
+      (observation) => observation.teamId === runtimeState.team.id,
+    );
+    setSentContextSnapshot(
+      buildSentContextSnapshot({
+        coachShapeContext: runtimeState.coachShapeContext,
+        lineupLabShapes: runtimeState.lineupLab.shapes,
+        availablePlayers: runtimeState.team.players.filter(
+          (player) => player.status === "available",
+        ).length,
+        totalPlayers: runtimeState.team.players.length,
+        opponentScout: runtimeState.opponentScout,
+        manualObservationsCount: scopedObservationsForSnapshot.length,
+        reportsCount: cockpitContext.recentReports.length,
+      }),
+    );
     const coachContext = buildCoachRuntimeContext(
       runtimeState.workspaceMode,
       runtimeState.team,
@@ -387,6 +476,8 @@ export function AiView() {
               availablePlayers={availablePlayers}
               totalPlayers={teamPlayers.length}
               rivalInContext={rivalInContext}
+              scoutToken={scoutToken}
+              boardToken={boardToken}
               evidenceCount={
                 cockpitContext.videoTags +
                 cockpitContext.videoTracks +
@@ -447,6 +538,33 @@ export function AiView() {
               title="Decision de la semana"
               detailsLabel="El reporte completo y el contexto tecnico quedan debajo como detalle secundario."
             />
+
+            {/* W17 (mc-21, punto 5): snapshot contable de lo enviado en la
+                ultima consulta — se congela en runCoachAgent, no en cada
+                render, para que quede fijo aunque el contexto vivo cambie
+                despues. Solo aparece tras la primera consulta. */}
+            {sentContextSnapshot ? (
+              <div className="ai-context-strip" role="status">
+                <span className="panel-eyebrow">El coach recibio</span>
+                <div className="ai-context-strip-row">
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.shapeLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.squadLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.scoutLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.observationsLabel}
+                  </span>
+                  <span className="ai-context-chip">
+                    {sentContextSnapshot.reportsLabel}
+                  </span>
+                </div>
+              </div>
+            ) : null}
 
             {/* W17 REGION RESPUESTA (mc-17): error card + entrevista +
                 respuesta corta / empty viven en esta zona. Componelas aca,
@@ -539,6 +657,8 @@ function ContextStrip({
   availablePlayers,
   totalPlayers,
   rivalInContext,
+  scoutToken,
+  boardToken,
   evidenceCount,
   reportsCount,
   agentStatus,
@@ -549,6 +669,8 @@ function ContextStrip({
   availablePlayers: number;
   totalPlayers: number;
   rivalInContext: boolean | null;
+  scoutToken: string;
+  boardToken: string;
   evidenceCount: number;
   reportsCount: number;
   agentStatus: AgentStatus | null;
@@ -564,6 +686,10 @@ function ContextStrip({
         <span className="panel-eyebrow">Contexto del coach</span>
         <div className="ai-context-strip-row">
           <span className="ai-context-chip">Sin shape activo</span>
+          {/* W17 (mc-21, H1/H3): scout y pizarra son hechos independientes del
+              shape — se muestran igual aunque no haya shape publicado. */}
+          <span className="ai-context-chip">{scoutToken}</span>
+          <span className="ai-context-chip">{boardToken}</span>
           <button type="button" className="btn ghost" onClick={onGoToEvolucion}>
             Ir a Evolucion a publicar un shape
           </button>
@@ -579,8 +705,10 @@ function ContextStrip({
     rivalInContext == null
       ? null
       : rivalInContext
-        ? "Rival presente"
-        : "Sin rival en el contexto",
+        ? "Referencia visual rival presente"
+        : "Sin referencia visual rival",
+    scoutToken,
+    boardToken,
     `Evidencia ${evidenceCount}`,
     `Reportes ${reportsCount}`,
     iaToken,
@@ -915,6 +1043,9 @@ function ActiveContextPanel({
           label="Shapes"
           value={`${context.shapes} shapes / ${context.transitions} transiciones`}
         />
+        {/* W17 (mc-21, H1): fila espejo del scout — mismo token que la franja
+            de arriba, nunca omitida. */}
+        <ContextRow label="Scout rival" value={context.scoutToken} />
         <ContextRow label="Ejercicio actual" value={context.currentExercise} />
         <ContextRow
           label="Sesion"
@@ -929,6 +1060,19 @@ function ActiveContextPanel({
           value={`${context.manualObservations} capturas del staff`}
         />
       </div>
+      {/* W17 (mc-21, H4 propio): texto real de la observacion mas reciente,
+          no solo el conteo de arriba — mismo patron que RecentReportsPanel. */}
+      {context.latestObservationText ? (
+        <div className="ai-mini-list">
+          <div className="ai-mini-item">
+            <b>Ultima observacion</b>
+            <small>{context.manualObservations} en total</small>
+            <p>{context.latestObservationText}</p>
+          </div>
+        </div>
+      ) : (
+        <p className="muted-panel">Sin observaciones manuales cargadas.</p>
+      )}
     </section>
   );
 }
