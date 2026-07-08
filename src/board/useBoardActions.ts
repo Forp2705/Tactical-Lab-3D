@@ -42,7 +42,9 @@ import { buildScenarioInput } from "./scenarioBridge";
 import {
   type ConsequenceOverlay,
   buildConsequenceOverlay,
+  detectAttackDir,
 } from "./scenarioBoardConsequence";
+import { deriveTacticalReads, type TacticalRead } from "./boardTacticalRead";
 import {
   commitZoneDrag,
   handleCanvasPress,
@@ -135,6 +137,23 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     useState<ConsequenceOverlay | null>(null);
   const committingOverlayRef = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  // Reactive board engine (mc-21): ephemeral tactical-read overlay, shown
+  // only on drop (pointerup), never on pointermove. Cleared by its own
+  // timeout so it never lingers as a stale reading.
+  const [tacticalOverlay, setTacticalOverlay] = useState<{
+    reads: TacticalRead[];
+    key: number;
+  } | null>(null);
+  const tacticalOverlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  useEffect(() => {
+    return () => {
+      if (tacticalOverlayTimeoutRef.current) {
+        clearTimeout(tacticalOverlayTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const {
     roster,
@@ -198,6 +217,17 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
         zones: scene.zones,
       }),
     [roster, scene],
+  );
+
+  // Reactive board engine (mc-21): deterministic geometric reads, recomputed
+  // on every scene change — same trigger aiInterpretation already uses,
+  // including every pointermove during a token drag (pre-existing behavior,
+  // not new). This feeds the ALWAYS-live chips surface; the ephemeral canvas
+  // overlay below is a separate, pointerup-gated snapshot of this same read.
+  const attackDir = useMemo(() => detectAttackDir(scene).dir, [scene]);
+  const tacticalReads = useMemo(
+    () => deriveTacticalReads(scene, attackDir, team.players),
+    [scene, attackDir, team.players],
   );
 
   const readiness = useMemo(
@@ -648,6 +678,23 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     if (object && distance(object.position, drag.before) > 0.4) {
       setHistory((items) => [...items.slice(-24), board]);
       setFuture([]);
+      // Ephemeral tactical-read overlay (mc-21): fires ONLY here, on a real
+      // drop, never on pointermove. `tacticalReads` above is already the read
+      // for this exact post-drop scene (same render's useMemo). Restricted to
+      // the two kinds that have a canvas visual (lateralBias band tint,
+      // blockHeight ghost line) — the other kinds are chips-only this wave.
+      const overlayReads = tacticalReads.filter(
+        (read) => read.kind === "lateralBias" || read.kind === "blockHeight",
+      );
+      if (overlayReads.length > 0) {
+        if (tacticalOverlayTimeoutRef.current) {
+          clearTimeout(tacticalOverlayTimeoutRef.current);
+        }
+        setTacticalOverlay({ reads: overlayReads, key: Date.now() });
+        tacticalOverlayTimeoutRef.current = setTimeout(() => {
+          setTacticalOverlay(null);
+        }, 1600);
+      }
     }
     setDrag(null);
   };
@@ -738,6 +785,8 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     anchorOriginId,
     zoneDragPreview,
     aiInterpretation,
+    tacticalReads,
+    tacticalOverlay,
     readiness,
     projectLabel: boardProjectLabel(weeklyDecisionThread?.problem),
     sessionBlocks: session.blocks,

@@ -5877,8 +5877,35 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-ai-list {
   margin: 0;
   padding-left: 18px;
-  color: #d1fae5;
+  color: color-mix(in oklch, var(--felt-ink) 82%, transparent);
   font-size: 12px;
+}
+
+/* Reactive board engine (mc-21): lecturas geometricas deterministicas, mismo
+   hogar textual que "Que entiende RomboIQ". Dorado = graduacion alta,
+   mint = media/baja (mismo par gold/mint que .ai-context-chip en Sala), nunca
+   un badge nuevo — la intensidad del borde YA es la graduacion. */
+.rombo-tactical-reads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rombo-tactical-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--felt-mint) 40%, transparent);
+  background: color-mix(in oklch, var(--felt-gold) 10%, transparent);
+  color: var(--felt-ink);
+  font-family: var(--felt-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+
+.rombo-tactical-chip-high {
+  border-color: color-mix(in oklch, var(--felt-gold) 55%, transparent);
+  background: color-mix(in oklch, var(--felt-gold) 16%, transparent);
 }
 
 .rombo-layer-list {
@@ -6082,6 +6109,42 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .board-overlay-zone,
 .board-overlay-arrow {
   pointer-events: none;
+}
+
+/* Reactive board engine (mc-21): ephemeral tactical-read overlay, shown only
+   on drop (see tacticalOverlay in useBoardActions/TacticalBoardCanvas — never
+   pointermove, never a dialog). pointer-events:none is the hard invariant
+   here (W4): this sits directly over the drawable pitch and must never steal
+   the drag/drag-to-create gestures. One brief pulse, then it clears itself. */
+.board-tactical-overlay-band,
+.board-tactical-overlay-line {
+  pointer-events: none;
+  animation: rombo-tactical-pulse 1.6s ease-out;
+}
+
+.board-tactical-overlay-band {
+  fill: color-mix(in oklch, var(--felt-gold) 12%, transparent);
+}
+
+.board-tactical-overlay-line {
+  stroke: color-mix(in oklch, var(--felt-gold) 55%, transparent);
+  stroke-width: 0.4;
+  stroke-dasharray: 1.2 1;
+}
+
+@keyframes rombo-tactical-pulse {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .rombo-scenario .rombo-scenario-run {

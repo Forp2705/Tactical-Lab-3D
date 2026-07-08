@@ -3,6 +3,7 @@ import type { ScenarioId } from "@/ai/scenarioSimulator";
 import { blockTitle } from "../boardGeometry";
 import type { BoardPayload, PlanningBoardLayer } from "../productBoardTypes";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
+import type { TacticalRead } from "../boardTacticalRead";
 import { groundingSummary } from "@/board/scenarioGrounding";
 import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
 import type { BoardFreeStateEvidencePacket } from "@/board/boardFreeStateEvidencePacket";
@@ -11,6 +12,11 @@ import { renderableBoardFacts, renderableFreeStateFacts } from "@/board/boardFac
 
 type TacticalBoardAiPanelProps = {
   aiInterpretation: Array<{ id: string; text: string }>;
+  // Reactive board engine (mc-21): deterministic geometric reads, live via
+  // useMemo(scene) — same reactivity aiInterpretation already has. Chips
+  // only; the canvas overlay is driven separately (see tacticalOverlay on
+  // TacticalBoardCanvas), pointerup-gated.
+  tacticalReads: TacticalRead[];
   layers: PlanningBoardLayer[];
   payload: BoardPayload | null;
   attachBlockId: string;
@@ -48,6 +54,7 @@ type TacticalBoardAiPanelProps = {
 
 export function TacticalBoardAiPanel({
   aiInterpretation,
+  tacticalReads,
   layers,
   payload,
   attachBlockId,
@@ -87,6 +94,22 @@ export function TacticalBoardAiPanel({
             <li key={item.id}>{item.text}</li>
           ))}
         </ul>
+        {/* Lecturas geometricas deterministicas (mc-21): mismo hogar textual,
+            hecho medido con su graduacion honesta (nunca intencion). Ausencia
+            de chips = forma equilibrada o datos insuficientes, informacion
+            valida por si misma (no se rellena con avisos vacios). */}
+        {tacticalReads.length > 0 ? (
+          <div className="rombo-tactical-reads">
+            {tacticalReads.map((read) => (
+              <span
+                key={read.id}
+                className={`rombo-tactical-chip rombo-tactical-chip-${read.confidence}`}
+              >
+                {read.text}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="rombo-freestate-coach">
