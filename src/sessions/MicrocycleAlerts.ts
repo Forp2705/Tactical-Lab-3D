@@ -9,7 +9,7 @@ export function computeMicrocycleAlerts(
   return [
     ...highLoadStreakAlerts(microcycle),
     ...abpCoverageAlerts(session, exercises),
-    ...exerciseRepetitionAlerts(session),
+    ...exerciseRepetitionAlerts(session, exercises),
     ...sessionLoadAlerts(session),
   ];
 }
@@ -49,7 +49,10 @@ function abpCoverageAlerts(session: Session, exercises: Exercise[]): Alert[] {
       ];
 }
 
-function exerciseRepetitionAlerts(session: Session): Alert[] {
+function exerciseRepetitionAlerts(
+  session: Session,
+  exercises: Exercise[],
+): Alert[] {
   const counts = new Map<string, number>();
   for (const block of session.blocks) {
     counts.set(block.exerciseId, (counts.get(block.exerciseId) ?? 0) + 1);
@@ -57,10 +60,17 @@ function exerciseRepetitionAlerts(session: Session): Alert[] {
 
   return Array.from(counts.entries())
     .filter(([, count]) => count >= 3)
-    .map(([exerciseId, count]) => ({
-      severity: "warn" as const,
-      message: `El ejercicio ${exerciseId} aparece ${count} veces en la sesion.`,
-    }));
+    .map(([exerciseId, count]) => {
+      // W19 (mc-19, H4): titulo legible en vez del id crudo; el id queda como
+      // fallback honesto para bloques cuyo ejercicio ya no resuelve.
+      const title =
+        exercises.find((exercise) => exercise.id === exerciseId)?.title ??
+        exerciseId;
+      return {
+        severity: "warn" as const,
+        message: `El ejercicio ${title} aparece ${count} veces en la sesion.`,
+      };
+    });
 }
 
 function sessionLoadAlerts(session: Session): Alert[] {
