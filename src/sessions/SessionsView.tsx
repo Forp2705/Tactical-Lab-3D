@@ -584,21 +584,29 @@ const SessionBlockCard = memo(function SessionBlockCard({
             type="number"
             min={1}
             value={block.durationMin}
+            aria-label="Duracion del bloque en minutos"
             onChange={(event) =>
               updateSessionBlock(block.id, {
                 durationMin: Number(event.target.value),
               })
             }
           />
-          <span className="muted">RPE {exercise.rpe}</span>
+          <span className="muted">min · RPE {exercise.rpe}</span>
         </div>
         <div className="session-block-attach-flags" aria-label="Adjuntos del bloque">
           {block.sketchId ? <span title="Tiene boceto adjunto">✎</span> : null}
           {block.boardId ? <span title="Tiene pizarra tactica adjunta">▦</span> : null}
-          {/* W19 REGION BLOQUE (mc-22): el boton "Ver en cancha 3D" se
-              cablea aca - se deja el espacio en la fila, no implementado
-              en esta ola. */}
         </div>
+        <button
+          type="button"
+          className="secondary sm"
+          onClick={() => {
+            useAppStore.getState().selectExercise(exercise.id);
+            useAppStore.getState().setView("viewer");
+          }}
+        >
+          Ver en cancha 3D
+        </button>
         <button
           type="button"
           className="secondary sm"
