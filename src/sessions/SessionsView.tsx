@@ -186,62 +186,62 @@ export function SessionsView() {
               la sesion creada (p.ej. "Quick Start - ...") es el feedback de
               QUE se creo al aterrizar; antes solo alimentaba el label del
               boceto y nunca se veia. */}
-          <div className="section-title session-sheet-header">
-            <div>
+          <div className="session-sheet-header">
+            <div className="session-sheet-header-top">
               <span className="panel-eyebrow">Diagnostico -&gt; campo</span>
-              {session.name ? (
-                <small className="muted" style={{ display: "block" }}>
-                  {session.name}
-                </small>
-              ) : null}
-              <h4>{shorten(sessionIntent.problem, 140)}</h4>
-              <div className="session-intent-row">
-                <span>
-                  <b>Objetivo</b> {sessionIntent.objective}
-                </span>
-                <span>
-                  <b>Senal</b> {sessionIntent.successSignal}
-                </span>
-                <span>
-                  <b>Revision</b> {sessionIntent.nextReview}
-                </span>
+              <div className="toolbar compact session-sheet-actions">
+                <QuickSketchLauncher
+                  buttonClassName="secondary sm"
+                  buttonLabel="Boceto rapido"
+                  buttonTitle="Abrir un boceto rapido desde Sesion"
+                  panelTitle="Boceto rapido para la sesion"
+                  buildDraft={() =>
+                    buildContextualSketchDraft({
+                      title: buildQuickSketchTitle([
+                        "Boceto",
+                        session.name,
+                        sessionIntent.problem,
+                      ]),
+                      tacticalFocus: sessionIntent.objective,
+                      sourceLabel: session.blocks.length
+                        ? `Sesion ${session.name || "semanal"}`
+                        : "Sesion desde foco semanal",
+                    })
+                  }
+                />
+                <button
+                  type="button"
+                  className="secondary sm"
+                  disabled={!session.blocks.length}
+                  onClick={() => setPitchSideOpen(true)}
+                >
+                  Modo cancha
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => void exportSessionPdf(session.blocks, computed, exerciseVariants)}
+                >
+                  Exportar PDF
+                </button>
               </div>
             </div>
-            <div className="toolbar compact session-sheet-actions">
-              <QuickSketchLauncher
-                buttonClassName="secondary sm"
-                buttonLabel="Boceto rapido"
-                buttonTitle="Abrir un boceto rapido desde Sesion"
-                panelTitle="Boceto rapido para la sesion"
-                buildDraft={() =>
-                  buildContextualSketchDraft({
-                    title: buildQuickSketchTitle([
-                      "Boceto",
-                      session.name,
-                      sessionIntent.problem,
-                    ]),
-                    tacticalFocus: sessionIntent.objective,
-                    sourceLabel: session.blocks.length
-                      ? `Sesion ${session.name || "semanal"}`
-                      : "Sesion desde foco semanal",
-                  })
-                }
-              />
-              <button
-                type="button"
-                className="secondary sm"
-                disabled={!session.blocks.length}
-                onClick={() => setPitchSideOpen(true)}
-              >
-                Modo cancha
-              </button>
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => void exportSessionPdf(session.blocks, computed, exerciseVariants)}
-              >
-                Exportar PDF
-              </button>
+            {session.name ? (
+              <small className="muted" style={{ display: "block" }}>
+                {session.name}
+              </small>
+            ) : null}
+            <h4>{shorten(sessionIntent.problem, 110)}</h4>
+            <div className="session-intent-row">
+              <span>
+                <b>Objetivo</b> {sessionIntent.objective}
+              </span>
+              <span>
+                <b>Senal</b> {sessionIntent.successSignal}
+              </span>
+              <span>
+                <b>Revision</b> {sessionIntent.nextReview}
+              </span>
             </div>
           </div>
           <div className="session-totals-row">
