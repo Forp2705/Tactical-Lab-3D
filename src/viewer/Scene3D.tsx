@@ -15,7 +15,7 @@ import {
   SSAO,
   Vignette,
 } from "@react-three/postprocessing";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ACESFilmicToneMapping, SRGBColorSpace, Vector3 } from "three";
 import { Ball3D } from "./Ball3D";
 import { OverlayLayer } from "./Overlays";
@@ -406,10 +406,11 @@ function SceneCamera({
   topFocus: TopFocus;
   actionFocus: { x: number; z: number };
 }) {
-  const { camera, size } = useThree();
+  const { camera, size, gl } = useThree();
   const lookTarget = useMemo(() => new Vector3(), []);
   const nextPosition = useMemo(() => new Vector3(), []);
   const targetLook = useMemo(() => new Vector3(), []);
+  const orbited = useMemo(() => new Vector3(), []);
   const preset = useMemo(
     () => cameraPreset(mode, cameraMode),
     [cameraMode, mode],
@@ -423,6 +424,46 @@ function SceneCamera({
     return v.lengthSq() > 0 ? v.normalize() : new Vector3(0, 1, 1).normalize();
   }, [preset]);
 
+  // Orbita (arrastrar para rotar la camara alrededor de la accion): gap
+  // abierto desde el audit W2, resuelto siguiendo el mockup ("orbit()").
+  // Solo en camaras de perspectiva (iso/broadcast); "top" es un cenital
+  // estricto con su propio contrato de framing, no participa.
+  const theta = useRef(0);
+  useEffect(() => {
+    theta.current = 0;
+  }, [cameraMode, mode]);
+  useEffect(() => {
+    if (cameraMode === "top") return;
+    const dom = gl.domElement;
+    let dragging = false;
+    let startX = 0;
+    let startTheta = 0;
+    const onDown = (e: PointerEvent) => {
+      dragging = true;
+      startX = e.clientX;
+      startTheta = theta.current;
+      dom.style.cursor = "grabbing";
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      theta.current = startTheta + (e.clientX - startX) * 0.006;
+    };
+    const onUp = () => {
+      dragging = false;
+      dom.style.cursor = "grab";
+    };
+    dom.style.cursor = "grab";
+    dom.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      dom.style.cursor = "";
+      dom.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [cameraMode, gl]);
+
   // Encuadre por bounds de la accion (no de la cancha entera): asi la jugada
   // llena el viewport. computeTopView ademas pone un piso de zoom y clampea el
   // centro para que la ventana visible nunca muestre bandas negras fuera de
@@ -433,12 +474,14 @@ function SceneCamera({
 
   useEffect(() => {
     if (cameraMode === "top") return;
+    orbited.copy(direction).applyAxisAngle(UP_AXIS, theta.current);
     camera.position.set(
-      actionFocus.x + direction.x * distance,
-      direction.y * distance,
-      actionFocus.z + direction.z * distance,
+      actionFocus.x + orbited.x * distance,
+      orbited.y * distance,
+      actionFocus.z + orbited.z * distance,
     );
     camera.lookAt(actionFocus.x, LOOK_LIFT, actionFocus.z);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera, cameraMode, direction, distance, actionFocus.x, actionFocus.z]);
 
   useFrame((_state, delta) => {
@@ -452,10 +495,11 @@ function SceneCamera({
       return;
     }
 
+    orbited.copy(direction).applyAxisAngle(UP_AXIS, theta.current);
     nextPosition.set(
-      actionFocus.x + direction.x * distance,
-      direction.y * distance,
-      actionFocus.z + direction.z * distance,
+      actionFocus.x + orbited.x * distance,
+      orbited.y * distance,
+      actionFocus.z + orbited.z * distance,
     );
     camera.position.lerp(nextPosition, Math.min(1, delta * 2.2));
     targetLook.set(actionFocus.x, LOOK_LIFT, actionFocus.z);
@@ -485,6 +529,7 @@ function SceneCamera({
 
 const LOOK_LIFT = 1.1;
 const EMPTY_PASS_STARTS: number[] = [];
+const UP_AXIS = new Vector3(0, 1, 0);
 
 function framingDistance(span: number, fov: number) {
   const half = Math.max(7, span * 0.5 + 3);
