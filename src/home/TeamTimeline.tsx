@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import {
   buildWeeklyDecisionSummary,
   detectTeamPatterns,
+  formatPatternEvidence,
   type TeamPattern,
 } from "@/ai/patternDetection";
 import type { SavedPostMatchReport } from "@/ai/post-match/schemas";
@@ -210,7 +211,7 @@ function PatternGroup({
               kind={pattern.kind}
               title={patternKindLabel(pattern.kind)}
               body={pattern.statement}
-              meta={pattern.evidence.slice(0, 2).join(" / ")}
+              meta={formatPatternEvidence(pattern.evidence)}
             />
           ))}
         </div>

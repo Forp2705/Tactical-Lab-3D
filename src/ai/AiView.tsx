@@ -15,6 +15,7 @@ import { PostMatchAnalysisView } from "@/ai/post-match/PostMatchAnalysisView";
 import { usePostMatchReports } from "@/ai/post-match/usePostMatchReports";
 import {
   detectTeamPatterns,
+  formatPatternEvidence,
   type TeamPattern,
 } from "@/ai/patternDetection";
 import type {
@@ -37,6 +38,7 @@ import {
   ModeBadge,
   PitchViz,
 } from "@/ui/tacticalPrimitives";
+import { pluralizeEs } from "@/ui/pluralizeEs";
 import { WeeklyDecisionCard, buildWeeklyDecisionCardModel } from "@/ui/WeeklyDecisionCard";
 import { type CoachShapeContext, useAppStore } from "@/state/useAppStore";
 import { hasOpponentScoutData, type OpponentScout } from "@/scout/opponentScout";
@@ -2032,7 +2034,7 @@ function PatternCard({ pattern }: { pattern: TeamPattern }) {
       </small>
       <p>{pattern.statement}</p>
       {pattern.evidence.length ? (
-        <small>Apoyado en: {pattern.evidence.slice(0, 2).join(" / ")}</small>
+        <small>Apoyado en: {formatPatternEvidence(pattern.evidence)}</small>
       ) : null}
     </div>
   );
@@ -2245,7 +2247,8 @@ function ActionPanel({
           <h4>Botones ejecutables</h4>
         </div>
         <span className="ai-context-chip">
-          {actionGroups.length + directActions.length} disponibles
+          {actionGroups.length + directActions.length}{" "}
+          {pluralizeEs(actionGroups.length + directActions.length, "disponible", "disponibles")}
         </span>
       </div>
       {actionStatus ? <p className="success-text">{actionStatus}</p> : null}

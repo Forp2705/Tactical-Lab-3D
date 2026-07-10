@@ -1,4 +1,4 @@
-import { type Layer, catalog } from "@/data";
+import { type Layer, catalog, formatPlayerRange } from "@/data";
 import { exportWeeklyBriefingHtml } from "@/export/premiumExports";
 import {
   QuickSketchLauncher,
@@ -146,7 +146,7 @@ export function PlayerView() {
         </div>
         <div className="stat-box">
           <b>Jugadores</b>
-          {focusExercise.players.min}-{focusExercise.players.max}
+          {formatPlayerRange(focusExercise.players.min, focusExercise.players.max)}
         </div>
       </div>
       <div className="team-card" style={{ marginTop: 12 }}>

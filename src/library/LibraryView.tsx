@@ -1,5 +1,10 @@
 import { resolveExerciseSelection } from "@/app/viewerSelection";
-import { catalog, ExerciseSchema, generatedLibraryExerciseIds } from "@/data";
+import {
+  catalog,
+  ExerciseSchema,
+  formatPlayerRange,
+  generatedLibraryExerciseIds,
+} from "@/data";
 import { useAppStore } from "@/state/useAppStore";
 import { LoadMeter, PitchViz } from "@/ui/tacticalPrimitives";
 import { useMemo, useState } from "react";
@@ -390,7 +395,7 @@ export function LibraryView() {
                 <span className="tag">{exercise.principle}</span>
                 <span className="tag">{exercise.level}</span>
                 <span className="tag">
-                  {exercise.players.min}-{exercise.players.max} jugadores
+                  {formatPlayerRange(exercise.players.min, exercise.players.max)} jugadores
                 </span>
               </div>
               <LoadMeter
@@ -445,7 +450,7 @@ export function LibraryView() {
           </div>
           <div className="stat-box">
             <b>Jugadores</b>
-            {selected.players.min}-{selected.players.max}
+            {formatPlayerRange(selected.players.min, selected.players.max)}
           </div>
           <div className="stat-box">
             <b>Duración</b>

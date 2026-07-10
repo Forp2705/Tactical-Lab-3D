@@ -5,7 +5,8 @@ import {
   detectTeamPatterns,
   type TeamPattern,
 } from "@/ai/patternDetection";
-import { catalog } from "@/data";
+import { catalog, formatPlayerRange } from "@/data";
+import { pluralizeEs } from "@/ui/pluralizeEs";
 import { buildOpponentGamePlan, hasOpponentScoutData } from "@/scout/opponentScout";
 import {
   exportEvolutionHtml,
@@ -360,7 +361,8 @@ export function HomeView() {
             <span className="home-collapse-summary-row">
               <span>OBSERVACION MANUAL</span>
               <span className="ai-context-chip">
-                {manualObservations.length} guardadas
+                {manualObservations.length}{" "}
+                {pluralizeEs(manualObservations.length, "guardada", "guardadas")}
               </span>
             </span>
           </summary>
@@ -517,7 +519,11 @@ export function HomeView() {
         <Stat eyebrow="Plantel" big={`${availablePlayers}/${teamPlayers.length}`} sub="jugadores disponibles" />
         <Stat eyebrow="Sesion" big={session.blocks.length} sub={`${session.computed?.totalDuration ?? 0} min planificados`} />
         <Stat eyebrow="Evidencia video" big={evidence.total} sub={`${evidence.assistedTracks} asistidos / ${evidence.confirmedTracks} validados`} accent />
-        <Stat eyebrow="Shapes" big={lineupLabShapeCount} sub={`${lineupLabTransitionCount} transiciones guardadas`} />
+        <Stat
+          eyebrow="Shapes"
+          big={lineupLabShapeCount}
+          sub={`${lineupLabTransitionCount} ${pluralizeEs(lineupLabTransitionCount, "transicion guardada", "transiciones guardadas")}`}
+        />
       </section>
 
       <section className="home-grid">
@@ -592,7 +598,7 @@ export function HomeView() {
                       </small>
                     </div>
                     <span className="tag-pill">
-                      {selectedExercise.players.min}-{selectedExercise.players.max}
+                      {formatPlayerRange(selectedExercise.players.min, selectedExercise.players.max)}
                     </span>
                   </>
                 )}

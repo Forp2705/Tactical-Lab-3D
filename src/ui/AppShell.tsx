@@ -1,5 +1,5 @@
 import { resolveExerciseSelection } from "@/app/viewerSelection";
-import { catalog } from "@/data";
+import { catalog, formatPlayerRange } from "@/data";
 import {
   APP_SNAPSHOT_VERSION,
   parseSnapshot,
@@ -242,10 +242,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <b>{session.blocks.length}</b>
               </div>
               <div>
-                <span>Actual</span>
+                <span>Jugadores</span>
                 <b>
-                  {selectedExerciseMissing ? "-" : selectedExercise.players.min}
-                  v
+                  {selectedExerciseMissing
+                    ? "-"
+                    : formatPlayerRange(
+                        selectedExercise.players.min,
+                        selectedExercise.players.max,
+                      )}
                 </b>
               </div>
               <div>

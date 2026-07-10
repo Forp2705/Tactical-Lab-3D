@@ -29,4 +29,5 @@ export {
   rondoExercises,
 } from "./exercises/groups.js";
 export { demoPlayers } from "./players.js";
+export { formatPlayerRange } from "./formatPlayers.js";
 export * from "./schemas.js";

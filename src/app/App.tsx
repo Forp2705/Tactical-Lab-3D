@@ -1,4 +1,4 @@
-import { type Layer, catalog } from "@/data";
+import { type Layer, catalog, formatPlayerRange } from "@/data";
 import { loadSnapshot, saveSnapshot } from "@/state/db";
 import { getExerciseById, useAppStore } from "@/state/useAppStore";
 import { AppShell } from "@/ui/AppShell";
@@ -340,7 +340,10 @@ function ViewerWorkspace() {
             <h3>{selectedExercise.title}</h3>
             <p>
               {selectedExercise.phase} - {selectedExercise.principle} -{" "}
-              {selectedExercise.players.min}-{selectedExercise.players.max}{" "}
+              {formatPlayerRange(
+                selectedExercise.players.min,
+                selectedExercise.players.max,
+              )}{" "}
               jugadores
             </p>
             <div className="viewer-team-legend" aria-label="Leyenda de equipos">
@@ -467,7 +470,10 @@ function ViewerWorkspace() {
               />
               <ViewerStatCard
                 label="Jugadores"
-                value={`${selectedExercise.players.min}-${selectedExercise.players.max}`}
+                value={formatPlayerRange(
+                  selectedExercise.players.min,
+                  selectedExercise.players.max,
+                )}
               />
               <ViewerStatCard label="Exito" value={selectedExercise.success} />
             </div>

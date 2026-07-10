@@ -69,6 +69,15 @@ export function detectTeamPatterns(
   return dedupePatterns(patterns).slice(0, options.limit ?? 6);
 }
 
+// Presentation-only: a pattern's evidence can cite the same report twice
+// (e.g. one problem logged in both ownTeamProblems and mainProblems), which
+// reads as fabricated recurrence ("2026-06-01 vs San Telmo / 2026-06-01 vs
+// San Telmo"). Dedupe before display without touching how patterns are
+// detected (W21 #4).
+export function formatPatternEvidence(evidence: string[], max = 2): string {
+  return Array.from(new Set(evidence)).slice(0, max).join(" / ");
+}
+
 export function formatPatternsForCoach(patterns: TeamPattern[]) {
   if (!patterns.length) return "No cross-report patterns detected.";
 
