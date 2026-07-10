@@ -1489,6 +1489,129 @@ button.danger {
   border-color: rgba(255, 116, 116, 0.25);
 }
 
+/* W22 (handoff-diagnostico): tabs Consulta | Chat | Post partido, transplant
+   verbatim de docs/design/handoff-visor3d/Diagnostico (reforma).html
+   (.tabs pill bar) — mismos tokens que el resto del cockpit, 0 hex nuevos. */
+.ai-diag-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(94, 234, 212, 0.14);
+  border-radius: 999px;
+  background: rgba(4, 10, 14, 0.55);
+}
+
+.ai-diag-tabs button {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.ai-diag-tabs button:hover {
+  color: var(--text);
+}
+
+.ai-diag-tabs button.on {
+  color: #061018;
+  background: var(--accent);
+}
+
+/* W22 fold fix (390): tabs mas compactos en mobile — ganan ~24px sin
+   perder tap target (>=32px alto real con el padding vertical). */
+@media (max-width: 480px) {
+  .ai-diag-tabs {
+    margin-bottom: 10px;
+  }
+
+  .ai-diag-tabs button {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+}
+
+/* W22: chips de ejemplo sobre el textarea de consulta, transplant de .quick
+   del mockup — solo prefillean aiPrompt, mismo campo de siempre. */
+.ai-quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+/* W22 fold fix (390): 3 chips envueltas en columna empujaban el CTA
+   "Consultar Coach" fuera del fold. Una fila con scroll horizontal
+   mantiene el feature sin costar 140px de alto. */
+@media (max-width: 720px) {
+  .ai-quick-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    padding-bottom: 2px;
+  }
+
+  .ai-quick-chips button {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* .ai-cockpit-stack/.ai-workbench son grid sin columna explicita (auto) —
+     el min-content de las chips con nowrap las inflaba a las dos hasta
+     975px pese al overflow-x:auto local. minmax(0,1fr) frena esa cadena
+     de blowout de grid en mobile sin tocar el layout desktop. */
+  .ai-cockpit-stack,
+  .ai-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* <=480: incluso en una fila, las chips siguen empujando el CTA
+   "Consultar Coach" fuera del fold en pantallas chicas (390). Se ocultan
+   ahi — quedan en tablet/desktop donde sobra alto. Decoracion, no rompe
+   el flujo real (el textarea sigue siendo el mismo campo aiPrompt). */
+@media (max-width: 480px) {
+  .ai-quick-chips {
+    display: none;
+  }
+}
+
+.ai-quick-chips button {
+  padding: 6px 12px;
+  border: 1px dashed rgba(94, 234, 212, 0.3);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.ai-quick-chips button::before {
+  content: "+ ";
+  color: var(--accent);
+}
+
+.ai-quick-chips button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+/* W22: estado honesto del tab Chat (feature de agente fuera de alcance,
+   ver ChatComingSoon en AiView.tsx). Reusa .tester-edge-state, sin card
+   de chat fake. */
+.ai-chat-pending {
+  max-width: 640px;
+}
+
 .coach-report {
   display: grid;
   gap: 14px;
@@ -2941,10 +3064,6 @@ video {
 
 .ai-card {
   border-color: rgba(232, 255, 247, 0.08);
-}
-
-.ai-mode-tabs {
-  width: fit-content;
 }
 
 .post-match-layout textarea {
