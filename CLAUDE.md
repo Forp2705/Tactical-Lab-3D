@@ -328,7 +328,7 @@ El módulo de video hoy es deliberadamente limitado:
 - permite tracking manual haciendo click en el canvas;
 - exporta CSV de tracks.
 
-El módulo video combina tagging/tracking manual con un endpoint de detección de patrones por visión (`/api/video/pattern-scan` + `src/video/videoPatternScan.ts`). La UI aún no consume el endpoint (gap de cableado, no de capacidad).
+El módulo video combina tagging/tracking manual con un endpoint de detección de patrones por visión (`/api/video/pattern-scan` + `src/video/videoPatternScan.ts`). La UI ya consume el endpoint desde `VideoView.tsx` (vía `videoPatternScanClient.ts`).
 
 ## Asistente táctico IA
 
@@ -607,7 +607,7 @@ Todavía hay deuda:
 - bundle grande en build;
 - warnings de import dinámico/estático de store/db;
 - varias capas IA que conviene no mezclar por error;
-- `videoPatternScan.ts` existe pero la UI de video todavía no lo consume (gap de cableado).
+- (resuelto) `videoPatternScan.ts` ya está cableado a la UI de video: `VideoView.tsx` consume `/api/video/pattern-scan` vía `videoPatternScanClient.ts`.
 
 ---
 

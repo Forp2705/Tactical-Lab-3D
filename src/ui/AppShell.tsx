@@ -28,42 +28,32 @@ type NavItem = {
   code: string;
   label: string;
   view: NavView;
-  isActive?: (view: NavView, aiMode: string) => boolean;
-  onSelect?: () => void;
 };
 
-// Nav W9 en dos grupos + Avanzado (acceptance E4, orden del mockup). Las 10
-// entradas cubren las 9 vistas: Diagnostico y Post-Partido son la misma vista
-// `ai` con aiMode distinto.
+// Nav W21 (#3 y #9 del audit W20): el flujo principal es el ciclo semanal
+// completo — Sala > Diagnostico > Pizarra > Sesion > Evolucion — asi que
+// Pizarra y Sesion suben desde "Avanzado". Diagnostico es puerta UNICA a la
+// vista combinada `ai`: Post-Partido se alcanza por su tab interno o por los
+// links contextuales del flujo (que setean aiMode explicitamente). El boton
+// de nav NO toca aiMode — setView nunca toca aiMode (invariante W17) y asi
+// un click de nav no pisa el tab activo ni resetea la entrevista del coach
+// (setAiMode reinicia coachInterview).
 const PLAN_NAV: NavItem[] = [
   { view: "home", code: "01", label: "Sala" },
-  {
-    view: "ai",
-    code: "02",
-    label: "Diagnostico",
-    isActive: (view, aiMode) => view === "ai" && aiMode !== "postMatch",
-    onSelect: () => useAppStore.getState().setAiMode("coach"),
-  },
-  { view: "team", code: "03", label: "Evolucion" },
-  {
-    view: "ai",
-    code: "04",
-    label: "Post-Partido",
-    isActive: (view, aiMode) => view === "ai" && aiMode === "postMatch",
-    onSelect: () => useAppStore.getState().setAiMode("postMatch"),
-  },
+  { view: "ai", code: "02", label: "Diagnostico" },
+  { view: "board", code: "03", label: "Pizarra" },
+  { view: "sessions", code: "04", label: "Sesion" },
+  { view: "team", code: "05", label: "Evolucion" },
 ];
 
 const TOOLS_NAV: NavItem[] = [
-  { view: "viewer", code: "05", label: "Cancha 3D" },
-  { view: "video", code: "06", label: "Video + Tracking" },
+  { view: "viewer", code: "06", label: "Cancha 3D" },
+  { view: "video", code: "07", label: "Video + Tracking" },
 ];
 
 const ADVANCED_NAV: NavItem[] = [
-  { view: "board", code: "07", label: "Pizarra" },
-  { view: "sessions", code: "08", label: "Sesion" },
-  { view: "library", code: "09", label: "Biblioteca" },
-  { view: "player", code: "10", label: "Briefing" },
+  { view: "library", code: "08", label: "Biblioteca" },
+  { view: "player", code: "09", label: "Briefing" },
 ];
 
 // Label de la vista activa para el subtitulo de marca (E2). Sala se lee como
@@ -396,17 +386,12 @@ function NavButton({
   item,
   onNavigate,
 }: { item: NavItem; onNavigate?: () => void }) {
-  const active = useAppStore((state) =>
-    item.isActive
-      ? item.isActive(state.view, state.aiMode)
-      : state.view === item.view,
-  );
+  const active = useAppStore((state) => state.view === item.view);
   return (
     <button
       type="button"
       className={`nav-btn ${active ? "active" : ""}`}
       onClick={() => {
-        item.onSelect?.();
         useAppStore.getState().setView(item.view);
         onNavigate?.();
       }}
