@@ -23,7 +23,7 @@ const materials = {
   skin: material("skin", "#e6b887"),
   hair: material("hair", "#6b3f24"),
   boots: material("boots", "#111827"),
-  sole: material("sole", "#f8fafc"),
+  eyes: material("eyes", "#1b140f"),
 };
 
 const hips = new THREE.Group();
@@ -35,15 +35,24 @@ const torso = new THREE.Group();
 torso.name = "Torso";
 torso.position.set(0, 0.36, 0);
 hips.add(torso);
-addMesh(torso, "JerseyTorso", new THREE.CapsuleGeometry(0.2, 0.44, 4, 10), materials.jersey, [0, 0, 0]);
-addMesh(torso, "ChestPanel", new THREE.BoxGeometry(0.48, 0.42, 0.14), materials.jersey, [0, 0.02, 0.02]);
+// Torso un poco mas angosto de cintura + hombros un poco mas anchos que la
+// v1 (menos "barril"), radialSegments subido de 10 a 12 para suavizar el
+// perfil sin subir el conteo de meshes.
+addMesh(torso, "JerseyTorso", new THREE.CapsuleGeometry(0.185, 0.46, 4, 12), materials.jersey, [0, 0, 0]);
+addMesh(torso, "ChestPanel", new THREE.BoxGeometry(0.5, 0.42, 0.14), materials.jersey, [0, 0.02, 0.02]);
 
 const head = new THREE.Group();
 head.name = "Head";
 head.position.set(0, 0.74, 0);
 torso.add(head);
-addMesh(head, "HeadMesh", new THREE.SphereGeometry(0.17, 14, 14), materials.skin, [0, 0, 0]);
-addMesh(head, "HairMesh", new THREE.SphereGeometry(0.176, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), materials.hair, [0, 0.03, 0]);
+addMesh(head, "HeadMesh", new THREE.SphereGeometry(0.17, 16, 16), materials.skin, [0, 0, 0]);
+addMesh(head, "HairMesh", new THREE.SphereGeometry(0.176, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), materials.hair, [0, 0.03, 0]);
+// Rasgo minimo por geometria (sin texturas): dos esferas chicas planas en el
+// frente de la cabeza. Alcanza para romper el "maniqui liso" sin agregar
+// peso real. Se compensan quitando BootTip de las dos piernas mas abajo, asi
+// el conteo total de meshes se mantiene en 18 (mismo piso que la v1).
+addMesh(head, "LeftEye", new THREE.SphereGeometry(0.019, 8, 8), materials.eyes, [-0.058, 0.012, 0.147], [0, 0, 0], [1, 1, 0.6]);
+addMesh(head, "RightEye", new THREE.SphereGeometry(0.019, 8, 8), materials.eyes, [0.058, 0.012, 0.147], [0, 0, 0], [1, 1, 0.6]);
 
 addArm(torso, "Left", -1);
 addArm(torso, "Right", 1);
@@ -119,7 +128,9 @@ function addArm(parent, sideName, side) {
   upper.add(forearm);
   addMesh(forearm, `${sideName}ForeArmMesh`, new THREE.CapsuleGeometry(0.045, 0.27, 4, 8), materials.skin, [0, -0.15, 0]);
 
-  addMesh(forearm, `${sideName}Hand`, new THREE.SphereGeometry(0.052, 10, 10), materials.skin, [0, -0.31, 0]);
+  // Mano ovalada (escala no uniforme) en vez de esfera perfecta: menos "bola
+  // de helado" en la punta del brazo, sin sumar geometria nueva.
+  addMesh(forearm, `${sideName}Hand`, new THREE.SphereGeometry(0.05, 10, 8), materials.skin, [0, -0.31, 0], [0, 0, 0], [0.86, 1.08, 0.78]);
 }
 
 function addLeg(parent, sideName, side) {
@@ -139,32 +150,48 @@ function addLeg(parent, sideName, side) {
   boot.name = `${sideName}Boot`;
   boot.position.set(0, -0.47, 0.075);
   lower.add(boot);
-  addMesh(boot, `${sideName}BootMesh`, new THREE.BoxGeometry(0.15, 0.08, 0.28), materials.boots, [0, 0, 0]);
-  addMesh(boot, `${sideName}BootTip`, new THREE.BoxGeometry(0.11, 0.035, 0.08), materials.sole, [0, -0.02, 0.16]);
+  // Un solo mesh de botin (se saco BootTip para pagar el presupuesto de los
+  // ojos sin subir el conteo total de 18 meshes/primitivas), con una
+  // proporcion menos "ladrillo": mas angosto y con un leve angulo hacia la
+  // punta via scale no uniforme en vez de dos cajas superpuestas.
+  addMesh(boot, `${sideName}BootMesh`, new THREE.BoxGeometry(0.135, 0.075, 0.3), materials.boots, [0, -0.005, 0.01], [0.05 * side, 0, 0]);
 }
 
 function idleClip() {
-  const times = [0, 0.55, 1.1];
-  return new THREE.AnimationClip("Idle", 1.1, [
+  // Ciclo mas lento y con un poco mas de rango que la v1 (que era casi
+  // imperceptible) + un canal nuevo de balanceo de cadera y una micro
+  // inclinacion de cabeza — mismos nodos/nombre de clip, solo mas vida.
+  const times = [0, 0.7, 1.4];
+  return new THREE.AnimationClip("Idle", 1.4, [
     positionTrack("Hips", times, [
       [0, 0.92, 0],
-      [0, 0.95, 0],
+      [0, 0.955, 0],
       [0, 0.92, 0],
     ]),
+    quatTrack("Hips", times, [
+      [0, -0.03, 0],
+      [0, 0.03, 0],
+      [0, -0.03, 0],
+    ]),
     quatTrack("Torso", times, [
-      [0.02, 0, 0],
-      [-0.02, 0, 0],
-      [0.02, 0, 0],
+      [0.03, 0.015, 0.015],
+      [-0.03, -0.015, -0.015],
+      [0.03, 0.015, 0.015],
+    ]),
+    quatTrack("Head", times, [
+      [0, 0.05, 0],
+      [0, -0.05, 0],
+      [0, 0.05, 0],
     ]),
     quatTrack("LeftUpperArm", times, [
-      [0.04, 0, 0.18],
-      [-0.02, 0, 0.22],
-      [0.04, 0, 0.18],
+      [0.05, 0, 0.2],
+      [-0.03, 0, 0.26],
+      [0.05, 0, 0.2],
     ]),
     quatTrack("RightUpperArm", times, [
-      [-0.02, 0, -0.18],
-      [0.04, 0, -0.22],
-      [-0.02, 0, -0.18],
+      [-0.03, 0, -0.2],
+      [0.05, 0, -0.26],
+      [-0.03, 0, -0.2],
     ]),
   ]);
 }
