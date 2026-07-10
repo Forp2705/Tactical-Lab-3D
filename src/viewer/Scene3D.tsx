@@ -89,8 +89,35 @@ export function Scene3D({
     () => ({ x: topFocus.x, z: topFocus.z }),
     [topFocus.x, topFocus.z],
   );
-  const useSimplifiedActors = cameraMode !== "top" && frame.actors.length > 14;
+  // Xbot = 2 meshes/jugador vs. 18 del footballer viejo. El umbral de >14
+  // actores nacio para proteger perf con el modelo caro (14*18=252 draw
+  // calls); con Xbot, incluso 40 jugadores completos (40*2=80) cuestan menos
+  // que 3 jugadores del modelo viejo. Se sube el techo, no se elimina: sigue
+  // siendo una valvula de seguridad para escenas patologicas fuera del
+  // catalogo actual (max real ~22-26, 11v11+banco).
+  const useSimplifiedActors = cameraMode !== "top" && frame.actors.length > 40;
   const renderSettings = renderSettingsForQuality(quality);
+  const ballGround = worldFromPitch(
+    { x: frame.ball.pos.x, y: frame.ball.pos.y },
+    mode,
+  );
+  const ballPosition: [number, number, number] = [
+    ballGround[0],
+    0,
+    ballGround[2],
+  ];
+  const passStartsByActor = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const overlay of exercise.scene.overlays) {
+      if (overlay.type !== "pass" || typeof overlay.from !== "string") {
+        continue;
+      }
+      const list = map.get(overlay.from) ?? [];
+      list.push(overlay.start);
+      map.set(overlay.from, list);
+    }
+    return map;
+  }, [exercise.scene.overlays]);
 
   return (
     <Canvas
@@ -190,6 +217,8 @@ export function Scene3D({
             time={time}
             mode={mode}
             simplified={useSimplifiedActors}
+            ballPosition={ballPosition}
+            passStarts={passStartsByActor.get(pose.actor.id) ?? EMPTY_PASS_STARTS}
           />
         ))
       )}
@@ -455,6 +484,7 @@ function SceneCamera({
 }
 
 const LOOK_LIFT = 1.1;
+const EMPTY_PASS_STARTS: number[] = [];
 
 function framingDistance(span: number, fov: number) {
   const half = Math.max(7, span * 0.5 + 3);
@@ -468,11 +498,15 @@ function ActorNode({
   time,
   mode,
   simplified,
+  ballPosition,
+  passStarts,
 }: {
   pose: EngineActorPose;
   time: number;
   mode: PitchMode;
   simplified: boolean;
+  ballPosition: [number, number, number];
+  passStarts: number[];
 }) {
   const position = worldFromPitch(pose.pos, mode);
   const teamColor = teamColorFor(pose.actor.team);
@@ -486,7 +520,6 @@ function ActorNode({
         scale={playerScale(mode)}
         time={time}
         moving={pose.moving}
-        motion={pose.motion}
       />
     );
   }
@@ -495,12 +528,11 @@ function ActorNode({
     <Player3D
       actor={pose.actor}
       position={[position[0], 0, position[2]]}
-      angle={pose.direction}
+      ballPosition={ballPosition}
       color={teamColor}
       scale={playerScale(mode)}
       time={time}
-      moving={pose.moving}
-      motion={pose.motion}
+      passStarts={passStarts}
     />
   );
 }

@@ -1,9 +1,14 @@
 import type { Actor } from "@/data";
-import { Billboard, Text, useAnimations, useGLTF } from "@react-three/drei";
+import { useAppStore } from "@/state/useAppStore";
+import { Billboard, Text, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
+  AnimationMixer,
   type AnimationAction,
+  type AnimationClip,
+  Box3,
+  type Bone,
   type Group,
   type Mesh,
   MeshStandardMaterial,
@@ -12,75 +17,206 @@ import {
   Vector3,
 } from "three";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
-import type { ActorMotion } from "./lib/matchEngine";
 
 type PlayerProps = {
   actor: Actor;
   position: [number, number, number];
-  angle: number;
+  ballPosition?: [number, number, number];
   color: string;
   scale?: number;
   time?: number;
   moving?: boolean;
-  motion?: ActorMotion;
+  /** Instantes (tiempo de escena) en los que este actor da un pase — dispara el gesto de patada. */
+  passStarts?: number[];
 };
 
-const MODEL_URL = "/models/footballer.glb";
+/* ================= rig con mocap (Xbot) =================
+ * Transplant verbatim de docs/design/handoff-visor3d/Visor 3D (modelos).html:
+ * clips por regex, blending por pesos con histeresis, cadencia = velocidad
+ * real, suavizado exponencial de posicion, giro con zona muerta mirando la
+ * pelota en reposo, patada procedural sobre el hueso RightUpLeg.
+ */
+const MODEL_URL = "/models/Xbot.glb";
+const PLAYER_H = 2.3;
+
+const RUN_ENTER = 3.1;
+const RUN_EXIT = 2.3;
+const RUN_TO_IDLE = 0.35;
+const WALK_ENTER = 0.6;
+const WALK_EXIT = 0.3;
+const TURN_DEADZONE = 0.35;
+const KICK_DURATION = 0.45;
+const KICK_AMPLITUDE = 1.15;
+
+function findClip(clips: AnimationClip[], re: RegExp) {
+  return clips.find((clip) => re.test(clip.name)) ?? clips[0];
+}
+
+type LocomotionMode = "idle" | "walk" | "run";
+
+type PlayerRig = {
+  heading: number;
+  spdS: number;
+  mode: LocomotionMode;
+  weights: Record<LocomotionMode, number>;
+  kickT: number;
+  initialized: boolean;
+  prevTime: number;
+};
 
 export function Player3D({
   actor,
   position,
-  angle,
+  ballPosition,
   color,
   scale = 1,
-  moving = false,
-  motion,
+  passStarts,
 }: PlayerProps) {
   const root = useRef<Group>(null);
   const modelGroup = useRef<Group>(null);
-  const targetPosition = useMemo(() => new Vector3(), []);
+  const own = actor.team === "own";
+
   const gltf = useGLTF(MODEL_URL);
-  const scene = useMemo(
-    () => cloneWithUniqueMaterials(gltf.scene),
-    [gltf.scene],
-  );
-  const { actions } = useAnimations(gltf.animations, modelGroup);
-  const currentClip = motion ?? (moving ? "Run" : "Idle");
+  const model = useMemo(() => cloneRig(gltf.scene, own, actor.role), [
+    gltf.scene,
+    own,
+    actor.role,
+  ]);
+  const rigHeight = useMemo(() => {
+    const box = new Box3().setFromObject(gltf.scene);
+    return Math.max(0.5, box.max.y - box.min.y);
+  }, [gltf.scene]);
 
-  useEffect(() => {
-    tintFootballKit(scene, color);
-  }, [scene, color]);
-
-  useEffect(() => {
-    playAction(actions, currentClip);
-    return () => {
-      actions[currentClip]?.fadeOut(1);
+  const mixer = useMemo(() => new AnimationMixer(model), [model]);
+  const actions = useMemo(() => {
+    const clips = gltf.animations;
+    const map: Record<LocomotionMode, AnimationAction> = {
+      idle: mixer.clipAction(findClip(clips, /idle/i)),
+      walk: mixer.clipAction(findClip(clips, /walk/i)),
+      run: mixer.clipAction(findClip(clips, /run/i)),
     };
-  }, [actions, currentClip]);
+    (Object.keys(map) as LocomotionMode[]).forEach((key) => {
+      map[key].play();
+      map[key].setEffectiveWeight(key === "idle" ? 1 : 0);
+    });
+    mixer.update(Math.random() * 1.7);
+    return map;
+  }, [gltf.animations, mixer]);
+
+  const kickBone = useMemo(() => {
+    let bone: Bone | null = null;
+    model.traverse((o) => {
+      if (!bone && (o as Bone).isBone && /RightUpLeg$/i.test(o.name)) {
+        bone = o as Bone;
+      }
+    });
+    return bone as Bone | null;
+  }, [model]);
+
+  const rig = useRef<PlayerRig>({
+    heading: 0,
+    spdS: 0,
+    mode: "idle",
+    weights: { idle: 1, walk: 0, run: 0 },
+    kickT: -9,
+    initialized: false,
+    prevTime: 0,
+  }).current;
+
+  useEffect(() => {
+    return () => {
+      mixer.stopAllAction();
+    };
+  }, [mixer]);
 
   useFrame((_state, delta) => {
     if (!root.current) return;
-    targetPosition.set(position[0], position[1], position[2]);
-    root.current.position.lerp(targetPosition, Math.min(1, delta * 14));
-    root.current.rotation.y = dampAngle(
-      root.current.rotation.y,
-      -angle + Math.PI / 2,
-      delta * 12,
-    );
+    const speed = useAppStore.getState().speed || 1;
+    const time = useAppStore.getState().time;
+
+    const [tx, , tz] = position;
+    // Scrub del timeline (salto grande de tiempo, hacia adelante o atras):
+    // snap instantaneo en vez de deslizar por varios frames hacia el target.
+    // Un frame normal a 2x avanza <=~0.1s; un seek de scrub salta mucho mas.
+    const isScrub = Math.abs(time - rig.prevTime) > 0.3;
+    if (!rig.initialized || isScrub) {
+      root.current.position.set(tx, 0, tz);
+      rig.spdS = 0;
+      rig.initialized = true;
+    }
+
+    // suavizado exponencial de posicion (README: "1 - Math.exp(-dt*8)")
+    const k = 1 - Math.exp(-delta * 8);
+    const wdx = (tx - root.current.position.x) * k;
+    const wdz = (tz - root.current.position.z) * k;
+    root.current.position.x += wdx;
+    root.current.position.z += wdz;
+
+    const sdt = delta * speed;
+    const spdInst = sdt > 0.0001 ? Math.sqrt(wdx * wdx + wdz * wdz) / sdt : 0;
+    rig.spdS += (spdInst - rig.spdS) * Math.min(1, delta * 6);
+    const spdS = rig.spdS;
+
+    // histeresis de locomocion: sin parpadeo caminar/correr
+    let mode = rig.mode;
+    if (mode === "run") mode = spdS < RUN_TO_IDLE ? "idle" : spdS < RUN_EXIT ? "walk" : "run";
+    else if (mode === "walk")
+      mode = spdS > RUN_ENTER ? "run" : spdS < WALK_EXIT ? "idle" : "walk";
+    else mode = spdS > RUN_ENTER ? "run" : spdS > WALK_ENTER ? "walk" : "idle";
+    rig.mode = mode;
+
+    // orientacion: hacia el movimiento; quieto, se perfila a la pelota sin vibrar
+    let targetHeading = rig.heading;
+    let turnK: number;
+    if (spdS > 0.5 && (wdx !== 0 || wdz !== 0)) {
+      targetHeading = Math.atan2(wdx, wdz);
+      turnK = delta * 6;
+    } else if (ballPosition) {
+      const want = Math.atan2(
+        ballPosition[0] - root.current.position.x,
+        ballPosition[2] - root.current.position.z,
+      );
+      const diff = normalizeAngle(want - rig.heading);
+      if (Math.abs(diff) > TURN_DEADZONE) targetHeading = want;
+      turnK = delta * 2.4;
+    } else {
+      turnK = delta * 2.4;
+    }
+    rig.heading = lerpAngle(rig.heading, targetHeading, Math.min(1, turnK));
+    root.current.rotation.y = rig.heading;
+
+    const targetWeights: Record<LocomotionMode, number> = {
+      idle: mode === "idle" ? 1 : 0,
+      walk: mode === "walk" ? 1 : 0,
+      run: mode === "run" ? 1 : 0,
+    };
+    (Object.keys(targetWeights) as LocomotionMode[]).forEach((key) => {
+      rig.weights[key] += (targetWeights[key] - rig.weights[key]) * Math.min(1, delta * 7);
+      actions[key].setEffectiveWeight(rig.weights[key]);
+    });
+    // cadencia = velocidad real (mata el patinaje); clamp 0.75-1.5
+    actions.run.setEffectiveTimeScale(clamp(spdS / 3.2, 0.75, 1.5) * speed);
+    actions.walk.setEffectiveTimeScale(clamp(spdS / 1.4, 0.75, 1.5) * speed);
+    actions.idle.setEffectiveTimeScale(speed);
+    mixer.update(delta);
+
+    if (passStarts && passStarts.length > 0) {
+      for (const start of passStarts) {
+        if (rig.prevTime <= start && time > start) rig.kickT = 0;
+      }
+    }
+    if (rig.kickT >= 0 && kickBone) {
+      rig.kickT += sdt;
+      const kp = rig.kickT / KICK_DURATION;
+      if (kp <= 1) kickBone.rotation.x -= Math.sin(kp * Math.PI) * KICK_AMPLITUDE;
+      else rig.kickT = -9;
+    }
+    rig.prevTime = time;
   });
 
   return (
-    <group
-      ref={root}
-      position={position}
-      rotation={[0, -angle + Math.PI / 2, 0]}
-      scale={scale}
-    >
-      <mesh
-        position={[0, 0.035, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-      >
+    <group ref={root} scale={scale}>
+      <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[0.86, 40]} />
         <meshBasicMaterial color="#02070a" transparent opacity={0.34} />
       </mesh>
@@ -88,13 +224,94 @@ export function Player3D({
         <ringGeometry args={[0.88, 1.02, 48]} />
         <meshBasicMaterial color={color} transparent opacity={0.18} />
       </mesh>
-
-      <group ref={modelGroup}>
-        <primitive object={scene} />
-        <JerseyBackNumber actor={actor} />
+      <group ref={modelGroup} scale={PLAYER_H / rigHeight}>
+        <primitive object={model} />
       </group>
+      <JerseyBackNumber actor={actor} />
       <PlayerLabel actor={actor} teamColor={color} />
     </group>
+  );
+}
+
+/** Clona el rig por jugador (SkeletonUtils.clone) y tine camiseta/piel por equipo. */
+function cloneRig(source: Object3D, own: boolean, role: string) {
+  const cloned = clone(source) as Group;
+  cloned.traverse((o) => {
+    const mesh = o as Mesh | SkinnedMesh;
+    if (!("isMesh" in mesh) && !("isSkinnedMesh" in mesh)) return;
+    mesh.castShadow = true;
+    mesh.frustumCulled = false;
+    const material = Array.isArray(mesh.material)
+      ? mesh.material[0]
+      : mesh.material;
+    if (!material) return;
+    const cloned2 = material.clone();
+    mesh.material = cloned2;
+    if (!(cloned2 instanceof MeshStandardMaterial)) return;
+    const nm = (cloned2.name || mesh.name || "").toLowerCase();
+    if (nm.indexOf("joint") >= 0) {
+      cloned2.color.set(own ? "#1a2b1e" : "#220c07");
+    } else {
+      cloned2.color.set(own ? (role === "GK" ? "#e8973c" : "#c7df5f") : "#8a2f22");
+    }
+  });
+  return cloned;
+}
+
+function JerseyBackNumber({ actor }: { actor: Actor }) {
+  return (
+    <group position={[0, 1.08, -0.18]} rotation={[0, Math.PI, 0]}>
+      <mesh position={[0, 0, -0.012]}>
+        <planeGeometry args={[0.42, 0.34]} />
+        <meshBasicMaterial color="#061018" transparent opacity={0.48} />
+      </mesh>
+      <Text
+        fontSize={0.24}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="middle"
+        outlineColor="#061018"
+        outlineWidth={0.018}
+      >
+        {actor.num}
+      </Text>
+    </group>
+  );
+}
+
+function PlayerLabel({
+  actor,
+  teamColor,
+}: { actor: Actor; teamColor: string }) {
+  return (
+    <Billboard position={[0, PLAYER_H + 0.75, 0]}>
+      <mesh position={[0, 0, -0.01]}>
+        <planeGeometry args={[0.82, 0.4]} />
+        <meshBasicMaterial color="#061018" transparent opacity={0.84} />
+      </mesh>
+      <mesh position={[-0.36, 0, 0]}>
+        <circleGeometry args={[0.19, 24]} />
+        <meshBasicMaterial color={teamColor} />
+      </mesh>
+      <Text
+        position={[-0.36, 0.005, 0.01]}
+        fontSize={0.18}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="middle"
+      >
+        {actor.num}
+      </Text>
+      <Text
+        position={[0.13, 0.005, 0.01]}
+        fontSize={0.13}
+        color="#d8fffb"
+        anchorX="center"
+        anchorY="middle"
+      >
+        {actor.role.toUpperCase()}
+      </Text>
+    </Billboard>
   );
 }
 
@@ -104,7 +321,7 @@ export function SimplePlayer3D({
   angle,
   color,
   scale = 1,
-}: PlayerProps) {
+}: PlayerProps & { angle: number }) {
   return (
     <group
       position={position}
@@ -141,131 +358,19 @@ export function SimplePlayer3D({
   );
 }
 
-function JerseyBackNumber({ actor }: { actor: Actor }) {
-  return (
-    <group position={[0, 1.08, -0.18]} rotation={[0, Math.PI, 0]}>
-      <mesh position={[0, 0, -0.012]}>
-        <planeGeometry args={[0.42, 0.34]} />
-        <meshBasicMaterial color="#061018" transparent opacity={0.48} />
-      </mesh>
-      <Text
-        fontSize={0.24}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="middle"
-        outlineColor="#061018"
-        outlineWidth={0.018}
-      >
-        {actor.num}
-      </Text>
-    </group>
-  );
+function normalizeAngle(value: number) {
+  let d = value;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
 }
 
-function PlayerLabel({
-  actor,
-  teamColor,
-}: { actor: Actor; teamColor: string }) {
-  return (
-    <Billboard position={[0, 2.18, 0]}>
-      <mesh position={[0, 0, -0.01]}>
-        <planeGeometry args={[0.82, 0.4]} />
-        <meshBasicMaterial color="#061018" transparent opacity={0.84} />
-      </mesh>
-      <mesh position={[-0.36, 0, 0]}>
-        <circleGeometry args={[0.19, 24]} />
-        <meshBasicMaterial color={teamColor} />
-      </mesh>
-      <Text
-        position={[-0.36, 0.005, 0.01]}
-        fontSize={0.18}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {actor.num}
-      </Text>
-      <Text
-        position={[0.13, 0.005, 0.01]}
-        fontSize={0.13}
-        color="#d8fffb"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {actor.role.toUpperCase()}
-      </Text>
-    </Billboard>
-  );
+function lerpAngle(a: number, b: number, k: number) {
+  return a + normalizeAngle(b - a) * k;
 }
 
-function playAction(
-  actions: Record<string, AnimationAction | null>,
-  preferredClip: string,
-) {
-  const preferred =
-    actions[preferredClip] ?? actions[preferredClip.toLowerCase()];
-  const fallback =
-    actions.Idle ?? actions.idle ?? Object.values(actions).find(Boolean);
-  const selected = preferred ?? fallback;
-  if (!selected) return;
-
-  for (const action of Object.values(actions)) {
-    if (!action || action === selected) continue;
-    action.fadeOut(1);
-  }
-
-  if (!selected.isRunning()) {
-    selected.reset();
-  }
-  selected.enabled = true;
-  selected.fadeIn(1).play();
-}
-
-function tintFootballKit(scene: Object3D, color: string) {
-  scene.traverse((object) => {
-    const mesh = object as Mesh | SkinnedMesh;
-    if (!("isMesh" in mesh) && !("isSkinnedMesh" in mesh)) return;
-
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    const material = Array.isArray(mesh.material)
-      ? mesh.material[0]
-      : mesh.material;
-    if (!(material instanceof MeshStandardMaterial)) return;
-
-    const name = material.name.toLowerCase();
-    if (name.includes("kit_primary")) {
-      material.color.set(color);
-    } else if (name.includes("kit_shorts")) {
-      material.color.set(shadeColor(color, -42));
-    } else if (name.includes("kit_socks")) {
-      material.color.set(shadeColor(color, 18));
-    }
-    material.roughness = 0.65;
-    material.metalness = 0.05;
-  });
-}
-
-function cloneWithUniqueMaterials(source: Object3D) {
-  const cloned = clone(source) as Group;
-  cloned.traverse((object) => {
-    const mesh = object as Mesh | SkinnedMesh;
-    if (!("isMesh" in mesh) && !("isSkinnedMesh" in mesh)) return;
-    if (Array.isArray(mesh.material)) {
-      mesh.material = mesh.material.map((material) => material.clone());
-    } else if (mesh.material) {
-      mesh.material = mesh.material.clone();
-    }
-  });
-  return cloned;
-}
-
-function dampAngle(current: number, target: number, lambda: number) {
-  const delta = Math.atan2(
-    Math.sin(target - current),
-    Math.cos(target - current),
-  );
-  return current + delta * Math.min(1, lambda);
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function shadeColor(hex: string, amount: number) {
