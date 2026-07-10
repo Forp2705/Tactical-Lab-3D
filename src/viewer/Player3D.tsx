@@ -98,44 +98,83 @@ export function Player3D({
   );
 }
 
+// Cadencia/amplitud del bob por estado. Nada de GLB ni materiales nuevos por
+// instancia (este es el modo de PERF para >14 actores) — solo un offset de Y
+// y una inclinacion leve sobre las mismas primitivas, manejados con 'time'
+// (el tiempo del ejercicio, no un reloj de pared) para que quede correcto
+// tambien al scrubear el timeline, no solo en reproduccion en vivo.
+const SIMPLE_BOB_PROFILE: Record<ActorMotion, { freq: number; amp: number; lean: number }> = {
+  Idle: { freq: 1.6, amp: 0.012, lean: 0 },
+  SlowWalk: { freq: 4, amp: 0.03, lean: 0.03 },
+  Walk: { freq: 6, amp: 0.05, lean: 0.05 },
+  Run: { freq: 8.5, amp: 0.07, lean: 0.09 },
+  Sprint: { freq: 11, amp: 0.09, lean: 0.14 },
+  DefensiveIdle: { freq: 1.6, amp: 0.012, lean: 0.02 },
+  Pass: { freq: 6, amp: 0.04, lean: 0.04 },
+  Receive: { freq: 4, amp: 0.03, lean: 0.02 },
+  Press: { freq: 7, amp: 0.05, lean: 0.08 },
+  Turn: { freq: 5, amp: 0.03, lean: 0.02 },
+  Kick: { freq: 6, amp: 0.04, lean: 0.04 },
+  Slide: { freq: 3, amp: 0.02, lean: 0.02 },
+  Header: { freq: 5, amp: 0.03, lean: 0.02 },
+  Celebrate: { freq: 4, amp: 0.03, lean: 0 },
+};
+
 export function SimplePlayer3D({
   actor,
   position,
   angle,
   color,
   scale = 1,
+  time = 0,
+  motion,
 }: PlayerProps) {
+  const root = useRef<Group>(null);
+  const body = useRef<Group>(null);
+
+  useFrame((_state, delta) => {
+    if (!root.current) return;
+    root.current.rotation.y = dampAngle(
+      root.current.rotation.y,
+      -angle + Math.PI / 2,
+      delta * 12,
+    );
+
+    if (!body.current) return;
+    const profile = SIMPLE_BOB_PROFILE[motion ?? "Idle"];
+    body.current.position.y = Math.sin(time * profile.freq) * profile.amp;
+    body.current.rotation.x = profile.lean;
+  });
+
   return (
-    <group
-      position={position}
-      rotation={[0, -angle + Math.PI / 2, 0]}
-      scale={scale}
-    >
+    <group ref={root} position={position} scale={scale}>
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.82, 28]} />
         <meshBasicMaterial color="#02070a" transparent opacity={0.32} />
       </mesh>
-      <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.34, 0.42, 0.82, 16]} />
-        <meshStandardMaterial color={color} roughness={0.68} metalness={0.03} />
-      </mesh>
-      <mesh position={[0, 1.02, 0]} castShadow>
-        <sphereGeometry args={[0.24, 16, 16]} />
-        <meshStandardMaterial color="#f2c394" roughness={0.72} />
-      </mesh>
-      <mesh position={[0, 0.16, -0.18]} castShadow>
-        <boxGeometry args={[0.62, 0.25, 0.34]} />
-        <meshStandardMaterial color={shadeColor(color, -42)} roughness={0.7} />
-      </mesh>
-      <mesh position={[-0.17, -0.18, -0.06]} castShadow>
-        <capsuleGeometry args={[0.09, 0.42, 4, 8]} />
-        <meshStandardMaterial color={shadeColor(color, 18)} roughness={0.7} />
-      </mesh>
-      <mesh position={[0.17, -0.18, -0.06]} castShadow>
-        <capsuleGeometry args={[0.09, 0.42, 4, 8]} />
-        <meshStandardMaterial color={shadeColor(color, 18)} roughness={0.7} />
-      </mesh>
-      <JerseyBackNumber actor={actor} />
+      <group ref={body}>
+        <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.34, 0.42, 0.82, 16]} />
+          <meshStandardMaterial color={color} roughness={0.68} metalness={0.03} />
+        </mesh>
+        <mesh position={[0, 1.02, 0]} castShadow>
+          <sphereGeometry args={[0.24, 16, 16]} />
+          <meshStandardMaterial color="#f2c394" roughness={0.72} />
+        </mesh>
+        <mesh position={[0, 0.16, -0.18]} castShadow>
+          <boxGeometry args={[0.62, 0.25, 0.34]} />
+          <meshStandardMaterial color={shadeColor(color, -42)} roughness={0.7} />
+        </mesh>
+        <mesh position={[-0.17, -0.18, -0.06]} castShadow>
+          <capsuleGeometry args={[0.09, 0.42, 4, 8]} />
+          <meshStandardMaterial color={shadeColor(color, 18)} roughness={0.7} />
+        </mesh>
+        <mesh position={[0.17, -0.18, -0.06]} castShadow>
+          <capsuleGeometry args={[0.09, 0.42, 4, 8]} />
+          <meshStandardMaterial color={shadeColor(color, 18)} roughness={0.7} />
+        </mesh>
+        <JerseyBackNumber actor={actor} />
+      </group>
       <PlayerLabel actor={actor} teamColor={color} />
     </group>
   );
