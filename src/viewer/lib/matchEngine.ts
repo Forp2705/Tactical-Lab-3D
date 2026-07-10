@@ -163,10 +163,23 @@ function getActiveTriggers(exercise: Exercise, time: number) {
 }
 
 // Umbrales de velocidad en unidades de cancha (0-100) por segundo.
+const IDLE_SPEED = 0.15;
 const WALK_SPEED = 0.6;
 const RUN_SPEED = 2.4;
 const SPRINT_SPEED = 5.6;
 const SPEED_SAMPLE_DT = 0.1;
+
+// Umbrales para los estados conectados en W21 (M1). Todos derivan de datos
+// geometricos ya presentes en el frame (overlays, posicion real, altura real
+// de la pelota) — ninguno inventa una senal que no este en la escena.
+const TURN_SAMPLE_DT = 0.2;
+const TURN_ANGLE_THRESHOLD = (100 * Math.PI) / 180;
+const TURN_MIN_SEGMENT_DISTANCE = 0.12;
+const KICK_PROGRESS_END = 0.15;
+const SLIDE_PRESS_PROGRESS_START = 0.6;
+const SLIDE_RANGE = 2.2;
+const HEADER_BALL_HEIGHT = 0.5;
+const HEADER_RANGE = 2.5;
 
 export function actorPoseAt(actor: Actor, time: number): EngineActorPose {
   const { pos, prev, next } = interpolatePath(actor.start, actor.path, time);
@@ -198,10 +211,38 @@ function sampleActorSpeed(actor: Actor, time: number): number {
 }
 
 function motionFromSpeed(speed: number): ActorMotion {
-  if (speed < WALK_SPEED) return "Idle";
+  if (speed < IDLE_SPEED) return "Idle";
+  if (speed < WALK_SPEED) return "SlowWalk";
   if (speed < RUN_SPEED) return "Walk";
   if (speed < SPRINT_SPEED) return "Run";
   return "Sprint";
+}
+
+// Mismo patron que sampleActorSpeed pero para direccion: compara el tramo
+// justo antes de 'time' contra el tramo justo despues. Si alguno de los dos
+// lados no tiene desplazamiento real (actor practicamente detenido), no hay
+// giro que medir y devolvemos 0 — evita falsos "Turn" por ruido numerico.
+function sampleActorTurnDelta(actor: Actor, time: number): number {
+  const before = interpolatePath(
+    actor.start,
+    actor.path,
+    Math.max(0, time - TURN_SAMPLE_DT),
+  ).pos;
+  const at = interpolatePath(actor.start, actor.path, time).pos;
+  const after = interpolatePath(actor.start, actor.path, time + TURN_SAMPLE_DT).pos;
+
+  if (
+    distance2d(before, at) < TURN_MIN_SEGMENT_DISTANCE ||
+    distance2d(at, after) < TURN_MIN_SEGMENT_DISTANCE
+  ) {
+    return 0;
+  }
+
+  const dirBefore = actorDirectionFromPoints(before, at);
+  const dirAfter = actorDirectionFromPoints(at, after);
+  return Math.abs(
+    Math.atan2(Math.sin(dirAfter - dirBefore), Math.cos(dirAfter - dirBefore)),
+  );
 }
 
 export function actorDirectionFromPoints(prev: Vec2, next: Vec2) {
@@ -637,13 +678,37 @@ function classifyActorMotionFromActivity(
   ball: EngineBallPose,
 ): ActorMotion {
   const actorId = pose.actor.id;
-  if (activity?.press) return "Press";
+  const ballDistance = distance2d(pose.pos, ball.pos);
+
+  // Header: senal geometrica honesta (altura real de la pelota + proximidad
+  // real del actor), no un evento inventado. Con pelota rasa (pases cortos,
+  // z maximo ~0.18) nunca cruza el umbral; solo dispara con pases largos en
+  // vuelo, para quien este cerca disputandola — sea el receptor esperado o no.
+  if ((ball.pos.z ?? 0) > HEADER_BALL_HEIGHT && ballDistance < HEADER_RANGE) {
+    return "Header";
+  }
+
+  if (activity?.press) {
+    const pressProgress = clamp01(
+      (time - activity.press.start) /
+        Math.max(0.001, activity.press.end - activity.press.start),
+    );
+    // Slide: solo en el tramo final de un press activo Y con el defensor
+    // realmente cerca de la pelota (entrada inminente), no un press cualquiera.
+    if (pressProgress >= SLIDE_PRESS_PROGRESS_START && ballDistance < SLIDE_RANGE) {
+      return "Slide";
+    }
+    return "Press";
+  }
 
   const activePassFrom = activity?.passFrom;
   if (activePassFrom) {
     const progress =
       (time - activePassFrom.start) /
       Math.max(0.001, activePassFrom.end - activePassFrom.start);
+    // Kick: el instante real del golpe (arranque del overlay de pase), antes
+    // de que el clip "Pass" cubra el resto del gesto/recuperacion.
+    if (progress < KICK_PROGRESS_END) return "Kick";
     return progress < 0.48 ? "Pass" : pose.moving ? "Run" : "Idle";
   }
 
@@ -664,8 +729,15 @@ function classifyActorMotionFromActivity(
   const activeCover = activity?.cover;
   if (activeCover) return pose.moving ? "Walk" : "DefensiveIdle";
 
-  // pose.motion ya viene clasificado por velocidad real (Idle/Walk/Run/Sprint),
-  // asi que respetamos esa lectura para el caso general.
+  // Turn: cambio de direccion brusco medido sobre el propio path del actor
+  // (mismo patron que sampleActorSpeed), solo si esta realmente en movimiento.
+  if (pose.moving && sampleActorTurnDelta(pose.actor, time) >= TURN_ANGLE_THRESHOLD) {
+    return "Turn";
+  }
+
+  // pose.motion ya viene clasificado por velocidad real
+  // (Idle/SlowWalk/Walk/Run/Sprint), asi que respetamos esa lectura para el
+  // caso general.
   return pose.motion;
 }
 
