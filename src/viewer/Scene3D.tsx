@@ -15,7 +15,7 @@ import {
   SSAO,
   Vignette,
 } from "@react-three/postprocessing";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ACESFilmicToneMapping, SRGBColorSpace, Vector3 } from "three";
 import { Ball3D } from "./Ball3D";
 import { OverlayLayer } from "./Overlays";
@@ -89,8 +89,36 @@ export function Scene3D({
     () => ({ x: topFocus.x, z: topFocus.z }),
     [topFocus.x, topFocus.z],
   );
-  const useSimplifiedActors = cameraMode !== "top" && frame.actors.length > 14;
+  // quaternius-human.glb = 1 mesh partido en hasta 6 grupos de material
+  // (kit por zonas) = hasta 6 draw calls/jugador, vs 18 del footballer
+  // viejo. El umbral de >14 actores nacio para proteger perf con el modelo
+  // caro (14*18=252 draw calls); con este modelo el equivalente son ~42
+  // jugadores. Se sube el techo a 40, no se elimina: sigue siendo una
+  // valvula de seguridad para escenas patologicas fuera del catalogo actual
+  // (max real ~22-26, 11v11+banco).
+  const useSimplifiedActors = cameraMode !== "top" && frame.actors.length > 40;
   const renderSettings = renderSettingsForQuality(quality);
+  const ballGround = worldFromPitch(
+    { x: frame.ball.pos.x, y: frame.ball.pos.y },
+    mode,
+  );
+  const ballPosition: [number, number, number] = [
+    ballGround[0],
+    0,
+    ballGround[2],
+  ];
+  const passStartsByActor = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const overlay of exercise.scene.overlays) {
+      if (overlay.type !== "pass" || typeof overlay.from !== "string") {
+        continue;
+      }
+      const list = map.get(overlay.from) ?? [];
+      list.push(overlay.start);
+      map.set(overlay.from, list);
+    }
+    return map;
+  }, [exercise.scene.overlays]);
 
   return (
     <Canvas
@@ -190,6 +218,8 @@ export function Scene3D({
             time={time}
             mode={mode}
             simplified={useSimplifiedActors}
+            ballPosition={ballPosition}
+            passStarts={passStartsByActor.get(pose.actor.id) ?? EMPTY_PASS_STARTS}
           />
         ))
       )}
@@ -259,7 +289,10 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
       shadows: true,
       shadowMapSize: 4096,
       shadowRadius: 6,
-      dprMax: 2,
+      // W22-A2 mandato 2: cap de pixelRatio a 1.5 en todos los tiers (medium
+      // ya estaba en 1.5; "high" bajaba a 2, mas costo de fill-rate del que
+      // vale con jugadores skinned reales en pantalla).
+      dprMax: 1.5,
       environment: true,
       contactShadows: true,
       contactShadowResolution: 1024,
@@ -377,10 +410,11 @@ function SceneCamera({
   topFocus: TopFocus;
   actionFocus: { x: number; z: number };
 }) {
-  const { camera, size } = useThree();
+  const { camera, size, gl } = useThree();
   const lookTarget = useMemo(() => new Vector3(), []);
   const nextPosition = useMemo(() => new Vector3(), []);
   const targetLook = useMemo(() => new Vector3(), []);
+  const orbited = useMemo(() => new Vector3(), []);
   const preset = useMemo(
     () => cameraPreset(mode, cameraMode),
     [cameraMode, mode],
@@ -394,6 +428,46 @@ function SceneCamera({
     return v.lengthSq() > 0 ? v.normalize() : new Vector3(0, 1, 1).normalize();
   }, [preset]);
 
+  // Orbita (arrastrar para rotar la camara alrededor de la accion): gap
+  // abierto desde el audit W2, resuelto siguiendo el mockup ("orbit()").
+  // Solo en camaras de perspectiva (iso/broadcast); "top" es un cenital
+  // estricto con su propio contrato de framing, no participa.
+  const theta = useRef(0);
+  useEffect(() => {
+    theta.current = 0;
+  }, [cameraMode, mode]);
+  useEffect(() => {
+    if (cameraMode === "top") return;
+    const dom = gl.domElement;
+    let dragging = false;
+    let startX = 0;
+    let startTheta = 0;
+    const onDown = (e: PointerEvent) => {
+      dragging = true;
+      startX = e.clientX;
+      startTheta = theta.current;
+      dom.style.cursor = "grabbing";
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      theta.current = startTheta + (e.clientX - startX) * 0.006;
+    };
+    const onUp = () => {
+      dragging = false;
+      dom.style.cursor = "grab";
+    };
+    dom.style.cursor = "grab";
+    dom.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      dom.style.cursor = "";
+      dom.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [cameraMode, gl]);
+
   // Encuadre por bounds de la accion (no de la cancha entera): asi la jugada
   // llena el viewport. computeTopView ademas pone un piso de zoom y clampea el
   // centro para que la ventana visible nunca muestre bandas negras fuera de
@@ -404,12 +478,14 @@ function SceneCamera({
 
   useEffect(() => {
     if (cameraMode === "top") return;
+    orbited.copy(direction).applyAxisAngle(UP_AXIS, theta.current);
     camera.position.set(
-      actionFocus.x + direction.x * distance,
-      direction.y * distance,
-      actionFocus.z + direction.z * distance,
+      actionFocus.x + orbited.x * distance,
+      orbited.y * distance,
+      actionFocus.z + orbited.z * distance,
     );
     camera.lookAt(actionFocus.x, LOOK_LIFT, actionFocus.z);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera, cameraMode, direction, distance, actionFocus.x, actionFocus.z]);
 
   useFrame((_state, delta) => {
@@ -423,10 +499,11 @@ function SceneCamera({
       return;
     }
 
+    orbited.copy(direction).applyAxisAngle(UP_AXIS, theta.current);
     nextPosition.set(
-      actionFocus.x + direction.x * distance,
-      direction.y * distance,
-      actionFocus.z + direction.z * distance,
+      actionFocus.x + orbited.x * distance,
+      orbited.y * distance,
+      actionFocus.z + orbited.z * distance,
     );
     camera.position.lerp(nextPosition, Math.min(1, delta * 2.2));
     targetLook.set(actionFocus.x, LOOK_LIFT, actionFocus.z);
@@ -455,6 +532,8 @@ function SceneCamera({
 }
 
 const LOOK_LIFT = 1.1;
+const EMPTY_PASS_STARTS: number[] = [];
+const UP_AXIS = new Vector3(0, 1, 0);
 
 function framingDistance(span: number, fov: number) {
   const half = Math.max(7, span * 0.5 + 3);
@@ -468,11 +547,15 @@ function ActorNode({
   time,
   mode,
   simplified,
+  ballPosition,
+  passStarts,
 }: {
   pose: EngineActorPose;
   time: number;
   mode: PitchMode;
   simplified: boolean;
+  ballPosition: [number, number, number];
+  passStarts: number[];
 }) {
   const position = worldFromPitch(pose.pos, mode);
   const teamColor = teamColorFor(pose.actor.team);
@@ -486,7 +569,6 @@ function ActorNode({
         scale={playerScale(mode)}
         time={time}
         moving={pose.moving}
-        motion={pose.motion}
       />
     );
   }
@@ -495,12 +577,11 @@ function ActorNode({
     <Player3D
       actor={pose.actor}
       position={[position[0], 0, position[2]]}
-      angle={pose.direction}
+      ballPosition={ballPosition}
       color={teamColor}
       scale={playerScale(mode)}
       time={time}
-      moving={pose.moving}
-      motion={pose.motion}
+      passStarts={passStarts}
     />
   );
 }
