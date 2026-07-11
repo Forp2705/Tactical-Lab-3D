@@ -1,5 +1,17 @@
 # Nota de perf — Xbot vs. footballer viejo (medido, W22)
 
+> **Actualización W22-A2 (fixup):** el swap final a `quaternius-human.glb`
+> (ver `LICENSE-NOTE.md`) confirmó la predicción de la sección "Qué implica
+> para la decisión de modelo" de abajo: el mesh CC0 (~1.578 triángulos) más
+> el kit por zonas (`kitZones.ts`) + los fixes de mandato 2 (castShadow=false
+> en jugadores + blob shadow existente, pixelRatio cap 1.5, throttle de
+> mixer por distancia a cámara) dieron, en el mismo entorno/ejercicio/cámara
+> de esta tabla: **~274 draw calls/frame, ~19.4 fps** — mejor que el
+> footballer viejo (16.3 fps) y muy por encima de Xbot solo (3.5 fps) o de
+> Xbot+kit-zonas (~240 dc, ~3.47 fps, sin medir aparte porque el resultado
+> visual ya había sido descartado en vivo por el dueño). La decimación del
+> mandato 2 quedó gratis, tal como se anticipaba.
+
 Hallazgo que contradice la intuición "2 meshes < 18 meshes = más barato"
 del README del handoff. Medido en vivo (Playwright, mismo dev server,
 mismo ejercicio "Perdida y presión de cinco segundos", misma cámara iso,

@@ -89,12 +89,13 @@ export function Scene3D({
     () => ({ x: topFocus.x, z: topFocus.z }),
     [topFocus.x, topFocus.z],
   );
-  // Xbot = 2 meshes/jugador vs. 18 del footballer viejo. El umbral de >14
-  // actores nacio para proteger perf con el modelo caro (14*18=252 draw
-  // calls); con Xbot, incluso 40 jugadores completos (40*2=80) cuestan menos
-  // que 3 jugadores del modelo viejo. Se sube el techo, no se elimina: sigue
-  // siendo una valvula de seguridad para escenas patologicas fuera del
-  // catalogo actual (max real ~22-26, 11v11+banco).
+  // quaternius-human.glb = 1 mesh partido en hasta 6 grupos de material
+  // (kit por zonas) = hasta 6 draw calls/jugador, vs 18 del footballer
+  // viejo. El umbral de >14 actores nacio para proteger perf con el modelo
+  // caro (14*18=252 draw calls); con este modelo el equivalente son ~42
+  // jugadores. Se sube el techo a 40, no se elimina: sigue siendo una
+  // valvula de seguridad para escenas patologicas fuera del catalogo actual
+  // (max real ~22-26, 11v11+banco).
   const useSimplifiedActors = cameraMode !== "top" && frame.actors.length > 40;
   const renderSettings = renderSettingsForQuality(quality);
   const ballGround = worldFromPitch(
@@ -288,7 +289,10 @@ function renderSettingsForQuality(quality: "high" | "medium" | "low") {
       shadows: true,
       shadowMapSize: 4096,
       shadowRadius: 6,
-      dprMax: 2,
+      // W22-A2 mandato 2: cap de pixelRatio a 1.5 en todos los tiers (medium
+      // ya estaba en 1.5; "high" bajaba a 2, mas costo de fill-rate del que
+      // vale con jugadores skinned reales en pantalla).
+      dprMax: 1.5,
       environment: true,
       contactShadows: true,
       contactShadowResolution: 1024,

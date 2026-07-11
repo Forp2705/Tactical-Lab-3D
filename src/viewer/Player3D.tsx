@@ -17,6 +17,7 @@ import {
   Vector3,
 } from "three";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { ZONE_NAMES, applyKitZonePartition } from "./lib/kitZones";
 
 type PlayerProps = {
   actor: Actor;
@@ -30,13 +31,29 @@ type PlayerProps = {
   passStarts?: number[];
 };
 
-/* ================= rig con mocap (Xbot) =================
+/* ================= rig con mocap =================
  * Transplant verbatim de docs/design/handoff-visor3d/Visor 3D (modelos).html:
  * clips por regex, blending por pesos con histeresis, cadencia = velocidad
  * real, suavizado exponencial de posicion, giro con zona muerta mirando la
  * pelota en reposo, patada procedural sobre el hueso RightUpLeg.
+ *
+ * W22-A2 (fixup): swap de Xbot.glb -> quaternius-human.glb. Feedback en vivo
+ * del dueno sobre Xbot con kit por zonas ya aplicado: "el cuerpo es de robot
+ * aun" — el problema no era el color, era la geometria (Xbot expone
+ * paneles/juntas tipo figura de accion). Se probo primero soldier.glb
+ * ("Vanguard", ejemplo de three.js/Mixamo) pero tambien se rechazo en vivo
+ * ("un espanto... parece todo menos jugador" — postura militar encorvada,
+ * musculatura exagerada). quaternius-human.glb es el personaje CC0
+ * "Animated Human by @Quaternius" (OpenGameArt), convertido de FBX a GLB
+ * con scripts/convert-quaternius-human.mjs: proporciones normales, ~1.6k
+ * triangulos (vs 49k de Xbot), y el MISMO patron de huesos (Hips/Spine/
+ * LeftArm/RightUpLeg/etc, sin prefijo mixamorig: pero mismos nombres) asi
+ * que kitZones.ts y el kickBone no necesitaron cambios — solo hubo que
+ * hacer robusta la particion para geometria sin index buffer (comun al
+ * convertir desde FBX/OBJ, ver kitZones.ts). Licencia real CC0 verificada,
+ * no asumida — ver LICENSE-NOTE.md.
  */
-const MODEL_URL = "/models/Xbot.glb";
+const MODEL_URL = "/models/quaternius-human.glb";
 const PLAYER_H = 2.3;
 
 const RUN_ENTER = 3.1;
@@ -62,7 +79,17 @@ type PlayerRig = {
   kickT: number;
   initialized: boolean;
   prevTime: number;
+  frameCount: number;
+  pendingMixerDt: number;
 };
+
+// W22-A2 mandato 2: jugadores lejos de la camara actualizan el mixer cada
+// 2-3 frames en vez de cada frame (el skinning de ~11k tris es el costo
+// real, no el draw call). El dt saltado se acumula y se aplica de una vez
+// en el frame que si actualiza, para que el reloj de la animacion no se
+// atrase — solo se ve mas "a los saltos" a distancia, nunca en pausa/timing.
+const MIXER_THROTTLE_NEAR = 40;
+const MIXER_THROTTLE_FAR = 70;
 
 export function Player3D({
   actor,
@@ -121,6 +148,8 @@ export function Player3D({
     kickT: -9,
     initialized: false,
     prevTime: 0,
+    frameCount: 0,
+    pendingMixerDt: 0,
   }).current;
 
   useEffect(() => {
@@ -129,7 +158,7 @@ export function Player3D({
     };
   }, [mixer]);
 
-  useFrame((_state, delta) => {
+  useFrame((state, delta) => {
     if (!root.current) return;
     const speed = useAppStore.getState().speed || 1;
     const time = useAppStore.getState().time;
@@ -198,7 +227,20 @@ export function Player3D({
     actions.run.setEffectiveTimeScale(clamp(spdS / 3.2, 0.75, 1.5) * speed);
     actions.walk.setEffectiveTimeScale(clamp(spdS / 1.4, 0.75, 1.5) * speed);
     actions.idle.setEffectiveTimeScale(speed);
-    mixer.update(delta);
+
+    // throttle de mixer por distancia a camara (mandato 2): el costo real es
+    // el skinning, no el draw call, asi que jugadores lejos actualizan el
+    // mixer cada 2-3 frames. El dt saltado se acumula (pendingMixerDt) para
+    // que el reloj de la animacion no se atrase, solo se vea mas a los
+    // saltos a distancia.
+    rig.frameCount += 1;
+    rig.pendingMixerDt += delta;
+    const camDist = state.camera.position.distanceTo(root.current.position);
+    const throttleN = camDist > MIXER_THROTTLE_FAR ? 3 : camDist > MIXER_THROTTLE_NEAR ? 2 : 1;
+    if (rig.frameCount % throttleN === 0) {
+      mixer.update(rig.pendingMixerDt);
+      rig.pendingMixerDt = 0;
+    }
 
     if (passStarts && passStarts.length > 0) {
       for (const start of passStarts) {
@@ -233,26 +275,52 @@ export function Player3D({
   );
 }
 
-/** Clona el rig por jugador (SkeletonUtils.clone) y tine camiseta/piel por equipo. */
+const SKIN_COLOR = "#e6b887";
+const HAIR_COLOR = "#3b2a1a";
+const BOOT_COLOR = "#111827";
+
+/**
+ * Clona el rig por jugador (SkeletonUtils.clone) y arma el kit de futbol
+ * por zonas (W22-A2 mandato 1): particiona la geometria por influencia de
+ * hueso dominante UNA vez (compartida entre clones, geometria por
+ * referencia) y reemplaza los 2 materiales "panel de robot" del GLB por 6
+ * materiales de zona (camiseta/short/media/botin/piel/pelo) tintados por
+ * equipo, en vez de tintar los 2 materiales originales.
+ */
 function cloneRig(source: Object3D, own: boolean, role: string) {
+  applyKitZonePartition(source);
+  const jerseyColor = own ? (role === "GK" ? "#e8973c" : "#c7df5f") : "#8a2f22";
+  const zoneColors: Record<(typeof ZONE_NAMES)[number], string> = {
+    jersey: jerseyColor,
+    shorts: shadeColor(jerseyColor, -42),
+    sock: shadeColor(jerseyColor, 18),
+    boot: BOOT_COLOR,
+    skin: SKIN_COLOR,
+    hair: HAIR_COLOR,
+  };
+  const zoneMaterials = ZONE_NAMES.map((zone) => {
+    const mat = new MeshStandardMaterial({
+      color: zoneColors[zone],
+      roughness: zone === "skin" ? 0.62 : 0.72,
+      metalness: 0.03,
+    });
+    mat.name = `zone_${zone}`;
+    return mat;
+  });
+
   const cloned = clone(source) as Group;
   cloned.traverse((o) => {
     const mesh = o as Mesh | SkinnedMesh;
     if (!("isMesh" in mesh) && !("isSkinnedMesh" in mesh)) return;
-    mesh.castShadow = true;
+    // W22-A2 mandato 2: un skinned mesh de ~11k tris casteando shadow-map
+    // significa recalcular el skinning una SEGUNDA vez por frame (pase de
+    // profundidad de la luz). El disco oscuro semitransparente bajo cada
+    // jugador (mas abajo en el JSX) ya funciona como blob shadow barato —
+    // no depende de shadow-map, es geometria plana con meshBasicMaterial.
+    mesh.castShadow = false;
     mesh.frustumCulled = false;
-    const material = Array.isArray(mesh.material)
-      ? mesh.material[0]
-      : mesh.material;
-    if (!material) return;
-    const cloned2 = material.clone();
-    mesh.material = cloned2;
-    if (!(cloned2 instanceof MeshStandardMaterial)) return;
-    const nm = (cloned2.name || mesh.name || "").toLowerCase();
-    if (nm.indexOf("joint") >= 0) {
-      cloned2.color.set(own ? "#1a2b1e" : "#220c07");
-    } else {
-      cloned2.color.set(own ? (role === "GK" ? "#e8973c" : "#c7df5f") : "#8a2f22");
+    if (mesh.geometry.groups.length > 0) {
+      mesh.material = zoneMaterials;
     }
   });
   return cloned;
