@@ -1,72 +1,43 @@
-import dotenv from "dotenv"
-import OpenAI from "openai"
+import dotenv from "dotenv";
+import OpenAI from "openai";
 
-import { COACH_AGENT_SYSTEM_PROMPT } from "./CoachAgentPrompt.js"
+import type { BoardEvidencePacket } from "../board/boardEvidencePacket.js";
+import type { BoardFreeStateEvidencePacket } from "../board/boardFreeStateEvidencePacket.js";
+import { catalog } from "../data/exercises/catalog.js";
 import {
-  getCoachModeInstructions,
-  inferCoachPromptMode,
-  type CoachPromptMode,
-} from "./CoachModePrompts.js"
-import {
-  isJsonModeUnsupportedError,
-  parseCoachAdvice,
-  resolveModelLadder,
-} from "./coachResponseParsing.js"
-import { COACH_RULES } from "./CoachRules.js"
-import {
-  contrastTextWithGameModel,
   DEFAULT_GAME_MODEL,
+  contrastTextWithGameModel,
   isGameModelConfigured,
   normalizeGameModel,
   summarizeGameModel,
-} from "../data/gameModel.js"
+} from "../data/gameModel.js";
 import {
-  buildOpponentGamePlan,
   DEFAULT_OPPONENT_SCOUT,
+  buildOpponentGamePlan,
   hasOpponentScoutData,
   normalizeOpponentScout,
   summarizeOpponentScout,
-} from "../scout/opponentScout.js"
-import { MATCH_MEMORY } from "./MatchMemory.js"
-import { retrieveRelevantContext } from "./retrieveRelevantContext.js"
-import { retrieveRelevantKnowledge } from "./retrieveRelevantKnowledge.js"
-import { retrieveRelevantGeneratedMemory } from "./retrieveRelevantGeneratedMemory.js"
-import { loadSavedPostMatchReports } from "./post-match/storage.js"
-import { catalog } from "../data/exercises/catalog.js"
+} from "../scout/opponentScout.js";
+import { normalizeRuntimeVideoEvidenceText } from "../video/videoCoachEvidence.js";
 import {
-  inferDomainsFromText,
-  matchExercisesForDiagnosis,
-} from "./exerciseMatching.js"
+  COACH_AGENT_SYSTEM_PROMPT,
+  COACH_CHAT_SYSTEM_PROMPT,
+} from "./CoachAgentPrompt.js";
+import type {
+  CoachChatHistory,
+  CoachChatTurn,
+  CoachRequestMode,
+} from "./CoachChatSchemas.js";
 import {
-  detectTeamPatterns,
-  formatPatternsForCoach,
-} from "./patternDetection.js"
-import { retrieveRelevantReportsFromSaved } from "./retrieveRelevantReports.js"
-import {
-  buildEvidenceCitation,
-  rankDocuments,
-  type RetrievalDocument,
-} from "./retrievalScoring.js"
-import { queryCoachRagIndex } from "./ragIndex.js"
-import {
-  applyBoardFactFirewall,
-  assessCoachAdviceTrust,
-  guardCoachAdvice,
-} from "./coachOutputGuard.js"
-import type { BoardEvidencePacket } from "../board/boardEvidencePacket.js"
-import type { BoardFreeStateEvidencePacket } from "../board/boardFreeStateEvidencePacket.js"
-import { recordCoachObservabilityEvent } from "./coachObservability.js"
+  type CoachPromptMode,
+  getCoachModeInstructions,
+  inferCoachPromptMode,
+} from "./CoachModePrompts.js";
 import {
   buildCoachPipelineTrace,
   buildCoachRetrievalQuery,
-} from "./CoachPipeline.js"
-import { generateContextualQuestions } from "./contextualQuestionGenerator.js"
-import { inferEvidenceTargets } from "./evidenceTargets.js"
-import {
-  buildEvidenceAudit,
-  capConfidence,
-  normalizeCollectedEvidence,
-} from "./evidenceCollection.js"
+} from "./CoachPipeline.js";
+import { COACH_RULES } from "./CoachRules.js";
 import type {
   CoachInterviewState,
   CoachMatchAdvice,
@@ -77,45 +48,81 @@ import type {
   EvidenceTarget,
   ImpliedClaim,
   TacticalIntent,
-} from "./CoachSchemas.js"
-import type { SavedPostMatchReport } from "./post-match/schemas.js"
-import { normalizeRuntimeVideoEvidenceText } from "../video/videoCoachEvidence.js"
+} from "./CoachSchemas.js";
+import { MATCH_MEMORY } from "./MatchMemory.js";
+import { buildChatTranscriptBlock } from "./coachChatPrompt.js";
+import { recordCoachObservabilityEvent } from "./coachObservability.js";
 import {
-  buildCoachTeamIdentityContext,
+  applyBoardFactFirewall,
+  assessCoachAdviceTrust,
+  guardCoachAdvice,
+} from "./coachOutputGuard.js";
+import {
+  isJsonModeUnsupportedError,
+  parseCoachAdvice,
+  parseCoachChatTurn,
+  resolveModelLadder,
+} from "./coachResponseParsing.js";
+import {
   MISSING_TEAM_IDENTITY_MESSAGE,
-} from "./coachTeamIdentityContext.js"
+  buildCoachTeamIdentityContext,
+} from "./coachTeamIdentityContext.js";
+import { generateContextualQuestions } from "./contextualQuestionGenerator.js";
+import {
+  buildEvidenceAudit,
+  capConfidence,
+  normalizeCollectedEvidence,
+} from "./evidenceCollection.js";
+import { inferEvidenceTargets } from "./evidenceTargets.js";
+import {
+  inferDomainsFromText,
+  matchExercisesForDiagnosis,
+} from "./exerciseMatching.js";
+import {
+  detectTeamPatterns,
+  formatPatternsForCoach,
+} from "./patternDetection.js";
+import type { SavedPostMatchReport } from "./post-match/schemas.js";
+import { loadSavedPostMatchReports } from "./post-match/storage.js";
+import { queryCoachRagIndex } from "./ragIndex.js";
+import {
+  type RetrievalDocument,
+  buildEvidenceCitation,
+  rankDocuments,
+} from "./retrievalScoring.js";
+import { retrieveRelevantContext } from "./retrieveRelevantContext.js";
+import { retrieveRelevantGeneratedMemory } from "./retrieveRelevantGeneratedMemory.js";
+import { retrieveRelevantKnowledge } from "./retrieveRelevantKnowledge.js";
+import { retrieveRelevantReportsFromSaved } from "./retrieveRelevantReports.js";
 
 export type RetrievedEvidence = {
-  id: string
-  sourceType: "knowledge" | "memory" | "observation" | "report" | "video"
-  title: string
-  excerpt: string
-  score: number
-  evidenceTargets?: EvidenceTarget[]
-}
+  id: string;
+  sourceType: "knowledge" | "memory" | "observation" | "report" | "video";
+  title: string;
+  excerpt: string;
+  score: number;
+  evidenceTargets?: EvidenceTarget[];
+};
 
 dotenv.config({
   path: ".env.local",
-})
+});
 
-const apiKey = process.env.OPENROUTER_API_KEY
-const modelName =
-  process.env.OPENROUTER_MODEL ??
-  "openai/gpt-4o-mini"
+const apiKey = process.env.OPENROUTER_API_KEY;
+const modelName = process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
 const COACH_COMPLETION_TIMEOUT_MS =
-  Number(process.env.COACH_COMPLETION_TIMEOUT_MS) || 18000
+  Number(process.env.COACH_COMPLETION_TIMEOUT_MS) || 18000;
 
 function getClient() {
   if (!apiKey) {
-    throw new Error("Missing OPENROUTER_API_KEY")
+    throw new Error("Missing OPENROUTER_API_KEY");
   }
 
   return new OpenAI({
     apiKey,
     baseURL: "https://openrouter.ai/api/v1",
-  })
+  });
 }
-
 
 // ────────────────────────────────────────────────────────────────────────────
 // Free-state board evidence (sibling packet of slice-4 boardEvidence).
@@ -136,17 +143,18 @@ function getClient() {
  * interpolated adjacent to an existing value with no surrounding literal.
  */
 export function formatFreeStateFactsBlock(freeStateEvidence: unknown): string {
-  const packet = objectValue(freeStateEvidence)
-  if (!packet) return ""
+  const packet = objectValue(freeStateEvidence);
+  if (!packet) return "";
 
   const claims = arrayValue(
-    packet.factualClaims ?? objectValue(packet.freeStateEvidence)?.factualClaims,
-  )
+    packet.factualClaims ??
+      objectValue(packet.freeStateEvidence)?.factualClaims,
+  );
   const lines = claims
     .map((entry) => formatFreeStateClaim(entry))
-    .filter((line): line is string => Boolean(line))
+    .filter((line): line is string => Boolean(line));
 
-  if (!lines.length) return ""
+  if (!lines.length) return "";
 
   return [
     "",
@@ -154,37 +162,37 @@ export function formatFreeStateFactsBlock(freeStateEvidence: unknown): string {
     "HECHOS DEL TABLERO (estado libre):",
     ...lines,
     "Estos son hechos contables del tablero en estado libre. Podes citarlos por id como evidencia del tablero. Lo que no aparece en esta lista no es evidencia del tablero: no infieras posiciones ni lectura tactica a partir de estos hechos.",
-  ].join("\n")
+  ].join("\n");
 }
 
 function formatFreeStateClaim(entry: unknown): string | null {
-  const claim = objectValue(entry)
-  const id = stringValue(claim?.id)
-  if (!id) return null
+  const claim = objectValue(entry);
+  const id = stringValue(claim?.id);
+  if (!id) return null;
 
   // 1. Pre-rendered statement override (real packets don't carry this; defensive).
   const text =
     stringValue(claim?.statement) ??
     stringValue(claim?.text) ??
     stringValue(claim?.label) ??
-    stringValue(claim?.fact)
-  if (text) return `- ${id}: ${text}`
+    stringValue(claim?.fact);
+  if (text) return `- ${id}: ${text}`;
 
   // 2. Structural render per kind — mirrors mc-21's `renderableFreeStateFacts` so
   //    the prompt and the UI declare identical, countable board facts. Reads only
   //    declared per-kind fields; no positions, no tactical interpretation.
-  const structural = formatFreeStateClaimByKind(claim)
-  if (structural) return `- ${id}: ${structural}`
+  const structural = formatFreeStateClaimByKind(claim);
+  if (structural) return `- ${id}: ${structural}`;
 
   // 3. Legacy generic fallback (kind = value) for any unforeseen kind carrying a
   //    primitive value; then bare kind; then just the id.
-  const kind = stringValue(claim?.kind)
-  const value = claim?.value
+  const kind = stringValue(claim?.kind);
+  const value = claim?.value;
   if (kind && (typeof value === "string" || typeof value === "number")) {
-    return `- ${id}: ${kind} = ${value}`
+    return `- ${id}: ${kind} = ${value}`;
   }
-  if (kind) return `- ${id}: ${kind}`
-  return `- ${id}`
+  if (kind) return `- ${id}: ${kind}`;
+  return `- ${id}`;
 }
 
 // Structural per-kind rendering of a free-state factual claim, defensively reading
@@ -193,27 +201,27 @@ function formatFreeStateClaim(entry: unknown): string | null {
 function formatFreeStateClaimByKind(
   claim: Record<string, unknown> | null,
 ): string | null {
-  const kind = stringValue(claim?.kind)
-  if (!claim || !kind) return null
+  const kind = stringValue(claim?.kind);
+  if (!claim || !kind) return null;
 
   if (kind === "formation") {
-    const formation = stringValue(claim.formation)
-    if (!formation) return null
-    const side = stringValue(claim.side) === "own" ? "propia" : "rival"
-    return `Formacion ${side}: ${formation}`
+    const formation = stringValue(claim.formation);
+    if (!formation) return null;
+    const side = stringValue(claim.side) === "own" ? "propia" : "rival";
+    return `Formacion ${side}: ${formation}`;
   }
 
   if (kind === "tokenCount") {
-    const count = numberValue(claim.count)
-    if (count === undefined) return null
-    const side = stringValue(claim.side) === "own" ? "propias" : "rivales"
-    return `Fichas ${side}: ${count}`
+    const count = numberValue(claim.count);
+    if (count === undefined) return null;
+    const side = stringValue(claim.side) === "own" ? "propias" : "rivales";
+    return `Fichas ${side}: ${count}`;
   }
 
   if (kind === "objectCount") {
-    const count = numberValue(claim.count)
-    if (count === undefined) return null
-    const objectType = stringValue(claim.objectType)
+    const count = numberValue(claim.count);
+    if (count === undefined) return null;
+    const objectType = stringValue(claim.objectType);
     const label =
       objectType === "arrow"
         ? "Flechas"
@@ -221,29 +229,33 @@ function formatFreeStateClaimByKind(
           ? "Zonas"
           : objectType === "note"
             ? "Notas"
-            : "Objetos"
-    const semantic = stringValue(claim.semantic)
-    return `${label}${semantic ? ` (${semantic})` : ""}: ${count}`
+            : "Objetos";
+    const semantic = stringValue(claim.semantic);
+    return `${label}${semantic ? ` (${semantic})` : ""}: ${count}`;
   }
 
   if (kind === "scene") {
-    const title = stringValue(claim.title)
-    const index = numberValue(claim.index)
-    const totalScenes = numberValue(claim.totalScenes)
-    if (title === undefined || index === undefined || totalScenes === undefined) {
-      return null
+    const title = stringValue(claim.title);
+    const index = numberValue(claim.index);
+    const totalScenes = numberValue(claim.totalScenes);
+    if (
+      title === undefined ||
+      index === undefined ||
+      totalScenes === undefined
+    ) {
+      return null;
     }
-    return `Escena activa: ${title} (${index + 1}/${totalScenes})`
+    return `Escena activa: ${title} (${index + 1}/${totalScenes})`;
   }
 
   if (kind === "layers") {
     const visible = arrayValue(claim.visible ?? claim.layers).filter(
       (item): item is string => typeof item === "string",
-    )
-    return `Capas visibles: ${visible.length ? visible.join(", ") : "ninguna"}`
+    );
+    return `Capas visibles: ${visible.length ? visible.join(", ") : "ninguna"}`;
   }
 
-  return null
+  return null;
 }
 
 export async function generateCoachResponse(
@@ -253,11 +265,12 @@ export async function generateCoachResponse(
   promptMode: CoachPromptMode = inferCoachPromptMode(userInput),
   freeStateEvidence?: BoardFreeStateEvidencePacket | null,
 ) {
-  const startedAt = Date.now()
+  const startedAt = Date.now();
   if (!userInput.trim()) {
-    throw new Error("User input cannot be empty")
+    throw new Error("User input cannot be empty");
   }
-  const evidence = prefetched ?? await retrieveCoachEvidence(userInput, coachContext)
+  const evidence =
+    prefetched ?? (await retrieveCoachEvidence(userInput, coachContext));
   const {
     relevantContext,
     relevantGeneratedMemory,
@@ -265,39 +278,34 @@ export async function generateCoachResponse(
     relevantReports,
     recentReports,
     evidenceCatalog,
-  } = evidence
+  } = evidence;
 
-  const recentReportContext =
-  formatRecentReports(recentReports)
-  const teamPatternsContext =
-  formatPatternsForCoach(detectTeamPatterns(recentReports, { limit: 5 }))
+  const recentReportContext = formatRecentReports(recentReports);
+  const teamPatternsContext = formatPatternsForCoach(
+    detectTeamPatterns(recentReports, { limit: 5 }),
+  );
 
-  const temporalContext =
-  formatTemporalContext(userInput, recentReports)
+  const temporalContext = formatTemporalContext(userInput, recentReports);
 
-  const runtimeCoachContext =
-  formatRuntimeCoachContext(coachContext)
+  const runtimeCoachContext = formatRuntimeCoachContext(coachContext);
   const runtimeManualObservations =
-  formatRuntimeManualObservations(coachContext)
+    formatRuntimeManualObservations(coachContext);
 
-  const coachingStaffContext =
-  formatCoachingStaffContext(coachContext)
-  const structuredGameModel =
-  formatStructuredGameModel(coachContext)
-  const opponentScoutContext =
-  formatOpponentScoutContext(coachContext)
-  const playerFitContext =
-  formatPlayerFitRuntimeContext(coachContext, userInput)
+  const coachingStaffContext = formatCoachingStaffContext(coachContext);
+  const structuredGameModel = formatStructuredGameModel(coachContext);
+  const opponentScoutContext = formatOpponentScoutContext(coachContext);
+  const playerFitContext = formatPlayerFitRuntimeContext(
+    coachContext,
+    userInput,
+  );
 
-  const catalogIndex =
-  formatCatalogIndex()
+  const catalogIndex = formatCatalogIndex();
 
-  const evidenceCatalogText =
-  formatEvidenceCatalog(evidenceCatalog)
-  const modeInstructions = getCoachModeInstructions(promptMode)
+  const evidenceCatalogText = formatEvidenceCatalog(evidenceCatalog);
+  const modeInstructions = getCoachModeInstructions(promptMode);
   // Bloque de hechos del tablero (estado libre). "" cuando no hay packet, de modo
   // que el prompt queda byte-identico al actual. Trae su propio separador inicial.
-  const freeStateFactsBlock = formatFreeStateFactsBlock(freeStateEvidence)
+  const freeStateFactsBlock = formatFreeStateFactsBlock(freeStateEvidence);
 
   const prompt = `
 Respond ONLY with valid JSON using this exact structure:
@@ -446,33 +454,33 @@ ${COACH_RULES}
 
 User request:
 ${userInput}
-`
+`;
 
-  const client = getClient()
+  const client = getClient();
   const models = resolveModelLadder(
     modelName,
     process.env.OPENROUTER_FALLBACK_MODELS,
-  )
+  );
 
-  let lastError: unknown
-  let attemptCount = 0
+  let lastError: unknown;
+  let attemptCount = 0;
 
   // Recorremos la escalera de modelos; por cada uno, hasta 2 intentos.
   // Importante: parseamos DENTRO del try, asi un JSON invalido tambien
   // dispara reintento/fallback en vez de cortar en seco.
   for (const model of models) {
-    let useJsonMode = true
+    let useJsonMode = true;
     for (let attempt = 1; attempt <= 2; attempt++) {
-      attemptCount++
+      attemptCount++;
       try {
         const completion = await requestCoachCompletion({
           client,
           model,
           prompt,
           useJsonMode,
-        })
+        });
 
-        const rawText = extractCompletionText(completion)
+        const rawText = extractCompletionText(completion);
 
         logCoachCompletionTelemetry({
           model,
@@ -481,28 +489,28 @@ ${userInput}
           jsonMode: useJsonMode,
           attempts: attemptCount,
           durationMs: Date.now() - startedAt,
-        })
+        });
 
         return finalizeCoachAdvice(parseCoachAdvice(rawText), {
           evidenceCatalog,
           userInput,
           coachContext,
-        })
+        });
       } catch (error) {
-        lastError = error
+        lastError = error;
         if (useJsonMode && isJsonModeUnsupportedError(error)) {
-          useJsonMode = false
+          useJsonMode = false;
           console.log(
             `Coach JSON mode unsupported; retrying without response_format (model=${model})`,
-          )
+          );
           try {
             const completion = await requestCoachCompletion({
               client,
               model,
               prompt,
               useJsonMode: false,
-            })
-            const rawText = extractCompletionText(completion)
+            });
+            const rawText = extractCompletionText(completion);
             logCoachCompletionTelemetry({
               model,
               configuredModel: modelName,
@@ -510,29 +518,274 @@ ${userInput}
               jsonMode: false,
               attempts: attemptCount,
               durationMs: Date.now() - startedAt,
-            })
+            });
             return finalizeCoachAdvice(parseCoachAdvice(rawText), {
               evidenceCatalog,
               userInput,
               coachContext,
-            })
+            });
           } catch (fallbackError) {
-            lastError = fallbackError
+            lastError = fallbackError;
           }
         }
         console.log(
           `Coach attempt failed (model=${model}, intento=${attempt}, jsonMode=${useJsonMode})`,
-        )
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1200 * attempt)
-        )
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
       }
     }
   }
 
   throw lastError instanceof Error
     ? lastError
-    : new Error("OpenRouter did not return a valid response")
+    : new Error("OpenRouter did not return a valid response");
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// W22 — CHAT multi-turno.
+//
+// Path SEPARADO del informe: reusa TODO el contexto (equipo, memoria, reports,
+// shape, scout, evidencia — el chat lo hereda) y compone su propio prompt con la
+// transcripcion delimitada NO-INSTRUCTIVA (buildChatTranscriptBlock). Devuelve un
+// CoachChatTurn compacto, no el union del informe (que queda intacto).
+//
+// DECISION DE ENTREVISTA (declarada): la entrevista deterministica estructurada
+// (QuestionResponse con selectedQuestions/answerKind/options) se mantiene SOLO en
+// Consulta/informe. En chat, el gate "preguntar antes de afirmar cuando falta
+// evidencia" se preserva pero se expresa como turnos de conversacion: el modelo
+// abre con 1-2 followUpQuestions y grounded:false cuando no hay evidencia. Meter
+// el schema rigido de la entrevista en el chat recrearia el formulario de
+// Consulta, en contra de "como si fuese chat" — se reusa la LOGICA del gate, no el
+// schema de respuesta.
+//
+// MEMORIA: ningun camino de chat toca los modulos de memoria/knowledge generados.
+// ────────────────────────────────────────────────────────────────────────────
+export async function generateCoachChatTurn({
+  input,
+  coachContext,
+  history,
+  freeStateEvidence = null,
+  prefetched,
+}: {
+  input: string;
+  coachContext?: unknown;
+  history?: CoachChatHistory | null;
+  freeStateEvidence?: BoardFreeStateEvidencePacket | null;
+  prefetched?: Awaited<ReturnType<typeof retrieveCoachEvidence>>;
+}): Promise<CoachChatTurn> {
+  const startedAt = Date.now();
+  if (!input.trim()) {
+    throw new Error("User input cannot be empty");
+  }
+  const evidence =
+    prefetched ?? (await retrieveCoachEvidence(input, coachContext));
+  const {
+    relevantContext,
+    relevantGeneratedMemory,
+    relevantKnowledge,
+    relevantReports,
+    recentReports,
+    evidenceCatalog,
+  } = evidence;
+
+  // Transcripcion delimitada NO-INSTRUCTIVA (superficie de inyeccion). "" cuando
+  // no hay history, de modo que un chat de un solo turno se compone limpio.
+  const transcript = buildChatTranscriptBlock(history);
+  const freeStateFactsBlock = formatFreeStateFactsBlock(freeStateEvidence);
+
+  const prompt = `
+Estas en una conversacion con el cuerpo tecnico. Responde SOLO con JSON valido del contrato de chat (mode:"chat").
+${transcript.block ? `\n${transcript.block}\n` : ""}
+Coaching staff context:
+${formatCoachingStaffContext(coachContext)}
+
+Structured Game Model:
+${formatStructuredGameModel(coachContext)}
+
+Opponent Scout:
+${formatOpponentScoutContext(coachContext)}
+
+Player fit context:
+${formatPlayerFitRuntimeContext(coachContext, input)}
+
+Catalog index:
+${formatCatalogIndex()}
+
+Match memory:
+${MATCH_MEMORY}
+
+Validated staff memory (historical context, not current evidence):
+${JSON.stringify(relevantGeneratedMemory, null, 2)}
+
+Relevant tactical observations:
+${JSON.stringify(relevantContext, null, 2)}
+
+Relevant tactical knowledge:
+${JSON.stringify(relevantKnowledge, null, 2)}
+
+Relevant post-match reports:
+${JSON.stringify(relevantReports, null, 2)}
+
+Evidence catalog for traceability:
+${formatEvidenceCatalog(evidenceCatalog)}
+
+Temporal context:
+${formatTemporalContext(input, recentReports)}
+
+Recent post-match reports:
+${formatRecentReports(recentReports)}
+
+Cross-report team patterns:
+${formatPatternsForCoach(detectTeamPatterns(recentReports, { limit: 5 }))}
+
+Runtime coaching context:
+${formatRuntimeCoachContext(coachContext)}
+
+Current manual observations:
+${formatRuntimeManualObservations(coachContext)}${freeStateFactsBlock}
+
+Coach rules:
+${COACH_RULES}
+
+Ultima consulta del staff (respondela en el hilo de la conversacion):
+${input}
+`;
+
+  const client = getClient();
+  const models = resolveModelLadder(
+    modelName,
+    process.env.OPENROUTER_FALLBACK_MODELS,
+  );
+
+  let lastError: unknown;
+  for (const model of models) {
+    let useJsonMode = true;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const completion = await requestCoachChatCompletion({
+          client,
+          model,
+          prompt,
+          useJsonMode,
+        });
+        const turn = finalizeCoachChatTurn(
+          parseCoachChatTurn(extractCompletionText(completion)),
+          evidenceCatalog,
+        );
+        logCoachChatTelemetry(turn, {
+          droppedTurns: transcript.droppedTurns,
+          durationMs: Date.now() - startedAt,
+        });
+        return turn;
+      } catch (error) {
+        lastError = error;
+        if (useJsonMode && isJsonModeUnsupportedError(error)) {
+          useJsonMode = false;
+          try {
+            const completion = await requestCoachChatCompletion({
+              client,
+              model,
+              prompt,
+              useJsonMode: false,
+            });
+            const turn = finalizeCoachChatTurn(
+              parseCoachChatTurn(extractCompletionText(completion)),
+              evidenceCatalog,
+            );
+            logCoachChatTelemetry(turn, {
+              droppedTurns: transcript.droppedTurns,
+              durationMs: Date.now() - startedAt,
+            });
+            return turn;
+          } catch (fallbackError) {
+            lastError = fallbackError;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("OpenRouter did not return a valid chat response");
+}
+
+/**
+ * Honesty guard deterministico del chat: los evidenceRefs solo pueden citar ids
+ * que existan en el Evidence catalog (los inventados se descartan), y grounded:true
+ * EXIGE al menos una cita valida — si el modelo dijo grounded pero no cito nada
+ * real, se baja a grounded:false. No se puede reclamar respaldo sin evidencia.
+ */
+export function finalizeCoachChatTurn(
+  turn: CoachChatTurn,
+  evidenceCatalog: EvidenceCatalogItem[],
+): CoachChatTurn {
+  const validIds = new Set(evidenceCatalog.map((item) => item.id));
+  const evidenceRefs = turn.evidenceRefs.filter((ref) =>
+    validIds.has(ref.sourceId),
+  );
+  return {
+    ...turn,
+    evidenceRefs,
+    grounded: turn.grounded && evidenceRefs.length > 0,
+  };
+}
+
+function logCoachChatTelemetry(
+  turn: CoachChatTurn,
+  { droppedTurns, durationMs }: { droppedTurns: number; durationMs: number },
+) {
+  console.info(
+    "[coach-agent:chat]",
+    JSON.stringify({
+      mode: "chat",
+      grounded: turn.grounded,
+      evidenceRefCount: turn.evidenceRefs.length,
+      followUpQuestionCount: turn.followUpQuestions.length,
+      droppedTurns,
+      configuredModel: modelName,
+      durationMs,
+    }),
+  );
+  // Observability event uses only the fields it declares (chat maps evidenceRefs
+  // onto citationCount); the richer chat-specific fields stay in the console log.
+  void recordCoachObservabilityEvent({
+    event: "turn",
+    mode: "chat",
+    citationCount: turn.evidenceRefs.length,
+    followUpQuestionCount: turn.followUpQuestions.length,
+    confidence: turn.confidence ?? null,
+    configuredModel: modelName,
+    durationMs,
+  });
+}
+
+async function requestCoachChatCompletion({
+  client,
+  model,
+  prompt,
+  useJsonMode,
+}: {
+  client: OpenAI;
+  model: string;
+  prompt: string;
+  useJsonMode: boolean;
+}) {
+  return client.chat.completions.create(
+    {
+      model,
+      messages: [
+        { role: "system", content: COACH_CHAT_SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.4,
+      ...(useJsonMode
+        ? { response_format: { type: "json_object" as const } }
+        : {}),
+    },
+    { timeout: COACH_COMPLETION_TIMEOUT_MS },
+  );
 }
 
 /**
@@ -546,13 +799,13 @@ function buildRetrievalQuery(
   input: string,
   collectedEvidence: CollectedAnswer[],
 ): string {
-  if (!collectedEvidence.length) return input
+  if (!collectedEvidence.length) return input;
 
   const answers = collectedEvidence
     .map((answer) => answer.rawAnswer?.trim())
-    .filter((text): text is string => Boolean(text))
+    .filter((text): text is string => Boolean(text));
 
-  return answers.length ? [input, ...answers].join(". ") : input
+  return answers.length ? [input, ...answers].join(". ") : input;
 }
 
 /**
@@ -567,22 +820,51 @@ function buildRetrievalQuery(
  * neutral facts section in the prompt. Absent → prompt is byte-identical to today.
  * The API (mc-21) passes an already Zod-validated packet, mirroring boardEvidence.
  */
+type RunCoachTurnArgs = Parameters<typeof runCoachTurnCore>[0] & {
+  // PRECONDITION: `boardEvidence` is ALWAYS a SCHEMA-VALIDATED packet. The ONLY
+  // validated entry point is `parseIncomingBoardEvidence` (the API gate in
+  // api/coach-agent.ts). Any future caller passing a packet MUST parse it with
+  // `BoardEvidencePacketSchema` first. No duplicate-id (or other) check is added
+  // here — the API-parse + unique-id superRefine chain guarantees a unique, valid
+  // input; this precondition makes a future bypass a MARKED contract violation,
+  // not a silent reopening.
+  boardEvidence?: BoardEvidencePacket | null;
+  // W22 — chat routing. `mode` defaults to "advice" (byte-identical to today);
+  // only "chat" opts into the multi-turn chat path. `history` is the (already
+  // schema-validated) transcript. The board-scenario firewall stays advice-only
+  // in this first version; chat still inherits `freeStateEvidence` facts.
+  mode?: CoachRequestMode;
+  history?: CoachChatHistory | null;
+};
+
+// Overloads keep the extension ADDITIVE at the type level: existing callers (no
+// mode / mode:"advice") still get `CoachResponse` — an unchanged contract — while
+// a literal `mode:"chat"` yields `CoachChatTurn`. A variable-typed `mode`
+// (CoachRequestMode, e.g. from the API handler) resolves to the union overload.
 export async function runCoachTurn(
-  args: Parameters<typeof runCoachTurnCore>[0] & {
-    // PRECONDITION: `boardEvidence` is ALWAYS a SCHEMA-VALIDATED packet. The ONLY
-    // validated entry point is `parseIncomingBoardEvidence` (the API gate in
-    // api/coach-agent.ts). Any future caller passing a packet MUST parse it with
-    // `BoardEvidencePacketSchema` first. No duplicate-id (or other) check is added
-    // here — the API-parse + unique-id superRefine chain guarantees a unique, valid
-    // input; this precondition makes a future bypass a MARKED contract violation,
-    // not a silent reopening.
-    boardEvidence?: BoardEvidencePacket | null
-  },
-): Promise<CoachResponse> {
-  const { boardEvidence, ...rest } = args
-  const response = await runCoachTurnCore(rest)
-  if (!boardEvidence) return response
-  return applyBoardFactFirewall(response, boardEvidence).response
+  args: RunCoachTurnArgs & { mode: "chat" },
+): Promise<CoachChatTurn>;
+export async function runCoachTurn(
+  args: RunCoachTurnArgs & { mode?: "advice" },
+): Promise<CoachResponse>;
+export async function runCoachTurn(
+  args: RunCoachTurnArgs,
+): Promise<CoachResponse | CoachChatTurn>;
+export async function runCoachTurn(
+  args: RunCoachTurnArgs,
+): Promise<CoachResponse | CoachChatTurn> {
+  const { boardEvidence, mode, history, ...rest } = args;
+  if (mode === "chat") {
+    return generateCoachChatTurn({
+      input: rest.input,
+      coachContext: rest.coachContext,
+      history,
+      freeStateEvidence: rest.freeStateEvidence ?? null,
+    });
+  }
+  const response = await runCoachTurnCore(rest);
+  if (!boardEvidence) return response;
+  return applyBoardFactFirewall(response, boardEvidence).response;
 }
 
 async function runCoachTurnCore({
@@ -593,14 +875,14 @@ async function runCoachTurnCore({
   skipInterview = false,
   freeStateEvidence = null,
 }: {
-  input: string
-  coachContext?: unknown
-  collectedEvidence?: CollectedAnswer[]
-  interviewState?: CoachInterviewState | null
-  skipInterview?: boolean
-  freeStateEvidence?: BoardFreeStateEvidencePacket | null
+  input: string;
+  coachContext?: unknown;
+  collectedEvidence?: CollectedAnswer[];
+  interviewState?: CoachInterviewState | null;
+  skipInterview?: boolean;
+  freeStateEvidence?: BoardFreeStateEvidencePacket | null;
 }): Promise<CoachResponse> {
-  const turnStartedAt = Date.now()
+  const turnStartedAt = Date.now();
   // Free-state board facts travel EXPLICIT and ISOLATED (mirror of boardEvidence:
   // never routed through coachContext). This wrapper injects the packet into every
   // response generation without repeating the arg at each call-site.
@@ -609,19 +891,18 @@ async function runCoachTurnCore({
     ctx: unknown,
     prefetched: Awaited<ReturnType<typeof retrieveCoachEvidence>>,
     mode: CoachPromptMode,
-  ) => generateCoachResponse(userInput, ctx, prefetched, mode, freeStateEvidence)
-  const retrievalQuery = buildCoachRetrievalQuery(input, collectedEvidence)
+  ) =>
+    generateCoachResponse(userInput, ctx, prefetched, mode, freeStateEvidence);
+  const retrievalQuery = buildCoachRetrievalQuery(input, collectedEvidence);
   const questionOnlyFlow =
-    !skipInterview &&
-    !interviewState &&
-    collectedEvidence.length === 0
+    !skipInterview && !interviewState && collectedEvidence.length === 0;
 
   if (questionOnlyFlow) {
-    const questionContext = await retrieveCoachQuestionContext(retrievalQuery)
+    const questionContext = await retrieveCoachQuestionContext(retrievalQuery);
 
-    let questionResult: Awaited<ReturnType<typeof generateContextualQuestions>>
+    let questionResult: Awaited<ReturnType<typeof generateContextualQuestions>>;
     try {
-      const client = getClient()
+      const client = getClient();
       questionResult = await generateContextualQuestions(
         {
           userInput: input,
@@ -636,10 +917,10 @@ async function runCoachTurnCore({
             model: modelName,
             systemPrompt,
             userPrompt,
-          })
-          return extractCompletionText(completion)
+          });
+          return extractCompletionText(completion);
         },
-      )
+      );
     } catch (error) {
       questionResult = await generateContextualQuestions(
         {
@@ -650,16 +931,19 @@ async function runCoachTurnCore({
           priorClaims: [],
         },
         async () => {
-          throw error
+          throw error;
         },
-      )
+      );
     }
 
     if (
       questionResult.recommendedResponseMode !== "question" ||
       !questionResult.selectedQuestions.length
     ) {
-      const fullEvidence = await retrieveCoachEvidence(retrievalQuery, coachContext)
+      const fullEvidence = await retrieveCoachEvidence(
+        retrievalQuery,
+        coachContext,
+      );
       const advice = await generateWithFreeState(
         input,
         withInterviewEvidence(
@@ -668,24 +952,29 @@ async function runCoachTurnCore({
           questionResult.evidenceAudit,
         ),
         fullEvidence,
-        promptModeForQuestionResult(input, questionResult.recommendedResponseMode),
-      )
+        promptModeForQuestionResult(
+          input,
+          questionResult.recommendedResponseMode,
+        ),
+      );
       const requiresCap =
         questionResult.recommendedResponseMode !== "diagnosis" ||
-        questionResult.evidenceAudit.evidenceStrength !== "sufficient"
+        questionResult.evidenceAudit.evidenceStrength !== "sufficient";
       const cappedAdvice = withCappedAdvice(
         advice,
         questionResult.evidenceAudit,
         requiresCap,
-      )
-      logCoachPipelineTrace(buildCoachPipelineTrace({
-        input,
-        collectedEvidence,
-        retrieved: fullEvidence.evidenceCatalog,
-        audit: questionResult.evidenceAudit,
-        advice: cappedAdvice,
-        skipInterview,
-      }))
+      );
+      logCoachPipelineTrace(
+        buildCoachPipelineTrace({
+          input,
+          collectedEvidence,
+          retrieved: fullEvidence.evidenceCatalog,
+          audit: questionResult.evidenceAudit,
+          advice: cappedAdvice,
+          skipInterview,
+        }),
+      );
 
       const response = buildCoachResponseFromAdvice({
         preferredMode:
@@ -695,11 +984,7 @@ async function runCoachTurnCore({
         advice:
           questionResult.recommendedResponseMode === "diagnosis"
             ? cappedAdvice
-            : withCappedAdvice(
-                advice,
-                questionResult.evidenceAudit,
-                true,
-              ),
+            : withCappedAdvice(advice, questionResult.evidenceAudit, true),
         intent: questionResult.intent,
         evidenceAudit: questionResult.evidenceAudit,
         userInput: input,
@@ -709,42 +994,46 @@ async function runCoachTurnCore({
             ? questionResult.selectedQuestions
             : [],
         downgradeFollowUpQuestions: [],
-      })
+      });
 
-      return withCoachTurnTelemetry(response, turnStartedAt)
+      return withCoachTurnTelemetry(response, turnStartedAt);
     }
 
-    return withCoachTurnTelemetry({
-      mode: "question",
-      intent: questionResult.intent,
-      selectedQuestions: questionResult.selectedQuestions,
-      blockedClaims: questionResult.temptingClaims,
-      evidenceAudit: questionResult.evidenceAudit,
-      confidenceCap: questionResult.confidenceCap,
-    }, turnStartedAt)
+    return withCoachTurnTelemetry(
+      {
+        mode: "question",
+        intent: questionResult.intent,
+        selectedQuestions: questionResult.selectedQuestions,
+        blockedClaims: questionResult.temptingClaims,
+        evidenceAudit: questionResult.evidenceAudit,
+        confidenceCap: questionResult.confidenceCap,
+      },
+      turnStartedAt,
+    );
   }
 
-  const prefetched = await retrieveCoachEvidence(retrievalQuery, coachContext)
-  const intent = interviewState?.intent ?? fallbackIntent(input)
+  const prefetched = await retrieveCoachEvidence(retrievalQuery, coachContext);
+  const intent = interviewState?.intent ?? fallbackIntent(input);
   const temptingClaims = interviewState?.temptingClaims.length
     ? interviewState.temptingClaims
-    : fallbackClaims(intent)
-  const collectedSignals = normalizeCollectedEvidence(collectedEvidence)
+    : fallbackClaims(intent);
+  const collectedSignals = normalizeCollectedEvidence(collectedEvidence);
   const evidenceAudit = buildEvidenceAudit({
     claims: temptingClaims,
     signals: collectedSignals,
     retrieved: prefetched.evidenceCatalog,
     intent,
-  })
+  });
   const enrichedCoachContext = withInterviewEvidence(
     coachContext,
     collectedEvidence,
     evidenceAudit,
-  )
+  );
 
   if (
     interviewState &&
-    (evidenceAudit.evidenceStrength === "sufficient" || collectedEvidence.length)
+    (evidenceAudit.evidenceStrength === "sufficient" ||
+      collectedEvidence.length)
   ) {
     const advice = await generateWithFreeState(
       input,
@@ -753,20 +1042,22 @@ async function runCoachTurnCore({
       evidenceAudit.evidenceStrength === "sufficient" && !skipInterview
         ? promptModeForQuestionResult(input, "diagnosis")
         : "hypothesis",
-    )
+    );
     const cappedAdvice = withCappedAdvice(
       advice,
       evidenceAudit,
       skipInterview || evidenceAudit.evidenceStrength !== "sufficient",
-    )
-    logCoachPipelineTrace(buildCoachPipelineTrace({
-      input,
-      collectedEvidence,
-      retrieved: prefetched.evidenceCatalog,
-      audit: evidenceAudit,
-      advice: cappedAdvice,
-      skipInterview,
-    }))
+    );
+    logCoachPipelineTrace(
+      buildCoachPipelineTrace({
+        input,
+        collectedEvidence,
+        retrieved: prefetched.evidenceCatalog,
+        audit: evidenceAudit,
+        advice: cappedAdvice,
+        skipInterview,
+      }),
+    );
 
     const response = buildCoachResponseFromAdvice({
       preferredMode:
@@ -780,9 +1071,9 @@ async function runCoachTurnCore({
       evidenceCatalog: prefetched.evidenceCatalog,
       followUpQuestions: [],
       downgradeFollowUpQuestions: [],
-    })
+    });
 
-    return withCoachTurnTelemetry(response, turnStartedAt)
+    return withCoachTurnTelemetry(response, turnStartedAt);
   }
 
   if (skipInterview) {
@@ -791,16 +1082,18 @@ async function runCoachTurnCore({
       enrichedCoachContext,
       prefetched,
       "hypothesis",
-    )
-    const cappedAdvice = withCappedAdvice(advice, evidenceAudit, true)
-    logCoachPipelineTrace(buildCoachPipelineTrace({
-      input,
-      collectedEvidence,
-      retrieved: prefetched.evidenceCatalog,
-      audit: evidenceAudit,
-      advice: cappedAdvice,
-      skipInterview,
-    }))
+    );
+    const cappedAdvice = withCappedAdvice(advice, evidenceAudit, true);
+    logCoachPipelineTrace(
+      buildCoachPipelineTrace({
+        input,
+        collectedEvidence,
+        retrieved: prefetched.evidenceCatalog,
+        audit: evidenceAudit,
+        advice: cappedAdvice,
+        skipInterview,
+      }),
+    );
     return withCoachTurnTelemetry(
       buildCoachResponseFromAdvice({
         preferredMode: "hypothesis",
@@ -813,12 +1106,12 @@ async function runCoachTurnCore({
         downgradeFollowUpQuestions: [],
       }),
       turnStartedAt,
-    )
+    );
   }
 
-  let questionResult: Awaited<ReturnType<typeof generateContextualQuestions>>
+  let questionResult: Awaited<ReturnType<typeof generateContextualQuestions>>;
   try {
-    const client = getClient()
+    const client = getClient();
     questionResult = await generateContextualQuestions(
       {
         userInput: input,
@@ -833,10 +1126,10 @@ async function runCoachTurnCore({
           model: modelName,
           systemPrompt,
           userPrompt,
-        })
-        return extractCompletionText(completion)
+        });
+        return extractCompletionText(completion);
       },
-    )
+    );
   } catch (error) {
     questionResult = await generateContextualQuestions(
       {
@@ -847,9 +1140,9 @@ async function runCoachTurnCore({
         priorClaims: interviewState?.temptingClaims ?? [],
       },
       async () => {
-        throw error
+        throw error;
       },
-    )
+    );
   }
 
   if (questionResult.recommendedResponseMode !== "question") {
@@ -861,24 +1154,29 @@ async function runCoachTurnCore({
         questionResult.evidenceAudit,
       ),
       prefetched,
-      promptModeForQuestionResult(input, questionResult.recommendedResponseMode),
-    )
+      promptModeForQuestionResult(
+        input,
+        questionResult.recommendedResponseMode,
+      ),
+    );
     const requiresCap =
       questionResult.recommendedResponseMode !== "diagnosis" ||
-      questionResult.evidenceAudit.evidenceStrength !== "sufficient"
+      questionResult.evidenceAudit.evidenceStrength !== "sufficient";
     const cappedAdvice = withCappedAdvice(
       advice,
       questionResult.evidenceAudit,
       requiresCap,
-    )
-    logCoachPipelineTrace(buildCoachPipelineTrace({
-      input,
-      collectedEvidence,
-      retrieved: prefetched.evidenceCatalog,
-      audit: questionResult.evidenceAudit,
-      advice: cappedAdvice,
-      skipInterview,
-    }))
+    );
+    logCoachPipelineTrace(
+      buildCoachPipelineTrace({
+        input,
+        collectedEvidence,
+        retrieved: prefetched.evidenceCatalog,
+        audit: questionResult.evidenceAudit,
+        advice: cappedAdvice,
+        skipInterview,
+      }),
+    );
 
     const response = buildCoachResponseFromAdvice({
       preferredMode:
@@ -892,9 +1190,9 @@ async function runCoachTurnCore({
       evidenceCatalog: prefetched.evidenceCatalog,
       followUpQuestions: questionResult.selectedQuestions,
       downgradeFollowUpQuestions: [],
-    })
+    });
 
-    return withCoachTurnTelemetry(response, turnStartedAt)
+    return withCoachTurnTelemetry(response, turnStartedAt);
   }
 
   if (!questionResult.selectedQuestions.length) {
@@ -907,16 +1205,22 @@ async function runCoachTurnCore({
       ),
       prefetched,
       "hypothesis",
-    )
-    const cappedAdvice = withCappedAdvice(advice, questionResult.evidenceAudit, true)
-    logCoachPipelineTrace(buildCoachPipelineTrace({
-      input,
-      collectedEvidence,
-      retrieved: prefetched.evidenceCatalog,
-      audit: questionResult.evidenceAudit,
-      advice: cappedAdvice,
-      skipInterview,
-    }))
+    );
+    const cappedAdvice = withCappedAdvice(
+      advice,
+      questionResult.evidenceAudit,
+      true,
+    );
+    logCoachPipelineTrace(
+      buildCoachPipelineTrace({
+        input,
+        collectedEvidence,
+        retrieved: prefetched.evidenceCatalog,
+        audit: questionResult.evidenceAudit,
+        advice: cappedAdvice,
+        skipInterview,
+      }),
+    );
 
     return withCoachTurnTelemetry(
       buildCoachResponseFromAdvice({
@@ -930,24 +1234,27 @@ async function runCoachTurnCore({
         downgradeFollowUpQuestions: [],
       }),
       turnStartedAt,
-    )
+    );
   }
 
-  return withCoachTurnTelemetry({
-    mode: "question",
-    intent: questionResult.intent,
-    selectedQuestions: questionResult.selectedQuestions,
-    blockedClaims: questionResult.temptingClaims,
-    evidenceAudit: questionResult.evidenceAudit,
-    confidenceCap: questionResult.confidenceCap,
-  }, turnStartedAt)
+  return withCoachTurnTelemetry(
+    {
+      mode: "question",
+      intent: questionResult.intent,
+      selectedQuestions: questionResult.selectedQuestions,
+      blockedClaims: questionResult.temptingClaims,
+      evidenceAudit: questionResult.evidenceAudit,
+      confidenceCap: questionResult.confidenceCap,
+    },
+    turnStartedAt,
+  );
 }
 
 function withCoachTurnTelemetry<T extends CoachResponse>(
   response: T,
   startedAt: number,
 ): T {
-  const advice = response.mode === "question" ? null : response.advice
+  const advice = response.mode === "question" ? null : response.advice;
   const payload = {
     mode: response.mode,
     evidenceStrength: response.evidenceAudit.evidenceStrength,
@@ -963,17 +1270,14 @@ function withCoachTurnTelemetry<T extends CoachResponse>(
           : 0,
     configuredModel: modelName,
     durationMs: Date.now() - startedAt,
-  }
-  console.info(
-    "[coach-agent:turn]",
-    JSON.stringify(payload),
-  )
+  };
+  console.info("[coach-agent:turn]", JSON.stringify(payload));
   void recordCoachObservabilityEvent({
     event: "turn",
     ...payload,
-  })
+  });
 
-  return response
+  return response;
 }
 
 function logCoachPipelineTrace(
@@ -988,7 +1292,7 @@ function logCoachPipelineTrace(
       retrievedEvidenceCount: trace.retrievedEvidenceCount,
       selfCheck: trace.selfCheck,
     }),
-  )
+  );
 }
 
 function logCoachCompletionTelemetry({
@@ -999,12 +1303,12 @@ function logCoachCompletionTelemetry({
   attempts,
   durationMs,
 }: {
-  model: string
-  configuredModel: string
-  fallbackUsed: boolean
-  jsonMode: boolean
-  attempts: number
-  durationMs: number
+  model: string;
+  configuredModel: string;
+  fallbackUsed: boolean;
+  jsonMode: boolean;
+  attempts: number;
+  durationMs: number;
 }) {
   const payload = {
     model,
@@ -1013,37 +1317,37 @@ function logCoachCompletionTelemetry({
     jsonMode,
     attempts,
     durationMs,
-  }
-  console.info(
-    "[coach-agent:completion]",
-    JSON.stringify(payload),
-  )
+  };
+  console.info("[coach-agent:completion]", JSON.stringify(payload));
   void recordCoachObservabilityEvent({
     event: "completion",
     ...payload,
-  })
+  });
 }
 
 function promptModeForQuestionResult(
   input: string,
   recommendedMode: "question" | "hypothesis" | "diagnosis",
 ): CoachPromptMode {
-  const inferred = inferCoachPromptMode(input)
+  const inferred = inferCoachPromptMode(input);
   if (inferred === "generalExplanation" || inferred === "sessionPlan") {
-    return inferred
+    return inferred;
   }
-  if (recommendedMode === "diagnosis") return "diagnosis"
-  return "hypothesis"
+  if (recommendedMode === "diagnosis") return "diagnosis";
+  return "hypothesis";
 }
 
-export async function retrieveCoachEvidence(userInput: string, coachContext?: unknown) {
+export async function retrieveCoachEvidence(
+  userInput: string,
+  coachContext?: unknown,
+) {
   // Reconocemos el dominio del problema desde el texto (input + respuestas de
   // entrevista) para priorizar el knowledge de esa fase y no traer conceptos de
   // otra fase por simple coincidencia de keyword.
-  const knowledgeDomains = inferDomainsFromText(userInput)
+  const knowledgeDomains = inferDomainsFromText(userInput);
 
   const teamIdentityContext =
-    buildCoachTeamIdentityContextFromRuntime(coachContext)
+    buildCoachTeamIdentityContextFromRuntime(coachContext);
   const [
     recentReports,
     relevantGeneratedMemory,
@@ -1059,12 +1363,16 @@ export async function retrieveCoachEvidence(userInput: string, coachContext?: un
       limit: 8,
       minScore: 0.2,
     }).catch(() => []),
-  ])
-  const contextWithReports =
-    await retrieveRelevantContext(userInput, recentReports)
+  ]);
+  const contextWithReports = await retrieveRelevantContext(
+    userInput,
+    recentReports,
+  );
 
-  const relevantReports =
-    await retrieveRelevantReportsFromSaved(userInput, recentReports)
+  const relevantReports = await retrieveRelevantReportsFromSaved(
+    userInput,
+    recentReports,
+  );
 
   const evidenceCatalog = [
     ...persistentRagEvidence,
@@ -1072,15 +1380,18 @@ export async function retrieveCoachEvidence(userInput: string, coachContext?: un
     ...contextWithReports,
     ...relevantKnowledge,
     ...relevantReports,
-  ].map(toRetrievedEvidence)
+  ].map(toRetrievedEvidence);
   const runtimeManualObservationEvidence =
-    buildRuntimeManualObservationEvidenceCatalog(userInput, coachContext)
-  const runtimeEvidence = buildRuntimeVideoEvidenceCatalog(userInput, coachContext)
+    buildRuntimeManualObservationEvidenceCatalog(userInput, coachContext);
+  const runtimeEvidence = buildRuntimeVideoEvidenceCatalog(
+    userInput,
+    coachContext,
+  );
   const dedupedEvidence = dedupeEvidenceById([
     ...runtimeManualObservationEvidence,
     ...runtimeEvidence,
     ...evidenceCatalog,
-  ])
+  ]);
 
   return {
     relevantContext: contextWithReports,
@@ -1089,21 +1400,21 @@ export async function retrieveCoachEvidence(userInput: string, coachContext?: un
     relevantReports,
     recentReports,
     evidenceCatalog: dedupedEvidence,
-  }
+  };
 }
 
 async function retrieveCoachQuestionContext(userInput: string) {
-  const recentReports = await loadSavedPostMatchReports()
+  const recentReports = await loadSavedPostMatchReports();
   const relevantReports = await retrieveRelevantReportsFromSaved(
     userInput,
     recentReports,
-  )
+  );
 
   return {
     recentReports,
     relevantReports,
     evidenceCatalog: relevantReports.map(toRetrievedEvidence),
-  }
+  };
 }
 
 /**
@@ -1118,20 +1429,20 @@ async function retrieveCoachQuestionContext(userInput: string) {
  */
 function extractCompletionText(completion: unknown): string {
   const result = completion as {
-    choices?: Array<{ message?: { content?: string } }>
-    error?: { message?: string; code?: string | number }
-  }
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string; code?: string | number };
+  };
 
   if (!result?.choices?.length) {
-    const apiError = result?.error
+    const apiError = result?.error;
     throw new Error(
       apiError?.message
         ? `OpenRouter error: ${apiError.message}`
         : "OpenRouter no devolvio choices (modelo no disponible, rate limit, sin credito o model id invalido)",
-    )
+    );
   }
 
-  return result.choices[0]?.message?.content ?? ""
+  return result.choices[0]?.message?.content ?? "";
 }
 
 async function requestCoachCompletion({
@@ -1140,10 +1451,10 @@ async function requestCoachCompletion({
   prompt,
   useJsonMode,
 }: {
-  client: OpenAI
-  model: string
-  prompt: string
-  useJsonMode: boolean
+  client: OpenAI;
+  model: string;
+  prompt: string;
+  useJsonMode: boolean;
 }) {
   return client.chat.completions.create(
     {
@@ -1164,7 +1475,7 @@ async function requestCoachCompletion({
         : {}),
     },
     { timeout: COACH_COMPLETION_TIMEOUT_MS },
-  )
+  );
 }
 
 async function requestQuestionCompletion({
@@ -1173,10 +1484,10 @@ async function requestQuestionCompletion({
   systemPrompt,
   userPrompt,
 }: {
-  client: OpenAI
-  model: string
-  systemPrompt: string
-  userPrompt: string
+  client: OpenAI;
+  model: string;
+  systemPrompt: string;
+  userPrompt: string;
 }) {
   return client.chat.completions.create(
     {
@@ -1195,11 +1506,11 @@ async function requestQuestionCompletion({
       response_format: { type: "json_object" as const },
     },
     { timeout: COACH_COMPLETION_TIMEOUT_MS },
-  )
+  );
 }
 
 function buildCoachTeamIdentityContextFromRuntime(coachContext: unknown) {
-  const context = objectValue(coachContext)
+  const context = objectValue(coachContext);
   return buildCoachTeamIdentityContext({
     teamIdentity:
       context?.teamIdentity &&
@@ -1215,11 +1526,12 @@ function buildCoachTeamIdentityContextFromRuntime(coachContext: unknown) {
       !Array.isArray(context.gameModel)
         ? normalizeGameModel(context.gameModel)
         : null,
-  })
+  });
 }
 
 function formatCoachingStaffContext(coachContext?: unknown) {
-  const teamIdentityContext = buildCoachTeamIdentityContextFromRuntime(coachContext)
+  const teamIdentityContext =
+    buildCoachTeamIdentityContextFromRuntime(coachContext);
   return `
 CONTEXTO DEL CUERPO TECNICO
 
@@ -1231,7 +1543,7 @@ ${COACH_RULES.trim()}
 
 [Identity guardrail]
 ${teamIdentityContext.setupRequest}
-`.trim()
+`.trim();
 }
 
 function formatCatalogIndex() {
@@ -1244,38 +1556,38 @@ function formatCatalogIndex() {
         exercise.phase,
         exercise.principle,
         exercise.objective.primary,
-      ].join(" | ")
+      ].join(" | "),
     )
-    .join("\n")
+    .join("\n");
 }
 
 function formatRecentReports(reports: SavedPostMatchReport[]) {
   if (!reports.length) {
-    return "No recent post-match reports saved."
+    return "No recent post-match reports saved.";
   }
 
   return reports
     .slice(0, 3)
     .map((savedReport) => {
-      const report = savedReport.report
-      const date = report.matchContext.date ?? savedReport.savedAt.slice(0, 10)
+      const report = savedReport.report;
+      const date = report.matchContext.date ?? savedReport.savedAt.slice(0, 10);
       return [
         `- ${date} vs ${report.matchContext.opponent} (${report.matchContext.result})`,
         `summary=${report.executiveSummary}`,
         `focus=${report.saturdayFocus.slice(0, 2).join("; ")}`,
-      ].join(" | ")
+      ].join(" | ");
     })
-    .join("\n")
+    .join("\n");
 }
 
 function formatTemporalContext(
   userInput: string,
   reports: SavedPostMatchReport[],
 ) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Date().toISOString().slice(0, 10);
   const latestReport = [...reports].sort((a, b) =>
     b.savedAt.localeCompare(a.savedAt),
-  )[0]
+  )[0];
 
   return [
     `today=${today}`,
@@ -1285,19 +1597,19 @@ function formatTemporalContext(
     `requestMentionsNextMatch=${/\b(proximo|siguiente|sabado|partido)\b/i.test(
       userInput,
     )}`,
-  ].join("\n")
+  ].join("\n");
 }
 
 function formatRuntimeCoachContext(coachContext: unknown) {
   if (!coachContext) {
-    return "No runtime UI context provided."
+    return "No runtime UI context provided.";
   }
 
   if (typeof coachContext !== "object" || Array.isArray(coachContext)) {
-    return "Runtime UI context could not be read as structured data."
+    return "Runtime UI context could not be read as structured data.";
   }
 
-  const context = coachContext as Record<string, unknown>
+  const context = coachContext as Record<string, unknown>;
   const lines = [
     formatTeamRuntimeContext(context),
     formatStructuredRuntimeContext(context),
@@ -1305,28 +1617,30 @@ function formatRuntimeCoachContext(coachContext: unknown) {
     formatLineupLabRuntimeContext(context),
     formatVideoEvidenceRuntimeContext(context),
     formatInterviewRuntimeContext(context),
-  ].filter(Boolean)
+  ].filter(Boolean);
 
   return lines.length
     ? lines.join("\n\n")
-    : "Runtime UI context provided without relevant tactical fields."
+    : "Runtime UI context provided without relevant tactical fields.";
 }
 
 function formatStructuredRuntimeContext(context: Record<string, unknown>) {
-  const gameModel = objectValue(context.gameModel)
-  const opponentScout = objectValue(context.opponentScout)
+  const gameModel = objectValue(context.gameModel);
+  const opponentScout = objectValue(context.opponentScout);
   const lines = [
     gameModel ? "GAME MODEL: structured model provided separately." : "",
-    opponentScout ? "OPPONENT SCOUT: active rival scout provided separately." : "",
-  ].filter(Boolean)
-  return lines.join("\n")
+    opponentScout
+      ? "OPPONENT SCOUT: active rival scout provided separately."
+      : "",
+  ].filter(Boolean);
+  return lines.join("\n");
 }
 
 function formatTeamRuntimeContext(context: Record<string, unknown>) {
-  const teamIdentityContext = buildCoachTeamIdentityContextFromRuntime(context)
-  const teamModel = stringValue(context.teamModel)
-  const available = arrayValue(context.availableSquad)
-  const unavailable = arrayValue(context.unavailableSquad)
+  const teamIdentityContext = buildCoachTeamIdentityContextFromRuntime(context);
+  const teamModel = stringValue(context.teamModel);
+  const available = arrayValue(context.availableSquad);
+  const unavailable = arrayValue(context.unavailableSquad);
 
   return [
     "TEAM CONTEXT",
@@ -1351,16 +1665,16 @@ function formatTeamRuntimeContext(context: Record<string, unknown>) {
       : "",
   ]
     .filter(Boolean)
-    .join("\n")
+    .join("\n");
 }
 
 function formatVideoEvidenceRuntimeContext(context: Record<string, unknown>) {
-  const videoEvidence = objectValue(context.videoEvidence)
-  if (!videoEvidence) return ""
+  const videoEvidence = objectValue(context.videoEvidence);
+  if (!videoEvidence) return "";
 
-  const total = numberValue(videoEvidence.total) ?? 0
-  const text = stringValue(videoEvidence.text)
-  if (!total && !text) return ""
+  const total = numberValue(videoEvidence.total) ?? 0;
+  const text = stringValue(videoEvidence.text);
+  if (!total && !text) return "";
 
   const lines = text
     ? text
@@ -1368,7 +1682,7 @@ function formatVideoEvidenceRuntimeContext(context: Record<string, unknown>) {
         .map((line) => line.trim())
         .filter(Boolean)
         .slice(0, 12)
-    : []
+    : [];
 
   return [
     "VIDEO EVIDENCE (current UI marks)",
@@ -1378,11 +1692,12 @@ function formatVideoEvidenceRuntimeContext(context: Record<string, unknown>) {
       : "",
   ]
     .filter(Boolean)
-    .join("\n")
+    .join("\n");
 }
 
 function formatStructuredGameModel(coachContext: unknown) {
-  return buildCoachTeamIdentityContextFromRuntime(coachContext).structuredGameModel
+  return buildCoachTeamIdentityContextFromRuntime(coachContext)
+    .structuredGameModel;
 }
 
 // Rival attribution block (mc-10 Brief A). The scout already reaches the prompt;
@@ -1392,12 +1707,12 @@ function formatStructuredGameModel(coachContext: unknown) {
 // tests (A1-A4). No schema/evidence-pipeline changes; rivalReference stays a
 // separate presence-only block.
 export function formatOpponentScoutContext(coachContext: unknown) {
-  const context = objectValue(coachContext)
-  const raw = context?.opponentScout
+  const context = objectValue(coachContext);
+  const raw = context?.opponentScout;
   const scout =
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? normalizeOpponentScout(raw)
-      : null
+      : null;
 
   if (!scout || !hasOpponentScoutData(scout)) {
     // No-scout default: keep the sentinel, forbid rival claims, and surface 1-2
@@ -1406,13 +1721,13 @@ export function formatOpponentScoutContext(coachContext: unknown) {
     const scoutQuestions = buildOpponentGamePlan(
       DEFAULT_OPPONENT_SCOUT,
       DEFAULT_GAME_MODEL,
-    ).openQuestions.slice(0, 2)
+    ).openQuestions.slice(0, 2);
     return [
       "No opponent scout loaded.",
       "No hagas ninguna afirmacion sobre la formacion, las posiciones ni la conducta del rival: no hay scout cargado. Trabaja sobre el equipo propio y la evidencia actual.",
       "Incluir 1-2 de estas preguntas de scout accionables en reflection.missingInformation o en las preguntas de seguimiento, sin bloquear la respuesta:",
       ...scoutQuestions.map((question) => `- ${question}`),
-    ].join("\n")
+    ].join("\n");
   }
 
   return [
@@ -1424,25 +1739,32 @@ export function formatOpponentScoutContext(coachContext: unknown) {
     "NUNCA inventes formacion, coordenadas ni conducta del rival mas alla de lo declarado aca.",
     "",
     summarizeOpponentScout(scout),
-  ].join("\n")
+  ].join("\n");
 }
 
-function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string) {
-  const context = objectValue(coachContext)
-  if (!context) return "No squad fit context."
-  const players = arrayValue(context.availableSquad)
-  if (!players.length) return "No available squad provided."
-  const normalized = normalizeForRules(userInput)
-  const lines: string[] = []
+function formatPlayerFitRuntimeContext(
+  coachContext: unknown,
+  userInput: string,
+) {
+  const context = objectValue(coachContext);
+  if (!context) return "No squad fit context.";
+  const players = arrayValue(context.availableSquad);
+  if (!players.length) return "No available squad provided.";
+  const normalized = normalizeForRules(userInput);
+  const lines: string[] = [];
   const centerBacks = players.filter((player) =>
     runtimePlayerPositions(player).some((position) => position === "CB"),
-  )
+  );
   const pivots = players.filter((player) =>
-    runtimePlayerPositions(player).some((position) => ["CDM", "CM"].includes(position)),
-  )
+    runtimePlayerPositions(player).some((position) =>
+      ["CDM", "CM"].includes(position),
+    ),
+  );
   const attackers = players.filter((player) =>
-    runtimePlayerPositions(player).some((position) => ["LW", "RW", "ST", "CM", "CDM"].includes(position)),
-  )
+    runtimePlayerPositions(player).some((position) =>
+      ["LW", "RW", "ST", "CM", "CDM"].includes(position),
+    ),
+  );
 
   const slowCenterBacks = centerBacks.filter((player) =>
     runtimeProfileHas(player, [
@@ -1453,14 +1775,14 @@ function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string)
       "pesado",
       "no corrige hacia atras",
     ]),
-  )
+  );
   if (
     slowCenterBacks.length &&
     /subir|bloque alto|presion alta|presionar/i.test(normalized)
   ) {
     lines.push(
       `- RIESGO FIT: bloque alto con centrales lentos (${slowCenterBacks.map(runtimePlayerLabel).join("; ")}).`,
-    )
+    );
   }
 
   const weakPivots = pivots.filter((player) =>
@@ -1472,11 +1794,11 @@ function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string)
       "limitado con pelota",
       "se complica bajo presion",
     ]),
-  )
+  );
   if (weakPivots.length && /salida|pivote|5|progres/i.test(normalized)) {
     lines.push(
       `- RIESGO FIT: salida interior condicionada por pivote con pase/control bajo (${weakPivots.map(runtimePlayerLabel).join("; ")}).`,
-    )
+    );
   }
 
   const lowPress = attackers.filter((player) =>
@@ -1487,50 +1809,65 @@ function formatPlayerFitRuntimeContext(coachContext: unknown, userInput: string)
       "no sostiene presion",
       "no repliega",
     ]),
-  )
-  if (lowPress.length >= 2 && /presion|tras perdida|apretar/i.test(normalized)) {
+  );
+  if (
+    lowPress.length >= 2 &&
+    /presion|tras perdida|apretar/i.test(normalized)
+  ) {
     lines.push(
       `- RIESGO FIT: presion alta con baja intensidad de presion en roles clave (${lowPress.map(runtimePlayerLabel).join("; ")}).`,
-    )
+    );
   }
 
   const organizer = pivots.find((player) =>
-    runtimeProfileHas(player, ["ordena", "lectura", "primer pase", "pausa", "lidera"]),
-  )
+    runtimeProfileHas(player, [
+      "ordena",
+      "lectura",
+      "primer pase",
+      "pausa",
+      "lidera",
+    ]),
+  );
   if (organizer) {
-    lines.push(`- FORTALEZA FIT: ${runtimePlayerLabel(organizer)} puede ordenar salida/presion.`)
+    lines.push(
+      `- FORTALEZA FIT: ${runtimePlayerLabel(organizer)} puede ordenar salida/presion.`,
+    );
   }
 
   return lines.length
     ? lines.join("\n")
-    : "No deterministic fit warnings for this request."
+    : "No deterministic fit warnings for this request.";
 }
 
 export function formatShapeRuntimeContext(shapeContext: unknown) {
-  if (!shapeContext || typeof shapeContext !== "object" || Array.isArray(shapeContext)) {
-    return ""
+  if (
+    !shapeContext ||
+    typeof shapeContext !== "object" ||
+    Array.isArray(shapeContext)
+  ) {
+    return "";
   }
-  const shape = shapeContext as Record<string, unknown>
+  const shape = shapeContext as Record<string, unknown>;
   // Rival: SOLO presencia. rivalReference son 4 puntos decorativos constantes del
   // tablero; alimentarlos como posiciones seria fabricar evidencia. Exponemos si el
   // staff cargo la referencia rival, nunca sus coordenadas.
-  const hasRivalReference = arrayValue(shape.rivalReference).length > 0
-  const metrics = metricObject(shape.currentMetrics)
+  const hasRivalReference = arrayValue(shape.rivalReference).length > 0;
+  const metrics = metricObject(shape.currentMetrics);
   const shapeSummaries = arrayValue(shape.shapes)
     .slice(0, 4)
     .map((item) => {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return ""
-      const entry = item as Record<string, unknown>
+      if (!item || typeof item !== "object" || Array.isArray(item)) return "";
+      const entry = item as Record<string, unknown>;
       return [
         `- ${stringValue(entry.name) ?? "shape"} (${stringValue(entry.phase) ?? "fase"})`,
         stringValue(entry.summary) ? `: ${stringValue(entry.summary)}` : "",
         (() => {
-          const metrics = metricObject(entry.metrics)
-          return metrics ? ` | metricas ${formatMetrics(metrics)}` : ""
+          const metrics = metricObject(entry.metrics);
+          return metrics ? ` | metricas ${formatMetrics(metrics)}` : "";
         })(),
-      ].join("")
+      ].join("");
     })
-    .filter(Boolean)
+    .filter(Boolean);
 
   return [
     "LINEUP LAB OBJECTIVE EVIDENCE",
@@ -1542,65 +1879,71 @@ export function formatShapeRuntimeContext(shapeContext: unknown) {
       ? `- Resumen tablero: ${stringValue(shape.currentBoardSummary)}`
       : "",
     metrics ? `- Metricas shape actual: ${formatMetrics(metrics)}` : "",
-    shapeSummaries.length ? `- Shapes guardados:\n${shapeSummaries.join("\n")}` : "",
+    shapeSummaries.length
+      ? `- Shapes guardados:\n${shapeSummaries.join("\n")}`
+      : "",
     `- Referencia rival cargada en el tablero: ${hasRivalReference ? "si" : "no"} (solo presencia, no es dato posicional; no infiere ubicaciones del rival).`,
     "- Uso táctico: estas métricas son evidencia geométrica objetiva del tablero, pero no prueban por sí solas una causa. No subir confianza solo por geometría sin evidencia actual.",
   ]
     .filter(Boolean)
-    .join("\n")
+    .join("\n");
 }
 
 function formatLineupLabRuntimeContext(context: Record<string, unknown>) {
-  const transitions = arrayValue(context.lineupLabTransitions)
-  if (!transitions.length) return ""
+  const transitions = arrayValue(context.lineupLabTransitions);
+  if (!transitions.length) return "";
 
   return [
     "LINEUP LAB TRANSITIONS",
     ...transitions.slice(0, 4).map((transition) => {
-      if (!transition || typeof transition !== "object" || Array.isArray(transition)) {
-        return ""
+      if (
+        !transition ||
+        typeof transition !== "object" ||
+        Array.isArray(transition)
+      ) {
+        return "";
       }
-      const item = transition as Record<string, unknown>
+      const item = transition as Record<string, unknown>;
       return `- ${stringValue(item.name) ?? "transicion"}: ${
         stringValue(item.fromShapeName) ?? "shape A"
       } -> ${stringValue(item.toShapeName) ?? "shape B"}${
         stringValue(item.notes) ? ` (${stringValue(item.notes)})` : ""
-      }`
+      }`;
     }),
   ]
     .filter(Boolean)
-    .join("\n")
+    .join("\n");
 }
 
 function formatInterviewRuntimeContext(context: Record<string, unknown>) {
-  const interviewEvidence = arrayValue(context.interviewEvidence)
-  if (!interviewEvidence.length) return ""
+  const interviewEvidence = arrayValue(context.interviewEvidence);
+  if (!interviewEvidence.length) return "";
 
   return [
     "INTERVIEW EVIDENCE FROM CURRENT USER",
     ...interviewEvidence.slice(0, 6).map((item) => {
-      if (!item || typeof item !== "object" || Array.isArray(item)) return ""
-      const answer = item as Record<string, unknown>
+      if (!item || typeof item !== "object" || Array.isArray(item)) return "";
+      const answer = item as Record<string, unknown>;
       return `- ${stringValue(answer.category) ?? "evidencia"} / ${
         stringValue(answer.target) ?? "target"
-      }: ${stringValue(answer.answer) ?? ""}`
+      }: ${stringValue(answer.answer) ?? ""}`;
     }),
   ]
     .filter(Boolean)
-    .join("\n")
+    .join("\n");
 }
 
 function formatSquadPlayer(item: unknown) {
-  if (!item || typeof item !== "object" || Array.isArray(item)) return ""
-  const player = item as Record<string, unknown>
-  const positions = arrayValue(player.positions).join("/")
+  if (!item || typeof item !== "object" || Array.isArray(item)) return "";
+  const player = item as Record<string, unknown>;
+  const positions = arrayValue(player.positions).join("/");
   return `#${numberValue(player.num) ?? "?"} ${stringValue(player.name) ?? "Jugador"}${
     positions ? ` (${positions})` : ""
-  }${stringValue(player.profile) ? ` - ${stringValue(player.profile)}` : ""}`
+  }${stringValue(player.profile) ? ` - ${stringValue(player.profile)}` : ""}`;
 }
 
 function formatMetrics(metrics: Record<string, unknown>) {
-  const lineDistances = metricObject(metrics.lineDistances)
+  const lineDistances = metricObject(metrics.lineDistances);
   return [
     `ancho ${formatMeters(metrics.width)}`,
     `profundidad ${formatMeters(metrics.depth)}`,
@@ -1612,56 +1955,64 @@ function formatMetrics(metrics: Record<string, unknown>) {
     lineDistances?.midfieldToAttack !== undefined
       ? `med-ata ${formatMeters(lineDistances.midfieldToAttack)}`
       : "",
-    numberValue(metrics.duels) !== undefined ? `duelos cercanos ${numberValue(metrics.duels)}` : "",
+    numberValue(metrics.duels) !== undefined
+      ? `duelos cercanos ${numberValue(metrics.duels)}`
+      : "",
   ]
     .filter(Boolean)
-    .join("; ")
+    .join("; ");
 }
 
 function formatMeters(value: unknown) {
-  const number = numberValue(value)
-  return number === undefined ? "s/d" : `${number.toFixed(1)}m`
+  const number = numberValue(value);
+  return number === undefined ? "s/d" : `${number.toFixed(1)}m`;
 }
 
 function stringValue(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function numberValue(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function arrayValue(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : []
+  return Array.isArray(value) ? value : [];
 }
 
 function metricObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function objectValue(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function runtimePlayerPositions(player: unknown) {
-  const entry = objectValue(player)
-  return arrayValue(entry?.positions).filter((item): item is string => typeof item === "string")
+  const entry = objectValue(player);
+  return arrayValue(entry?.positions).filter(
+    (item): item is string => typeof item === "string",
+  );
 }
 
 function runtimePlayerLabel(player: unknown) {
-  const entry = objectValue(player)
-  const num = numberValue(entry?.num) ?? "?"
-  const name = stringValue(entry?.name) ?? "Jugador"
-  return `#${num} ${name}`
+  const entry = objectValue(player);
+  const num = numberValue(entry?.num) ?? "?";
+  const name = stringValue(entry?.name) ?? "Jugador";
+  return `#${num} ${name}`;
 }
 
 function runtimeProfileHas(player: unknown, terms: string[]) {
-  const profile = stringValue(objectValue(player)?.profile) ?? ""
-  return terms.some((term) => normalizeForRules(profile).includes(normalizeForRules(term)))
+  const profile = stringValue(objectValue(player)?.profile) ?? "";
+  return terms.some((term) =>
+    normalizeForRules(profile).includes(normalizeForRules(term)),
+  );
 }
 
 function normalizeForRules(value: string) {
@@ -1669,13 +2020,13 @@ function normalizeForRules(value: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .trim()
+    .trim();
 }
 
-type EvidenceCatalogItem = RetrievedEvidence
+type EvidenceCatalogItem = RetrievedEvidence;
 
 function toRetrievedEvidence(item: EvidenceCatalogItem): RetrievedEvidence {
-  const text = `${item.title} ${item.excerpt}`
+  const text = `${item.title} ${item.excerpt}`;
   return {
     id: item.id,
     sourceType: item.sourceType,
@@ -1685,23 +2036,23 @@ function toRetrievedEvidence(item: EvidenceCatalogItem): RetrievedEvidence {
     evidenceTargets: item.evidenceTargets?.length
       ? item.evidenceTargets
       : inferEvidenceTargets(text),
-  }
+  };
 }
 
 function buildRuntimeVideoEvidenceCatalog(
   userInput: string,
   coachContext: unknown,
 ): RetrievedEvidence[] {
-  const context = objectValue(coachContext)
-  const videoEvidence = objectValue(context?.videoEvidence)
-  const text = stringValue(videoEvidence?.text)
-  if (!text) return []
+  const context = objectValue(coachContext);
+  const videoEvidence = objectValue(context?.videoEvidence);
+  const text = stringValue(videoEvidence?.text);
+  if (!text) return [];
 
-  const observations = normalizeRuntimeVideoEvidenceText(text).slice(0, 12)
-  if (!observations.length) return []
+  const observations = normalizeRuntimeVideoEvidenceText(text).slice(0, 12);
+  if (!observations.length) return [];
 
   const confidenceScore = (confidence: string | undefined) =>
-    confidence === "high" ? 0.94 : confidence === "medium" ? 0.76 : 0.48
+    confidence === "high" ? 0.94 : confidence === "medium" ? 0.76 : 0.48;
 
   // Rankeamos las marcas por relevancia a la consulta. La confianza de la marca
   // entra como authorityScore (senal secundaria), pero la RELEVANCIA gobierna el
@@ -1715,17 +2066,23 @@ function buildRuntimeVideoEvidenceCatalog(
         id: observation.id,
         sourceType: "video",
         title: observation.title,
-        text: [observation.title, observation.text, observation.zone ?? ""].join(" "),
+        text: [
+          observation.title,
+          observation.text,
+          observation.zone ?? "",
+        ].join(" "),
         tags: ["video", observation.zone ?? ""].filter(Boolean),
         payload: observation,
         authorityScore: confidenceScore(observation.confidence),
         evidenceTargets: inferEvidenceTargets(
-          [observation.title, observation.text, observation.zone ?? ""].join(" "),
+          [observation.title, observation.text, observation.zone ?? ""].join(
+            " ",
+          ),
         ),
       }),
     ),
     { limit: 6, minScore: 0.3 },
-  )
+  );
 
   return ranked.map((item) => ({
     id: item.id,
@@ -1734,19 +2091,19 @@ function buildRuntimeVideoEvidenceCatalog(
     excerpt: item.payload.text,
     score: item.score,
     evidenceTargets: item.evidenceTargets,
-  }))
+  }));
 }
 
 function buildRuntimeManualObservationEvidenceCatalog(
   userInput: string,
   coachContext: unknown,
 ): RetrievedEvidence[] {
-  const context = objectValue(coachContext)
+  const context = objectValue(coachContext);
   const manualObservations = arrayValue(context?.manualObservations)
     .map((entry) => normalizeManualObservationEntry(entry))
-    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
-  if (!manualObservations.length) return []
+  if (!manualObservations.length) return [];
 
   const ranked = rankDocuments(
     userInput,
@@ -1764,7 +2121,7 @@ function buildRuntimeManualObservationEvidenceCatalog(
       }),
     ),
     { limit: 6, minScore: 0.14 },
-  )
+  );
 
   return ranked.map((item) => ({
     id: item.id,
@@ -1773,34 +2130,34 @@ function buildRuntimeManualObservationEvidenceCatalog(
     excerpt: `${item.text} | observacion manual | ${item.payload.createdAt.slice(0, 10)}`,
     score: item.score,
     evidenceTargets: item.evidenceTargets,
-  }))
+  }));
 }
 
 function normalizeManualObservationEntry(entry: unknown) {
-  const item = objectValue(entry)
-  const id = stringValue(item?.id)
-  const text = stringValue(item?.text)
-  const createdAt = stringValue(item?.createdAt)
-  const source = stringValue(item?.source)
-  if (!id || !text) return null
+  const item = objectValue(entry);
+  const id = stringValue(item?.id);
+  const text = stringValue(item?.text);
+  const createdAt = stringValue(item?.createdAt);
+  const source = stringValue(item?.source);
+  if (!id || !text) return null;
 
   return {
     id,
     text,
     createdAt: createdAt ?? new Date().toISOString(),
     source: source === "postMatch" ? "postMatch" : "home",
-  }
+  };
 }
 
 function formatRuntimeManualObservations(coachContext: unknown) {
-  const context = objectValue(coachContext)
+  const context = objectValue(coachContext);
   const manualObservations = arrayValue(context?.manualObservations)
     .map((entry) => normalizeManualObservationEntry(entry))
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
-    .slice(0, 6)
+    .slice(0, 6);
 
   if (!manualObservations.length) {
-    return "No current manual observations captured."
+    return "No current manual observations captured.";
   }
 
   return manualObservations
@@ -1808,35 +2165,34 @@ function formatRuntimeManualObservations(coachContext: unknown) {
       (observation) =>
         `- ${observation.id} | ${observation.source} | ${observation.createdAt.slice(0, 10)} | ${observation.text}`,
     )
-    .join("\n")
+    .join("\n");
 }
 
 function dedupeEvidenceById(items: RetrievedEvidence[]) {
-  const byId = new Map<string, RetrievedEvidence>()
+  const byId = new Map<string, RetrievedEvidence>();
   for (const item of items) {
-    const current = byId.get(item.id)
+    const current = byId.get(item.id);
     if (!current || item.score > current.score) {
-      byId.set(item.id, item)
+      byId.set(item.id, item);
     }
   }
-  return [...byId.values()].sort((a, b) => b.score - a.score)
+  return [...byId.values()].sort((a, b) => b.score - a.score);
 }
 
 function fallbackIntent(userInput: string): TacticalIntent {
   return {
     domains: [inferFallbackDomain(userInput)],
-    specificity: userInput.trim().split(/\s+/).length >= 8
-      ? "specific"
-      : "general",
+    specificity:
+      userInput.trim().split(/\s+/).length >= 8 ? "specific" : "general",
     requestType: /plan|accion|hacer|correg/i.test(userInput)
       ? "actionPlan"
       : "diagnosis",
     impliedClaims: [],
-  }
+  };
 }
 
 function fallbackClaims(intent: TacticalIntent): ImpliedClaim[] {
-  const domain = intent.domains[0] ?? "defense"
+  const domain = intent.domains[0] ?? "defense";
 
   return [
     {
@@ -1847,40 +2203,44 @@ function fallbackClaims(intent: TacticalIntent): ImpliedClaim[] {
       riskIfWrong: "high" as const,
       requiredEvidence: ["cause", "zone", "ownTeam"],
     },
-  ]
+  ];
 }
 
-function inferFallbackDomain(userInput: string): TacticalIntent["domains"][number] {
-  const normalized = userInput.toLowerCase()
-  if (/salida|salir|constru/i.test(normalized)) return "buildUp"
-  if (/transicion|perd/i.test(normalized)) return "defensiveTransition"
-  if (/presion|presionar|saltar/i.test(normalized)) return "pressing"
-  if (/bloque|largo|corto|hund/i.test(normalized)) return "block"
-  if (/abp|pelota parada|corner|tiro libre/i.test(normalized)) return "setPieces"
-  if (/atac|gener|9|delanter/i.test(normalized)) return "attack"
-  return "defense"
+function inferFallbackDomain(
+  userInput: string,
+): TacticalIntent["domains"][number] {
+  const normalized = userInput.toLowerCase();
+  if (/salida|salir|constru/i.test(normalized)) return "buildUp";
+  if (/transicion|perd/i.test(normalized)) return "defensiveTransition";
+  if (/presion|presionar|saltar/i.test(normalized)) return "pressing";
+  if (/bloque|largo|corto|hund/i.test(normalized)) return "block";
+  if (/abp|pelota parada|corner|tiro libre/i.test(normalized))
+    return "setPieces";
+  if (/atac|gener|9|delanter/i.test(normalized)) return "attack";
+  return "defense";
 }
 
 function fallbackEvidenceAudit(
   retrievedCount: number,
   collectedCount: number,
 ): EvidenceAudit {
-  const covered = collectedCount ? ["cause" as const] : []
+  const covered = collectedCount ? ["cause" as const] : [];
   const evidenceStrength =
     collectedCount >= 2 || retrievedCount >= 2
       ? "sufficient"
       : collectedCount || retrievedCount
         ? "partial"
-        : "none"
+        : "none";
 
   return {
     covered,
-    missing: evidenceStrength === "sufficient"
-      ? []
-      : [{ target: "cause", reason: "Falta evidencia concreta del caso." }],
+    missing:
+      evidenceStrength === "sufficient"
+        ? []
+        : [{ target: "cause", reason: "Falta evidencia concreta del caso." }],
     criticalMissingCount: evidenceStrength === "sufficient" ? 0 : 1,
     evidenceStrength,
-  }
+  };
 }
 
 function withCappedAdvice(
@@ -1894,7 +2254,7 @@ function withCappedAdvice(
       ...advice.reflection,
       confidence: capConfidence(advice.reflection.confidence, audit, skipped),
     },
-  }
+  };
 }
 
 function buildCoachResponseFromAdvice({
@@ -1907,24 +2267,24 @@ function buildCoachResponseFromAdvice({
   followUpQuestions,
   downgradeFollowUpQuestions,
 }: {
-  preferredMode: "hypothesis" | "diagnosis"
-  advice: CoachMatchAdvice
-  intent: TacticalIntent
-  evidenceAudit: EvidenceAudit
-  userInput: string
-  evidenceCatalog: EvidenceCatalogItem[]
-  followUpQuestions: ContextualQuestion[]
-  downgradeFollowUpQuestions: ContextualQuestion[]
+  preferredMode: "hypothesis" | "diagnosis";
+  advice: CoachMatchAdvice;
+  intent: TacticalIntent;
+  evidenceAudit: EvidenceAudit;
+  userInput: string;
+  evidenceCatalog: EvidenceCatalogItem[];
+  followUpQuestions: ContextualQuestion[];
+  downgradeFollowUpQuestions: ContextualQuestion[];
 }): CoachResponse {
   const trust = assessCoachAdviceTrust(advice, {
     userInput,
     evidenceCatalog,
-  })
+  });
   const lacksRequiredEvidence =
     evidenceAudit.criticalMissingCount > 0 ||
-    evidenceAudit.evidenceStrength !== "sufficient"
+    evidenceAudit.evidenceStrength !== "sufficient";
   const requiresHypothesisMode =
-    trust.requiresHypothesisMode || lacksRequiredEvidence
+    trust.requiresHypothesisMode || lacksRequiredEvidence;
 
   if (preferredMode === "diagnosis" && requiresHypothesisMode) {
     return {
@@ -1934,7 +2294,7 @@ function buildCoachResponseFromAdvice({
       intent,
       evidenceAudit,
       followUpQuestions: downgradeFollowUpQuestions,
-    }
+    };
   }
 
   if (preferredMode === "diagnosis") {
@@ -1943,7 +2303,7 @@ function buildCoachResponseFromAdvice({
       advice,
       intent,
       evidenceAudit,
-    }
+    };
   }
 
   return {
@@ -1953,7 +2313,7 @@ function buildCoachResponseFromAdvice({
     intent,
     evidenceAudit,
     followUpQuestions,
-  }
+  };
 }
 
 function withInterviewEvidence(
@@ -1961,14 +2321,14 @@ function withInterviewEvidence(
   collectedEvidence: CollectedAnswer[],
   audit: EvidenceAudit,
 ) {
-  if (!collectedEvidence.length) return coachContext
+  if (!collectedEvidence.length) return coachContext;
 
   const interviewEvidence = collectedEvidence.map((answer) => ({
     target: answer.evidenceTarget,
     category: answer.category,
     answerKind: answer.answerKind,
     answer: answer.rawAnswer,
-  }))
+  }));
 
   if (
     coachContext &&
@@ -1979,19 +2339,19 @@ function withInterviewEvidence(
       ...coachContext,
       interviewEvidence,
       interviewEvidenceAudit: audit,
-    }
+    };
   }
 
   return {
     baseContext: coachContext ?? null,
     interviewEvidence,
     interviewEvidenceAudit: audit,
-  }
+  };
 }
 
 function formatEvidenceCatalog(evidenceCatalog: EvidenceCatalogItem[]) {
   if (!evidenceCatalog.length) {
-    return "No ranked evidence retrieved."
+    return "No ranked evidence retrieved.";
   }
 
   return evidenceCatalog
@@ -2004,30 +2364,30 @@ function formatEvidenceCatalog(evidenceCatalog: EvidenceCatalogItem[]) {
         `targets=${(item.evidenceTargets ?? []).join(",") || "none"}`,
         `title=${item.title}`,
         `excerpt=${item.excerpt}`,
-      ].join(" | ")
+      ].join(" | "),
     )
-    .join("\n")
+    .join("\n");
 }
 
 function attachEvidenceCitations(
   advice: CoachMatchAdvice,
   evidenceCatalog: EvidenceCatalogItem[],
 ): CoachMatchAdvice {
-  const byId = new Map(evidenceCatalog.map((item) => [item.id, item]))
+  const byId = new Map(evidenceCatalog.map((item) => [item.id, item]));
   const validCitations = advice.evidenceCitations
     .map((citation) => byId.get(citation.sourceId))
-    .filter((item): item is EvidenceCatalogItem => Boolean(item))
+    .filter((item): item is EvidenceCatalogItem => Boolean(item));
 
   // Deduplicamos por sourceId y limitamos a 4. No inventamos citas que el
   // modelo no eligio: si cito una fuente inexistente, simplemente se descarta.
   const deduped = [
     ...new Map(validCitations.map((item) => [item.id, item])).values(),
-  ].slice(0, 4)
+  ].slice(0, 4);
 
   return {
     ...advice,
     evidenceCitations: deduped.map(buildEvidenceCitation),
-  }
+  };
 }
 
 function finalizeCoachAdvice(
@@ -2037,15 +2397,15 @@ function finalizeCoachAdvice(
     userInput,
     coachContext,
   }: {
-    evidenceCatalog: EvidenceCatalogItem[]
-    userInput: string
-    coachContext: unknown
+    evidenceCatalog: EvidenceCatalogItem[];
+    userInput: string;
+    coachContext: unknown;
   },
 ): CoachMatchAdvice {
-  const withCitations = attachEvidenceCitations(advice, evidenceCatalog)
-  const withDepth = ensureAdviceDepth(withCitations, userInput)
-  const withExercises = enrichAdviceWithExerciseMatches(withDepth, userInput)
-  const gameModel = objectValue(coachContext)?.gameModel
+  const withCitations = attachEvidenceCitations(advice, evidenceCatalog);
+  const withDepth = ensureAdviceDepth(withCitations, userInput);
+  const withExercises = enrichAdviceWithExerciseMatches(withDepth, userInput);
+  const gameModel = objectValue(coachContext)?.gameModel;
   const deterministicContrast = gameModel
     ? contrastTextWithGameModel(
         [
@@ -2060,45 +2420,49 @@ function finalizeCoachAdvice(
         ].join(" "),
         normalizeGameModel(gameModel),
       )
-    : { aligned: [], contradictions: [], insufficientEvidence: [] }
-  const deterministicFit = formatPlayerFitRuntimeContext(coachContext, [
-    userInput,
-    withExercises.mainAdjustment,
-    withExercises.probableCause,
-  ].join(" "))
+    : { aligned: [], contradictions: [], insufficientEvidence: [] };
+  const deterministicFit = formatPlayerFitRuntimeContext(
+    coachContext,
+    [userInput, withExercises.mainAdjustment, withExercises.probableCause].join(
+      " ",
+    ),
+  )
     .split("\n")
     .filter((line) => line.startsWith("- RIESGO FIT"))
-    .map((line) => line.replace(/^- RIESGO FIT:\s*/, ""))
+    .map((line) => line.replace(/^- RIESGO FIT:\s*/, ""));
   const fitWarnings = [
     ...withExercises.playerFitWarnings,
     ...deterministicFit,
-  ].filter((item, index, list) => item.trim() && list.indexOf(item) === index)
+  ].filter((item, index, list) => item.trim() && list.indexOf(item) === index);
 
-  return guardCoachAdvice({
-    ...withExercises,
-    modelContrast: {
-      aligned: uniqueStrings([
-        ...withExercises.modelContrast.aligned,
-        ...deterministicContrast.aligned,
-      ]),
-      contradictions: uniqueStrings([
-        ...withExercises.modelContrast.contradictions,
-        ...deterministicContrast.contradictions,
-      ]),
-      insufficientEvidence: uniqueStrings([
-        ...withExercises.modelContrast.insufficientEvidence,
-        ...deterministicContrast.insufficientEvidence,
+  return guardCoachAdvice(
+    {
+      ...withExercises,
+      modelContrast: {
+        aligned: uniqueStrings([
+          ...withExercises.modelContrast.aligned,
+          ...deterministicContrast.aligned,
+        ]),
+        contradictions: uniqueStrings([
+          ...withExercises.modelContrast.contradictions,
+          ...deterministicContrast.contradictions,
+        ]),
+        insufficientEvidence: uniqueStrings([
+          ...withExercises.modelContrast.insufficientEvidence,
+          ...deterministicContrast.insufficientEvidence,
+        ]),
+      },
+      playerFitWarnings: fitWarnings,
+      adjustmentRisks: uniqueStrings([
+        ...withExercises.adjustmentRisks,
+        ...fitWarnings,
       ]),
     },
-    playerFitWarnings: fitWarnings,
-    adjustmentRisks: uniqueStrings([
-      ...withExercises.adjustmentRisks,
-      ...fitWarnings,
-    ]),
-  }, {
-    userInput,
-    evidenceCatalog,
-  })
+    {
+      userInput,
+      evidenceCatalog,
+    },
+  );
 }
 
 function enrichAdviceWithExerciseMatches(
@@ -2114,7 +2478,7 @@ function enrichAdviceWithExerciseMatches(
       advice.wednesdayTest,
       advice.saturdayFocus,
     ].join(" "),
-  )
+  );
   const matches = matchExercisesForDiagnosis({
     domains,
     query: [
@@ -2125,48 +2489,51 @@ function enrichAdviceWithExerciseMatches(
     ].join(" "),
     exercises: catalog,
     limit: 3,
-  })
-  const structuredExerciseIds = matches.map((match) => match.exercise.id)
-  const linkedExercises = [
-    ...structuredExerciseIds,
-    ...advice.linkedExercises,
-  ]
+  });
+  const structuredExerciseIds = matches.map((match) => match.exercise.id);
+  const linkedExercises = [...structuredExerciseIds, ...advice.linkedExercises]
     .filter(
       (id, index, list) =>
         catalog.some((exercise) => exercise.id === id) &&
         list.indexOf(id) === index,
     )
-    .slice(0, 3)
+    .slice(0, 3);
   const existingActionKeys = new Set(
     advice.actions.map((action) => `${action.type}:${action.exerciseId ?? ""}`),
-  )
+  );
   const structuredActions = structuredExerciseIds.flatMap((exerciseId) => {
-    const exercise = catalog.find((item) => item.id === exerciseId)
-    if (!exercise) return []
+    const exercise = catalog.find((item) => item.id === exerciseId);
+    if (!exercise) return [];
     const action = {
       type: "addToSession" as const,
       label: `Agregar ${exercise.title} a la sesion`,
       exerciseId,
-      rationale: "Sugerido por mapeo estructurado dominio tactico -> ejercicio.",
-    }
-    const key = `${action.type}:${exerciseId}`
-    return existingActionKeys.has(key) ? [] : [action]
-  })
+      rationale:
+        "Sugerido por mapeo estructurado dominio tactico -> ejercicio.",
+    };
+    const key = `${action.type}:${exerciseId}`;
+    return existingActionKeys.has(key) ? [] : [action];
+  });
   const sessionAction = linkedExercises.length
-    ? [{
-        type: "createSessionFromDiagnosis" as const,
-        label: "Crear sesion desde este diagnostico",
-        exerciseIds: linkedExercises,
-        title: `Sesion desde diagnostico`,
-        rationale: advice.mainAdjustment,
-      }]
-    : []
+    ? [
+        {
+          type: "createSessionFromDiagnosis" as const,
+          label: "Crear sesion desde este diagnostico",
+          exerciseIds: linkedExercises,
+          title: `Sesion desde diagnostico`,
+          rationale: advice.mainAdjustment,
+        },
+      ]
+    : [];
 
   return {
     ...advice,
     linkedExercises,
-    actions: [...sessionAction, ...structuredActions, ...advice.actions].slice(0, 5),
-  }
+    actions: [...sessionAction, ...structuredActions, ...advice.actions].slice(
+      0,
+      5,
+    ),
+  };
 }
 
 function ensureAdviceDepth(
@@ -2186,18 +2553,18 @@ function ensureAdviceDepth(
     ownVsRival: usefulText(advice.problemBreakdown.ownVsRival)
       ? advice.problemBreakdown.ownVsRival
       : "Responsabilidad a validar con evidencia del partido.",
-  }
+  };
   const alternatives = uniqueAlternativeAdjustments([
     ...advice.alternativeAdjustments,
     ...fallbackAlternativeAdjustments(advice, userInput),
-  ]).slice(0, 3)
+  ]).slice(0, 3);
 
   return {
     ...advice,
     problemBreakdown,
     alternativeAdjustments: alternatives,
     onFieldInstructions: advice.onFieldInstructions.slice(0, 5),
-  }
+  };
 }
 
 function fallbackAlternativeAdjustments(
@@ -2211,104 +2578,124 @@ function fallbackAlternativeAdjustments(
       advice.probableCause,
       advice.mainAdjustment,
     ].join(" "),
-  )
-  const alternatives: CoachMatchAdvice["alternativeAdjustments"] = []
+  );
+  const alternatives: CoachMatchAdvice["alternativeAdjustments"] = [];
 
   if (/bloque|presion|presionar|subir|alto/.test(normalized)) {
     alternatives.push({
       adjustment: "Sostener bloque medio y presionar solo con gatillo claro.",
-      whenToUse: "Cuando el plantel no sostiene esfuerzos largos o hay dudas de velocidad a la espalda.",
-      tradeoff: "Cede metros iniciales y exige defender mejor la segunda jugada.",
-    })
+      whenToUse:
+        "Cuando el plantel no sostiene esfuerzos largos o hay dudas de velocidad a la espalda.",
+      tradeoff:
+        "Cede metros iniciales y exige defender mejor la segunda jugada.",
+    });
     alternatives.push({
-      adjustment: "Presionar alto durante ventanas cortas y replegar si el rival supera la primera linea.",
-      whenToUse: "Cuando queres incomodar salida rival sin exponer todo el partido.",
-      tradeoff: "Requiere coordinacion fina; si un jugador salta tarde, el equipo queda largo.",
-    })
+      adjustment:
+        "Presionar alto durante ventanas cortas y replegar si el rival supera la primera linea.",
+      whenToUse:
+        "Cuando queres incomodar salida rival sin exponer todo el partido.",
+      tradeoff:
+        "Requiere coordinacion fina; si un jugador salta tarde, el equipo queda largo.",
+    });
   } else if (/salida|progres|pivote|5/.test(normalized)) {
     alternatives.push({
-      adjustment: "Usar salida mixta: atraer por dentro y activar tercer hombre por fuera.",
-      whenToUse: "Cuando el pivote esta tapado o no tiene perfil para recibir de espaldas.",
+      adjustment:
+        "Usar salida mixta: atraer por dentro y activar tercer hombre por fuera.",
+      whenToUse:
+        "Cuando el pivote esta tapado o no tiene perfil para recibir de espaldas.",
       tradeoff: "Puede alejar apoyos del 9 si los interiores no acompanan.",
-    })
+    });
     alternatives.push({
-      adjustment: "Saltar una linea con pase directo preparado y juntar segunda jugada.",
+      adjustment:
+        "Saltar una linea con pase directo preparado y juntar segunda jugada.",
       whenToUse: "Cuando el rival presiona alto y niega la salida corta.",
       tradeoff: "Pierde control inicial de posesion y exige duelos ofensivos.",
-    })
+    });
   } else if (/9|delanter|gener|atac/.test(normalized)) {
     alternatives.push({
-      adjustment: "Acercar un interior al 9 para crear apoyo frontal antes de acelerar.",
-      whenToUse: "Cuando el delantero queda aislado y la segunda pelota cae lejos.",
+      adjustment:
+        "Acercar un interior al 9 para crear apoyo frontal antes de acelerar.",
+      whenToUse:
+        "Cuando el delantero queda aislado y la segunda pelota cae lejos.",
       tradeoff: "Puede dejar menos presencia en la base de la jugada.",
-    })
+    });
     alternatives.push({
-      adjustment: "Liberar una banda para atacar con lateral y extremo escalonados.",
-      whenToUse: "Cuando el rival protege el carril central y concede lado debil.",
-      tradeoff: "Expone transicion defensiva si no hay cobertura del mediocentro.",
-    })
+      adjustment:
+        "Liberar una banda para atacar con lateral y extremo escalonados.",
+      whenToUse:
+        "Cuando el rival protege el carril central y concede lado debil.",
+      tradeoff:
+        "Expone transicion defensiva si no hay cobertura del mediocentro.",
+    });
   } else {
     alternatives.push({
-      adjustment: "Reducir el riesgo inicial y validar la causa con una tarea corta de repeticion.",
+      adjustment:
+        "Reducir el riesgo inicial y validar la causa con una tarea corta de repeticion.",
       whenToUse: "Cuando la evidencia todavia no separa sintoma de causa.",
       tradeoff: "No corrige todo de inmediato, pero evita sobrerreaccionar.",
-    })
+    });
     alternatives.push({
-      adjustment: "Probar una version mas agresiva del ajuste durante 10 minutos controlados.",
-      whenToUse: "Cuando necesitás cambiar el partido sin comprometer todo el plan.",
+      adjustment:
+        "Probar una version mas agresiva del ajuste durante 10 minutos controlados.",
+      whenToUse:
+        "Cuando necesitás cambiar el partido sin comprometer todo el plan.",
       tradeoff: "Si falla el primer pase o salto, aumenta la exposicion.",
-    })
+    });
   }
 
-  return alternatives
+  return alternatives;
 }
 
 function inferProblemZone(userInput: string, advice: CoachMatchAdvice) {
   const text = normalizeForRules(
     `${userInput} ${advice.tacticalReading} ${advice.probableCause}`,
-  )
-  if (/banda|lateral|extremo/.test(text)) return "Banda o carril exterior."
-  if (/espalda|lineas|bloque/.test(text)) return "Espacio entre lineas o espalda del bloque."
-  if (/salida|pivote|5/.test(text)) return "Base de salida y carril central."
-  if (/9|delanter/.test(text)) return "Ultimo tercio y zona de apoyo al 9."
-  return "Zona a confirmar con evidencia del caso."
+  );
+  if (/banda|lateral|extremo/.test(text)) return "Banda o carril exterior.";
+  if (/espalda|lineas|bloque/.test(text))
+    return "Espacio entre lineas o espalda del bloque.";
+  if (/salida|pivote|5/.test(text)) return "Base de salida y carril central.";
+  if (/9|delanter/.test(text)) return "Ultimo tercio y zona de apoyo al 9.";
+  return "Zona a confirmar con evidencia del caso.";
 }
 
 function inferProblemMoment(userInput: string) {
-  const text = normalizeForRules(userInput)
-  if (/segundo tiempo|60|70|cans/.test(text)) return "Tramo final o caida fisica."
-  if (/salida|inicio|primer pase/.test(text)) return "Inicio de la posesion."
-  if (/perdida|transicion/.test(text)) return "Tras perdida o cambio de posesion."
-  if (/sabado|partido/.test(text)) return "Contexto de partido a validar."
-  return "Momento a confirmar."
+  const text = normalizeForRules(userInput);
+  if (/segundo tiempo|60|70|cans/.test(text))
+    return "Tramo final o caida fisica.";
+  if (/salida|inicio|primer pase/.test(text)) return "Inicio de la posesion.";
+  if (/perdida|transicion/.test(text))
+    return "Tras perdida o cambio de posesion.";
+  if (/sabado|partido/.test(text)) return "Contexto de partido a validar.";
+  return "Momento a confirmar.";
 }
 
 function inferProblemTrigger(userInput: string, advice: CoachMatchAdvice) {
-  const text = normalizeForRules(`${userInput} ${advice.mainAdjustment}`)
-  if (/pase atras|control malo|gatillo/.test(text)) return "Gatillo de presion o control rival."
-  if (/perdida/.test(text)) return "Perdida propia y reaccion posterior."
-  if (/centro|banda/.test(text)) return "Progresion rival hacia banda."
-  if (/salida/.test(text)) return "Primera recepcion bajo presion."
-  return "Gatillo a validar con notas o video."
+  const text = normalizeForRules(`${userInput} ${advice.mainAdjustment}`);
+  if (/pase atras|control malo|gatillo/.test(text))
+    return "Gatillo de presion o control rival.";
+  if (/perdida/.test(text)) return "Perdida propia y reaccion posterior.";
+  if (/centro|banda/.test(text)) return "Progresion rival hacia banda.";
+  if (/salida/.test(text)) return "Primera recepcion bajo presion.";
+  return "Gatillo a validar con notas o video.";
 }
 
 function uniqueAlternativeAdjustments(
   items: CoachMatchAdvice["alternativeAdjustments"],
 ) {
-  const seen = new Set<string>()
+  const seen = new Set<string>();
   return items.filter((item) => {
-    const key = normalizeForRules(item.adjustment)
-    if (!key || seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+    const key = normalizeForRules(item.adjustment);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function usefulText(value: string) {
-  const normalized = normalizeForRules(value)
-  return Boolean(normalized) && !/confirmar|s\/d|sin dato/.test(normalized)
+  const normalized = normalizeForRules(value);
+  return Boolean(normalized) && !/confirmar|s\/d|sin dato/.test(normalized);
 }
 
 function uniqueStrings(items: string[]) {
-  return [...new Set(items.map((item) => item.trim()).filter(Boolean))]
+  return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
 }
