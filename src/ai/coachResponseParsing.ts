@@ -1,3 +1,4 @@
+import { type CoachChatTurn, CoachChatTurnSchema } from "./CoachChatSchemas.js";
 import {
   type CoachMatchAdvice,
   CoachMatchAdviceSchema,
@@ -103,6 +104,17 @@ export function parseCoachResponse(rawText: string): CoachResponse {
   const json = extractJsonObject(rawText);
   const parsed = JSON.parse(json);
   return CoachResponseSchema.parse(parsed);
+}
+
+/**
+ * Extrae + parsea + valida un turno de chat del coach (W22).
+ * Mismo parseo robusto que el informe (tolera fences / prosa) pero valida contra
+ * el contrato compacto de chat, distinto del union del informe.
+ */
+export function parseCoachChatTurn(rawText: string): CoachChatTurn {
+  const json = extractJsonObject(rawText);
+  const parsed = JSON.parse(json);
+  return CoachChatTurnSchema.parse(parsed);
 }
 
 /**

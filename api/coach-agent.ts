@@ -1,9 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  CoachInterviewStateSchema,
-  CollectedAnswerSchema,
+  type CoachChatHistory,
+  type CoachRequestMode,
+  parseCoachRequestMode,
+  parseIncomingCoachHistory,
+} from "../src/ai/CoachChatSchemas.js";
+import {
   type CoachInterviewState,
+  CoachInterviewStateSchema,
   type CollectedAnswer,
+  CollectedAnswerSchema,
 } from "../src/ai/CoachSchemas.js";
 import { parseIncomingBoardEvidence } from "../src/board/boardEvidencePacket.js";
 import type { BoardEvidencePacket } from "../src/board/boardEvidencePacket.js";
@@ -34,6 +40,8 @@ export default async function handler(
   let skipInterview = false;
   let boardEvidence: BoardEvidencePacket | null = null;
   let freeStateEvidence: BoardFreeStateEvidencePacket | null = null;
+  let chatMode: CoachRequestMode = "advice";
+  let chatHistory: CoachChatHistory | null = null;
 
   try {
     const body = await readJsonBody(req);
@@ -59,9 +67,7 @@ export default async function handler(
     // Same honesty gate, additive (mc-21 w2 B): the free-state packet (asks
     // about the CURRENT scene, not a canned scenario). Same doctrine —
     // malformed never silently becomes "absent".
-    const freeStateResult = parseIncomingBoardFreeState(
-      body.freeStateEvidence,
-    );
+    const freeStateResult = parseIncomingBoardFreeState(body.freeStateEvidence);
     if (freeStateResult.status === "malformed") {
       sendJson(res, 400, {
         code: "INVALID_FREE_STATE_EVIDENCE",
@@ -100,6 +106,21 @@ export default async function handler(
       ? interviewStateResult.data
       : null;
     skipInterview = body.skipInterview === true;
+
+    // W22 — chat multi-turno. Same honesty-gate doctrine as the board packets:
+    // absent → advice-as-today; malformed history NEVER silently becomes "absent"
+    // (that would let over-length / mis-shaped turns slip past the injection-surface
+    // bound) → HTTP 400. `mode` is forgiving: only the literal "chat" opts in.
+    const historyResult = parseIncomingCoachHistory(body.history);
+    if (historyResult.status === "malformed") {
+      sendJson(res, 400, {
+        code: "INVALID_CHAT_HISTORY",
+        error: `Invalid chat history: ${historyResult.error}`,
+      });
+      return;
+    }
+    chatHistory = historyResult.status === "ok" ? historyResult.history : null;
+    chatMode = parseCoachRequestMode(body.mode);
   } catch {
     badRequest(res, "Invalid JSON body");
     return;
@@ -123,6 +144,8 @@ export default async function handler(
       skipInterview,
       boardEvidence,
       freeStateEvidence,
+      mode: chatMode,
+      history: chatHistory,
     });
     sendJson(res, 200, response);
   } catch (error) {
