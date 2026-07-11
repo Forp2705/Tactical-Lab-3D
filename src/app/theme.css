@@ -33,14 +33,26 @@
   --bg: var(--felt-bg-3, #0a1d16);
   --panel: var(--felt-panel, #16352a);
   --panel-2: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
-  --line: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
-  --line-strong: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  --line: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 82%
+  );
+  --line-strong: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 55%
+  );
   --text: var(--felt-ink, #f3efe2);
   --muted: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
   --muted-2: color-mix(in oklch, var(--felt-ink, #f3efe2) 50%, transparent);
   --accent: var(--felt-gold, #f6d24b);
   --accent-2: var(--felt-mint, #eafff2);
-  --warn: color-mix(in oklch, var(--felt-gold, #f6d24b), var(--felt-coral, #ff6b5e) 45%);
+  --warn: color-mix(
+    in oklch,
+    var(--felt-gold, #f6d24b),
+    var(--felt-coral, #ff6b5e) 45%
+  );
   --danger: var(--felt-coral, #ff6b5e);
   --shadow: 0 20px 70px rgba(0, 0, 0, 0.38);
   --radius: 22px;
@@ -1605,11 +1617,136 @@ button.danger {
   border-style: solid;
 }
 
-/* W22: estado honesto del tab Chat (feature de agente fuera de alcance,
-   ver ChatComingSoon en AiView.tsx). Reusa .tester-edge-state, sin card
-   de chat fake. */
-.ai-chat-pending {
-  max-width: 640px;
+/* W22-C2: chat multi-turno real, transplant de .chat-card/.chat-log/.msg
+   del mockup (docs/design/handoff-visor3d/Diagnostico (reforma).html),
+   mapeado a los tokens del cockpit existente (mismos --line/--accent que
+   .ai-rail-card). */
+.ai-chat-shell {
+  display: flex;
+  flex-direction: column;
+  height: min(640px, calc(100vh - 320px));
+  min-height: 420px;
+  border: 1px solid rgba(94, 234, 212, 0.14);
+  border-radius: 24px;
+  background: linear-gradient(
+      180deg,
+      rgba(12, 24, 31, 0.92),
+      rgba(4, 10, 14, 0.94)
+    ), rgba(4, 10, 14, 0.94);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.ai-chat-shell-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(94, 234, 212, 0.14);
+}
+
+.ai-chat-shell-head small {
+  color: var(--muted);
+}
+
+.ai-chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-chat-msg {
+  max-width: 82%;
+  font-size: 13.5px;
+  line-height: 1.55;
+  padding: 11px 14px;
+  border-radius: 4px 13px 13px 13px;
+}
+
+.ai-chat-msg p {
+  margin: 0;
+}
+
+.ai-chat-msg-staff {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #061018;
+  font-weight: 500;
+  border-radius: 13px 4px 13px 13px;
+}
+
+.ai-chat-msg-coach {
+  align-self: flex-start;
+  background: rgba(238, 246, 239, 0.05);
+  border: 1px solid rgba(94, 234, 212, 0.14);
+  border-left: 2px solid rgba(242, 201, 76, 0.5);
+}
+
+.ai-chat-msg-pending {
+  align-self: flex-start;
+  border: 1px dashed rgba(94, 234, 212, 0.2);
+}
+
+.ai-chat-msg-pending b {
+  display: block;
+  font-size: 12px;
+}
+
+.ai-chat-msg-pending small {
+  color: var(--muted);
+}
+
+.ai-chat-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ai-chat-followups {
+  margin-top: 10px;
+}
+
+.ai-chat-error {
+  align-self: stretch;
+}
+
+.ai-chat-composer {
+  display: flex;
+  gap: 9px;
+  padding: 13px 15px;
+  border-top: 1px solid rgba(94, 234, 212, 0.14);
+}
+
+.ai-chat-composer textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 120px;
+  resize: vertical;
+  background: rgba(5, 11, 7, 0.55);
+  border: 1px solid rgba(94, 234, 212, 0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.ai-chat-composer button {
+  flex: none;
+  align-self: flex-end;
+}
+
+@media (max-width: 480px) {
+  .ai-chat-shell {
+    /* W22-C2 fold fix (390): topbar + tabs del cockpit ya ocupan ~340px en
+       mobile (mismo costo que W22-B). min-height baja a la par para no
+       forzar overflow si igual no entra completo. */
+    height: min(420px, calc(100vh - 360px));
+    min-height: 320px;
+  }
 }
 
 .coach-report {
@@ -2122,7 +2259,8 @@ button.danger {
   padding: 12px 14px;
   border-radius: 16px;
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 15%);
-  border: 1px solid color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
+  border: 1px solid
+    color-mix(in oklch, var(--felt-gold, #f6d24b) 30%, transparent);
   box-shadow: var(--shadow);
   opacity: 0;
   transform: translateY(8px);
@@ -2503,14 +2641,26 @@ button.danger {
   --lime: var(--felt-gold, #f6d24b);
   --sky-kit: var(--felt-mint, #eafff2);
   --setpiece: var(--felt-gold, #f6d24b);
-  --line: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
-  --line-strong: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  --line: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 82%
+  );
+  --line-strong: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 55%
+  );
   --text: var(--felt-ink, #f3efe2);
   --muted: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
   --muted-2: color-mix(in oklch, var(--felt-ink, #f3efe2) 50%, transparent);
   --accent: var(--lime);
   --accent-2: var(--sky-kit);
-  --warn: color-mix(in oklch, var(--felt-gold, #f6d24b), var(--felt-coral, #ff6b5e) 45%);
+  --warn: color-mix(
+    in oklch,
+    var(--felt-gold, #f6d24b),
+    var(--felt-coral, #ff6b5e) 45%
+  );
   --danger: var(--felt-coral, #ff6b5e);
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
   --font-head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
@@ -2818,7 +2968,11 @@ button:hover,
 input,
 select,
 textarea {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 82%
+  );
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 12%);
   color: var(--felt-ink, #f3efe2);
 }
@@ -2826,7 +2980,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid color-mix(in oklch, var(--felt-gold, #f6d24b) 24%, transparent);
+  outline: 2px solid
+    color-mix(in oklch, var(--felt-gold, #f6d24b) 24%, transparent);
   border-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 44%, transparent);
 }
 
@@ -3188,14 +3343,26 @@ video {
   --lime: var(--felt-gold, #f6d24b);
   --sky-kit: var(--felt-mint, #eafff2);
   --setpiece: var(--felt-gold, #f6d24b);
-  --line: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
-  --line-strong: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  --line: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 82%
+  );
+  --line-strong: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 55%
+  );
   --text: var(--felt-ink, #f3efe2);
   --muted: color-mix(in oklch, var(--felt-ink, #f3efe2) 70%, transparent);
   --muted-2: color-mix(in oklch, var(--felt-ink, #f3efe2) 50%, transparent);
   --accent: var(--lime);
   --accent-2: var(--sky-kit);
-  --warn: color-mix(in oklch, var(--felt-gold, #f6d24b), var(--felt-coral, #ff6b5e) 45%);
+  --warn: color-mix(
+    in oklch,
+    var(--felt-gold, #f6d24b),
+    var(--felt-coral, #ff6b5e) 45%
+  );
   --danger: var(--felt-coral, #ff6b5e);
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.46);
   --font-head: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
@@ -3322,7 +3489,11 @@ button.secondary,
 .file-label {
   color: var(--felt-ink, #f3efe2);
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 82%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 82%
+  );
 }
 
 button:hover,
@@ -4737,7 +4908,12 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   display: grid;
   gap: 6px;
   padding: 12px;
-  border: 1px solid color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  border: 1px solid
+    color-mix(
+      in oklch,
+      var(--felt-line, rgba(243, 239, 226, 0.8)),
+      transparent 88%
+    );
   border-radius: 16px;
   background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 10%);
 }
@@ -6557,7 +6733,12 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
       rgba(255, 255, 255, 0.012) 0 2px,
       transparent 2px 5px
     ),
-    linear-gradient(160deg, var(--felt-bg-1) 0%, var(--felt-bg-2) 55%, var(--felt-bg-3) 100%);
+    linear-gradient(
+      160deg,
+      var(--felt-bg-1) 0%,
+      var(--felt-bg-2) 55%,
+      var(--felt-bg-3) 100%
+    );
 }
 
 .home-command-view .eyebrow,
@@ -7248,25 +7429,21 @@ details.home-collapse[open] {
    escalon por debajo de papeles/tablero (gateados W12-14). */
 details.home-collapse.home-collapse-setup {
   border-left-color: color-mix(in oklch, var(--felt-gold) 70%, transparent);
-  background:
-    radial-gradient(
+  background: radial-gradient(
       120% 160% at 100% 0%,
       color-mix(in oklch, var(--felt-gold) 8%, transparent),
       transparent 60%
-    ),
-    color-mix(in oklch, var(--felt-panel), transparent 45%);
+    ), color-mix(in oklch, var(--felt-panel), transparent 45%);
 }
 
 details.home-collapse.home-collapse-setup:hover,
 details.home-collapse.home-collapse-setup[open] {
   border-left-color: color-mix(in oklch, var(--felt-gold) 80%, transparent);
-  background:
-    radial-gradient(
+  background: radial-gradient(
       120% 160% at 100% 0%,
       color-mix(in oklch, var(--felt-gold) 8%, transparent),
       transparent 60%
-    ),
-    color-mix(in oklch, var(--felt-panel), transparent 32%);
+    ), color-mix(in oklch, var(--felt-panel), transparent 32%);
 }
 
 details.home-collapse.home-collapse-setup > summary {
@@ -7388,7 +7565,10 @@ details.home-collapse .home-collapse-body {
 /* W10 B4 - cockpit lime/teal cleanup inside Observacion manual: gold small
    CTA, felt outline secondary actions, felt chip. `button.` prefix matches
    the cockpit lime reset's specificity. */
-.home-command-view details.home-collapse .quick-observation-card button.btn.primary {
+.home-command-view
+  details.home-collapse
+  .quick-observation-card
+  button.btn.primary {
   width: auto;
   background: var(--felt-gold) !important;
   border: 0 !important;
@@ -7402,12 +7582,21 @@ details.home-collapse .home-collapse-body {
   padding: 8px 16px;
 }
 
-.home-command-view details.home-collapse .quick-observation-card button.btn.primary:hover {
+.home-command-view
+  details.home-collapse
+  .quick-observation-card
+  button.btn.primary:hover {
   background: color-mix(in oklch, var(--felt-gold) 88%, white 12%) !important;
 }
 
-.home-command-view details.home-collapse .quick-observation-card button.secondary,
-.home-command-view details.home-collapse .quick-observation-card button.btn.ghost {
+.home-command-view
+  details.home-collapse
+  .quick-observation-card
+  button.secondary,
+.home-command-view
+  details.home-collapse
+  .quick-observation-card
+  button.btn.ghost {
   background: transparent !important;
   border: 1px solid var(--felt-line) !important;
   color: var(--felt-ink) !important;
@@ -7428,13 +7617,11 @@ details.home-collapse .home-collapse-body {
   padding: 16px 18px;
   border-left: 4px solid color-mix(in oklch, var(--felt-gold) 70%, transparent);
   border-radius: 12px;
-  background:
-    radial-gradient(
+  background: radial-gradient(
       120% 160% at 100% 0%,
       color-mix(in oklch, var(--felt-gold) 8%, transparent),
       transparent 60%
-    ),
-    color-mix(in oklch, var(--felt-panel), transparent 35%);
+    ), color-mix(in oklch, var(--felt-panel), transparent 35%);
 }
 
 /* W10 fix - RealCoachOnboarding (home-onboarding-strip) is Sala-only, so its
@@ -7671,8 +7858,7 @@ details.home-collapse .home-collapse-body {
    (misma especificidad, esta seccion va despues y gana). */
 
 body .app-shell .sidebar {
-  background:
-    radial-gradient(
+  background: radial-gradient(
       120% 70% at 20% 0%,
       rgba(255, 255, 255, 0.045),
       transparent 55%
@@ -7682,7 +7868,12 @@ body .app-shell .sidebar {
       rgba(255, 255, 255, 0.012) 0 2px,
       transparent 2px 5px
     ),
-    linear-gradient(180deg, var(--felt-bg-1) 0%, var(--felt-bg-2) 48%, var(--felt-bg-3) 100%) !important;
+    linear-gradient(
+      180deg,
+      var(--felt-bg-1) 0%,
+      var(--felt-bg-2) 48%,
+      var(--felt-bg-3) 100%
+    ) !important;
   border-right: 1px solid color-mix(in oklch, var(--felt-line), transparent 82%) !important;
   box-shadow: none;
   color: var(--felt-ink);
@@ -7701,7 +7892,8 @@ body .app-shell .brand {
 
 body .app-shell .brand > div {
   padding-bottom: 10px;
-  border-bottom: 1.5px solid color-mix(in oklch, var(--felt-gold) 85%, transparent);
+  border-bottom: 1.5px solid
+    color-mix(in oklch, var(--felt-gold) 85%, transparent);
 }
 
 body .app-shell .brand-mark {
@@ -8063,7 +8255,8 @@ body .app-shell .main button.sala-menu-toggle {
     z-index: 30;
     pointer-events: none;
     border: 10px solid color-mix(in oklch, var(--felt-bg-3), black 35%);
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--felt-gold) 20%, transparent);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in oklch, var(--felt-gold) 20%, transparent);
   }
 }
 
@@ -8156,8 +8349,7 @@ body .app-shell .main.main-home {
   min-height: 420px;
   max-height: 480px;
   padding: 14px;
-  background:
-    repeating-linear-gradient(
+  background: repeating-linear-gradient(
       to bottom,
       color-mix(in oklch, var(--felt-line) 4%, transparent) 0 1px,
       transparent 1px 14px
@@ -8166,8 +8358,7 @@ body .app-shell .main.main-home {
       to right,
       color-mix(in oklch, var(--felt-line) 4%, transparent) 0 1px,
       transparent 1px 14px
-    ),
-    linear-gradient(165deg, var(--felt-bg-2) 0%, var(--felt-bg-3) 100%);
+    ), linear-gradient(165deg, var(--felt-bg-2) 0%, var(--felt-bg-3) 100%);
 }
 
 /* W10 — el SVG llena el panel (cap 340px, antes 220). */
@@ -8255,7 +8446,8 @@ body .app-shell .main.main-home {
    felt via token (--muted-2/--panel-2/--text); esto es el toque de
    identidad que faltaba en el shell compartido. */
 body .app-shell .topbar {
-  border-bottom: 1px solid color-mix(in oklch, var(--felt-gold, #f6d24b) 18%, transparent);
+  border-bottom: 1px solid
+    color-mix(in oklch, var(--felt-gold, #f6d24b) 18%, transparent);
   padding-bottom: 14px;
 }
 
@@ -8409,10 +8601,10 @@ body .app-shell .top-stat-strip span {
 .app-shell .trust-card.positive {
   border-color: color-mix(in oklch, var(--good) 30%, transparent) !important;
   background: linear-gradient(
-      180deg,
-      color-mix(in oklch, var(--good) 5%, var(--panel-2)),
-      var(--panel-2)
-    ) !important;
+    180deg,
+    color-mix(in oklch, var(--good) 5%, var(--panel-2)),
+    var(--panel-2)
+  ) !important;
 }
 
 /* Mensajes de exito (guardar reporte / feedback): verde semantico, borde sky
@@ -8681,7 +8873,8 @@ body .app-shell .top-stat-strip span {
 }
 
 .session-alert-chip.info {
-  border: 1px solid color-mix(in oklch, var(--felt-mint, #eafff2) 45%, transparent);
+  border: 1px solid
+    color-mix(in oklch, var(--felt-mint, #eafff2) 45%, transparent);
   background: color-mix(in oklch, var(--felt-mint, #eafff2) 12%, transparent);
   color: var(--felt-mint, #eafff2);
 }
@@ -8693,7 +8886,8 @@ body .app-shell .top-stat-strip span {
 }
 
 .session-alert-chip.error {
-  border: 1px solid color-mix(in oklch, var(--felt-coral, #ff6b5e) 45%, transparent);
+  border: 1px solid
+    color-mix(in oklch, var(--felt-coral, #ff6b5e) 45%, transparent);
   background: color-mix(in oklch, var(--felt-coral, #ff6b5e) 12%, transparent);
   color: var(--felt-coral, #ff6b5e);
 }
@@ -8814,7 +9008,11 @@ body .app-shell .top-stat-strip span {
    filtros con valor "0", no una seleccion real como el favorito de
    Biblioteca. */
 .session-drawer-filters .smart-filter-chip {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 74%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 74%
+  );
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
   color: color-mix(in oklch, var(--felt-ink, #f3efe2) 80%, transparent);
   font-family: var(--felt-font-mono);
@@ -9036,7 +9234,11 @@ body .app-shell .top-stat-strip span {
 /* --- Video + tagging / Tracking asistido (~20 hardcodes teal/sky/lime,
    acceptance ficha Video). */
 #trackingCanvas {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 55%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 55%
+  );
   background: var(--felt-bg-3, #0a1d16);
 }
 
@@ -9059,7 +9261,11 @@ body .app-shell .top-stat-strip span {
 }
 
 .video-evidence-count {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 86%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 86%
+  );
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 10%);
 }
 
@@ -9077,7 +9283,11 @@ body .app-shell .top-stat-strip span {
 }
 
 .video-evidence-item {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 88%
+  );
   background: color-mix(in oklch, white 3%, transparent);
 }
 
@@ -9097,7 +9307,11 @@ body .app-shell .top-stat-strip span {
    Detectado en vivo. Se sube especificidad con el contenedor padre para
    que el estado base tambien gane. */
 .video-scan-patterns .scan-pattern {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 80%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 80%
+  );
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 12%);
   color: var(--muted);
 }
@@ -9109,13 +9323,25 @@ body .app-shell .top-stat-strip span {
 }
 
 .video-scan-result {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
-  border-left-color: color-mix(in oklch, var(--felt-gold, #f6d24b) 70%, transparent);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 88%
+  );
+  border-left-color: color-mix(
+    in oklch,
+    var(--felt-gold, #f6d24b) 70%,
+    transparent
+  );
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 10%);
 }
 
 .track-review-item {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 88%
+  );
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 6%);
 }
 
@@ -9190,7 +9416,11 @@ body .app-shell .top-stat-strip span {
    apagado que los que no estan aplicados. Se sube especificidad con el
    contenedor padre para que el estado base tambien gane. */
 .library-smart-filters .smart-filter-chip {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 84%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 84%
+  );
   background: color-mix(in oklch, var(--felt-bg-2, #0d241b), black 8%);
   color: var(--text);
 }
@@ -9210,7 +9440,11 @@ body .app-shell .top-stat-strip span {
 .exercise-card-wrap .favorite-toggle:not(.active) {
   background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), transparent 20%);
   color: color-mix(in oklch, var(--felt-ink, #f3efe2), transparent 35%);
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 80%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 80%
+  );
 }
 
 .exercise-card-wrap .favorite-toggle.active {
@@ -9224,7 +9458,11 @@ body .app-shell .top-stat-strip span {
 }
 
 .coach-room-strip div {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 88%
+  );
   background: linear-gradient(
       180deg,
       color-mix(in oklch, var(--felt-bg-1, #16352a), black 4%),
@@ -9238,7 +9476,11 @@ body .app-shell .top-stat-strip span {
 }
 
 .exercise-import-panel {
-  border-color: color-mix(in oklch, var(--felt-line, rgba(243, 239, 226, 0.8)), transparent 88%);
+  border-color: color-mix(
+    in oklch,
+    var(--felt-line, rgba(243, 239, 226, 0.8)),
+    transparent 88%
+  );
   background: color-mix(in oklch, var(--felt-bg-3, #0a1d16), black 4%);
 }
 
