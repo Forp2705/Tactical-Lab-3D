@@ -5,6 +5,12 @@ import {
   type CoachResponse,
   type CollectedAnswer,
 } from "./CoachSchemas";
+import {
+  CHAT_HISTORY_REQUEST_MAX_TURNS,
+  CoachChatTurnSchema,
+  type CoachChatHistory,
+  type CoachChatTurn,
+} from "./CoachChatSchemas";
 import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
 import type { BoardFreeStateEvidencePacket } from "@/board/boardFreeStateEvidencePacket";
 import type { CoachShapeContext, ManualObservation } from "@/state/useAppStore";
@@ -22,15 +28,15 @@ export type CoachAgentSquadPlayer = {
   positions: string[];
   status: "available" | "doubt" | "injured" | "suspended";
   profile: string;
-    attributes: {
-      speed: number;
-      stamina?: number;
-      pass: number;
-      control?: number;
-      press?: number;
-      tactical: number;
-      duel: number;
-    };
+  attributes: {
+    speed: number;
+    stamina?: number;
+    pass: number;
+    control?: number;
+    press?: number;
+    tactical: number;
+    duel: number;
+  };
 };
 
 export type CoachAgentRuntimeContext = {
@@ -207,6 +213,64 @@ export async function requestBoardFreeStateTurn(
   const parsed = CoachResponseSchema.safeParse(payload);
   if (!parsed.success) {
     throw new Error("Coach agent returned an invalid free-state response.");
+  }
+
+  return parsed.data;
+}
+
+/**
+ * One-shot multi-turn chat coach turn (W22-C2, against the mc-17 contract in
+ * CoachChatSchemas.ts). POSTs `{ input, mode: "chat", history, coachContext }`
+ * to `/api/coach-agent` and returns the parsed `CoachChatTurn`.
+ *
+ * HONESTY CONTRACT: same as requestBoardScenarioTurn — exactly one fetch, no
+ * retry/fallback, every failure (non-2xx, network reject, unparseable or
+ * malformed body) throws an honest Error and stops. Retry is a manual,
+ * staff-initiated re-send of the same turn from the UI, never automatic here.
+ *
+ * History is trimmed client-side to the last CHAT_HISTORY_REQUEST_MAX_TURNS
+ * (the request-level cap the contract enforces server-side too) so a long
+ * local conversation degrades by dropping the oldest turns instead of the
+ * request being rejected as malformed.
+ */
+export async function requestCoachChatTurn(
+  input: string,
+  history: CoachChatHistory,
+  coachContext?: CoachAgentRuntimeContext | null,
+): Promise<CoachChatTurn> {
+  const boundedHistory =
+    history.length > CHAT_HISTORY_REQUEST_MAX_TURNS
+      ? history.slice(history.length - CHAT_HISTORY_REQUEST_MAX_TURNS)
+      : history;
+
+  // Exactly one fetch. No retry/fallback path exists below this line.
+  const response = await fetch("/api/coach-agent", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      input,
+      mode: "chat",
+      history: boundedHistory,
+      coachContext,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | CoachChatTurn
+    | CoachAgentError
+    | null;
+
+  if (!response.ok) {
+    const message =
+      payload && "error" in payload && payload.error
+        ? payload.error
+        : "Coach agent chat request failed.";
+    throw new Error(message);
+  }
+
+  const parsed = CoachChatTurnSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error("Coach agent returned an invalid chat response.");
   }
 
   return parsed.data;

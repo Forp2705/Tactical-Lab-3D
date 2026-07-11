@@ -51,7 +51,18 @@ import {
   saveCoachFeedback,
   type CoachFeedbackRating,
 } from "@/ai/coachFeedback";
-import { useEffect, useMemo, useState } from "react";
+import {
+  buildChatSeedFromAdvice,
+  type ChatUiTurn,
+  useCoachChat,
+} from "@/ai/useCoachChat";
+import {
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type AgentStatus = {
   ok: boolean;
@@ -183,6 +194,11 @@ export function AiView() {
   // fuente de verdad para el switch real hacia Post-partido (store shape
   // intocado).
   const [diagTab, setDiagTab] = useState<"consulta" | "chat">("consulta");
+  // W22-C2: chat multi-turno vive en su propio hook (estado local, no
+  // persistido). Instanciado aca (no dentro de un componente que se
+  // desmonta al cambiar de sub-tab) para que sobreviva Consulta<->Chat
+  // dentro de la misma vista; se pierde igual al salir de Diagnostico.
+  const chat = useCoachChat();
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const [sentContextSnapshot, setSentContextSnapshot] =
     useState<SentContextSnapshot | null>(null);
@@ -492,7 +508,7 @@ export function AiView() {
         }}
       />
       {diagTab === "chat" ? (
-        <ChatComingSoon />
+        <ChatPanel chat={chat} getCoachContext={buildChatCoachContext} />
       ) : (
         <section className="ai-cockpit felt-stage">
           <div className="ai-cockpit-stack">
@@ -668,6 +684,12 @@ export function AiView() {
                   advice={advice}
                   prompt={input}
                   responseMode={responseMode}
+                  onFollowUpInChat={(followUpAdvice) => {
+                    chat.seedFromReport(
+                      buildChatSeedFromAdvice(followUpAdvice),
+                    );
+                    setDiagTab("chat");
+                  }}
                 />
               ) : !coachInterview.active || !coachInterview.questions.length ? (
                 <EmptyState
@@ -984,6 +1006,21 @@ function buildCoachRuntimeContext(
   };
 }
 
+// W22-C2: mismo snapshot de contexto que runCoachAgent arma para la
+// consulta de una pasada, reusado para cada turno de chat (fuente unica,
+// buildCoachRuntimeContext sin duplicar).
+function buildChatCoachContext(): CoachAgentRuntimeContext {
+  const runtimeState = useAppStore.getState();
+  return buildCoachRuntimeContext(
+    runtimeState.workspaceMode,
+    runtimeState.team,
+    runtimeState.teamIdentity,
+    runtimeState.coachShapeContext,
+    runtimeState.gameModel,
+    runtimeState.opponentScout,
+  );
+}
+
 // W22 (handoff-diagnostico): tabs Consulta | Chat | Post partido, transplant
 // verbatim de la jerarquia visual del mockup (pill bar). "post" sigue
 // delegando en el mismo aiMode del store (store shape intocado); "consulta"
@@ -1030,28 +1067,167 @@ const AI_QUICK_PROMPTS = [
   "Perdemos las segundas jugadas en el medio",
 ];
 
-// W22: el mockup del handoff plantea "Chat coach" como conversacion
-// multi-turno con historial de sesion — eso es feature nueva de agente
-// (CoachAgent no soporta hoy multi-turno/memoria de conversacion) y esta
-// fuera del alcance de esta ola (regla dura: CoachAgent/prompts/retrieval
-// intocables). El tab existe y es navegable (transplant visual del tab bar),
-// pero el contenido es un estado honesto — no una demo con respuestas
-// guionadas. Fork escalado en el worker_done de W22.
-function ChatComingSoon() {
+// W22-C2: chat multi-turno real contra el contrato de mc-17
+// (CoachChatSchemas.ts). El estado vive en useCoachChat (hook, arriba en
+// AiView) para sobrevivir el cambio de sub-tab dentro de la misma vista.
+function ChatPanel({
+  chat,
+  getCoachContext,
+}: {
+  chat: ReturnType<typeof useCoachChat>;
+  getCoachContext: () => CoachAgentRuntimeContext;
+}) {
+  const logRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chat.turns.length, chat.loading, chat.error]);
+
+  function send() {
+    chat.send(chat.draft, getCoachContext());
+  }
+
+  function applyFollowUpAndFocus(question: string) {
+    chat.useFollowUp(question);
+    composerRef.current?.focus();
+  }
+
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      send();
+    }
+  }
+
+  const hasTurns = chat.turns.length > 0;
+
   return (
     <section className="ai-cockpit felt-stage">
-      <div className="tester-edge-state warn ai-chat-pending">
-        <b>Chat con el coach todavia no esta disponible</b>
-        <small>
-          Esta version del coach responde una consulta a la vez, sin memoria de
-          conversacion entre mensajes. Una conversacion tipo chat con historial
-          es una funcionalidad nueva del agente, no solo de presentacion —
-          todavia no esta construida. Mientras tanto, usa Consulta tactica:
-          podes repetir la consulta con mas contexto cuando lo necesites.
-        </small>
+      <div className="ai-chat-shell">
+        <header className="ai-chat-shell-head">
+          <span className="panel-eyebrow">Chat coach</span>
+          <small>
+            La conversacion no se guarda todavia — se pierde al salir de
+            Diagnostico.
+          </small>
+        </header>
+        <div className="ai-chat-log" ref={logRef}>
+          {!hasTurns && !chat.loading ? (
+            <p className="muted-panel">
+              Empeza la conversacion. El coach usa el mismo contexto que
+              Consulta tactica (plantel, shapes publicados, reportes, memoria y
+              evidencia disponible).
+            </p>
+          ) : null}
+          {chat.turns.map((turn) => (
+            <ChatTurnBubble
+              turn={turn}
+              key={turn.id}
+              onFollowUp={applyFollowUpAndFocus}
+            />
+          ))}
+          {chat.loading ? (
+            <div className="ai-chat-msg ai-chat-msg-coach ai-chat-msg-pending">
+              <b>El coach esta pensando</b>
+              <small>
+                Puede tardar 40-60s con una consulta real — no es un error si no
+                responde al instante.
+              </small>
+            </div>
+          ) : null}
+          {chat.error ? (
+            <div className="tester-edge-state warn ai-chat-error">
+              <b>El coach no pudo responder este turno</b>
+              <small>{humanizeAgentError(chat.error)}</small>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => chat.retry(getCoachContext())}
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : null}
+        </div>
+        <div className="ai-chat-composer">
+          <textarea
+            ref={composerRef}
+            value={chat.draft}
+            placeholder="Contale al coach que esta pasando..."
+            onChange={(event) => chat.setDraft(event.target.value)}
+            onKeyDown={handleComposerKeyDown}
+            disabled={chat.loading}
+          />
+          <button
+            type="button"
+            className="btn primary"
+            disabled={chat.loading || !chat.draft.trim()}
+            onClick={send}
+          >
+            Enviar
+          </button>
+        </div>
       </div>
     </section>
   );
+}
+
+function ChatTurnBubble({
+  turn,
+  onFollowUp,
+}: {
+  turn: ChatUiTurn;
+  onFollowUp: (question: string) => void;
+}) {
+  if (turn.role === "staff") {
+    return <div className="ai-chat-msg ai-chat-msg-staff">{turn.content}</div>;
+  }
+
+  return (
+    <div className="ai-chat-msg ai-chat-msg-coach">
+      <p>{turn.content}</p>
+      {turn.grounded && turn.evidenceRefs.length ? (
+        <div className="ai-chat-evidence">
+          {turn.evidenceRefs.map((ref, index) => (
+            <span
+              className="ai-context-chip"
+              key={`${ref.sourceType}-${ref.sourceId}-${index}`}
+              title={ref.excerpt}
+            >
+              {chatEvidenceSourceLabel(ref.sourceType)}: {ref.sourceId}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {turn.followUpQuestions.length ? (
+        <div className="ai-quick-chips ai-chat-followups">
+          {turn.followUpQuestions.map((question) => (
+            <button
+              type="button"
+              key={question}
+              onClick={() => onFollowUp(question)}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function chatEvidenceSourceLabel(sourceType: string) {
+  const labels: Record<string, string> = {
+    knowledge: "Conocimiento",
+    memory: "Memoria",
+    observation: "Observacion",
+    report: "Reporte",
+    video: "Video",
+    board: "Pizarra",
+  };
+  return labels[sourceType] ?? sourceType;
 }
 
 function AgentStatusPanel({
@@ -1461,10 +1637,12 @@ function AdviceResult({
   advice,
   prompt,
   responseMode,
+  onFollowUpInChat,
 }: {
   advice: CoachMatchAdvice;
   prompt: string;
   responseMode: CoachResponse["mode"] | null;
+  onFollowUpInChat: (advice: CoachMatchAdvice) => void;
 }) {
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const lineups = useAppStore((state) => state.team.lineups);
@@ -1724,6 +1902,17 @@ function AdviceResult({
                 onClick={() => useAppStore.getState().setView("board")}
               >
                 Llevar a la pizarra
+              </button>
+              {/* W22-C2: ancla un follow-up de chat multi-turno a ESTE
+                  informe (contrato de mc-17, caso "informe como semilla") —
+                  la semilla se arma con campos reales de advice, ver
+                  buildChatSeedFromAdvice. */}
+              <button
+                type="button"
+                className="home-paper-link-cta"
+                onClick={() => onFollowUpInChat(advice)}
+              >
+                Seguir en chat
               </button>
             </div>
           </section>
