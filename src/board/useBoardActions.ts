@@ -46,10 +46,16 @@ import {
 } from "./scenarioBoardConsequence";
 import { deriveTacticalReads, type TacticalRead } from "./boardTacticalRead";
 import {
+  type ArrowGesturePhase,
+  buildArrowFromGestureCommit,
   commitZoneDrag,
   handleCanvasPress,
+  IDLE_ARROW_GESTURE,
   mergeFormationTokens,
   resolveZoneDragRect,
+  semanticForTool,
+  stepArrowGestureOnPointerDown,
+  stepArrowGestureOnPointerUp,
   tokenFromPlanningPlayer,
 } from "./boardTools";
 import {
@@ -114,7 +120,15 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const [selection, setSelection] = useState<Selection>(null);
   const [draft, setDraft] = useState<DraftPlayer>(emptyDraft);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
-  const [drawStart, setDrawStart] = useState<BoardArrowEndpoint | null>(null);
+  // Arrow gesture state machine (W24A): drag-to-create unified with
+  // click-click as an explicit fallback. `arrowGesturePoint` is the live
+  // pointer position tracked alongside the phase — kept separate from the
+  // (pure, unit-tested) phase transitions themselves since it is render-only
+  // (rubber-band preview), never part of a commit/cancel decision.
+  const [arrowGesture, setArrowGesture] =
+    useState<ArrowGesturePhase>(IDLE_ARROW_GESTURE);
+  const [arrowGesturePoint, setArrowGesturePoint] =
+    useState<BoardPoint | null>(null);
   const [drag, setDrag] = useState<{
     id: string;
     before: BoardPoint;
@@ -182,15 +196,28 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setPayload(null);
   }, [board.id]);
 
-  // Esc cancela un anclaje en curso (gesto de salida del estado draw-en-curso).
+  // Esc cancela un gesto de flecha en curso (pending o armed) — gesto de
+  // salida explicito, nunca deja el origen colgado (W24A H3).
   useEffect(() => {
-    if (!drawStart) return;
+    if (arrowGesture.phase === "idle") return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDrawStart(null);
+      if (event.key === "Escape") {
+        setArrowGesture(IDLE_ARROW_GESTURE);
+        setArrowGesturePoint(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [drawStart]);
+  }, [arrowGesture]);
+
+  // Cambiar de tool a mitad de un gesto de flecha lo cancela — mismo
+  // invariante "nunca fantasma" que Escape, para no dejar un origen armado
+  // esperando un click de una tool distinta.
+  useEffect(() => {
+    setArrowGesture(IDLE_ARROW_GESTURE);
+    setArrowGesturePoint(null);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally only on tool change
+  }, [tool]);
 
   // Esc cancela un drag-to-create de zona/bloque en curso (mismo gesto de
   // salida que drawStart, para no dejar el rectangulo colgado).
@@ -235,10 +262,38 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     [board, session.blocks, scene],
   );
 
+  // W24A H2: explica el silencio del motor (doctrina medicion != fabricacion,
+  // intocable — nunca se rellena una lectura vacia con un aviso generico).
+  // Un tacticalReads vacio puede significar dos cosas MUY distintas para el
+  // usuario: "el motor no tiene con que medir" (ningun token propio con rol
+  // asignado) vs "midio y el resultado es equilibrado, sin nada que decir"
+  // (silencio deliberado). Solo el primer caso amerita un estado vacio
+  // explicito; el segundo se queda mudo, como hoy. Presentacion pura sobre
+  // scene.objects — no toca boardTacticalRead.ts (motor en hold de mc-18).
+  const hasAnyOwnRoleAssigned = scene.objects.some(
+    (object) => object.type === "playerToken" && Boolean(object.role?.trim()),
+  );
+
   const activeLayers = getActiveLayers(layers);
   // Token origen del anclaje en curso (para resaltarlo en el canvas).
   const anchorOriginId =
-    drawStart?.kind === "object" ? drawStart.objectId : undefined;
+    arrowGesture.phase !== "idle" && arrowGesture.origin.kind === "object"
+      ? arrowGesture.origin.objectId
+      : undefined;
+
+  // Rubber-band de la flecha en curso (W24A): visible tanto en el drag real
+  // (phase "pending", el pointer todavia esta abajo) como en el fallback
+  // click-click ya armado (phase "armed", esperando el segundo click) — la
+  // UNICA diferencia visual entre ambos es el texto de estado ("armed" pide
+  // el segundo click explicitamente).
+  const arrowGesturePreview =
+    arrowGesture.phase !== "idle" && arrowGesturePoint
+      ? {
+          origin: arrowGesture.origin,
+          current: arrowGesturePoint,
+          armed: arrowGesture.phase === "armed",
+        }
+      : null;
 
   // Preview del rectangulo de zona/bloque en curso: misma resolucion
   // (umbral/normalizacion) que el commit final, para que el rubber-band
@@ -592,20 +647,43 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setStatus(`Escena vinculada a ${blockTitle(block)}`);
   };
 
-  // Seleccionar (zona/flecha/objeto) a mitad de un draw lo cancela, para no
-  // dejar drawStart colgado en medio-estado.
+  // Seleccionar (zona/flecha/objeto) a mitad de un gesto de flecha lo
+  // cancela, para no dejar el origen colgado en medio-estado.
   const onCanvasSelect = (next: Selection) => {
-    if (drawStart) setDrawStart(null);
+    if (arrowGesture.phase !== "idle") {
+      setArrowGesture(IDLE_ARROW_GESTURE);
+      setArrowGesturePoint(null);
+    }
     setSelection(next);
   };
 
+  // Dispara el overlay efimero de lectura reactiva (mc-21) sobre el resultado
+  // de UN commit de gesto (drop de token o flecha creada/movida) — nunca en
+  // pointermove. Compartido por el drag de token y el gesto de flecha (W24A
+  // H2: el loop gesto->lectura tiene que dispararse para los dos, no solo
+  // para el primero).
+  const fireTacticalOverlay = () => {
+    const overlayReads = tacticalReads.filter(
+      (read) => read.kind === "lateralBias" || read.kind === "blockHeight",
+    );
+    if (overlayReads.length === 0) return;
+    if (tacticalOverlayTimeoutRef.current) {
+      clearTimeout(tacticalOverlayTimeoutRef.current);
+    }
+    setTacticalOverlay({ reads: overlayReads, key: Date.now() });
+    tacticalOverlayTimeoutRef.current = setTimeout(() => {
+      setTacticalOverlay(null);
+    }, 1600);
+  };
+
   const onCanvasPointerDown = (point: BoardPoint, targetId?: string) => {
-    // move/select sobre un token -> arrancar drag (y cancelar cualquier draw
-    // en curso). Comportamiento existente.
+    // move/select sobre un token -> arrancar drag (y cancelar cualquier
+    // gesto de flecha en curso). Comportamiento existente.
     if (targetId && (tool === "move" || tool === "select")) {
       const object = scene.objects.find((item) => item.id === targetId);
       if (object) {
-        setDrawStart(null);
+        setArrowGesture(IDLE_ARROW_GESTURE);
+        setArrowGesturePoint(null);
         setSelection({ kind: "object", id: targetId });
         setDrag({
           id: targetId,
@@ -621,28 +699,57 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     // zone/block: ya no crea en el press. Ancla el punto de partida del
     // rectangulo; el commit real pasa en el pointerup (drag-to-create, W8).
     if (tool === "zone" || tool === "block") {
-      setDrawStart(null);
+      setArrowGesture(IDLE_ARROW_GESTURE);
+      setArrowGesturePoint(null);
       setZoneDrag({ tool, start: point, current: point });
       return;
     }
-    // Flechas/equipamiento: targetId se pasa a handleCanvasPress. Las
-    // flechas lo usan para anclar al token; equipamiento lo ignora y
-    // crea en el punto.
-    handleCanvasPress({
-      point,
-      tool,
-      targetId,
-      scene,
-      color,
-      lineWidth,
-      drawStart,
-      setDrawStart,
-      commitScene,
-      updateSceneObjects,
-    });
+    // Flechas (W24A): la decision drag-vs-click se resuelve en el pointerup
+    // (stepArrowGestureOnPointerUp); el pointerdown solo arranca el gesto
+    // pending o resuelve el segundo click de un origen ya armado.
+    const arrowSemantic = semanticForTool(tool);
+    if (arrowSemantic) {
+      const endpoint: BoardArrowEndpoint = targetId
+        ? { kind: "object", objectId: targetId }
+        : { kind: "point", point };
+      const result = stepArrowGestureOnPointerDown(
+        arrowGesture,
+        endpoint,
+        point,
+      );
+      // FIX audit W24A H3/H7: arrancar un origen nuevo (idle -> pending)
+      // limpia la seleccion del Inspector — antes quedaba mostrando lo que
+      // fuera que estuviera seleccionado antes de dibujar (p.ej. un jugador),
+      // dando la falsa sensacion de que el Inspector no reacciona al gesto.
+      if (arrowGesture.phase === "idle" && result.next.phase === "pending") {
+        setSelection(null);
+      }
+      if (result.commit) {
+        const arrow = buildArrowFromGestureCommit(result.commit, tool, {
+          color,
+          tone: String(lineWidth),
+        });
+        if (arrow) {
+          commitScene({ arrows: [...scene.arrows, arrow] });
+          fireTacticalOverlay();
+        }
+      }
+      if (result.cancelledSameToken) {
+        setStatus("Flecha cancelada: el origen y el destino son el mismo jugador");
+      }
+      setArrowGesture(result.next);
+      setArrowGesturePoint(result.next.phase === "idle" ? null : point);
+      return;
+    }
+    // Equipamiento: crea en el punto, sin gesto de dos fases.
+    handleCanvasPress({ point, tool, scene, color, updateSceneObjects });
   };
 
   const onCanvasPointerMove = (point: BoardPoint) => {
+    if (arrowGesture.phase !== "idle") {
+      setArrowGesturePoint(point);
+      return;
+    }
     if (zoneDrag) {
       setZoneDrag((prev) => (prev ? { ...prev, current: point } : prev));
       return;
@@ -660,7 +767,33 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     );
   };
 
-  const onCanvasPointerUp = () => {
+  const onCanvasPointerUp = (point: BoardPoint, targetId?: string) => {
+    if (arrowGesture.phase === "pending") {
+      const endpoint: BoardArrowEndpoint = targetId
+        ? { kind: "object", objectId: targetId }
+        : { kind: "point", point };
+      const result = stepArrowGestureOnPointerUp(
+        arrowGesture,
+        point,
+        endpoint,
+      );
+      if (result.commit) {
+        const arrow = buildArrowFromGestureCommit(result.commit, tool, {
+          color,
+          tone: String(lineWidth),
+        });
+        if (arrow) {
+          commitScene({ arrows: [...scene.arrows, arrow] });
+          fireTacticalOverlay();
+        }
+      }
+      if (result.cancelledSameToken) {
+        setStatus("Flecha cancelada: arrastre sobre el mismo jugador");
+      }
+      setArrowGesture(result.next);
+      setArrowGesturePoint(result.next.phase === "idle" ? null : point);
+      return;
+    }
     if (zoneDrag) {
       commitZoneDrag({
         tool: zoneDrag.tool,
@@ -683,18 +816,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       // for this exact post-drop scene (same render's useMemo). Restricted to
       // the two kinds that have a canvas visual (lateralBias band tint,
       // blockHeight ghost line) — the other kinds are chips-only this wave.
-      const overlayReads = tacticalReads.filter(
-        (read) => read.kind === "lateralBias" || read.kind === "blockHeight",
-      );
-      if (overlayReads.length > 0) {
-        if (tacticalOverlayTimeoutRef.current) {
-          clearTimeout(tacticalOverlayTimeoutRef.current);
-        }
-        setTacticalOverlay({ reads: overlayReads, key: Date.now() });
-        tacticalOverlayTimeoutRef.current = setTimeout(() => {
-          setTacticalOverlay(null);
-        }, 1600);
-      }
+      fireTacticalOverlay();
     }
     setDrag(null);
   };
@@ -784,8 +906,11 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     activeLayers,
     anchorOriginId,
     zoneDragPreview,
+    arrowGesturePreview,
+    isArrowToolActive: semanticForTool(tool) !== null,
     aiInterpretation,
     tacticalReads,
+    hasAnyOwnRoleAssigned,
     tacticalOverlay,
     readiness,
     projectLabel: boardProjectLabel(weeklyDecisionThread?.problem),
