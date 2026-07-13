@@ -1,10 +1,12 @@
 import { type BoardTool, TOOL_DEFS } from "./boardConstants";
 import {
   clamp,
+  gestureDragDistance,
   normalizeZoneRect,
   ZONE_DRAG_CLICK_THRESHOLD,
 } from "./boardGeometry";
 import type {
+  BoardArrow,
   BoardArrowEndpoint,
   BoardArrowSemantic,
   BoardObject,
@@ -131,61 +133,21 @@ export function tokenFromPlanningPlayer(
 export function handleCanvasPress({
   point,
   tool,
-  targetId,
   scene,
   color,
-  lineWidth,
-  drawStart,
-  setDrawStart,
-  commitScene,
   updateSceneObjects,
 }: {
   point: BoardPoint;
   tool: BoardTool;
-  // Id del token bajo el click, si lo hubo. v1: anclaje por click-sobre-token.
-  targetId?: string;
   scene: BoardScene;
   color: string;
-  lineWidth: number;
-  drawStart: BoardArrowEndpoint | null;
-  setDrawStart: (endpoint: BoardArrowEndpoint | null) => void;
-  commitScene: (patch: Partial<BoardScene>, record?: boolean) => void;
   updateSceneObjects: (objects: BoardObject[], record?: boolean) => void;
 }) {
-  const style = { color, tone: String(lineWidth) };
-  const arrowSemantic = semanticForTool(tool);
-  if (arrowSemantic) {
-    // Click sobre token -> endpoint anclado al objeto; sobre vacio -> punto
-    // libre (la excepcion). El seguimiento al mover el token ya lo resuelve el
-    // render via endpointPoint/resolveBoardScenePoint.
-    const endpoint: BoardArrowEndpoint = targetId
-      ? { kind: "object", objectId: targetId }
-      : { kind: "point", point };
-    if (!drawStart) {
-      setDrawStart(endpoint);
-      return;
-    }
-    // Gesto de cancelar: segundo click sobre el mismo token origen.
-    if (
-      drawStart.kind === "object" &&
-      endpoint.kind === "object" &&
-      drawStart.objectId === endpoint.objectId
-    ) {
-      setDrawStart(null);
-      return;
-    }
-    const arrow = createSemanticArrow(arrowSemantic, drawStart, endpoint, {
-      label: labelForTool(tool),
-      style,
-      tacticalMeaning: labelForTool(tool),
-    });
-    commitScene({ arrows: [...scene.arrows, arrow] });
-    setDrawStart(null);
-    return;
-  }
   // zone/block ya no se crea en el press: es un drag-to-create real, resuelto
   // en el pointerup por resolveZoneDragRect/commitZoneDrag (W8) con el
-  // rectangulo completo del gesto (start -> end).
+  // rectangulo completo del gesto (start -> end). Las flechas (W24A) tambien
+  // se resuelven fuera de este helper, via stepArrowGestureOnPointerDown/Up
+  // — dos gramaticas de gesto distintas del click puro de equipamiento.
   if (tool === "cone" || tool === "mannequin" || tool === "goal") {
     updateSceneObjects([
       ...scene.objects,
@@ -197,6 +159,107 @@ export function handleCanvasPress({
       ),
     ]);
   }
+}
+
+// === W24A: gramatica de flechas — drag-to-create unificado con click-click
+// como fallback explicito ===
+//
+// El bug que esto reemplaza (audit H3, "flecha fantasma"): la version vieja
+// armaba `drawStart` en el pointerDOWN de CUALQUIER primer press con tool de
+// flecha, sin distinguir un click de un drag. Un drag real (pointerdown,
+// mover, pointerup) armaba el origen en el down y nunca comiteaba en el up
+// (no habia logica de up) — el origen quedaba armado en silencio y el
+// PROXIMO press de cualquier tipo se comiteaba como "segundo click" no
+// querido. La maquina de estados de abajo resuelve TODA la decision en el
+// pointerup del gesto pendiente (drag vs click), asi que un gesto que no
+// completa nunca deja el origen armado para el proximo click sin que haya
+// pasado por una transicion explicita.
+export type ArrowGesturePhase =
+  | { phase: "idle" }
+  | { phase: "pending"; origin: BoardArrowEndpoint; anchor: BoardPoint }
+  | { phase: "armed"; origin: BoardArrowEndpoint };
+
+export const IDLE_ARROW_GESTURE: ArrowGesturePhase = { phase: "idle" };
+
+export type ArrowGestureResult = {
+  next: ArrowGesturePhase;
+  // Presente solo cuando el gesto debe comitear una flecha nueva.
+  commit?: { origin: BoardArrowEndpoint; endpoint: BoardArrowEndpoint };
+  // Drag o segundo-click que empieza y termina en el mismo token: gesto de
+  // cancelar explicito (W24A H3), nunca mudo — el caller decide como avisarlo.
+  cancelledSameToken?: boolean;
+};
+
+function sameObjectEndpoint(a: BoardArrowEndpoint, b: BoardArrowEndpoint) {
+  return a.kind === "object" && b.kind === "object" && a.objectId === b.objectId;
+}
+
+// pointerdown con una tool de flecha activa.
+export function stepArrowGestureOnPointerDown(
+  state: ArrowGesturePhase,
+  endpoint: BoardArrowEndpoint,
+  point: BoardPoint,
+): ArrowGestureResult {
+  if (state.phase === "armed") {
+    // Segundo click del fallback click-click: comitea o cancela (mismo token).
+    if (sameObjectEndpoint(state.origin, endpoint)) {
+      return { next: IDLE_ARROW_GESTURE, cancelledSameToken: true };
+    }
+    return {
+      next: IDLE_ARROW_GESTURE,
+      commit: { origin: state.origin, endpoint },
+    };
+  }
+  // Gesto nuevo (desde idle, o un pending huerfano defensivo): arranca en
+  // "pending" — todavia no sabemos si es un click o un drag, eso se decide en
+  // el pointerup.
+  return { next: { phase: "pending", origin: endpoint, anchor: point } };
+}
+
+// pointerup con una tool de flecha activa. Unico lugar donde se decide si el
+// gesto fue un click (arma el origen, fallback click-click) o un drag real
+// (comitea/cancela ya mismo). Un pointerup en fase distinta de "pending"
+// (p.ej. un mouseup suelto mientras el origen ya esta "armed" esperando el
+// segundo click) es un no-op explicito: nunca reintroduce un origen fantasma.
+export function stepArrowGestureOnPointerUp(
+  state: ArrowGesturePhase,
+  point: BoardPoint,
+  endpoint: BoardArrowEndpoint,
+): ArrowGestureResult {
+  if (state.phase !== "pending") {
+    return { next: state };
+  }
+  const dragDistance = gestureDragDistance(state.anchor, point);
+  if (dragDistance < ZONE_DRAG_CLICK_THRESHOLD) {
+    // No hubo drag real: se trata como el primer click del fallback
+    // click-click. Queda armado esperando el segundo click (o Escape).
+    return { next: { phase: "armed", origin: state.origin } };
+  }
+  // Drag real de origen a destino.
+  if (sameObjectEndpoint(state.origin, endpoint)) {
+    return { next: IDLE_ARROW_GESTURE, cancelledSameToken: true };
+  }
+  return {
+    next: IDLE_ARROW_GESTURE,
+    commit: { origin: state.origin, endpoint },
+  };
+}
+
+// Fabrica la flecha commiteable a partir del resultado de un step — unico
+// punto que conoce semanticForTool + createSemanticArrow para el path de
+// gesto (drag/click-click), asi useBoardActions no repite la conversion.
+export function buildArrowFromGestureCommit(
+  commit: NonNullable<ArrowGestureResult["commit"]>,
+  tool: BoardTool,
+  style: { color: string; tone: string },
+): BoardArrow | null {
+  const semantic = semanticForTool(tool);
+  if (!semantic) return null;
+  return createSemanticArrow(semantic, commit.origin, commit.endpoint, {
+    label: labelForTool(tool),
+    style,
+    tacticalMeaning: labelForTool(tool),
+  });
 }
 
 // 20x16 centrado en el punto — affordance preexistente para clicks sin

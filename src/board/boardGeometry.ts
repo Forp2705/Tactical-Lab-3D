@@ -47,6 +47,14 @@ export function distance(a: BoardPoint, b: BoardPoint) {
 // por debajo del piso de tamano, para no atrapar drags chicos intencionales.
 export const ZONE_DRAG_CLICK_THRESHOLD = 3;
 
+// Misma medida de "cuanto se movio el puntero" (Chebyshev, no euclidea) que
+// resolveZoneDragRect usa para distinguir click de drag — factorizada para
+// que la gramatica de flechas (W24A) comparta el mismo umbral sin duplicar
+// el calculo.
+export function gestureDragDistance(start: BoardPoint, end: BoardPoint) {
+  return Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y));
+}
+
 // Piso de w/h para que un drag real pero muy corto (por encima del umbral de
 // click) no cree una zona practicamente invisible.
 export const ZONE_DRAG_MIN_SIZE = 4;

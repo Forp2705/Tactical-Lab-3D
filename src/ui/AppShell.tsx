@@ -221,7 +221,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         ) : null}
         {presentationMode || view === "home" ? null : (
-          <header className="topbar">
+          <header
+            className={
+              view === "board" ? "topbar board-topbar-compact" : "topbar"
+            }
+          >
             <div className="topbar-copy">
               <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
                 <button
@@ -234,25 +238,32 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="eyebrow">{metaFor(view)[0]}</span>
               </div>
               <h2>{titleFor(view)}</h2>
-              <p>{subtitleFor(view)}</p>
+              {/* W24A H1: la Pizarra ya tiene su propia identidad/estado
+                  internos (rombo-board-topbar) — el subtitulo generico y el
+                  strip de stats de abajo son puro peso vertical redundante
+                  aca, el objetivo padre del re-layout (colapsar el hero
+                  header en modo edicion). */}
+              {view === "board" ? null : <p>{subtitleFor(view)}</p>}
             </div>
-            <div className="top-stat-strip" aria-label="Resumen operativo">
-              <div>
-                <span>Bloques</span>
-                <b>{session.blocks.length}</b>
+            {view === "board" ? null : (
+              <div className="top-stat-strip" aria-label="Resumen operativo">
+                <div>
+                  <span>Bloques</span>
+                  <b>{session.blocks.length}</b>
+                </div>
+                <div>
+                  <span>Actual</span>
+                  <b>
+                    {selectedExerciseMissing ? "-" : selectedExercise.players.min}
+                    v
+                  </b>
+                </div>
+                <div>
+                  <span>Modo</span>
+                  <b>{presentationMode ? "LIVE" : "PLAN"}</b>
+                </div>
               </div>
-              <div>
-                <span>Actual</span>
-                <b>
-                  {selectedExerciseMissing ? "-" : selectedExercise.players.min}
-                  v
-                </b>
-              </div>
-              <div>
-                <span>Modo</span>
-                <b>{presentationMode ? "LIVE" : "PLAN"}</b>
-              </div>
-            </div>
+            )}
             <div className="top-actions">
               <span className="chip">
                 <span className="status-dot available" />

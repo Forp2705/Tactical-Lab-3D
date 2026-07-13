@@ -7,13 +7,17 @@ import {
 import type { PlanningBoardPlayer } from "../src/board/productBoardTypes";
 import { type BoardObject, createPlayerToken } from "../src/board";
 import {
+  buildArrowFromGestureCommit,
   commitZoneDrag,
   handleCanvasPress,
+  IDLE_ARROW_GESTURE,
   labelForTool,
   makeEquipmentLikeObject,
   mergeFormationTokens,
   resolveZoneDragRect,
   semanticForTool,
+  stepArrowGestureOnPointerDown,
+  stepArrowGestureOnPointerUp,
   tokenFromPlanningPlayer,
 } from "../src/board/boardTools";
 
@@ -188,110 +192,35 @@ describe("boardTools — mergeFormationTokens (FIX mc-21 2a: formation-change me
   });
 });
 
-describe("boardTools — handleCanvasPress", () => {
+describe("boardTools — handleCanvasPress (equipment-only since W24A; zones/arrows resolve elsewhere)", () => {
   function freshScene(): BoardScene {
     return createDefaultBoard("Test").scenes[0];
   }
 
-  it("arms drawStart on the first arrow click without committing", () => {
-    const setDrawStart = vi.fn();
-    const commitScene = vi.fn();
-    const updateSceneObjects = vi.fn();
-    handleCanvasPress({
-      point: { x: 10, y: 10 },
-      tool: "pass",
-      scene: freshScene(),
-      color: "#fff",
-      lineWidth: 2,
-      drawStart: null,
-      setDrawStart,
-      commitScene,
-      updateSceneObjects,
-    });
-    expect(setDrawStart).toHaveBeenCalledWith({
-      kind: "point",
-      point: { x: 10, y: 10 },
-    });
-    expect(commitScene).not.toHaveBeenCalled();
-  });
-
-  it("commits an arrow on the second click and clears drawStart", () => {
-    const setDrawStart = vi.fn();
-    const commitScene = vi.fn();
-    const scene = freshScene();
-    handleCanvasPress({
-      point: { x: 30, y: 30 },
-      tool: "pass",
-      scene,
-      color: "#fff",
-      lineWidth: 2,
-      drawStart: { kind: "point", point: { x: 10, y: 10 } },
-      setDrawStart,
-      commitScene,
-      updateSceneObjects: vi.fn(),
-    });
-    expect(commitScene).toHaveBeenCalledTimes(1);
-    const patch = commitScene.mock.calls[0][0];
-    expect(patch.arrows).toHaveLength(scene.arrows.length + 1);
-    expect(setDrawStart).toHaveBeenCalledWith(null);
-  });
-
-  it("anchors the start endpoint to a token when the first click hits one", () => {
-    const setDrawStart = vi.fn();
-    handleCanvasPress({
-      point: { x: 40, y: 50 },
-      tool: "pass",
-      targetId: "player-5",
-      scene: freshScene(),
-      color: "#fff",
-      lineWidth: 2,
-      drawStart: null,
-      setDrawStart,
-      commitScene: vi.fn(),
-      updateSceneObjects: vi.fn(),
-    });
-    expect(setDrawStart).toHaveBeenCalledWith({
-      kind: "object",
-      objectId: "player-5",
-    });
-  });
-
-  it("commits a token->token anchored arrow on the second targeted click", () => {
-    const commitScene = vi.fn();
-    const scene = freshScene();
-    handleCanvasPress({
-      point: { x: 60, y: 50 },
-      tool: "pass",
-      targetId: "player-2",
-      scene,
-      color: "#fff",
-      lineWidth: 2,
-      drawStart: { kind: "object", objectId: "player-5" },
-      setDrawStart: vi.fn(),
-      commitScene,
-      updateSceneObjects: vi.fn(),
-    });
-    const arrow = commitScene.mock.calls[0][0].arrows.at(-1);
-    expect(arrow.from).toEqual({ kind: "object", objectId: "player-5" });
-    expect(arrow.to).toEqual({ kind: "object", objectId: "player-2" });
-    expect(arrow.semantic).toBe("pass");
-  });
-
   it("zone tool no longer creates on press — drag-to-create commits on pointerup instead (W8)", () => {
-    const commitScene = vi.fn();
     const scene = freshScene();
+    const updateSceneObjects = vi.fn();
     handleCanvasPress({
       point: { x: 40, y: 40 },
       tool: "zone",
       scene,
       color: "#fff",
-      lineWidth: 2,
-      drawStart: null,
-      setDrawStart: vi.fn(),
-      commitScene,
-      updateSceneObjects: vi.fn(),
+      updateSceneObjects,
     });
-    expect(commitScene).not.toHaveBeenCalled();
+    expect(updateSceneObjects).not.toHaveBeenCalled();
+  });
+
+  it("arrow tools do not touch scene objects — resolved by the arrow gesture state machine instead (W24A)", () => {
+    const scene = freshScene();
+    const updateSceneObjects = vi.fn();
+    handleCanvasPress({
+      point: { x: 40, y: 40 },
+      tool: "pass",
+      scene,
+      color: "#fff",
+      updateSceneObjects,
+    });
+    expect(updateSceneObjects).not.toHaveBeenCalled();
   });
 
   it("equipment tools append a scene object", () => {
@@ -302,15 +231,187 @@ describe("boardTools — handleCanvasPress", () => {
       tool: "cone",
       scene,
       color: "#fff",
-      lineWidth: 2,
-      drawStart: null,
-      setDrawStart: vi.fn(),
-      commitScene: vi.fn(),
       updateSceneObjects,
     });
     expect(updateSceneObjects.mock.calls[0][0]).toHaveLength(
       scene.objects.length + 1,
     );
+  });
+});
+
+describe("boardTools — arrow gesture state machine (W24A: drag-to-create + click-click fallback, no ghost arrow)", () => {
+  const originToken = (id: string) =>
+    ({ kind: "object", objectId: id }) as const;
+  const freePoint = (x: number, y: number) =>
+    ({ kind: "point", point: { x, y } }) as const;
+
+  describe("stepArrowGestureOnPointerDown", () => {
+    it("a fresh press (idle) always goes to pending — never commits, never arms directly", () => {
+      const result = stepArrowGestureOnPointerDown(
+        IDLE_ARROW_GESTURE,
+        originToken("player-5"),
+        { x: 40, y: 50 },
+      );
+      expect(result.next).toEqual({
+        phase: "pending",
+        origin: originToken("player-5"),
+        anchor: { x: 40, y: 50 },
+      });
+      expect(result.commit).toBeUndefined();
+      expect(result.cancelledSameToken).toBeUndefined();
+    });
+
+    it("a press while armed on a DIFFERENT token commits the arrow and returns to idle", () => {
+      const armed = { phase: "armed" as const, origin: originToken("player-5") };
+      const result = stepArrowGestureOnPointerDown(
+        armed,
+        originToken("player-2"),
+        { x: 60, y: 50 },
+      );
+      expect(result.commit).toEqual({
+        origin: originToken("player-5"),
+        endpoint: originToken("player-2"),
+      });
+      expect(result.next).toEqual(IDLE_ARROW_GESTURE);
+    });
+
+    it("a press while armed on the SAME token cancels with feedback, never a silent no-op", () => {
+      const armed = { phase: "armed" as const, origin: originToken("player-5") };
+      const result = stepArrowGestureOnPointerDown(
+        armed,
+        originToken("player-5"),
+        { x: 40, y: 50 },
+      );
+      expect(result.cancelledSameToken).toBe(true);
+      expect(result.commit).toBeUndefined();
+      expect(result.next).toEqual(IDLE_ARROW_GESTURE);
+    });
+  });
+
+  describe("stepArrowGestureOnPointerUp", () => {
+    it("releasing below the drag threshold arms the origin (click-click fallback, first click)", () => {
+      const pending = {
+        phase: "pending" as const,
+        origin: freePoint(10, 10),
+        anchor: { x: 10, y: 10 },
+      };
+      const result = stepArrowGestureOnPointerUp(
+        pending,
+        { x: 10.5, y: 9.8 },
+        freePoint(10.5, 9.8),
+      );
+      expect(result.next).toEqual({ phase: "armed", origin: freePoint(10, 10) });
+      expect(result.commit).toBeUndefined();
+    });
+
+    it("releasing past the drag threshold on a different endpoint commits immediately (drag-to-create)", () => {
+      const pending = {
+        phase: "pending" as const,
+        origin: originToken("player-5"),
+        anchor: { x: 40, y: 50 },
+      };
+      const result = stepArrowGestureOnPointerUp(
+        pending,
+        { x: 60, y: 50 },
+        originToken("player-2"),
+      );
+      expect(result.commit).toEqual({
+        origin: originToken("player-5"),
+        endpoint: originToken("player-2"),
+      });
+      expect(result.next).toEqual(IDLE_ARROW_GESTURE);
+    });
+
+    it("a drag that starts and ends on the same token cancels with feedback (not a silent no-op)", () => {
+      const pending = {
+        phase: "pending" as const,
+        origin: originToken("player-5"),
+        anchor: { x: 40, y: 50 },
+      };
+      // Movement past the drag threshold (>= 3 units), but the release still
+      // resolves to the SAME token (e.g. the drag looped back over it).
+      const result = stepArrowGestureOnPointerUp(
+        pending,
+        { x: 45, y: 50 },
+        originToken("player-5"),
+      );
+      expect(result.cancelledSameToken).toBe(true);
+      expect(result.next).toEqual(IDLE_ARROW_GESTURE);
+    });
+
+    it("REGRESSION (audit H3 ghost arrow): an incomplete drag never leaves the origin armed for the next unrelated click", () => {
+      // Old bug: pointerdown armed drawStart immediately; a drag's pointerup
+      // did nothing, so the origin stayed silently armed and the NEXT press
+      // anywhere committed an unwanted arrow. Here: pointerdown -> pending,
+      // pointerup resolves it THERE (drag => commit/cancel now), so idle is
+      // the only state carried into the next gesture.
+      const down = stepArrowGestureOnPointerDown(
+        IDLE_ARROW_GESTURE,
+        originToken("player-5"),
+        { x: 40, y: 50 },
+      );
+      const up = stepArrowGestureOnPointerUp(
+        down.next,
+        { x: 70, y: 50 },
+        originToken("player-9"),
+      );
+      expect(up.commit).toEqual({
+        origin: originToken("player-5"),
+        endpoint: originToken("player-9"),
+      });
+      expect(up.next).toEqual(IDLE_ARROW_GESTURE);
+
+      // The very next press, anywhere, must start a brand-new gesture — it
+      // must NOT silently commit against the drag's origin.
+      const nextDown = stepArrowGestureOnPointerDown(
+        up.next,
+        freePoint(5, 5),
+        { x: 5, y: 5 },
+      );
+      expect(nextDown.commit).toBeUndefined();
+      expect(nextDown.next.phase).toBe("pending");
+    });
+
+    it("a pointerup while NOT pending (e.g. a stray mouseup once already armed) is a no-op — no ghost re-arm", () => {
+      const armed = { phase: "armed" as const, origin: originToken("player-5") };
+      const result = stepArrowGestureOnPointerUp(
+        armed,
+        { x: 99, y: 99 },
+        freePoint(99, 99),
+      );
+      expect(result).toEqual({ next: armed });
+    });
+
+    it("a pointerup while idle is a no-op", () => {
+      const result = stepArrowGestureOnPointerUp(
+        IDLE_ARROW_GESTURE,
+        { x: 1, y: 1 },
+        freePoint(1, 1),
+      );
+      expect(result).toEqual({ next: IDLE_ARROW_GESTURE });
+    });
+  });
+
+  describe("buildArrowFromGestureCommit", () => {
+    it("builds a schema-valid arrow with the tool's semantic from a commit result", () => {
+      const arrow = buildArrowFromGestureCommit(
+        { origin: originToken("player-5"), endpoint: originToken("player-2") },
+        "pass",
+        { color: "#fff", tone: "2" },
+      );
+      expect(arrow?.semantic).toBe("pass");
+      expect(arrow?.from).toEqual(originToken("player-5"));
+      expect(arrow?.to).toEqual(originToken("player-2"));
+    });
+
+    it("returns null for a non-arrow tool (defensive — should never be called this way)", () => {
+      const arrow = buildArrowFromGestureCommit(
+        { origin: freePoint(1, 1), endpoint: freePoint(2, 2) },
+        "zone",
+        { color: "#fff", tone: "2" },
+      );
+      expect(arrow).toBeNull();
+    });
   });
 });
 
