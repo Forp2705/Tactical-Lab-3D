@@ -137,17 +137,35 @@ export function buildPlaybackTimeline(scene: BoardScene): PlaybackTimeline {
 
   let cursor = 0;
   let previousArrow: BoardArrow | null = null;
-  let previousStart = 0;
+  let previousSegment: PlaybackSegment | null = null;
 
   for (const arrow of scene.arrows) {
     const kind = classifyArrowMoveKind(arrow.semantic);
     const from = endpointPoint(arrow.from, scene.objects);
-    const to = endpointPoint(arrow.to, scene.objects);
-    const duration = computeDuration(kind, arrow.semantic, from, to);
 
     const chained =
       previousArrow !== null && isChainedParallel(previousArrow, arrow);
-    const start = chained ? previousStart : cursor;
+
+    // FIX (coordinator review, PLAYBACK-DESIGN.md §1 exception): a chained
+    // ball mover's destination is the receiver's FINAL run position (the
+    // previous, already-computed segment's `to`), never the static
+    // endpointPoint — the receiver is running somewhere else in parallel,
+    // so a static target sends the pass to empty space. Still a pure
+    // function of (scene, t): `to` comes from a segment already resolved
+    // in this same deterministic pass, never from an animated frame.
+    const to =
+      chained && previousSegment
+        ? previousSegment.to
+        : endpointPoint(arrow.to, scene.objects);
+    const duration = computeDuration(kind, arrow.semantic, from, to);
+
+    // Arrival sync (adopted refinement): a chained pass departs late enough
+    // to LAND together with the run it targets, never before the run
+    // itself starts — the real timing of a pass into space.
+    const start =
+      chained && previousSegment
+        ? Math.max(previousSegment.end - duration, previousSegment.start)
+        : cursor;
     const end = start + duration;
 
     const objectIds: string[] = [];
@@ -158,7 +176,7 @@ export function buildPlaybackTimeline(scene: BoardScene): PlaybackTimeline {
       if (arrow.from.kind === "object") objectIds.push(arrow.from.objectId);
     }
 
-    segments.push({
+    const segment: PlaybackSegment = {
       arrowId: arrow.id,
       kind,
       objectIds,
@@ -166,11 +184,12 @@ export function buildPlaybackTimeline(scene: BoardScene): PlaybackTimeline {
       end,
       from,
       to,
-    });
+    };
+    segments.push(segment);
 
     cursor = Math.max(cursor, end);
     previousArrow = arrow;
-    previousStart = start;
+    previousSegment = segment;
   }
 
   return { segments, duration: cursor };

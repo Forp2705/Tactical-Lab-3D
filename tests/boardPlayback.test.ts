@@ -161,10 +161,88 @@ describe("boardPlayback — buildPlaybackTimeline", () => {
     const timeline = buildPlaybackTimeline(scene);
     const [run, pass] = timeline.segments;
     expect(run.start).toBe(0);
-    // Chained: the pass starts together with the run, NOT after it ends.
+    // Chained: the pass starts together with the run (or later, arrival-synced —
+    // see the dedicated tests below), NOT after it ends.
     expect(pass.start).toBe(run.start);
     expect(pass.start).not.toBe(run.end);
     expect(timeline.duration).toBe(Math.max(run.end, pass.end));
+  });
+
+  // Coordinator review of PLAYBACK-DESIGN.md (2026-07-13): a chained ball
+  // mover resolving `to` via the STATIC endpointPoint sends the pass to
+  // where the receiver was drawn, while the receiver is running somewhere
+  // else in parallel — the pass lands in empty space. Regression coverage
+  // for the fix: the chained ball segment's destination must be the
+  // receiver's FINAL run position (the previous segment's `to`), never the
+  // static drawn position.
+  it("REGRESSION (coordinator review): a chained pass targets the receiver's FINAL run position, not their static drawn position", () => {
+    const receiver = token("t-receiver", 50, 50);
+    const passer = token("t-passer", 10, 50);
+    const runArrow = createSemanticArrow(
+      "run",
+      { kind: "object", objectId: "t-receiver" },
+      { kind: "point", point: { x: 90, y: 50 } }, // far from the static (50,50)
+    );
+    const passArrow = createSemanticArrow(
+      "pass",
+      { kind: "object", objectId: "t-passer" },
+      { kind: "object", objectId: "t-receiver" },
+    );
+    const scene = makeScene(
+      [createBall({ x: 10, y: 50 }), receiver, passer],
+      [runArrow, passArrow],
+    );
+    const [run, pass] = buildPlaybackTimeline(scene).segments;
+    // The static, drawn position — the WRONG target this regression guards against.
+    expect(pass.to).not.toEqual({ x: 50, y: 50 });
+    // The correct target: where the run actually ends up.
+    expect(pass.to).toEqual(run.to);
+    expect(pass.to).toEqual({ x: 90, y: 50 });
+  });
+
+  it("arrival sync (adopted refinement): a chained pass departs late enough to land exactly when the run it targets finishes", () => {
+    const receiver = token("t-receiver", 50, 50);
+    const passer = token("t-passer", 10, 50);
+    const runArrow = createSemanticArrow(
+      "run",
+      { kind: "object", objectId: "t-receiver" },
+      { kind: "point", point: { x: 90, y: 50 } },
+    );
+    const passArrow = createSemanticArrow(
+      "pass",
+      { kind: "object", objectId: "t-passer" },
+      { kind: "object", objectId: "t-receiver" },
+    );
+    const scene = makeScene(
+      [createBall({ x: 10, y: 50 }), receiver, passer],
+      [runArrow, passArrow],
+    );
+    const [run, pass] = buildPlaybackTimeline(scene).segments;
+    // The pass is faster than the run over this geometry, so the departure
+    // is delayed (not simultaneous) — arriving together, not early.
+    expect(pass.start).toBeGreaterThan(run.start);
+    expect(pass.end).toBeCloseTo(run.end, 5);
+  });
+
+  it("arrival sync collapses to a simultaneous start when the pass alone would take longer than the run (never departs before the run starts)", () => {
+    const receiver = token("t-receiver", 70, 50);
+    const passer = token("t-passer", 30, 50);
+    const runArrow = createSemanticArrow(
+      "run",
+      { kind: "object", objectId: "t-receiver" },
+      { kind: "point", point: { x: 85, y: 40 } },
+    );
+    const passArrow = createSemanticArrow(
+      "pass",
+      { kind: "object", objectId: "t-passer" },
+      { kind: "object", objectId: "t-receiver" },
+    );
+    const scene = makeScene(
+      [createBall({ x: 30, y: 50 }), receiver, passer],
+      [runArrow, passArrow],
+    );
+    const [run, pass] = buildPlaybackTimeline(scene).segments;
+    expect(pass.start).toBe(run.start);
   });
 
   it("does NOT chain a ball-mover to a preceding player-mover unless the token actually matches (different receiver)", () => {
@@ -356,5 +434,32 @@ describe("boardPlayback — samplePlayback", () => {
     expect(frame.duration).toBe(0);
     expect(frame.positions).toEqual({});
     expect(frame.arrowProgress).toEqual({});
+  });
+
+  // Coordinator-mandated regression (2026-07-13): the star case of the whole
+  // brief — "the receiver's run in parallel with the pass that looks for
+  // them" — has to actually find the runner on screen. The ball's FINAL
+  // resting position, once the whole chained sequence has played out, must
+  // be the receiver's run destination (previous.to), never their static
+  // drawn spot.
+  it("REGRESSION (coordinator review): the ball ends up at the receiver's run destination, not their static drawn position", () => {
+    const receiver = token("t-receiver", 50, 50);
+    const passer = token("t-passer", 10, 50);
+    const ball = createBall({ x: 10, y: 50 });
+    const runArrow = createSemanticArrow(
+      "run",
+      { kind: "object", objectId: "t-receiver" },
+      { kind: "point", point: { x: 90, y: 50 } },
+    );
+    const passArrow = createSemanticArrow(
+      "pass",
+      { kind: "object", objectId: "t-passer" },
+      { kind: "object", objectId: "t-receiver" },
+    );
+    const scene = makeScene([ball, receiver, passer], [runArrow, passArrow]);
+    const { duration } = samplePlayback(scene, 0);
+    const finalFrame = samplePlayback(scene, duration + 1);
+    expect(finalFrame.positions[ball.id]).toEqual({ x: 90, y: 50 });
+    expect(finalFrame.positions[ball.id]).not.toEqual({ x: 50, y: 50 });
   });
 });

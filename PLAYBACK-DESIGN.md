@@ -16,6 +16,8 @@ Regla de default (a prueba de semánticas futuras, el enum es aditivo — ver co
 
 Fuente de las posiciones `from`/`to` de cada tramo: **siempre** `endpointPoint(arrow.from/to, scene.objects)` (helper existente de `boardGeometry.ts`, sin duplicar resolución de anclajes) — resuelto sobre el estado DIBUJADO (estático), nunca sobre un frame animado de un tramo anterior.
 
+**Única excepción** (corrección obligatoria de la review del coordinador, 2026-07-13, antes de codear el motor): cuando el tramo `ball` está **encadenado** (§2) a un `run`/`both` previo del receptor, su destino NO es `endpointPoint(arrow.to)` (la posición ESTÁTICA donde el receptor está dibujado) sino el `to` del tramo previo (la posición FINAL de la carrera del receptor). Un pase al desmarque tiene que buscar al jugador donde VA a estar, no donde estaba parado — si se resuelve estático, la pelota viaja a un espacio que el receptor ya abandonó y el caso estrella del brief se ve roto en pantalla. Sigue siendo una función pura de `(scene, t)`: el `to` sale de un tramo YA calculado en la misma pasada determinística, nunca de un frame animado.
+
 ## 2. Orden temporal y encadenamiento
 
 **Default: secuencial por orden de creación** (`scene.arrows` array order — hoy no existe otro orden explícito, y no se inventa UI de timeline de edición en esta ola).
@@ -24,26 +26,32 @@ Fuente de las posiciones `from`/`to` de cada tramo: **siempre** `endpointPoint(a
 
 Fuera de ese caso puntual (mover-jugador seguido de un pase QUE LO BUSCA), todo es secuencial: la flecha `i+1` arranca cuando termina la `i`. No se generaliza a otros patrones de solapamiento — es la única inferencia que pide el brief, y generalizar de más sin un caso de uso concreto es sobre-construir.
 
+**Sincronización de llegadas (refinamiento adoptado):** en vez de que el pase arranque simplemente al mismo tiempo que el run (arranque en paralelo), el pase arranca lo más tarde posible para que la pelota LLEGUE al mismo tiempo que el receptor — `start_ball = end_run - duración_ball`, clampeado a `>= start_run` (nunca puede salir antes de que el receptor arranque a correr). Es la semántica futbolística real de un pase al espacio: el pasador no suelta la pelota hasta que el timing de la carrera lo justifica. Cuando el pase es más largo que la carrera (el clamp entra en juego), el arranque colapsa al arranque simultáneo simple — mismo resultado que la versión no sincronizada, sin caso especial adicional en el algoritmo.
+
 Algoritmo (determinístico, sin estado mutable fuera de la función):
 
 ```
-cursor = 0            // proximo arranque para una flecha NO encadenada
+cursor = 0              // proximo arranque para una flecha NO encadenada
 previousArrow = null
-previousStart = 0
+previousSegment = null  // el tramo YA calculado del arrow anterior (from/to/start/end)
 para cada arrow en scene.arrows (en orden):
   kind = classify(arrow.semantic)
-  {from, to} = resolver via endpointPoint(scene.objects) — SIEMPRE estatico
-  duration = computeDuration(kind, arrow.semantic, from, to)
+  from = endpointPoint(arrow.from, scene.objects) — SIEMPRE estatico
   chained = previousArrow existe
             && classify(previousArrow.semantic) es "player" o "both"
             && previousArrow.from.kind === "object"
             && arrow (actual).to.kind === "object"
             && classify(arrow.semantic) === "ball"
             && previousArrow.from.objectId === arrow.to.objectId
-  start = chained ? previousStart : cursor
+  // Unica excepcion al endpoint estatico (correccion obligatoria, ver §1):
+  to = chained ? previousSegment.to : endpointPoint(arrow.to, scene.objects)
+  duration = computeDuration(kind, arrow.semantic, from, to)
+  start = chained
+    ? max(previousSegment.end - duration, previousSegment.start)  // sync de llegada
+    : cursor
   end = start + duration
   cursor = max(cursor, end)
-  previousArrow = arrow; previousStart = start
+  previousArrow = arrow; previousSegment = { from, to, start, end, ... }
 duration total = cursor
 ```
 
