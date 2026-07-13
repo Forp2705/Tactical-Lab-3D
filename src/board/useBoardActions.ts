@@ -915,6 +915,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     editingPlayerId,
     status,
     saveIndicator: formatSaveRecency(lastSavedAt, nowTick),
+    // W25C: UI viva — clave estable para el micro-pulso del indicador (solo
+    // en un guardado REAL, no en cada tick de reloj que refresca el texto
+    // "hace Ns"; lastSavedAt cambia solo cuando de verdad se persiste).
+    lastSavedAt,
     payload,
     attachBlockId,
     setAttachBlockId,

@@ -5,6 +5,9 @@ type TacticalBoardFooterProps = {
   currentSceneId: string;
   status: string;
   saveIndicator: string;
+  // W25C: timestamp del ultimo guardado REAL — clave del pulso, no del texto
+  // (el texto cambia cada segundo por el tick de recencia, esto no).
+  saveKey: number;
   zoom: number;
   onSelectScene: (sceneId: string) => void;
   onAddScene: () => void;
@@ -18,6 +21,7 @@ export function TacticalBoardFooter({
   currentSceneId,
   status,
   saveIndicator,
+  saveKey,
   zoom,
   onSelectScene,
   onAddScene,
@@ -46,7 +50,11 @@ export function TacticalBoardFooter({
           competencia entre el boton "Guardar" del header y este texto.
           status sigue vivo para feedback puntual de otras acciones
           (duplicar escena, exportar imagen, etc.), nunca para "guardado". */}
-      <span className="rombo-board-save-indicator" aria-live="polite">
+      <span
+        className="rombo-board-save-indicator"
+        aria-live="polite"
+        key={saveKey}
+      >
         {saveIndicator}
       </span>
       {status ? <span className="rombo-board-status">{status}</span> : null}

@@ -6022,6 +6022,41 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   transform: translateX(-50%);
 }
 
+/* W25C: entra/sale animado — antes aparecia/desaparecia seco porque React
+   desmontaba el <p> en el mismo frame que isArrowToolActive pasaba a false.
+   useLingeringMount (TacticalBoardCanvas.tsx) retiene el nodo 180ms extra
+   SOLO para poder reproducir esta salida; el translateX(-50%) de la regla
+   base se repite en cada keyframe para no perder el centrado horizontal. */
+.rombo-arrow-hint-enter {
+  animation: rombo-hint-in 180ms ease-out;
+}
+
+.rombo-arrow-hint-exit {
+  animation: rombo-hint-out 180ms ease-in forwards;
+}
+
+@keyframes rombo-hint-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes rombo-hint-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+}
+
 .rombo-pitch-svg {
   width: min(100%, 1100px);
   height: auto;
@@ -6142,6 +6177,14 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .equipment.selected {
   stroke: #facc15;
   stroke-width: 0.55;
+  /* W25C: feedback animado al seleccionar (scale pulse sutil). SOLO
+     CSS/transform sobre la forma ya renderizada — no toca boardTools.ts ni
+     la maquina de gestos que decide QUE queda seleccionado, solo como se ve.
+     transform-box:fill-box hace que el scale pivotee sobre el centro de la
+     propia forma SVG en vez del origen del viewBox. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rombo-select-pulse 220ms ease-out;
 }
 
 .token-number {
@@ -6246,6 +6289,16 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   color: color-mix(in oklch, var(--felt-ink) 70%, transparent);
   background: color-mix(in oklch, var(--felt-bg-2) 72%, transparent);
   border: 1px solid transparent;
+  /* W25C: feedback vivo al puntero, cambio de tab activo incluido. */
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.rombo-right-panel-tabs button:hover {
+  color: var(--felt-ink);
+  background: color-mix(in oklch, var(--felt-bg-2) 90%, transparent);
 }
 
 .rombo-right-panel-tabs button.active {
@@ -6262,6 +6315,9 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
+  /* W25C: transicion al cambiar de tab (key={rightPanelTab} en
+     TacticalBoardView remonta este body en cada switch). */
+  animation: rombo-fade-slide-in 180ms ease-out;
 }
 
 /* W15: plantel colapsado por defecto — summary con el mismo tratamiento
@@ -6419,6 +6475,13 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   font-size: 12px;
 }
 
+/* W25C: UI viva — cada finding entra con un fade+slide corto en vez de
+   aparecer seco. React ya monta un <li> nuevo por item (key={item.id}), asi
+   que la animation en el selector alcanza sin logica extra. */
+.rombo-ai-list li {
+  animation: rombo-fade-slide-in 200ms ease-out;
+}
+
 /* Reactive board engine (mc-21): lecturas geometricas deterministicas, mismo
    hogar textual que "Que entiende RomboIQ". Dorado = graduacion alta,
    mint = media/baja (mismo par gold/mint que .ai-context-chip en Sala), nunca
@@ -6439,6 +6502,9 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   font-family: var(--felt-font-mono);
   font-size: 10.5px;
   letter-spacing: 0.02em;
+  /* W25C: entran animados cuando aparecen/cambian (key={read.id} en
+     TacticalBoardAiPanel ya remonta el chip cuando cambia de contenido). */
+  animation: rombo-fade-slide-in 200ms ease-out;
 }
 
 .rombo-tactical-chip-high {
@@ -6600,6 +6666,10 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-board-footer .rombo-board-save-indicator {
   color: color-mix(in oklch, var(--felt-ink), transparent 5%);
   font-weight: 700;
+  /* W25C: micro-transicion al actualizar — key={lastSavedAt} en
+     TacticalBoardFooter remonta el span SOLO en un guardado real (no en
+     cada tick de reloj que refresca el texto "hace Ns"). */
+  animation: rombo-save-pulse 220ms ease-out;
 }
 
 .rombo-board-footer .rombo-board-status {
@@ -6702,6 +6772,79 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   }
   100% {
     opacity: 0;
+  }
+}
+
+/* W25C: UI viva — keyframes compartidos por toda la vista Pizarra (chips,
+   tab body, hint, indicador de guardado, tokens). Transiciones cortas
+   (120-250ms, doctrina del brief): nunca se siente que la vista espera a
+   una animacion. */
+@keyframes rombo-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rombo-save-pulse {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes rombo-select-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* W25C: feedback de hover/press vivo en los botones generales del board
+   (fuera del rail, que ya tiene su propio treatment mas arriba) — panel
+   derecho, footer, topbar. Decorativo puro: no retrasa el click (la accion
+   del onClick sigue siendo instantanea, solo el estado visual del boton
+   transiciona). */
+.rombo-board-shell button {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 100ms ease;
+}
+
+.rombo-board-shell button:hover:not(:disabled) {
+  border-color: color-mix(in oklch, var(--felt-line), transparent 45%);
+}
+
+.rombo-board-shell button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* W25C: `prefers-reduced-motion` respetado en toda la vista Pizarra —
+   apaga las animaciones/transiciones decorativas de esta ola (el usuario
+   sigue viendo el resultado FINAL de cada estado al instante, solo pierde
+   el paso intermedio animado). Nunca afecta al pulso de lectura tactica
+   preexistente (`rombo-tactical-pulse`, mc-21) de forma distinta: tambien
+   se apaga aca, coherente con la misma doctrina de accesibilidad. */
+@media (prefers-reduced-motion: reduce) {
+  .rombo-board-shell *,
+  .rombo-board-shell *::before,
+  .rombo-board-shell *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

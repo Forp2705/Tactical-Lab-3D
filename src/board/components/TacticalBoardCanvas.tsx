@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { MutableRefObject, PointerEvent } from "react";
 import {
   type BoardTool,
@@ -33,6 +34,25 @@ import type { TacticalRead } from "../boardTacticalRead";
 function resolveTargetIdFromEvent(event: PointerEvent<SVGSVGElement>) {
   const el = (event.target as Element).closest("[data-object-id]");
   return el?.getAttribute("data-object-id") ?? undefined;
+}
+
+// W25C: UI viva — el hint de gesto hoy aparece/desaparece seco porque React
+// desmonta el <p> apenas `active` pasa a false. Este hook SOLO retrasa el
+// desmontaje visual del propio hint (elemento pointer-events:none, no
+// interactivo) para poder animar la salida; no toca cuando `active` se
+// calcula ni la maquina de gestos que lo alimenta (isArrowToolActive /
+// arrowGesturePreview siguen siendo props que este componente solo lee).
+function useLingeringMount(active: boolean, exitMs: number) {
+  const [mounted, setMounted] = useState(active);
+  useEffect(() => {
+    if (active) {
+      setMounted(true);
+      return;
+    }
+    const id = setTimeout(() => setMounted(false), exitMs);
+    return () => clearTimeout(id);
+  }, [active, exitMs]);
+  return mounted;
 }
 
 type TacticalBoardCanvasProps = {
@@ -112,6 +132,7 @@ export function TacticalBoardCanvas({
   onOwnFormationChange,
   onOpponentFormationChange,
 }: TacticalBoardCanvasProps) {
+  const hintMounted = useLingeringMount(Boolean(isArrowToolActive), 180);
   return (
     <section className="rombo-pitch-panel">
       <div className="rombo-pitch-toolbar">
@@ -135,8 +156,11 @@ export function TacticalBoardCanvas({
       {/* Hint minimo how-to (W24A H3): un renglon, solo mientras una tool de
           flecha esta activa — no un manual. pointer-events:none (invariante
           W4: nunca robarle eventos a la cancha). */}
-      {isArrowToolActive ? (
-        <p className="rombo-arrow-hint" aria-live="polite">
+      {hintMounted ? (
+        <p
+          className={`rombo-arrow-hint ${isArrowToolActive ? "rombo-arrow-hint-enter" : "rombo-arrow-hint-exit"}`}
+          aria-live="polite"
+        >
           {arrowGesturePreview?.armed
             ? "Origen fijado — hace clic en el destino (Escape cancela)"
             : "Arrastra de origen a destino para crear la flecha, o hace clic-clic (Escape cancela)"}
