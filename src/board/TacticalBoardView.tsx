@@ -279,7 +279,11 @@ function TacticalBoardWorkspace({
             ))}
           </div>
 
-          <div className="rombo-right-panel-body">
+          {/* W25C: key remonta el body al cambiar de tab -> replay de la
+              animacion de entrada CSS (.rombo-right-panel-body, theme.css).
+              Cada tab ya se monta/desmonta condicionalmente abajo; esto solo
+              suma la transicion visual, no cambia que se renderiza. */}
+          <div className="rombo-right-panel-body" key={rightPanelTab}>
             {rightPanelTab === "roster" ? (
               <TacticalBoardRosterPanel
                 draft={a.draft}
@@ -370,6 +374,7 @@ function TacticalBoardWorkspace({
         currentSceneId={scene.id}
         status={a.status}
         saveIndicator={a.saveIndicator}
+        saveKey={a.lastSavedAt}
         zoom={a.zoom}
         onSelectScene={a.selectScene}
         onAddScene={a.addScene}

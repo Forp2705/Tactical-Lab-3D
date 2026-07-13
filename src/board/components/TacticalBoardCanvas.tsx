@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { MutableRefObject, PointerEvent } from "react";
 import {
   type BoardTool,
@@ -34,6 +35,25 @@ import { resolveArrowHintText } from "../boardTools";
 function resolveTargetIdFromEvent(event: PointerEvent<SVGSVGElement>) {
   const el = (event.target as Element).closest("[data-object-id]");
   return el?.getAttribute("data-object-id") ?? undefined;
+}
+
+// W25C: UI viva — el hint de gesto hoy aparece/desaparece seco porque React
+// desmonta el <p> apenas `active` pasa a false. Este hook SOLO retrasa el
+// desmontaje visual del propio hint (elemento pointer-events:none, no
+// interactivo) para poder animar la salida; no toca cuando `active` se
+// calcula ni la maquina de gestos que lo alimenta (isArrowToolActive /
+// arrowGesturePreview siguen siendo props que este componente solo lee).
+function useLingeringMount(active: boolean, exitMs: number) {
+  const [mounted, setMounted] = useState(active);
+  useEffect(() => {
+    if (active) {
+      setMounted(true);
+      return;
+    }
+    const id = setTimeout(() => setMounted(false), exitMs);
+    return () => clearTimeout(id);
+  }, [active, exitMs]);
+  return mounted;
 }
 
 type TacticalBoardCanvasProps = {
@@ -130,6 +150,13 @@ export function TacticalBoardCanvas({
   onOwnFormationChange,
   onOpponentFormationChange,
 }: TacticalBoardCanvasProps) {
+  // Merge W25 (coordinador): el hint queda montado tambien mientras hay una
+  // razon de block vigente (W25B) para que su TTL de 4s no muera desmontado
+  // por la salida animada de W25C.
+  const hintMounted = useLingeringMount(
+    Boolean(isArrowToolActive) || Boolean(grammarBlockNotice),
+    180,
+  );
   return (
     <section className="rombo-pitch-panel">
       <div className="rombo-pitch-toolbar">
@@ -154,26 +181,35 @@ export function TacticalBoardCanvas({
           flecha esta activa — no un manual. pointer-events:none (invariante
           W4: nunca robarle eventos a la cancha). FIXUP W25B: una razon de
           block vigente le gana a este hint en el MISMO renglon (nunca
-          conviven) — resolveArrowHintText decide la prioridad, esta seccion
-          solo cambia estilo/aria-live segun cual de las dos gano. */}
+          conviven) — resolveArrowHintText decide la prioridad. W25C: el
+          renglon entra/sale animado via useLingeringMount + clases
+          enter/exit; durante el linger de salida el resolver puede dar null,
+          se conserva el texto pasivo para que el fade-out tenga contenido. */}
       {(() => {
+        if (!hintMounted) return null;
         const hintText = resolveArrowHintText({
           grammarBlockReason: grammarBlockNotice?.reason ?? null,
           isArrowToolActive: Boolean(isArrowToolActive),
           armed: Boolean(arrowGesturePreview?.armed),
         });
-        if (!hintText) return null;
+        const isBlock = Boolean(grammarBlockNotice && hintText);
+        const className = [
+          "rombo-arrow-hint",
+          isBlock ? "rombo-arrow-hint-block" : "",
+          isArrowToolActive || isBlock
+            ? "rombo-arrow-hint-enter"
+            : "rombo-arrow-hint-exit",
+        ]
+          .filter(Boolean)
+          .join(" ");
         return (
           <p
-            key={grammarBlockNotice ? `block-${grammarBlockNotice.key}` : "hint"}
-            className={
-              grammarBlockNotice
-                ? "rombo-arrow-hint rombo-arrow-hint-block"
-                : "rombo-arrow-hint"
-            }
-            aria-live={grammarBlockNotice ? "assertive" : "polite"}
+            key={isBlock && grammarBlockNotice ? `block-${grammarBlockNotice.key}` : "hint"}
+            className={className}
+            aria-live={isBlock ? "assertive" : "polite"}
           >
-            {hintText}
+            {hintText ??
+              "Arrastra de origen a destino para crear la flecha, o hace clic-clic (Escape cancela)"}
           </p>
         );
       })()}
