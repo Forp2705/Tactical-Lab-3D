@@ -5744,11 +5744,17 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
    doctrina H1 relajada: legible > 32%-de-viewport). Su alto sigue el
    aspect-ratio fijo del viewBox (100:64) asi que sigue creciendo con el
    ancho que le queda. */
+/* W25C-fix3: metrica correcta es AREA (w*h/(1366*768)), no ancho — el rail
+   legible (84->190) + la fila de playback de W25A (footer a 2 lineas)
+   hicieron caer la cancha de 31.6% (W24) a 23% de area en el combinado
+   (medido por el coordinador con viewport EXACTO 1366x768). El SVG es
+   width-bound (.rombo-pitch-svg: width:min(100%,1100px); height:auto via
+   aspect-ratio) asi que 190/232 -> 155/195 recupera ancho directo. */
 .rombo-board-layout {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr) 232px;
+  grid-template-columns: 155px minmax(0, 1fr) 195px;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
   min-height: 0;
   padding: 8px;
 }
@@ -5849,10 +5855,14 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-toolrail button {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
   width: 100%;
-  margin-bottom: 4px;
-  padding: 8px 9px;
+  margin-bottom: 3px;
+  /* W25C-fix3: rail 190 -> 155px (gate de area de cancha >=28%) — padding
+     mas ajustado compensa el ancho perdido; el label sigue completo y
+     visible, solo envuelve a 2 lineas mas seguido (doctrina intacta:
+     nunca ellipsis, nunca icono-solo). */
+  padding: 7px 7px;
   text-align: left;
   color: color-mix(in oklch, var(--felt-ink) 82%, transparent);
   background: transparent;
@@ -5979,7 +5989,12 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
      que el SVG (aspect-ratio fijo 100:64) tiene el maximo espacio posible
      para crecer y ser el elemento dominante del viewport (H1 acceptance). */
   min-height: 0;
-  padding: 38px 12px 14px;
+  /* W25C-fix3: 12px -> 6px horizontal (gate de area de cancha >=28%) — el
+     SVG es width-bound (width: min(100%,1100px), height deriva por
+     aspect-ratio), asi que el padding horizontal del panel resta ancho
+     directo a la cancha. Vertical intacto (38px reservado para
+     .rombo-pitch-toolbar, position:absolute, top:10px). */
+  padding: 38px 6px 14px;
   /* Verbatim from Pizarra.html .pitch background. */
   background: linear-gradient(165deg, #0c1f18 0%, #081410 100%);
 }
@@ -5987,8 +6002,8 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-pitch-toolbar {
   position: absolute;
   top: 10px;
-  left: 12px;
-  right: 12px;
+  left: 6px;
+  right: 6px;
   z-index: 2;
   display: flex;
   justify-content: space-between;
