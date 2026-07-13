@@ -5737,12 +5737,16 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
    horizontal (168+minmax+340+gaps+sidebar <= 1366, medido en vivo).
    W24A H1: rail 168 -> 92 (icono-solo, ver .rombo-tool-grid) y panel
    340 -> 300 (tabs, ver .rombo-right-panel-tabs) liberan ~116px de ancho
-   para la cancha — es lo que la hace dominante en 1366x768 (H1 acceptance),
-   ya que su alto sigue el aspect-ratio fijo del viewBox (100:64) y por lo
-   tanto crece con el ancho disponible. */
+   para la cancha — es lo que la hace dominante en 1366x768 (H1 acceptance).
+   W25C: el rail icono-solo resulto ilegible en la practica (directiva del
+   dueno). Vuelve a 84 -> 190px (icono+texto, ver .rombo-toolrail button) —
+   la cancha cede ese ancho pero sigue >=28% del viewport (medido en vivo,
+   doctrina H1 relajada: legible > 32%-de-viewport). Su alto sigue el
+   aspect-ratio fijo del viewBox (100:64) asi que sigue creciendo con el
+   ancho que le queda. */
 .rombo-board-layout {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) 232px;
+  grid-template-columns: 190px minmax(0, 1fr) 232px;
   align-items: stretch;
   gap: 8px;
   min-height: 0;
@@ -5821,73 +5825,80 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   text-transform: uppercase;
 }
 
-/* W24A H1: el rail angosto (92px, icono-solo) no tiene lugar para el mono
-   uppercase de 11px + tracking 0.08em de arriba en una sola linea ("NAVEGACION",
-   "HERRAMIENTAS") — forzaba overflow horizontal (scrollWidth 165 vs 80
-   medido en vivo). Achica y permite wrap en vez de desbordar. */
+/* W25C: rail 84 -> 190px devuelve el lugar para el mono uppercase de arriba
+   en una sola linea ("NAVEGACION", "HERRAMIENTAS", "EQUIPAMIENTO" via
+   .rombo-equipment summary) — ya no hace falta comprimir a 9px/0.02em (esa
+   compresion era el parche de W24A para 92px, no una mejora en si misma).
+   overflow-wrap:break-word queda solo como red de seguridad de ultimo
+   recurso (una palabra suelta mas ancha que el rail), no como el mecanismo
+   principal de wrap. */
 .rombo-toolrail h2,
 .rombo-toolrail h3 {
   overflow-wrap: break-word;
-  font-size: 9px;
-  letter-spacing: 0.02em;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
 }
 
-/* W24A H1: rail icono-solo (con tooltip via title/aria-label) en grilla de 2
-   columnas — el rail 168px de texto+icono ocupaba 53% de tools tras un
-   scroll interno no anunciado (audit H1). Icono-solo + 2 columnas reduce la
-   altura necesaria a la mitad y libera ancho para que la cancha sea el
-   elemento dominante (H1 acceptance: cancha >=50% del viewport). */
-.rombo-tool-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  min-width: 0;
-}
-
-/* Antidoto al min-width:auto default de los items de grid: sin esto, el
-   min-content de cada boton (icono + padding) puede exceder el 1fr de su
-   columna y desbordar todo el rail en vez de encogerse (era la causa real
-   de que "Zonas" solo mostrara 1 de 2 iconos, medido en vivo). */
-.rombo-tool-grid > button {
-  min-width: 0;
-}
-
-/* Solo los botones-icono DENTRO de la grilla de tools (no "Borrar
-   seleccionado" ni los de color/grosor, que tienen su propio treatment):
-   ese boton de texto largo con aspect-ratio:1 heredado forzaba su ancho de
-   contenido sin wrap y era la causa real del overflow horizontal del rail
-   (scrollWidth 165 vs clientWidth 72, medido en vivo — NO era el texto de
-   los headers, que ya se arreglo arriba). */
-.rombo-tool-grid button {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  margin-bottom: 0;
-  padding: 6px;
+/* W25C: vuelve a la lista de 1 columna icono+texto (probada en W15 a
+   168px) en vez de la grilla icono-solo de W24A — "Toda herramienta con
+   etiqueta de texto visible SIEMPRE" (directiva del dueno tras ver el rail
+   icono-solo: "circulitos idénticos sin texto... un desastre"). El texto
+   nunca trunca con ellipsis (eso seguiria siendo "invisible" para el label
+   mas largo, "Cambio de orientacion") — envuelve a 2 lineas si no entra en
+   una, ver `.rombo-toolrail button span` abajo. */
+.rombo-toolrail button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 8px 9px;
+  text-align: left;
   color: color-mix(in oklch, var(--felt-ink) 82%, transparent);
   background: transparent;
   border-color: transparent;
+  /* UI viva (W25C parte 2): feedback de hover/press vivo, nunca sobre la
+     posicion del tool en si (eso es dominio del click, instantaneo) — solo
+     el estado visual de la superficie del boton. */
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 120ms ease;
 }
 
-.rombo-tool-grid button svg {
+.rombo-toolrail button svg {
   flex: 0 0 auto;
   color: color-mix(in oklch, var(--felt-ink) 65%, transparent);
+  transition: color 160ms ease;
 }
 
-.rombo-tool-grid button.active,
+.rombo-toolrail button span {
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-height: 1.2;
+  font-size: 12px;
+}
+
+.rombo-toolrail button:hover {
+  background: color-mix(in oklch, var(--felt-ink) 8%, transparent);
+  border-color: color-mix(in oklch, var(--felt-line), transparent 55%);
+}
+
+.rombo-toolrail button:active {
+  transform: scale(0.97);
+}
+
+.rombo-toolrail button.active,
 .rombo-width-row button.active {
   background: color-mix(in oklch, var(--felt-gold) 14%, transparent);
   border-color: color-mix(in oklch, var(--felt-gold) 45%, transparent);
   color: var(--felt-ink);
 }
 
-.rombo-tool-grid button.active svg {
+.rombo-toolrail button.active svg {
   color: var(--felt-gold);
 }
 
-/* El resto de los botones del rail (Borrar seleccionado) vuelve al treatment
-   de boton de texto normal, ancho completo dentro de los 84px del rail. */
-.rombo-toolrail > .rombo-tool-group > button,
 .rombo-toolrail .danger {
   width: 100%;
   white-space: normal;
