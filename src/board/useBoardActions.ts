@@ -45,6 +45,7 @@ import {
   detectAttackDir,
 } from "./scenarioBoardConsequence";
 import { deriveTacticalReads, type TacticalRead } from "./boardTacticalRead";
+import { samplePlayback } from "./boardPlayback";
 import {
   type ArrowGesturePhase,
   buildArrowFromGestureCommit,
@@ -187,6 +188,79 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       }
     };
   }, []);
+
+  // Playback (W25A): 100% presentational state layered over the drawn
+  // scene — samplePlayback never mutates it, nothing here is persisted.
+  const [playbackTime, setPlaybackTimeState] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeedState] = useState<1 | 2>(1);
+  const playbackRafRef = useRef<number | null>(null);
+  const playbackLastTsRef = useRef<number | null>(null);
+
+  const playbackFrame = useMemo(
+    () => samplePlayback(scene, playbackTime),
+    [scene, playbackTime],
+  );
+
+  // rAF SOLO mientras isPlaying (invariante W25A: el board no tiene loop de
+  // render fuera de esto, y en pausa/idle vuelve a cero rAF).
+  useEffect(() => {
+    if (!isPlaying) {
+      playbackLastTsRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    const tick = (ts: number) => {
+      if (cancelled) return;
+      if (playbackLastTsRef.current === null) playbackLastTsRef.current = ts;
+      const deltaSeconds = (ts - playbackLastTsRef.current) / 1000;
+      playbackLastTsRef.current = ts;
+      setPlaybackTimeState((prev) =>
+        Math.min(prev + deltaSeconds * playbackSpeed, playbackFrame.duration),
+      );
+      playbackRafRef.current = requestAnimationFrame(tick);
+    };
+    playbackRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      if (playbackRafRef.current !== null) {
+        cancelAnimationFrame(playbackRafRef.current);
+      }
+    };
+  }, [isPlaying, playbackSpeed, playbackFrame.duration]);
+
+  // Llegar al final detiene el loop (los tokens quedan en posicion final,
+  // PLAYBACK-DESIGN.md §5) sin resetear el tiempo — un segundo play vuelve a
+  // arrancar desde 0 (ver playPlayback).
+  useEffect(() => {
+    if (
+      isPlaying &&
+      playbackFrame.duration > 0 &&
+      playbackTime >= playbackFrame.duration
+    ) {
+      setIsPlaying(false);
+    }
+  }, [isPlaying, playbackTime, playbackFrame.duration]);
+
+  // Editar durante playback pausa automaticamente y vuelve al estado
+  // editable (PLAYBACK-DESIGN.md §7) — se llama desde commitScene (todo
+  // commit real de la escena pasa por ahi) y desde el pointerdown del canvas
+  // (para no dejar un drag/dibujo arrancar sobre un frame animado).
+  const stopPlaybackForEdit = () => {
+    setIsPlaying(false);
+    setPlaybackTimeState(0);
+  };
+
+  const playPlayback = () => {
+    if (playbackFrame.duration <= 0) return;
+    if (playbackTime >= playbackFrame.duration) setPlaybackTimeState(0);
+    setIsPlaying(true);
+  };
+  const pausePlayback = () => setIsPlaying(false);
+  const setPlaybackTime = (next: number) =>
+    setPlaybackTimeState(Math.min(Math.max(next, 0), playbackFrame.duration));
+  const togglePlaybackSpeed = () =>
+    setPlaybackSpeedState((current) => (current === 1 ? 2 : 1));
 
   const {
     roster,
@@ -336,6 +410,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   };
 
   const commitScene = (patch: Partial<BoardScene>, record = true) => {
+    stopPlaybackForEdit();
     if (record) pushHistory();
     // A scene mutation invalidates any pending projection — it was computed
     // for this exact scene state and anchored to its objectIds (spec §5.4).
@@ -706,6 +781,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   };
 
   const onCanvasPointerDown = (point: BoardPoint, targetId?: string) => {
+    // Cualquier interaccion de edicion con la cancha corta el playback en
+    // curso ANTES de arrancar el gesto — nunca se dibuja/arrastra sobre un
+    // frame animado (PLAYBACK-DESIGN.md §7).
+    stopPlaybackForEdit();
     // move/select sobre un token -> arrancar drag (y cancelar cualquier
     // gesto de flecha en curso). Comportamiento existente.
     if (targetId && (tool === "move" || tool === "select")) {
@@ -986,5 +1065,16 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     runScenario,
     commitOverlay,
     discardOverlay,
+    // playback (W25A)
+    playbackTime,
+    playbackDuration: playbackFrame.duration,
+    playbackPositions: playbackFrame.positions,
+    playbackArrowProgress: playbackFrame.arrowProgress,
+    isPlaying,
+    playbackSpeed,
+    playPlayback,
+    pausePlayback,
+    setPlaybackTime,
+    togglePlaybackSpeed,
   };
 }

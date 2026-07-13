@@ -240,6 +240,8 @@ function TacticalBoardWorkspace({
           isArrowToolActive={a.isArrowToolActive}
           consequenceOverlay={a.consequenceOverlay}
           tacticalOverlay={a.tacticalOverlay}
+          playbackPositions={a.playbackPositions}
+          playbackArrowProgress={a.playbackArrowProgress}
           keyInstructions={{
             objective: a.problem.objective,
             rule: a.exercise.rule,
@@ -372,6 +374,14 @@ function TacticalBoardWorkspace({
         onZoomOut={a.zoomOut}
         onZoomIn={a.zoomIn}
         onMoveScene={a.moveScene}
+        playbackTime={a.playbackTime}
+        playbackDuration={a.playbackDuration}
+        isPlaying={a.isPlaying}
+        playbackSpeed={a.playbackSpeed}
+        onPlayPlayback={a.playPlayback}
+        onPausePlayback={a.pausePlayback}
+        onScrubPlayback={a.setPlaybackTime}
+        onTogglePlaybackSpeed={a.togglePlaybackSpeed}
       />
     </section>
   );

@@ -74,6 +74,15 @@ type TacticalBoardCanvasProps = {
   // dialogs invariants). `key` forces the pulse animation to restart on
   // every new drop even if the reads are identical to the last one.
   tacticalOverlay: { reads: TacticalRead[]; key: number } | null;
+  // Playback (W25A): posiciones animadas por objectId (SOLO tokens/pelota
+  // afectados por al menos un tramo — el resto se queda en su posicion
+  // estatica). undefined/{} cuando no hay playback activo (t=0, editable).
+  // Las FLECHAS siempre se dibujan con la posicion estatica de scene.objects
+  // — el plan queda fijo, las fichas se mueven encima (PLAYBACK-DESIGN.md §7).
+  playbackPositions?: Record<string, BoardPoint>;
+  // Progreso 0..1 por flecha en el instante actual — resalta visualmente la
+  // accion en curso mientras se reproduce.
+  playbackArrowProgress?: Record<string, number>;
   keyInstructions: {
     objective: string;
     rule: string;
@@ -104,6 +113,8 @@ export function TacticalBoardCanvas({
   isArrowToolActive,
   consequenceOverlay,
   tacticalOverlay,
+  playbackPositions,
+  playbackArrowProgress,
   keyInstructions,
   onSelect,
   onPointerDown,
@@ -156,6 +167,8 @@ export function TacticalBoardCanvas({
         arrowGesturePreview={arrowGesturePreview}
         consequenceOverlay={consequenceOverlay}
         tacticalOverlay={tacticalOverlay}
+        playbackPositions={playbackPositions}
+        playbackArrowProgress={playbackArrowProgress}
         onSelect={onSelect}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -190,6 +203,8 @@ function TacticalPitch({
   arrowGesturePreview,
   consequenceOverlay,
   tacticalOverlay,
+  playbackPositions,
+  playbackArrowProgress,
   onSelect,
   onPointerDown,
   onPointerMove,
@@ -212,12 +227,27 @@ function TacticalPitch({
   } | null;
   consequenceOverlay: ConsequenceOverlay | null;
   tacticalOverlay: { reads: TacticalRead[]; key: number } | null;
+  playbackPositions?: Record<string, BoardPoint>;
+  playbackArrowProgress?: Record<string, number>;
   onSelect: (selection: Selection) => void;
   onPointerDown: (point: BoardPoint, targetId?: string) => void;
   onPointerMove: (point: BoardPoint) => void;
   onPointerUp: (point: BoardPoint, targetId?: string) => void;
 }) {
-  const visibleObjects = scene.objects.filter((object) => {
+  // W25A: solo la CAPA DE RENDER de tokens/pelota usa la posicion animada —
+  // las flechas mas abajo siguen resolviendo endpointPoint sobre el
+  // scene.objects ORIGINAL (el plan queda fijo, las fichas se mueven
+  // encima). Nunca se muta scene.objects; esto es un array nuevo solo para
+  // este pase de pintado.
+  const displayObjects = playbackPositions
+    ? scene.objects.map((object) =>
+        playbackPositions[object.id]
+          ? { ...object, position: playbackPositions[object.id] }
+          : object,
+      )
+    : scene.objects;
+
+  const visibleObjects = displayObjects.filter((object) => {
     if (object.type === "opponentToken" && !activeLayers.has("defense"))
       return false;
     if (object.type === "note" && !activeLayers.has("attack")) return false;
@@ -369,6 +399,9 @@ function TacticalPitch({
       ) : null}
 
       {visibleArrows.map((arrow) => {
+        // Flechas SIEMPRE resueltas sobre scene.objects (estatico) — nunca
+        // sobre displayObjects: el plan dibujado queda fijo, solo las fichas
+        // se mueven encima durante el playback.
         const start = endpointPoint(arrow.from, scene.objects);
         const end = endpointPoint(arrow.to, scene.objects);
         const style = arrowStyle(arrow.semantic);
@@ -377,6 +410,14 @@ function TacticalPitch({
         const d = style.curved
           ? `M${start.x} ${scaleY(start.y)} Q${(start.x + end.x) / 2} ${scaleY(start.y - 16)} ${end.x} ${scaleY(end.y)}`
           : `M${start.x} ${scaleY(start.y)} L${end.x} ${scaleY(end.y)}`;
+        // W25A: resalta la accion EN CURSO durante el playback (progreso
+        // estrictamente entre 0 y 1) — insumo de samplePlayback, sin motor
+        // nuevo aca, solo una clase CSS condicional.
+        const playbackProgress = playbackArrowProgress?.[arrow.id];
+        const isActivePlayback =
+          playbackProgress !== undefined &&
+          playbackProgress > 0 &&
+          playbackProgress < 1;
         return (
           <g
             key={arrow.id}
@@ -388,7 +429,7 @@ function TacticalPitch({
           >
             <path
               d={d}
-              className={`board-arrow ${arrow.semantic}`}
+              className={`board-arrow ${arrow.semantic}${isActivePlayback ? " rombo-playback-active-arrow" : ""}`}
               stroke={stroke}
               strokeWidth={lineWidth * 0.35}
               strokeDasharray={style.dashed ? "1.4 1" : undefined}

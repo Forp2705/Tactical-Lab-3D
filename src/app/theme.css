@@ -5585,6 +5585,11 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-board-footer {
   border-top: 1px solid var(--felt-line);
   border-bottom: 0;
+  /* W25A: el footer ya tenia bastante contenido (escena/guardado/zoom); los
+     controles de playback son el item mas nuevo/largo, asi que dejar que
+     el footer envuelva a una 2da linea en vez de desbordar horizontalmente. */
+  flex-wrap: wrap;
+  row-gap: 6px;
 }
 
 /* W15: .rombo-brand y .rombo-title-block eliminadas — el topbar interno ya
@@ -6593,6 +6598,66 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-board-footer .rombo-board-status {
   opacity: 0.75;
+}
+
+/* W25A: controles de reproduccion de la jugada — viven en el footer a
+   proposito (invariante W4, nada flotante sobre el pitch). Prefijo
+   rombo-playback- exclusivo (limite de la ola: mc-18 es dueno del resto de
+   theme.css/rail en esta ronda). */
+.rombo-playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+
+.rombo-playback-toggle,
+.rombo-playback-speed {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.rombo-playback-toggle {
+  min-width: 92px;
+  background: var(--felt-gold) !important;
+  border-color: rgba(26, 18, 5, 0.35) !important;
+  color: #1a1205 !important;
+  font-weight: 700;
+}
+
+.rombo-playback-toggle:disabled {
+  background: color-mix(in oklch, var(--felt-bg-3) 88%, black) !important;
+  color: color-mix(in oklch, var(--felt-ink) 45%, transparent) !important;
+  border-color: transparent !important;
+}
+
+.rombo-playback-scrub {
+  flex: 1 1 auto;
+  min-width: 90px;
+  accent-color: var(--felt-gold);
+}
+
+/* W25A: resalta la flecha de la accion EN CURSO durante la reproduccion —
+   un pulso sutil de opacidad, sin animacion de trazo (mantiene el motor
+   puro en boardPlayback.ts; esto es solo CSS reaccionando a una clase). */
+@keyframes rombo-playback-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.rombo-playback-active-arrow {
+  /* Color fijo (felt-gold) en vez de currentColor: el stroke real de la
+     flecha se setea inline por semantica (arrowStyle), no via CSS `color`,
+     asi que currentColor no matchearia — un halo dorado consistente lee
+     mejor como "esto es lo que esta pasando ahora" de cualquier forma. */
+  filter: drop-shadow(0 0 1.6px var(--felt-gold));
+  animation: rombo-playback-pulse 0.9s ease-in-out infinite;
 }
 
 .rombo-board-empty {
