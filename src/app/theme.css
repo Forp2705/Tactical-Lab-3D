@@ -6118,6 +6118,16 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   transform-origin: center;
   filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.3));
   touch-action: none;
+  /* W25 gate (hallazgo pre-existente de main, catalogado con W25A por ser
+     la superficie de gestos de la pizarra): un drag que ARRANCA sobre el
+     glifo de texto de un token (numero/nombre, <text> de SVG) crea una
+     seleccion silenciosa; el PROXIMO drag desde un glifo ya seleccionado
+     dispara dragstart nativo del browser -> pointercancel -> el gesto
+     muere mudo (pointerup nunca llega). Scope al SVG de la cancha, NO
+     global: los inputs del Inspector/notas del panel derecho siguen
+     seleccionables. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Line/fill colors transplanted from Pizarra.html .pitch markings
