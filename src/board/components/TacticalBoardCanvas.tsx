@@ -24,6 +24,7 @@ import type {
 } from "../boardModel";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 import type { TacticalRead } from "../boardTacticalRead";
+import { resolveArrowHintText } from "../boardTools";
 
 // Resuelve el objectId bajo un punto de release (pointerup) leyendo el DOM:
 // a diferencia del pointerdown (cada token pasa su propio id via closure), el
@@ -64,6 +65,11 @@ type TacticalBoardCanvasProps = {
   // flecha esta activa, no un manual — un renglon que explica ambas
   // gramaticas (drag y click-click) y como cancelar.
   isArrowToolActive?: boolean;
+  // FIXUP W25B: razon de un block de gramatica tactica vigente. Le gana al
+  // hint pasivo de arriba (resolveArrowHintText decide la prioridad); vive
+  // ARROW_BLOCK_HINT_TTL_MS o hasta el proximo gesto real, controlado por
+  // useBoardActions — este componente solo renderiza lo que le llega.
+  grammarBlockNotice?: { reason: string; key: number } | null;
   // Proyeccion efimera de RomboIQ (preview); su geometria es identica a la que
   // se commitea al aceptar — solo cambia el estilo (ghost/punteado) para senalar
   // que todavia no es parte de la escena.
@@ -111,6 +117,7 @@ export function TacticalBoardCanvas({
   zoneDragPreview,
   arrowGesturePreview,
   isArrowToolActive,
+  grammarBlockNotice,
   consequenceOverlay,
   tacticalOverlay,
   playbackPositions,
@@ -145,14 +152,31 @@ export function TacticalBoardCanvas({
       </div>
       {/* Hint minimo how-to (W24A H3): un renglon, solo mientras una tool de
           flecha esta activa — no un manual. pointer-events:none (invariante
-          W4: nunca robarle eventos a la cancha). */}
-      {isArrowToolActive ? (
-        <p className="rombo-arrow-hint" aria-live="polite">
-          {arrowGesturePreview?.armed
-            ? "Origen fijado — hace clic en el destino (Escape cancela)"
-            : "Arrastra de origen a destino para crear la flecha, o hace clic-clic (Escape cancela)"}
-        </p>
-      ) : null}
+          W4: nunca robarle eventos a la cancha). FIXUP W25B: una razon de
+          block vigente le gana a este hint en el MISMO renglon (nunca
+          conviven) — resolveArrowHintText decide la prioridad, esta seccion
+          solo cambia estilo/aria-live segun cual de las dos gano. */}
+      {(() => {
+        const hintText = resolveArrowHintText({
+          grammarBlockReason: grammarBlockNotice?.reason ?? null,
+          isArrowToolActive: Boolean(isArrowToolActive),
+          armed: Boolean(arrowGesturePreview?.armed),
+        });
+        if (!hintText) return null;
+        return (
+          <p
+            key={grammarBlockNotice ? `block-${grammarBlockNotice.key}` : "hint"}
+            className={
+              grammarBlockNotice
+                ? "rombo-arrow-hint rombo-arrow-hint-block"
+                : "rombo-arrow-hint"
+            }
+            aria-live={grammarBlockNotice ? "assertive" : "polite"}
+          >
+            {hintText}
+          </p>
+        );
+      })()}
       <TacticalPitch
         refEl={svgRef}
         scene={scene}

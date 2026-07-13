@@ -238,6 +238,7 @@ function TacticalBoardWorkspace({
           zoneDragPreview={a.zoneDragPreview}
           arrowGesturePreview={a.arrowGesturePreview}
           isArrowToolActive={a.isArrowToolActive}
+          grammarBlockNotice={a.grammarBlockNotice}
           consequenceOverlay={a.consequenceOverlay}
           tacticalOverlay={a.tacticalOverlay}
           playbackPositions={a.playbackPositions}
@@ -330,6 +331,7 @@ function TacticalBoardWorkspace({
                 aiInterpretation={a.aiInterpretation}
                 tacticalReads={a.tacticalReads}
                 hasAnyOwnRoleAssigned={a.hasAnyOwnRoleAssigned}
+                grammarWarnings={a.grammarWarnings}
                 layers={a.layers}
                 payload={a.payload}
                 attachBlockId={a.attachBlockId}

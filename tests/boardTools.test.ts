@@ -14,6 +14,7 @@ import {
   labelForTool,
   makeEquipmentLikeObject,
   mergeFormationTokens,
+  resolveArrowHintText,
   resolveZoneDragRect,
   semanticForTool,
   stepArrowGestureOnPointerDown,
@@ -490,5 +491,61 @@ describe("boardTools — commitZoneDrag (W8: one undo entry per zone, on pointer
     });
     const created = commitScene.mock.calls[0][0].zones.at(-1);
     expect(created.semantic).toBe("block");
+  });
+});
+
+describe("boardTools — resolveArrowHintText (FIXUP W25B: la razon del block le gana al hint pasivo)", () => {
+  it("una razon de block vigente gana siempre, tool de flecha activa o no", () => {
+    expect(
+      resolveArrowHintText({
+        grammarBlockReason: "El 9 ya tiene un desmarque...",
+        isArrowToolActive: true,
+        armed: false,
+      }),
+    ).toBe("El 9 ya tiene un desmarque...");
+    expect(
+      resolveArrowHintText({
+        grammarBlockReason: "El 9 ya tiene un desmarque...",
+        isArrowToolActive: false,
+        armed: false,
+      }),
+    ).toBe("El 9 ya tiene un desmarque...");
+  });
+
+  it("una razon de block vigente gana incluso con el origen ya armado (segundo click pendiente)", () => {
+    expect(
+      resolveArrowHintText({
+        grammarBlockReason: "El 9 ya tiene un desmarque...",
+        isArrowToolActive: true,
+        armed: true,
+      }),
+    ).toBe("El 9 ya tiene un desmarque...");
+  });
+
+  it("sin razon de block y tool inactiva: silencio (null, no un hint fantasma)", () => {
+    expect(
+      resolveArrowHintText({
+        grammarBlockReason: null,
+        isArrowToolActive: false,
+        armed: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("sin razon de block: el hint pasivo vuelve, texto segun armed/no-armed", () => {
+    expect(
+      resolveArrowHintText({
+        grammarBlockReason: null,
+        isArrowToolActive: true,
+        armed: false,
+      }),
+    ).toMatch(/Arrastra de origen a destino/);
+    expect(
+      resolveArrowHintText({
+        grammarBlockReason: null,
+        isArrowToolActive: true,
+        armed: true,
+      }),
+    ).toMatch(/Origen fijado/);
   });
 });

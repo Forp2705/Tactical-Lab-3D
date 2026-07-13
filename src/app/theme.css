@@ -6021,6 +6021,30 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   transform: translateX(-50%);
 }
 
+/* FIXUP W25B: la razon de un block de gramatica tactica toma este MISMO
+   renglon (resolveArrowHintText decide la prioridad en boardTools.ts) — coral
+   en vez de mint, mas peso, para que se lea como un aviso y no como el hint
+   pasivo de siempre. rombo-arrow-hint-fade-in es solo entrada (la salida la
+   controla el timeout/clear de useBoardActions, nunca un fade-out por CSS). */
+.rombo-arrow-hint-block {
+  border-color: color-mix(in oklch, var(--felt-coral, #ff6b5e) 55%, transparent);
+  background: color-mix(in oklch, var(--felt-coral, #ff6b5e) 20%, var(--felt-bg-3));
+  color: var(--felt-ink);
+  font-weight: 600;
+  animation: rombo-arrow-hint-fade-in 160ms ease-out;
+}
+
+@keyframes rombo-arrow-hint-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .rombo-pitch-svg {
   width: min(100%, 1100px);
   height: auto;
@@ -6452,6 +6476,27 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   margin: 8px 0 0;
   color: color-mix(in oklch, var(--felt-ink) 55%, transparent);
   font-size: 12px;
+}
+
+/* Gramatica tactica (W25B): advertencias vigentes (auditScene). Mismo par
+   chip/wrap que .rombo-tactical-reads, pero en felt-coral (el mismo tono de
+   "danger" ya usado en el board) para distinguir "medicion" de "aviso". */
+.rombo-grammar-warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rombo-grammar-warning-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--felt-coral, #ff6b5e) 45%, transparent);
+  background: color-mix(in oklch, var(--felt-coral, #ff6b5e) 12%, transparent);
+  color: var(--felt-ink);
+  font-family: var(--felt-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
 }
 
 .rombo-layer-list {

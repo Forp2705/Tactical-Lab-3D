@@ -4,6 +4,7 @@ import { blockTitle } from "../boardGeometry";
 import type { BoardPayload, PlanningBoardLayer } from "../productBoardTypes";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 import type { TacticalRead } from "../boardTacticalRead";
+import type { GrammarWarning } from "../boardTacticalGrammar";
 import { groundingSummary } from "@/board/scenarioGrounding";
 import type { BoardEvidencePacket } from "@/board/boardEvidencePacket";
 import type { BoardFreeStateEvidencePacket } from "@/board/boardFreeStateEvidencePacket";
@@ -21,6 +22,10 @@ type TacticalBoardAiPanelProps = {
   // con rol asignado) de "midio y quedo mudo porque esta equilibrado" — solo
   // el primer caso amerita un estado vacio explicito (ver render abajo).
   hasAnyOwnRoleAssigned: boolean;
+  // Gramatica tactica (W25B): warnings vigentes de la escena actual (auditScene),
+  // recalculadas en el mismo ciclo que tacticalReads. El bloqueo duro no pasa
+  // por aca — ese feedback sale por el status del footer en el commit del gesto.
+  grammarWarnings: GrammarWarning[];
   layers: PlanningBoardLayer[];
   payload: BoardPayload | null;
   attachBlockId: string;
@@ -60,6 +65,7 @@ export function TacticalBoardAiPanel({
   aiInterpretation,
   tacticalReads,
   hasAnyOwnRoleAssigned,
+  grammarWarnings,
   layers,
   payload,
   attachBlockId,
@@ -124,6 +130,19 @@ export function TacticalBoardAiPanel({
             para que RomboIQ pueda medir.
           </p>
         )}
+        {/* Gramatica tactica (W25B): advertencias vigentes de la escena
+            (acumulacion, saturacion de un token, mezcla ofensiva/defensiva).
+            Nunca bloquean nada aca — lo imposible ya se rechazo en el commit
+            del gesto (ver status del footer); esto es solo lo dudoso. */}
+        {grammarWarnings.length > 0 ? (
+          <div className="rombo-grammar-warnings">
+            {grammarWarnings.map((warning) => (
+              <span key={warning.id} className="rombo-grammar-warning-chip">
+                {warning.text}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="rombo-freestate-coach">
