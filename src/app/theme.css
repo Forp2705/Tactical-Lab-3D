@@ -5611,10 +5611,11 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   text-align: center;
 }
 
-.rombo-board-shell .rombo-save {
-  background: var(--felt-gold);
-  border-color: rgba(26, 18, 5, 0.35);
-  color: #1a1205;
+/* H7 (W24): ya no es el CTA gold prominente — el header ya no compite con
+   la senal de autosave del footer (.rombo-board-save-indicator). */
+.rombo-board-shell .rombo-save-secondary {
+  font-size: 12px;
+  opacity: 0.85;
 }
 
 .rombo-board-select {
@@ -6341,6 +6342,17 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-board-footer span {
   font-size: 13px;
+}
+
+/* H7 (W24): unica senal de guardado — dominante frente al resto del footer
+   (que queda atenuado por .rombo-board-footer color 65%). */
+.rombo-board-footer .rombo-board-save-indicator {
+  color: color-mix(in oklch, var(--felt-ink), transparent 5%);
+  font-weight: 700;
+}
+
+.rombo-board-footer .rombo-board-status {
+  opacity: 0.75;
 }
 
 .rombo-board-empty {
