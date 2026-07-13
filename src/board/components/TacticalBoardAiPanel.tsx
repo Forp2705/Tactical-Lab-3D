@@ -397,10 +397,14 @@ export function TacticalBoardAiPanel({
         </button>
       </section>
 
-      {/* Exports y payload JSON viven internamente, no dominan el panel. Los
-          handlers siguen funcionando, solo dejan de ser prominentes. */}
-      <details className="rombo-advanced">
-        <summary>Avanzado</summary>
+      {/* H4 (W24-audit): estos tres SI sirven para presentar/compartir la
+          pizarra — el audit los encontro enterrados en "Avanzado" al fondo
+          de los 2000px del panel mientras el header promovia un "Modo
+          presentacion" que no presentaba nada de esto. Suben a un lugar
+          visible del panel; el payload JSON (debug/dev, no presentable)
+          se queda abajo en "Avanzado". */}
+      <section className="rombo-exports">
+        <h2>Exportar / compartir</h2>
         <button type="button" onClick={onExportImage}>
           Exportar imagen
         </button>
@@ -410,6 +414,10 @@ export function TacticalBoardAiPanel({
         <button type="button" onClick={() => onExportBrief("player")}>
           Brief jugadores
         </button>
+      </section>
+
+      <details className="rombo-advanced">
+        <summary>Avanzado</summary>
         <button type="button" onClick={onExportPayload}>
           Exportar payload (JSON)
         </button>

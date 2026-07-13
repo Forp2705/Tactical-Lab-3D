@@ -91,6 +91,51 @@ describe("deriveTacticalReads — lateralBias (la feature estrella)", () => {
       "sufficient",
     );
   });
+
+  it("RED-CHECK calibracion: el wing NO contamina el ancla de banda; ancla al lateral (LB), no al LW", () => {
+    // Banda izquierda con DOS tokens resolubles: el LW dibujado PRIMERO y mas
+    // adelantado (x=90), el LB despues (x=70). El motor viejo anclaba al primer
+    // "left" por orden de escena -> tomaba el LW -> +45. La calibracion ancla al
+    // lateral literal (LB, mas retrasado que el wing) -> +25.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 90, y: 15 }, "LW", 11), // wing, primero en escena
+      createPlayerToken(null, { x: 70, y: 30 }, "LB", 3), // lateral literal
+      createPlayerToken(null, { x: 45, y: 80 }, "RB", 2),
+    ]);
+    const reads = deriveTacticalReads(scene, 1);
+    const lateral = reads.find((r) => r.kind === "lateralBias");
+    expect(lateral?.text).toMatch(/izquierdo/i);
+    expect(lateral?.text).toMatch(/\+25\b/);
+    expect(lateral?.text).not.toMatch(/\+45/);
+  });
+
+  it("dos laterales del mismo lado -> ancla al MAS RETRASADO (medicion, no adivinanza de lado)", () => {
+    // Dos LB en la banda izquierda: uno metido atras (x=55), otro proyectado
+    // (x=88). Desambiguar CUAL de dos tokens del MISMO lado ya resuelto por rol
+    // se hace por avance (legitimo): ancla al mas retrasado (x=55) -> +10.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 88, y: 15 }, "LB", 3),
+      createPlayerToken(null, { x: 55, y: 30 }, "LB", 13),
+      createPlayerToken(null, { x: 45, y: 80 }, "RB", 2),
+    ]);
+    const reads = deriveTacticalReads(scene, 1);
+    const lateral = reads.find((r) => r.kind === "lateralBias");
+    expect(lateral).toBeUndefined(); // 55 vs 45 = +10 < umbral 15 -> silencio
+  });
+
+  it("sin par resoluble (un lado sin lateral/wing) -> silencio", () => {
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 90, y: 15 }, "LW", 11),
+      createPlayerToken(null, { x: 70, y: 30 }, "LB", 3),
+      // derecha: solo un mediocampista central, no resuelve lado -> sin par
+      createPlayerToken(null, { x: 45, y: 55 }, "CM", 8),
+    ]);
+    const reads = deriveTacticalReads(scene, 1);
+    expect(reads.find((r) => r.kind === "lateralBias")).toBeUndefined();
+  });
 });
 
 describe("deriveTacticalReads — blockHeight", () => {
@@ -124,6 +169,52 @@ describe("deriveTacticalReads — blockHeight", () => {
     ]);
     const reads = deriveTacticalReads(scene, 1);
     expect(reads.find((r) => r.kind === "blockHeight")).toBeUndefined();
+  });
+
+  it("linea defensiva en el tercio medio -> lectura de bloque medio", () => {
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 48, y: 40 }, "CB", 4),
+      createPlayerToken(null, { x: 50, y: 60 }, "CB", 5),
+    ]);
+    const reads = deriveTacticalReads(scene, 1);
+    expect(reads.find((r) => r.kind === "blockHeight")?.text).toMatch(/medio/i);
+  });
+
+  it("RED-CHECK calibracion: un wing adelantado NO corre la altura del bloque (solo linea defensiva)", () => {
+    // Dos centrales metidos atras (bloque bajo). Dos wings pegados a la ultima
+    // linea rival (x=85). El motor viejo contaba LW/RW como 'backs' via la regex
+    // LEFT/RIGHT y promediaba a 'medio' (x~50); la calibracion solo cuenta la
+    // linea defensiva (CB + laterales) -> el bloque sigue leyendose 'bajo'.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 15, y: 40 }, "CB", 4),
+      createPlayerToken(null, { x: 17, y: 60 }, "CB", 5),
+      createPlayerToken(null, { x: 85, y: 10 }, "LW", 11),
+      createPlayerToken(null, { x: 85, y: 90 }, "RW", 7),
+    ]);
+    const reads = deriveTacticalReads(scene, 1);
+    const block = reads.find((r) => r.kind === "blockHeight");
+    expect(block?.text).toMatch(/bajo/i);
+    expect(block?.overlayX).toBeCloseTo(16, 0);
+  });
+
+  it("los laterales SI integran la linea defensiva (afectan altura y confianza)", () => {
+    // CB+CB+LB+RB, los cuatro en el tercio alto -> bloque alto y confianza alta
+    // (>=3 backs). Si los laterales quedaran fuera contarian solo 2 CBs
+    // (confianza media): la asercion de confianza 'high' bloquea esa regresion.
+    const scene = sceneWith([
+      createPlayerToken(null, { x: 8, y: 50 }, "GK", 1),
+      createPlayerToken(null, { x: 70, y: 30 }, "CB", 4),
+      createPlayerToken(null, { x: 70, y: 70 }, "CB", 5),
+      createPlayerToken(null, { x: 72, y: 15 }, "LB", 3),
+      createPlayerToken(null, { x: 72, y: 85 }, "RB", 2),
+    ]);
+    const reads = deriveTacticalReads(scene, 1);
+    const block = reads.find((r) => r.kind === "blockHeight");
+    expect(block?.text).toMatch(/alto/i);
+    expect(block?.confidence).toBe("high");
+    expect(block?.evidenceLevel).toBe("sufficient");
   });
 });
 

@@ -50,8 +50,17 @@ export function TacticalBoardTopbar({
           ))}
         </select>
       </label>
-      <button type="button" className="rombo-save" onClick={onSaveBoard}>
-        Guardar
+      {/* H7 (W24): degradado de CTA prominente (gold, competia con la senal
+          de autosave del footer) a accion secundaria. La pizarra se
+          autoguarda sola; esto solo fuerza el volcado del objetivo/regla/
+          exito al resumen que consume el brief exportable (saveBoard). */}
+      <button
+        type="button"
+        className="rombo-save-secondary"
+        onClick={onSaveBoard}
+        title="La pizarra se guarda sola. Esto actualiza el resumen que usa el brief exportable."
+      >
+        Actualizar brief
       </button>
     </header>
   );

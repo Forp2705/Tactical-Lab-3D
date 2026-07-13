@@ -365,6 +365,7 @@ function TacticalBoardWorkspace({
         scenes={board.scenes}
         currentSceneId={scene.id}
         status={a.status}
+        saveIndicator={a.saveIndicator}
         zoom={a.zoom}
         onSelectScene={a.selectScene}
         onAddScene={a.addScene}

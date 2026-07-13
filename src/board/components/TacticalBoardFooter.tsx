@@ -4,6 +4,7 @@ type TacticalBoardFooterProps = {
   scenes: BoardScene[];
   currentSceneId: string;
   status: string;
+  saveIndicator: string;
   zoom: number;
   onSelectScene: (sceneId: string) => void;
   onAddScene: () => void;
@@ -16,6 +17,7 @@ export function TacticalBoardFooter({
   scenes,
   currentSceneId,
   status,
+  saveIndicator,
   zoom,
   onSelectScene,
   onAddScene,
@@ -40,7 +42,14 @@ export function TacticalBoardFooter({
       </button>
       <span>Pizarra de planificacion</span>
       <strong>Anotaciones que se convierten en entrenamiento</strong>
-      <span>{status}</span>
+      {/* H7 (W24): unica senal de guardado del panel — reemplaza la
+          competencia entre el boton "Guardar" del header y este texto.
+          status sigue vivo para feedback puntual de otras acciones
+          (duplicar escena, exportar imagen, etc.), nunca para "guardado". */}
+      <span className="rombo-board-save-indicator" aria-live="polite">
+        {saveIndicator}
+      </span>
+      {status ? <span className="rombo-board-status">{status}</span> : null}
       <button type="button" onClick={onZoomOut}>
         -
       </button>
