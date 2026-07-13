@@ -57,6 +57,14 @@ instantes distintos de la misma fase).
 - Ejemplo de razón: "El 9 ya tiene un desmarque o movimiento marcado en esta
   escena: no puede hacer dos a la vez."
 
+**Precisión (review del coordinador):** esta regla vigila el **mismo token
+anclado** como origen, nunca una coincidencia de coordenadas. Una carrera en
+dos tramos —algo que un DT sí dibuja— arranca su segunda etapa desde el
+punto libre donde terminó la primera, no desde el token: ese origen es un
+`{ kind: "point" }`, nunca puede matchear el `objectId` de la flecha
+existente, así que la segunda etapa nunca se bloquea aunque coincida en
+coordenadas con el final de la primera.
+
 ### B2. Flecha duplicada exacta
 
 Mismo origen, mismo destino, misma semántica ya existe en la escena. Dibujar

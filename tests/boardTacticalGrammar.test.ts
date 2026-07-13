@@ -60,6 +60,31 @@ describe("boardTacticalGrammar — BLOCK", () => {
     expect(evaluateAction(scene, proposed).verdict).toBe("allow");
   });
 
+  it("B1: una segunda carrera que arranca de un PUNTO LIBRE (no del mismo token) nunca se bloquea", () => {
+    // Precision del coordinador (review de GRAMMAR-RULES.md): B1 vigila el
+    // MISMO TOKEN anclado como origen. Una carrera en dos tramos —el DT SI
+    // dibuja esto— arranca su segunda etapa desde el punto libre donde
+    // termino la primera, nunca desde el token: ese origen nunca puede
+    // matchear originObjectId(existing), aunque coincida en coordenadas.
+    const nine = createPlayerToken(null, { x: 40, y: 50 }, "ST", 9);
+    const scene = sceneWith([nine]);
+    const firstLegEnd = { x: 70, y: 40 };
+    scene.arrows = [
+      createSemanticArrow(
+        "run",
+        { kind: "object", objectId: nine.id },
+        { kind: "point", point: firstLegEnd },
+      ),
+    ];
+
+    const secondLeg = createSemanticArrow(
+      "run",
+      { kind: "point", point: firstLegEnd },
+      { kind: "point", point: { x: 90, y: 30 } },
+    );
+    expect(evaluateAction(scene, secondLeg).verdict).toBe("allow");
+  });
+
   it("B2: flecha duplicada exacta (mismo origen, destino y semantica) se bloquea", () => {
     const eight = createPlayerToken(null, { x: 40, y: 50 }, "CM", 8);
     const ten = createPlayerToken(null, { x: 55, y: 55 }, "CAM", 10);
