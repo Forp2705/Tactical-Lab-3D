@@ -5585,11 +5585,16 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-board-footer {
   border-top: 1px solid var(--felt-line);
   border-bottom: 0;
-  /* W25A: el footer ya tenia bastante contenido (escena/guardado/zoom); los
-     controles de playback son el item mas nuevo/largo, asi que dejar que
-     el footer envuelva a una 2da linea en vez de desbordar horizontalmente. */
-  flex-wrap: wrap;
-  row-gap: 6px;
+  /* W25A: footer en UNA fila densa (nowrap) — el fixup de layout combinado
+     de mc-18 necesita esto para sostener el area de cancha >=28%; los
+     controles de playback se achican via padding/gap en vez de volver a
+     wrap (ver .rombo-playback-controls mas abajo). Gap/padding propios
+     (mas chicos que el topbar/health compartido) para que el resto del
+     footer + los controles de playback entren en una sola fila a 1366px
+     sin overlap visual (medido en vivo). */
+  gap: 6px;
+  padding: 7px 10px;
+  flex-wrap: nowrap;
 }
 
 /* W15: .rombo-brand y .rombo-title-block eliminadas — el topbar interno ya
@@ -6607,8 +6612,8 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-playback-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1 1 240px;
+  gap: 6px;
+  flex: 1 1 200px;
   min-width: 200px;
 }
 
@@ -6618,8 +6623,20 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   white-space: nowrap;
 }
 
+/* W25A: footer nowrap de una sola fila (fixup de layout de mc-18) — padding
+   mas ajustado que el boton generico del board (.rombo-board-shell button,
+   especificidad clase+elemento) para que toggle+scrub+speed entren en los
+   200px del contenedor sin pisar al siguiente item del footer (medido en
+   vivo a 1366x768: el padding generico ganaba la cascada por especificidad
+   pese a declararse despues, asi que esto necesita el mismo peso). */
+.rombo-board-shell .rombo-playback-toggle,
+.rombo-board-shell .rombo-playback-speed {
+  padding: 6px 8px;
+}
+
 .rombo-playback-toggle {
-  min-width: 92px;
+  min-width: 0;
+  font-size: 12px;
   background: var(--felt-gold) !important;
   border-color: rgba(26, 18, 5, 0.35) !important;
   color: #1a1205 !important;
@@ -6634,7 +6651,7 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-playback-scrub {
   flex: 1 1 auto;
-  min-width: 90px;
+  min-width: 44px;
   accent-color: var(--felt-gold);
 }
 
