@@ -32,32 +32,38 @@ export function TacticalBoardToolRail({
       {TOOL_GROUPS.map((group) => (
         <div className="rombo-tool-group" key={group.label}>
           <h3>{group.label}</h3>
-          {group.tools.map((id) => (
-            <button
-              type="button"
-              key={id}
-              className={tool === id ? "active" : ""}
-              onClick={() => onToolChange(id)}
-            >
-              <ToolIcon tool={id} />
-              <span>{labelForTool(id)}</span>
-            </button>
-          ))}
+          <div className="rombo-tool-grid">
+            {group.tools.map((id) => (
+              <button
+                type="button"
+                key={id}
+                className={tool === id ? "active" : ""}
+                title={labelForTool(id)}
+                aria-label={labelForTool(id)}
+                onClick={() => onToolChange(id)}
+              >
+                <ToolIcon tool={id} />
+              </button>
+            ))}
+          </div>
         </div>
       ))}
       <details className="rombo-tool-group rombo-equipment">
         <summary>Equipamiento</summary>
-        {EQUIPMENT_TOOLS.map((id) => (
-          <button
-            type="button"
-            key={id}
-            className={tool === id ? "active" : ""}
-            onClick={() => onToolChange(id)}
-          >
-            <ToolIcon tool={id} />
-            <span>{labelForTool(id)}</span>
-          </button>
-        ))}
+        <div className="rombo-tool-grid">
+          {EQUIPMENT_TOOLS.map((id) => (
+            <button
+              type="button"
+              key={id}
+              className={tool === id ? "active" : ""}
+              title={labelForTool(id)}
+              aria-label={labelForTool(id)}
+              onClick={() => onToolChange(id)}
+            >
+              <ToolIcon tool={id} />
+            </button>
+          ))}
+        </div>
       </details>
       <div className="rombo-tool-group">
         <h3>Color y grosor</h3>

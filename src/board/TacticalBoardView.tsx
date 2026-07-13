@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/state/useAppStore";
 import {
   requestBoardFreeStateTurn,
@@ -82,6 +82,25 @@ function TacticalBoardWorkspace({
   scene: BoardScene;
 }) {
   const a = useBoardActions(board, scene);
+
+  // W24A H1/H2: el panel derecho pasa de "todo apilado, scrollHeight 2022 vs
+  // clientHeight 598" (audit) a tabs — cada seccion entra en el alto
+  // disponible sin depender de un scroll interno de 630px para llegar a las
+  // lecturas. Default "ai": es la seccion que el audit marca como la que
+  // menos se puede seguir enterrando (H2 acceptance: lecturas visibles sin
+  // scroll al abrir la pizarra, cero clicks).
+  const [rightPanelTab, setRightPanelTab] = useState<
+    "roster" | "inspector" | "problem" | "ai"
+  >("ai");
+
+  // Seleccionar algo en la cancha (token/flecha/zona) salta al tab Inspector
+  // — es lo que se espera editar justo despues de seleccionar, y es el
+  // contrato que boardRenderCrashClass.test.tsx ya fija (Rol visible apenas
+  // se selecciona un token). No dispara en el mount (selection arranca null).
+  useEffect(() => {
+    if (a.selection) setRightPanelTab("inspector");
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only react to selection changes
+  }, [a.selection]);
 
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
@@ -217,6 +236,8 @@ function TacticalBoardWorkspace({
           opponentFormation={board.opponent.formation}
           anchorOriginId={a.anchorOriginId}
           zoneDragPreview={a.zoneDragPreview}
+          arrowGesturePreview={a.arrowGesturePreview}
+          isArrowToolActive={a.isArrowToolActive}
           consequenceOverlay={a.consequenceOverlay}
           tacticalOverlay={a.tacticalOverlay}
           keyInstructions={{
@@ -233,77 +254,110 @@ function TacticalBoardWorkspace({
         />
 
         <aside className="rombo-right-panel">
-          <TacticalBoardRosterPanel
-            draft={a.draft}
-            editingPlayerId={a.editingPlayerId}
-            roster={a.roster}
-            onDraftChange={a.setDraft}
-            onSavePlayerDraft={a.savePlayerDraft}
-            onAssignPlayerToPitch={a.assignPlayerToPitch}
-            onEditRosterPlayer={a.editRosterPlayer}
-            onDeleteRosterPlayer={a.deleteRosterPlayer}
-          />
+          <div className="rombo-right-panel-tabs" role="tablist">
+            {(
+              [
+                ["roster", "Plantel"],
+                ["inspector", "Inspector"],
+                ["problem", "Ejercicio"],
+                ["ai", "IA / Lecturas"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={rightPanelTab === id}
+                className={rightPanelTab === id ? "active" : ""}
+                onClick={() => setRightPanelTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-          <TacticalBoardInspectorPanel
-            selectedObject={a.selectedObject}
-            selectedArrow={a.selectedArrow}
-            selectedZone={a.selectedZone}
-            zones={scene.zones.map((zone) => ({
-              id: zone.id,
-              label: zone.label,
-            }))}
-            sceneSummary={{
-              title: scene.title,
-              phase: scene.phaseLabel,
-              problem: a.problem.problem,
-            }}
-            onUpdateObject={a.updateSelectedObject}
-            onUpdateArrow={a.updateSelectedArrow}
-            onUpdateZone={a.updateSelectedZone}
-            onSetArrowSemantic={a.setArrowSemantic}
-            onSetArrowTargetZone={a.setArrowTargetZone}
-            onSetZoneSemantic={a.setZoneSemantic}
-            onDelete={a.deleteSelection}
-          />
+          <div className="rombo-right-panel-body">
+            {rightPanelTab === "roster" ? (
+              <TacticalBoardRosterPanel
+                draft={a.draft}
+                editingPlayerId={a.editingPlayerId}
+                roster={a.roster}
+                onDraftChange={a.setDraft}
+                onSavePlayerDraft={a.savePlayerDraft}
+                onAssignPlayerToPitch={a.assignPlayerToPitch}
+                onEditRosterPlayer={a.editRosterPlayer}
+                onDeleteRosterPlayer={a.deleteRosterPlayer}
+              />
+            ) : null}
 
-          <TacticalBoardProblemPanel
-            problem={a.problem}
-            exercise={a.exercise}
-            onProblemChange={a.setProblem}
-            onExerciseChange={a.setExercise}
-          />
+            {rightPanelTab === "inspector" ? (
+              <TacticalBoardInspectorPanel
+                selectedObject={a.selectedObject}
+                selectedArrow={a.selectedArrow}
+                selectedZone={a.selectedZone}
+                zones={scene.zones.map((zone) => ({
+                  id: zone.id,
+                  label: zone.label,
+                }))}
+                sceneSummary={{
+                  title: scene.title,
+                  phase: scene.phaseLabel,
+                  problem: a.problem.problem,
+                }}
+                onUpdateObject={a.updateSelectedObject}
+                onUpdateArrow={a.updateSelectedArrow}
+                onUpdateZone={a.updateSelectedZone}
+                onSetArrowSemantic={a.setArrowSemantic}
+                onSetArrowTargetZone={a.setArrowTargetZone}
+                onSetZoneSemantic={a.setZoneSemantic}
+                onDelete={a.deleteSelection}
+              />
+            ) : null}
 
-          <TacticalBoardAiPanel
-            aiInterpretation={a.aiInterpretation}
-            tacticalReads={a.tacticalReads}
-            layers={a.layers}
-            payload={a.payload}
-            attachBlockId={a.attachBlockId}
-            sessionBlocks={a.sessionBlocks}
-            canDeleteScene={board.scenes.length >= 2}
-            consequenceOverlay={a.consequenceOverlay}
-            coachLoading={coachLoading}
-            coachError={coachError}
-            coachAnswer={coachAnswer}
-            freeStateSummary={freeStateSummary}
-            freeStateCoachLoading={freeStateCoachLoading}
-            freeStateCoachError={freeStateCoachError}
-            freeStateCoachAnswer={freeStateCoachAnswer}
-            onRunScenario={a.runScenario}
-            onAskCoach={onAskCoach}
-            onAskCoachFreeState={onAskCoachFreeState}
-            onCommitOverlay={a.commitOverlay}
-            onDiscardOverlay={a.discardOverlay}
-            onToggleLayer={a.toggleLayer}
-            onExportPayload={a.createPayload}
-            onExportImage={a.exportImage}
-            onExportBrief={a.exportBrief}
-            onDuplicateScene={a.duplicateScene}
-            onDeleteCurrentScene={a.deleteCurrentScene}
-            onAttachBlockIdChange={a.setAttachBlockId}
-            onAttachToBlock={a.attachToBlock}
-            onCreateSessionBlock={a.createSessionBlock}
-          />
+            {rightPanelTab === "problem" ? (
+              <TacticalBoardProblemPanel
+                problem={a.problem}
+                exercise={a.exercise}
+                onProblemChange={a.setProblem}
+                onExerciseChange={a.setExercise}
+              />
+            ) : null}
+
+            {rightPanelTab === "ai" ? (
+              <TacticalBoardAiPanel
+                aiInterpretation={a.aiInterpretation}
+                tacticalReads={a.tacticalReads}
+                hasAnyOwnRoleAssigned={a.hasAnyOwnRoleAssigned}
+                layers={a.layers}
+                payload={a.payload}
+                attachBlockId={a.attachBlockId}
+                sessionBlocks={a.sessionBlocks}
+                canDeleteScene={board.scenes.length >= 2}
+                consequenceOverlay={a.consequenceOverlay}
+                coachLoading={coachLoading}
+                coachError={coachError}
+                coachAnswer={coachAnswer}
+                freeStateSummary={freeStateSummary}
+                freeStateCoachLoading={freeStateCoachLoading}
+                freeStateCoachError={freeStateCoachError}
+                freeStateCoachAnswer={freeStateCoachAnswer}
+                onRunScenario={a.runScenario}
+                onAskCoach={onAskCoach}
+                onAskCoachFreeState={onAskCoachFreeState}
+                onCommitOverlay={a.commitOverlay}
+                onDiscardOverlay={a.discardOverlay}
+                onToggleLayer={a.toggleLayer}
+                onExportPayload={a.createPayload}
+                onExportImage={a.exportImage}
+                onExportBrief={a.exportBrief}
+                onDuplicateScene={a.duplicateScene}
+                onDeleteCurrentScene={a.deleteCurrentScene}
+                onAttachBlockIdChange={a.setAttachBlockId}
+                onAttachToBlock={a.attachToBlock}
+                onCreateSessionBlock={a.createSessionBlock}
+              />
+            ) : null}
+          </div>
         </aside>
       </main>
 

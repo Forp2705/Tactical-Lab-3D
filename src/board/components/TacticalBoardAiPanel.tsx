@@ -17,6 +17,10 @@ type TacticalBoardAiPanelProps = {
   // only; the canvas overlay is driven separately (see tacticalOverlay on
   // TacticalBoardCanvas), pointerup-gated.
   tacticalReads: TacticalRead[];
+  // W24A H2: distingue "el motor no tiene con que medir" (ningun token propio
+  // con rol asignado) de "midio y quedo mudo porque esta equilibrado" — solo
+  // el primer caso amerita un estado vacio explicito (ver render abajo).
+  hasAnyOwnRoleAssigned: boolean;
   layers: PlanningBoardLayer[];
   payload: BoardPayload | null;
   attachBlockId: string;
@@ -55,6 +59,7 @@ type TacticalBoardAiPanelProps = {
 export function TacticalBoardAiPanel({
   aiInterpretation,
   tacticalReads,
+  hasAnyOwnRoleAssigned,
   layers,
   payload,
   attachBlockId,
@@ -109,7 +114,16 @@ export function TacticalBoardAiPanel({
               </span>
             ))}
           </div>
-        ) : null}
+        ) : hasAnyOwnRoleAssigned ? null : (
+          // W24A H2: explica el silencio SOLO cuando la causa es falta de
+          // dato (ningun token propio con rol) — nunca cuando el motor midio
+          // y decidio callarse por equilibrio (ese silencio sigue mudo,
+          // doctrina intocable).
+          <p className="rombo-tactical-reads-empty">
+            Sin lectura: asigna roles (LB, RB, CB...) a los tokens propios
+            para que RomboIQ pueda medir.
+          </p>
+        )}
       </section>
 
       <section className="rombo-freestate-coach">

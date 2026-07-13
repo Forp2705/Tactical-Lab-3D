@@ -16,9 +16,24 @@ import {
   zoneVisible,
 } from "../boardGeometry";
 import { arrowStyle } from "../boardActionStyle";
-import type { BoardObject, BoardPoint, BoardScene } from "../boardModel";
+import type {
+  BoardArrowEndpoint,
+  BoardObject,
+  BoardPoint,
+  BoardScene,
+} from "../boardModel";
 import type { ConsequenceOverlay } from "../scenarioBoardConsequence";
 import type { TacticalRead } from "../boardTacticalRead";
+
+// Resuelve el objectId bajo un punto de release (pointerup) leyendo el DOM:
+// a diferencia del pointerdown (cada token pasa su propio id via closure), el
+// release puede caer sobre CUALQUIER token, asi que hace falta el atributo
+// data-object-id (agregado a cada BoardObjectNode) + closest() en el target
+// nativo del evento (W24A: necesario para resolver el destino de un drag).
+function resolveTargetIdFromEvent(event: PointerEvent<SVGSVGElement>) {
+  const el = (event.target as Element).closest("[data-object-id]");
+  return el?.getAttribute("data-object-id") ?? undefined;
+}
 
 type TacticalBoardCanvasProps = {
   svgRef: MutableRefObject<SVGSVGElement | null>;
@@ -37,6 +52,18 @@ type TacticalBoardCanvasProps = {
   // resolucion (umbral/normalizacion) que el commit final del pointerup, asi
   // que la preview siempre coincide con lo que se va a crear.
   zoneDragPreview?: { x: number; y: number; w: number; h: number; block: boolean } | null;
+  // Rubber-band de un gesto de flecha en curso (W24A): visible tanto durante
+  // el drag real como en el fallback click-click ya armado (`armed` distingue
+  // el texto de estado que se muestra).
+  arrowGesturePreview?: {
+    origin: BoardArrowEndpoint;
+    current: BoardPoint;
+    armed: boolean;
+  } | null;
+  // Hint contextual minimo (how-to, W24A H3): se muestra mientras una tool de
+  // flecha esta activa, no un manual — un renglon que explica ambas
+  // gramaticas (drag y click-click) y como cancelar.
+  isArrowToolActive?: boolean;
   // Proyeccion efimera de RomboIQ (preview); su geometria es identica a la que
   // se commitea al aceptar — solo cambia el estilo (ghost/punteado) para senalar
   // que todavia no es parte de la escena.
@@ -55,7 +82,7 @@ type TacticalBoardCanvasProps = {
   onSelect: (selection: Selection) => void;
   onPointerDown: (point: BoardPoint, targetId?: string) => void;
   onPointerMove: (point: BoardPoint) => void;
-  onPointerUp: () => void;
+  onPointerUp: (point: BoardPoint, targetId?: string) => void;
   onOwnFormationChange: (formation: string) => void;
   onOpponentFormationChange: (formation: string) => void;
 };
@@ -73,6 +100,8 @@ export function TacticalBoardCanvas({
   opponentFormation,
   anchorOriginId,
   zoneDragPreview,
+  arrowGesturePreview,
+  isArrowToolActive,
   consequenceOverlay,
   tacticalOverlay,
   keyInstructions,
@@ -103,6 +132,16 @@ export function TacticalBoardCanvas({
           ))}
         </select>
       </div>
+      {/* Hint minimo how-to (W24A H3): un renglon, solo mientras una tool de
+          flecha esta activa — no un manual. pointer-events:none (invariante
+          W4: nunca robarle eventos a la cancha). */}
+      {isArrowToolActive ? (
+        <p className="rombo-arrow-hint" aria-live="polite">
+          {arrowGesturePreview?.armed
+            ? "Origen fijado — hace clic en el destino (Escape cancela)"
+            : "Arrastra de origen a destino para crear la flecha, o hace clic-clic (Escape cancela)"}
+        </p>
+      ) : null}
       <TacticalPitch
         refEl={svgRef}
         scene={scene}
@@ -114,6 +153,7 @@ export function TacticalBoardCanvas({
         zoom={zoom}
         anchorOriginId={anchorOriginId}
         zoneDragPreview={zoneDragPreview}
+        arrowGesturePreview={arrowGesturePreview}
         consequenceOverlay={consequenceOverlay}
         tacticalOverlay={tacticalOverlay}
         onSelect={onSelect}
@@ -147,6 +187,7 @@ function TacticalPitch({
   zoom,
   anchorOriginId,
   zoneDragPreview,
+  arrowGesturePreview,
   consequenceOverlay,
   tacticalOverlay,
   onSelect,
@@ -164,12 +205,17 @@ function TacticalPitch({
   zoom: number;
   anchorOriginId?: string;
   zoneDragPreview?: { x: number; y: number; w: number; h: number; block: boolean } | null;
+  arrowGesturePreview?: {
+    origin: BoardArrowEndpoint;
+    current: BoardPoint;
+    armed: boolean;
+  } | null;
   consequenceOverlay: ConsequenceOverlay | null;
   tacticalOverlay: { reads: TacticalRead[]; key: number } | null;
   onSelect: (selection: Selection) => void;
   onPointerDown: (point: BoardPoint, targetId?: string) => void;
   onPointerMove: (point: BoardPoint) => void;
-  onPointerUp: () => void;
+  onPointerUp: (point: BoardPoint, targetId?: string) => void;
 }) {
   const visibleObjects = scene.objects.filter((object) => {
     if (object.type === "opponentToken" && !activeLayers.has("defense"))
@@ -207,7 +253,9 @@ function TacticalPitch({
         onPointerDown(pointFromEvent(event));
       }}
       onPointerMove={(event) => onPointerMove(pointFromEvent(event))}
-      onPointerUp={onPointerUp}
+      onPointerUp={(event) =>
+        onPointerUp(pointFromEvent(event), resolveTargetIdFromEvent(event))
+      }
       role="img"
       aria-label="Cancha tactica interactiva"
     >
@@ -283,6 +331,41 @@ function TacticalPitch({
           strokeDasharray="1.6 1.2"
           strokeWidth={0.6}
         />
+      ) : null}
+
+      {/* Rubber-band del gesto de flecha en curso (W24A): mismo trazo tanto
+          en drag real como en el fallback click-click ya armado — pointer-
+          events:none (invariante W4, nunca robarle eventos a la cancha). */}
+      {arrowGesturePreview ? (
+        <g pointerEvents="none" className="board-arrow-draft-group">
+          {(() => {
+            const start = endpointPoint(arrowGesturePreview.origin, scene.objects);
+            const end = arrowGesturePreview.current;
+            return (
+              <>
+                <path
+                  d={`M${start.x} ${scaleY(start.y)} L${end.x} ${scaleY(end.y)}`}
+                  className={
+                    arrowGesturePreview.armed
+                      ? "board-arrow-draft armed"
+                      : "board-arrow-draft"
+                  }
+                  fill="none"
+                  stroke={color}
+                  strokeDasharray="1 1"
+                  strokeWidth={0.5}
+                />
+                <circle
+                  cx={start.x}
+                  cy={scaleY(start.y)}
+                  r={1.1}
+                  className="board-arrow-draft-origin"
+                  fill={color}
+                />
+              </>
+            );
+          })()}
+        </g>
       ) : null}
 
       {visibleArrows.map((arrow) => {
@@ -429,17 +512,18 @@ function TacticalPitch({
   );
 }
 
-// Marca el estado de cada extremo: anclado (punto fijo) vs libre (aro hueco).
-// El contraste entre extremos es la senal de que el anclaje tomo o no. La
-// forma (relleno vs hueco) la define el CSS via .anchored/.free; el color sale
-// de la tabla arrowStyle (inline `color` -> currentColor en CSS).
+// Marca el estado de cada extremo: anclado (halo alrededor del token) vs
+// libre (aro hueco flotando en el punto donde cayo). El contraste entre
+// extremos es la senal de que el anclaje tomo o no.
 //
-// Asimetria deliberada de tamano: el dot anclado vive en el centro del token y
-// el token (r=2.15) se pinta encima, asi que casi siempre queda tapado en uso
-// real -> no necesita prominencia (la linea entrando limpia al token ya es la
-// pista del exito). El aro LIBRE es la senal del fallo silencioso: cuando
-// quisiste anclar y erraste, ese aro queda flotando al lado del token. Tiene
-// que saltar a la vista, asi que va mas grande que el anclado.
+// FIX audit W24A H3: el anclado se dibujaba como un punto solido r=0.85 en el
+// mismo centro que el token — el token (r=2.15, pintado DESPUES en el orden
+// del SVG) lo tapaba por completo, asi que "anclado" y "cayo cerca" eran
+// indistinguibles a simple vista. Ahora el anclado es un halo SIN relleno de
+// radio mayor al del token (r=2.6 > 2.15): la porcion que sobresale del
+// circulo del token queda visible como un anillo alrededor de la ficha, sin
+// depender del orden de pintado. El aro LIBRE (r=1.5, ya visible porque no
+// esta bajo ningun token) sigue siendo la senal del fallo silencioso.
 function EndpointMarker({
   x,
   y,
@@ -455,7 +539,7 @@ function EndpointMarker({
     <circle
       cx={x}
       cy={scaleY(y)}
-      r={anchored ? 0.85 : 1.5}
+      r={anchored ? 2.6 : 1.5}
       className={`board-endpoint ${anchored ? "anchored" : "free"}`}
       style={{ color }}
     />
@@ -479,6 +563,7 @@ function BoardObjectNode({
     return (
       <g
         data-board-target
+        data-object-id={object.id}
         onPointerDown={(event) => onPointerDown(event, object.id)}
       >
         <circle
@@ -494,6 +579,7 @@ function BoardObjectNode({
     return (
       <g
         data-board-target
+        data-object-id={object.id}
         onPointerDown={(event) => onPointerDown(event, object.id)}
       >
         <rect
@@ -514,6 +600,7 @@ function BoardObjectNode({
     return (
       <g
         data-board-target
+        data-object-id={object.id}
         onPointerDown={(event) => onPointerDown(event, object.id)}
       >
         <rect
@@ -534,6 +621,7 @@ function BoardObjectNode({
   return (
     <g
       data-board-target
+      data-object-id={object.id}
       onPointerDown={(event) => onPointerDown(event, object.id)}
     >
       <circle

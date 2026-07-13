@@ -5270,6 +5270,24 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   pointer-events: none;
 }
 
+/* W24A: rubber-band del gesto de flecha en curso (drag real o fallback
+   click-click ya armado). Mismo trato "todavia no es parte de la escena" que
+   .board-zone-draft; `.armed` marca el estado de espera del segundo click con
+   un punteado mas abierto, para diferenciarlo visualmente del drag activo. */
+.board-arrow-draft {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.board-arrow-draft.armed {
+  stroke-dasharray: 1.8 1;
+}
+
+.board-arrow-draft-origin {
+  pointer-events: none;
+  opacity: 0.9;
+}
+
 .board-scene-strip {
   display: flex;
   gap: 8px;
@@ -5468,6 +5486,48 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
     grid-template-columns: 1fr;
   }
 }
+/* W24A H1: la Pizarra deja de crecer con su contenido y pasa a ocupar
+   exactamente 100dvh — es la unica forma de matar el scroll de PAGINA (996px
+   de doc en 768 de viewport, audit H1) sin tocar las demas vistas: `.main`
+   base sigue siendo "crece con el contenido" para todo lo demas, esto SOLO
+   aplica bajo `.felt-stage` (className exclusivo de la vista board, ver
+   AppShell). El header interno (topbar) es la unica fila `auto`; el resto
+   (el shell de la pizarra) es la fila `1fr` que absorbe todo el alto que
+   sobra — de ahi sale el presupuesto extra que .rombo-board-shell usa. */
+.main.felt-stage {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding: 8px 14px 0;
+}
+
+.main.felt-stage > .topbar {
+  flex: 0 0 auto;
+}
+
+.main.felt-stage > *:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Header generico comprimido SOLO en la vista board (gana por especificidad,
+   3 clases via .topbar.board-topbar-compact, no por orden de cascada): el
+   subtitulo y el strip de stats ya se ocultan en AppShell (JSX), esto ajusta
+   lo que queda (eyebrow + h2 + top-actions) a una sola fila compacta. */
+.topbar.board-topbar-compact {
+  align-items: center;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+}
+
+.topbar.board-topbar-compact .topbar-copy h2 {
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
 /* RomboIQ Tactical Board product surface */
 .rombo-board-shell {
   display: grid;
@@ -5497,13 +5557,27 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
     );
 }
 
+/* W24A H1: dentro de .main.felt-stage (solo vista board) el shell pasa de
+   "crece con el contenido" a "ocupa exactamente el alto que le sobra" — el
+   padre ya es de alto fijo (100vh - header comprimido) con overflow:hidden,
+   asi que esto es lo que elimina el scroll de PAGINA (el scroll que quedaba
+   era del documento entero, no de un panel puntual). Gana por especificidad
+   (3 clases) sin depender del orden de cascada. */
+.main.felt-stage .rombo-board-shell {
+  height: 100%;
+  min-height: 0;
+}
+
 .rombo-board-topbar,
 .rombo-board-footer,
 .rombo-board-health {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  /* W24A H1: 10px -> 7px vertical — cada fila de chrome fija (topbar/health/
+     footer) que se achica es alto que pasa directo al row 1fr de la cancha
+     (grid-template-rows: auto auto minmax(0,1fr) auto en .rombo-board-shell). */
+  padding: 7px 14px;
   border-bottom: 1px solid var(--felt-line);
   background: rgba(8, 18, 14, 0.55);
 }
@@ -5533,7 +5607,7 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 .rombo-board-shell button {
   cursor: pointer;
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 
 .rombo-board-shell button:disabled {
@@ -5659,14 +5733,19 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 
 /* W15: columna derecha 500 -> 340px 1-col (con Distribucion eliminada y el
    plantel colapsado ya no la necesita) — el editor entra a 1366 sin recorte
-   horizontal (168+minmax+340+gaps+sidebar <= 1366, medido en vivo). */
+   horizontal (168+minmax+340+gaps+sidebar <= 1366, medido en vivo).
+   W24A H1: rail 168 -> 92 (icono-solo, ver .rombo-tool-grid) y panel
+   340 -> 300 (tabs, ver .rombo-right-panel-tabs) liberan ~116px de ancho
+   para la cancha — es lo que la hace dominante en 1366x768 (H1 acceptance),
+   ya que su alto sigue el aspect-ratio fijo del viewBox (100:64) y por lo
+   tanto crece con el ancho disponible. */
 .rombo-board-layout {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr) 340px;
-  align-items: start;
-  gap: 12px;
+  grid-template-columns: 84px minmax(0, 1fr) 232px;
+  align-items: stretch;
+  gap: 8px;
   min-height: 0;
-  padding: 12px;
+  padding: 8px;
 }
 
 .rombo-toolrail,
@@ -5681,10 +5760,51 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.35);
 }
 
+/* W24A H1: antes max-height: calc(100vh - 170px) — un numero magico que se
+   desincroniza en cuanto el header de arriba cambia de alto. Ahora el rail
+   se ESTIRA (align-items: stretch del padre .rombo-board-layout, fila de
+   alto determinado por .main.felt-stage) y min-height:0 es lo que le
+   permite encogerse por debajo de su contenido para que overflow:auto
+   entre en juego — el scroll-shadow de abajo es el aviso visible de que
+   sigue habiendo mas tools (nunca "invisible sin scroll", doctrina H1). */
 .rombo-toolrail {
-  max-height: calc(100vh - 170px);
-  overflow: auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px;
+  /* Base felt (identica al gradiente compartido, ver el selector agrupado
+     mas abajo) + "scroll shadows": el truco de superponer capas
+     local/scroll con distinto background-attachment hace que el halo solo
+     se vea mientras haya contenido sin scrollear de ese lado — CSS puro,
+     sin JS, sin depender de leer scrollTop. */
+  background-image:
+    linear-gradient(#0c1f18 30%, rgba(12, 31, 24, 0)),
+    linear-gradient(rgba(12, 31, 24, 0), #0c1f18 70%),
+    radial-gradient(
+      farthest-side at 50% 0,
+      rgba(0, 0, 0, 0.4),
+      rgba(0, 0, 0, 0)
+    ),
+    radial-gradient(
+      farthest-side at 50% 100%,
+      rgba(0, 0, 0, 0.4),
+      rgba(0, 0, 0, 0)
+    ),
+    linear-gradient(165deg, #0c1f18 0%, #081410 100%);
+  background-repeat: no-repeat;
+  background-size:
+    100% 32px,
+    100% 32px,
+    100% 12px,
+    100% 12px,
+    100% 100%;
+  background-position:
+    0 0,
+    0 100%,
+    0 0,
+    0 100%,
+    0 0;
+  background-attachment: local, local, scroll, scroll, scroll;
 }
 
 .rombo-toolrail h2,
@@ -5700,39 +5820,78 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   text-transform: uppercase;
 }
 
-.rombo-toolrail button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  margin-bottom: 4px;
-  padding: 8px 9px;
-  text-align: left;
+/* W24A H1: el rail angosto (92px, icono-solo) no tiene lugar para el mono
+   uppercase de 11px + tracking 0.08em de arriba en una sola linea ("NAVEGACION",
+   "HERRAMIENTAS") — forzaba overflow horizontal (scrollWidth 165 vs 80
+   medido en vivo). Achica y permite wrap en vez de desbordar. */
+.rombo-toolrail h2,
+.rombo-toolrail h3 {
+  overflow-wrap: break-word;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+/* W24A H1: rail icono-solo (con tooltip via title/aria-label) en grilla de 2
+   columnas — el rail 168px de texto+icono ocupaba 53% de tools tras un
+   scroll interno no anunciado (audit H1). Icono-solo + 2 columnas reduce la
+   altura necesaria a la mitad y libera ancho para que la cancha sea el
+   elemento dominante (H1 acceptance: cancha >=50% del viewport). */
+.rombo-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
+}
+
+/* Antidoto al min-width:auto default de los items de grid: sin esto, el
+   min-content de cada boton (icono + padding) puede exceder el 1fr de su
+   columna y desbordar todo el rail en vez de encogerse (era la causa real
+   de que "Zonas" solo mostrara 1 de 2 iconos, medido en vivo). */
+.rombo-tool-grid > button {
+  min-width: 0;
+}
+
+/* Solo los botones-icono DENTRO de la grilla de tools (no "Borrar
+   seleccionado" ni los de color/grosor, que tienen su propio treatment):
+   ese boton de texto largo con aspect-ratio:1 heredado forzaba su ancho de
+   contenido sin wrap y era la causa real del overflow horizontal del rail
+   (scrollWidth 165 vs clientWidth 72, medido en vivo — NO era el texto de
+   los headers, que ya se arreglo arriba). */
+.rombo-tool-grid button {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  margin-bottom: 0;
+  padding: 6px;
   color: color-mix(in oklch, var(--felt-ink) 82%, transparent);
   background: transparent;
   border-color: transparent;
 }
 
-.rombo-toolrail button svg {
+.rombo-tool-grid button svg {
   flex: 0 0 auto;
   color: color-mix(in oklch, var(--felt-ink) 65%, transparent);
 }
 
-.rombo-toolrail button span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rombo-toolrail button.active,
+.rombo-tool-grid button.active,
 .rombo-width-row button.active {
   background: color-mix(in oklch, var(--felt-gold) 14%, transparent);
   border-color: color-mix(in oklch, var(--felt-gold) 45%, transparent);
   color: var(--felt-ink);
 }
 
-.rombo-toolrail button.active svg {
+.rombo-tool-grid button.active svg {
   color: var(--felt-gold);
+}
+
+/* El resto de los botones del rail (Borrar seleccionado) vuelve al treatment
+   de boton de texto normal, ancho completo dentro de los 84px del rail. */
+.rombo-toolrail > .rombo-tool-group > button,
+.rombo-toolrail .danger {
+  width: 100%;
+  white-space: normal;
+  font-size: 11px;
+  padding: 6px 4px;
 }
 
 .rombo-tool-group {
@@ -5762,17 +5921,22 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   background: color-mix(in oklch, var(--felt-gold) 50%, transparent);
 }
 
+/* W24A H1: rail 168 -> 84px — la fila de colores (6 swatches * 20px + gap
+   7px sin wrap) era otra causa real del overflow horizontal (scrollWidth
+   165 medido en vivo, ~94px de sobrante mas alla del borde derecho del
+   rail): flex-wrap la deja en 2 filas de 3 en vez de desbordar. */
 .rombo-color-row,
 .rombo-width-row {
   display: flex;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 10px;
 }
 
 .rombo-color-row button {
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
   margin: 0;
   padding: 0;
   border-radius: 999px;
@@ -5797,10 +5961,13 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   display: grid;
   place-items: center;
   overflow: hidden;
-  align-self: start;
+  /* W24A H1: antes align-self:start + max-height: calc(100vh - 188px) —
+     tope fijo que ignoraba cuanto alto le sobraba realmente al layout. Ahora
+     se estira (align-items:stretch del padre) al alto real de la fila, asi
+     que el SVG (aspect-ratio fijo 100:64) tiene el maximo espacio posible
+     para crecer y ser el elemento dominante del viewport (H1 acceptance). */
   min-height: 0;
-  max-height: calc(100vh - 188px);
-  padding: 46px 18px 24px;
+  padding: 38px 12px 14px;
   /* Verbatim from Pizarra.html .pitch background. */
   background: linear-gradient(165deg, #0c1f18 0%, #081410 100%);
 }
@@ -5820,10 +5987,38 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   background-color: color-mix(in oklch, var(--felt-bg-3) 84%, black);
 }
 
+/* W24A H3: how-to minimo, solo mientras una tool de flecha esta activa. Mismo
+   trato flotante-no-interactivo que .rombo-key-instructions (pointer-events
+   none, invariante W4 — nunca robarle eventos a la cancha). */
+.rombo-arrow-hint {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  z-index: 2;
+  max-width: 86%;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in oklch, var(--felt-mint) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--felt-bg-3) 82%, transparent);
+  color: var(--felt-mint);
+  font-family: var(--felt-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
 .rombo-pitch-svg {
-  width: min(100%, 800px);
+  width: min(100%, 1100px);
   height: auto;
-  max-height: calc(100vh - 255px);
+  /* W24A H1: 100% del content-box de .rombo-pitch-panel en vez de un
+     calc(100vh - N) fijo — ese numero ya no era confiable una vez que el
+     panel pasa a estirarse al alto real de la fila (ver arriba). preserve
+     AspectRatio (default xMidYMid meet) del propio SVG evita distorsion si
+     el ancho disponible pide mas alto del que hay: letterbox, nunca stretch. */
+  max-height: 100%;
   transform-origin: center;
   filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.3));
   touch-action: none;
@@ -6011,14 +6206,50 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
   background: transparent;
 }
 
-/* W15: 2 columnas -> 1 (la columna paso de 500 a 340px). */
+/* W15: 2 columnas -> 1 (la columna paso de 500 a 340px).
+   W24A H1/H2: el panel deja de apilar las 4 secciones (Plantel, Inspector,
+   Ejercicio, IA — scrollHeight 2022 vs clientHeight 598 en el audit) y pasa
+   a tabs: `.rombo-right-panel-tabs` es la fila fija, `.rombo-right-panel-body`
+   es la fila que absorbe el alto (min-height:0 + overflow propio) para que
+   cada seccion entre sin que las lecturas de IA queden a 630px de scroll. */
 .rombo-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.rombo-right-panel-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rombo-right-panel-tabs button {
+  flex: 1 1 auto;
+  padding: 7px 6px;
+  font-size: 11px;
+  text-align: center;
+  color: color-mix(in oklch, var(--felt-ink) 70%, transparent);
+  background: color-mix(in oklch, var(--felt-bg-2) 72%, transparent);
+  border: 1px solid transparent;
+}
+
+.rombo-right-panel-tabs button.active {
+  color: var(--felt-ink);
+  background: color-mix(in oklch, var(--felt-gold) 14%, transparent);
+  border-color: color-mix(in oklch, var(--felt-gold) 45%, transparent);
+}
+
+.rombo-right-panel-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 10px;
-  max-height: calc(100vh - 170px);
-  overflow: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 /* W15: plantel colapsado por defecto — summary con el mismo tratamiento
@@ -6201,6 +6432,15 @@ body .app-shell .nav button.nav-btn.active .nav-dot {
 .rombo-tactical-chip-high {
   border-color: color-mix(in oklch, var(--felt-gold) 55%, transparent);
   background: color-mix(in oklch, var(--felt-gold) 16%, transparent);
+}
+
+/* W24A H2: explica el silencio por falta de dato (nunca el silencio por
+   equilibrio, que se queda mudo). Tono deliberadamente discreto — es
+   informativo, no un warning. */
+.rombo-tactical-reads-empty {
+  margin: 8px 0 0;
+  color: color-mix(in oklch, var(--felt-ink) 55%, transparent);
+  font-size: 12px;
 }
 
 .rombo-layer-list {
