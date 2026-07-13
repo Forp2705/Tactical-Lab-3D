@@ -81,6 +81,16 @@ import { useBoardEditor } from "./useBoardEditor";
  * factories. Zero recompute — if this re-derived geometry it would reintroduce
  * two sources of truth.
  */
+// H7 (W24): recencia honesta para el indicador unico de guardado — nunca
+// finge "ahora" mas alla de 5s reales.
+function formatSaveRecency(lastSavedAt: number, now: number): string {
+  const elapsedSeconds = Math.max(0, Math.round((now - lastSavedAt) / 1000));
+  if (elapsedSeconds < 5) return "Guardado ✓ justo ahora";
+  if (elapsedSeconds < 60) return `Guardado ✓ hace ${elapsedSeconds}s`;
+  const elapsedMinutes = Math.round(elapsedSeconds / 60);
+  return `Guardado ✓ hace ${elapsedMinutes}min`;
+}
+
 export function overlayToBoardItems(overlay: ConsequenceOverlay) {
   const zones = overlay.zones.map((z) =>
     createTacticalZone(z.semantic, z.x, z.y, z.w, z.h, z.patch),
@@ -130,7 +140,16 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   } | null>(null);
   const [history, setHistory] = useState<TacticalBoard[]>([]);
   const [future, setFuture] = useState<TacticalBoard[]>([]);
-  const [status, setStatus] = useState("Guardado automaticamente");
+  const [status, setStatus] = useState("");
+  // H7 (W24): una sola senal de guardado. lastSavedAt es la fuente de verdad
+  // del autosave real (se toca en CADA persist, no solo al click de un boton);
+  // nowTick solo existe para que la etiqueta de recencia se refresque sola.
+  const [lastSavedAt, setLastSavedAt] = useState(() => Date.now());
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
   const [payload, setPayload] = useState<BoardPayload | null>(null);
   const [attachBlockId, setAttachBlockId] = useState("");
   const [consequenceOverlay, setConsequenceOverlay] =
@@ -171,7 +190,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     rehydrateWorkspace,
   } = useBoardEditor(board, team.players, {
     persistWorkspace: updateBoardWorkspace,
-    onPersist: () => setStatus("Guardado automaticamente"),
+    onPersist: () => setLastSavedAt(Date.now()),
   });
 
   // Reset transient selection/payload when switching boards (the workspace
@@ -258,6 +277,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const commitBoard = (nextBoard: TacticalBoard, record = true) => {
     if (record) pushHistory();
     updateTacticalBoard(board.id, nextBoard);
+    setLastSavedAt(Date.now());
   };
 
   const commitScene = (patch: Partial<BoardScene>, record = true) => {
@@ -269,6 +289,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       setConsequenceOverlay((prev) => (prev ? null : prev));
     }
     updateTacticalBoardScene(board.id, scene.id, patch);
+    // H7 (W24): drag/draw/borrar en el canvas pasa por ACA, no por el
+    // workspace reducer (onPersist). El indicador de guardado unico tiene
+    // que reaccionar a esto tambien o miente en la accion mas comun del board.
+    setLastSavedAt(Date.now());
   };
 
   // Discard a pending overlay when the active scene changes — it is anchored to
@@ -312,7 +336,12 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       ),
       successSignals: [exercise.successCondition].filter(Boolean),
     });
-    setStatus("Pizarra guardada");
+    setLastSavedAt(Date.now());
+    // No repite "guardado": el objetivo, la regla y la condicion de exito ya
+    // se autoguardan solos; esta accion sincroniza esos campos al resumen que
+    // consume el brief exportable (exportBoard.ts), asi que la confirmacion
+    // describe eso, no un segundo "guardado" compitiendo con el indicador.
+    setStatus("Resumen del brief actualizado");
   };
 
   const addScene = () => {
@@ -763,6 +792,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     setDraft,
     editingPlayerId,
     status,
+    saveIndicator: formatSaveRecency(lastSavedAt, nowTick),
     payload,
     attachBlockId,
     setAttachBlockId,
