@@ -324,3 +324,33 @@ export function commitZoneDrag({
   );
   commitScene({ zones: [...scene.zones, zone] });
 }
+
+// === FIXUP W25B: la razon de un block de gramatica tactica (boardTacticalGrammar.ts)
+// tiene que GANARLE al hint pasivo de la tool, no convivir a la par de el.
+//
+// El bug (gate en vivo del combinado W25): la flecha bloqueada se rechazaba
+// bien (no se creaba), pero la razon vivia solo en el status del footer,
+// chica y lejos de donde el usuario esta mirando (la cancha). El hint
+// pasivo ("Arrastra de origen a destino...") sigue mostrandose ahi arriba
+// sin cambios, asi que para el DT el gesto se siente como un fallo mudo — el
+// mismo pecado que la flecha fantasma de W24A H3.
+//
+// Fix: el MISMO renglon del hint pasivo (arriba de la cancha, donde el ojo
+// ya esta puesto tras el gesto) muestra la razon del block mientras esta
+// vigente, con prioridad absoluta sobre el hint generico. `useBoardActions`
+// mantiene esa vigencia con un timeout (ARROW_BLOCK_HINT_TTL_MS) y la corta
+// antes si el usuario arranca un gesto nuevo real — esta funcion es pura y
+// solo decide QUE TEXTO gana, no CUANTO dura.
+export const ARROW_BLOCK_HINT_TTL_MS = 4000;
+
+export function resolveArrowHintText(params: {
+  grammarBlockReason: string | null;
+  isArrowToolActive: boolean;
+  armed: boolean;
+}): string | null {
+  if (params.grammarBlockReason) return params.grammarBlockReason;
+  if (!params.isArrowToolActive) return null;
+  return params.armed
+    ? "Origen fijado — hace clic en el destino (Escape cancela)"
+    : "Arrastra de origen a destino para crear la flecha, o hace clic-clic (Escape cancela)";
+}

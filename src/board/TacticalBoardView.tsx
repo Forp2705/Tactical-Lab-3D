@@ -238,6 +238,7 @@ function TacticalBoardWorkspace({
           zoneDragPreview={a.zoneDragPreview}
           arrowGesturePreview={a.arrowGesturePreview}
           isArrowToolActive={a.isArrowToolActive}
+          grammarBlockNotice={a.grammarBlockNotice}
           consequenceOverlay={a.consequenceOverlay}
           tacticalOverlay={a.tacticalOverlay}
           keyInstructions={{

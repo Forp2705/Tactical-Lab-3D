@@ -47,6 +47,7 @@ import {
 import { deriveTacticalReads, type TacticalRead } from "./boardTacticalRead";
 import { auditScene, evaluateAction } from "./boardTacticalGrammar";
 import {
+  ARROW_BLOCK_HINT_TTL_MS,
   type ArrowGesturePhase,
   buildArrowFromGestureCommit,
   commitZoneDrag,
@@ -185,6 +186,25 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     return () => {
       if (tacticalOverlayTimeoutRef.current) {
         clearTimeout(tacticalOverlayTimeoutRef.current);
+      }
+    };
+  }, []);
+  // FIXUP W25B: la razon de un block de gramatica tactica tiene que ganarle
+  // al hint pasivo de la tool (ver resolveArrowHintText en boardTools.ts),
+  // no perderse detras de el. Vigente por ARROW_BLOCK_HINT_TTL_MS (4s, en el
+  // rango 3-5s pedido) o hasta que el usuario arranque un gesto nuevo real
+  // (ver el clear temprano en onCanvasPointerDown) — lo que pase primero.
+  const [grammarBlockNotice, setGrammarBlockNotice] = useState<{
+    reason: string;
+    key: number;
+  } | null>(null);
+  const grammarBlockNoticeTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  useEffect(() => {
+    return () => {
+      if (grammarBlockNoticeTimeoutRef.current) {
+        clearTimeout(grammarBlockNoticeTimeoutRef.current);
       }
     };
   }, []);
@@ -713,6 +733,19 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     }, 1600);
   };
 
+  // FIXUP W25B: dispara la razon de block por el mismo renglon del hint
+  // pasivo (ver resolveArrowHintText), vigente ARROW_BLOCK_HINT_TTL_MS o
+  // hasta el proximo gesto real (clear temprano en onCanvasPointerDown).
+  const fireGrammarBlockNotice = (reason: string) => {
+    if (grammarBlockNoticeTimeoutRef.current) {
+      clearTimeout(grammarBlockNoticeTimeoutRef.current);
+    }
+    setGrammarBlockNotice({ reason, key: Date.now() });
+    grammarBlockNoticeTimeoutRef.current = setTimeout(() => {
+      setGrammarBlockNotice(null);
+    }, ARROW_BLOCK_HINT_TTL_MS);
+  };
+
   // Unico punto de friccion de la gramatica tactica (W25B): interceptado
   // entre "la maquina de estados de gesto ya decidio comitear una flecha" y
   // "la flecha entra a la escena". Se llama desde los dos handlers donde el
@@ -722,10 +755,11 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   const commitProposedArrow = (arrow: BoardArrow) => {
     const evaluation = evaluateAction(scene, arrow);
     if (evaluation.verdict === "block") {
-      setStatus(
+      const reason =
         evaluation.reason ??
-          "Accion bloqueada: no tiene sentido tactico en esta escena.",
-      );
+        "Accion bloqueada: no tiene sentido tactico en esta escena.";
+      setStatus(reason);
+      fireGrammarBlockNotice(reason);
       return;
     }
     commitScene({ arrows: [...scene.arrows, arrow] });
@@ -777,8 +811,16 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
       // limpia la seleccion del Inspector — antes quedaba mostrando lo que
       // fuera que estuviera seleccionado antes de dibujar (p.ej. un jugador),
       // dando la falsa sensacion de que el Inspector no reacciona al gesto.
+      // FIXUP W25B: ese mismo instante (arranca un gesto nuevo real) es
+      // tambien el punto en el que una razon de block previa deja de estar
+      // vigente — el usuario ya se movio a intentar de nuevo, asi que el
+      // hint pasivo/armed puede volver a tomar el renglon.
       if (arrowGesture.phase === "idle" && result.next.phase === "pending") {
         setSelection(null);
+        if (grammarBlockNoticeTimeoutRef.current) {
+          clearTimeout(grammarBlockNoticeTimeoutRef.current);
+        }
+        setGrammarBlockNotice(null);
       }
       if (result.commit) {
         const arrow = buildArrowFromGestureCommit(result.commit, tool, {
@@ -967,6 +1009,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     tacticalReads,
     grammarWarnings,
     hasAnyOwnRoleAssigned,
+    grammarBlockNotice,
     tacticalOverlay,
     readiness,
     projectLabel: boardProjectLabel(weeklyDecisionThread?.problem),
