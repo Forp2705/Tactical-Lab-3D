@@ -328,6 +328,7 @@ function TacticalBoardWorkspace({
                 aiInterpretation={a.aiInterpretation}
                 tacticalReads={a.tacticalReads}
                 hasAnyOwnRoleAssigned={a.hasAnyOwnRoleAssigned}
+                grammarWarnings={a.grammarWarnings}
                 layers={a.layers}
                 payload={a.payload}
                 attachBlockId={a.attachBlockId}

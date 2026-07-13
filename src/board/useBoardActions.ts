@@ -45,6 +45,7 @@ import {
   detectAttackDir,
 } from "./scenarioBoardConsequence";
 import { deriveTacticalReads, type TacticalRead } from "./boardTacticalRead";
+import { auditScene, evaluateAction } from "./boardTacticalGrammar";
 import {
   type ArrowGesturePhase,
   buildArrowFromGestureCommit,
@@ -275,6 +276,13 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     () => deriveTacticalReads(scene, attackDir, team.players),
     [scene, attackDir, team.players],
   );
+
+  // Gramatica tactica (W25B): warnings vigentes de la escena tal como esta
+  // ahora — derivado en el mismo ciclo que tacticalReads, nunca acumulado
+  // (undo/borrado de la flecha que disparaba un warning lo hace desaparecer
+  // solo, sin estado propio que limpiar). El bloqueo duro vive en el punto
+  // de commit del gesto (commitProposedArrow mas abajo), no aca.
+  const grammarWarnings = useMemo(() => auditScene(scene), [scene]);
 
   const readiness = useMemo(
     () => buildBoardReadiness(board, session.blocks, scene),
@@ -705,6 +713,25 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     }, 1600);
   };
 
+  // Unico punto de friccion de la gramatica tactica (W25B): interceptado
+  // entre "la maquina de estados de gesto ya decidio comitear una flecha" y
+  // "la flecha entra a la escena". Se llama desde los dos handlers donde el
+  // gesto puede resolver un commit (click-click en pointerDown, drag en
+  // pointerUp) — misma decision logica, dos puntos fisicos porque la
+  // maquina de estados de W24A los separa asi (ver boardTools.ts).
+  const commitProposedArrow = (arrow: BoardArrow) => {
+    const evaluation = evaluateAction(scene, arrow);
+    if (evaluation.verdict === "block") {
+      setStatus(
+        evaluation.reason ??
+          "Accion bloqueada: no tiene sentido tactico en esta escena.",
+      );
+      return;
+    }
+    commitScene({ arrows: [...scene.arrows, arrow] });
+    fireTacticalOverlay();
+  };
+
   const onCanvasPointerDown = (point: BoardPoint, targetId?: string) => {
     // move/select sobre un token -> arrancar drag (y cancelar cualquier
     // gesto de flecha en curso). Comportamiento existente.
@@ -759,8 +786,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
           tone: String(lineWidth),
         });
         if (arrow) {
-          commitScene({ arrows: [...scene.arrows, arrow] });
-          fireTacticalOverlay();
+          commitProposedArrow(arrow);
         }
       }
       if (result.cancelledSameToken) {
@@ -812,8 +838,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
           tone: String(lineWidth),
         });
         if (arrow) {
-          commitScene({ arrows: [...scene.arrows, arrow] });
-          fireTacticalOverlay();
+          commitProposedArrow(arrow);
         }
       }
       if (result.cancelledSameToken) {
@@ -940,6 +965,7 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     isArrowToolActive: semanticForTool(tool) !== null,
     aiInterpretation,
     tacticalReads,
+    grammarWarnings,
     hasAnyOwnRoleAssigned,
     tacticalOverlay,
     readiness,
