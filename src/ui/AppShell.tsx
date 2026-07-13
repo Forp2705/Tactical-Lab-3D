@@ -258,16 +258,25 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="status-dot available" />
                 Proyecto local
               </span>
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => {
-                  useAppStore.getState().setView("viewer");
-                  useAppStore.getState().setPresentationMode(true);
-                }}
-              >
-                Modo presentacion
-              </button>
+              {/* H4 (W24-audit): en la Pizarra este boton saltaba al Visor 3D
+                  con el ultimo ejercicio de la Biblioteca que haya quedado
+                  seleccionado (contenido sin relacion con la jugada dibujada,
+                  layout roto) y "Salir" no volvia a la Pizarra — el audit no
+                  encontro uso legitimo del boton ahi. Se oculta solo en board;
+                  en el resto de las vistas SI presenta el ejercicio activo
+                  del Visor, que es su proposito real. */}
+              {view === "board" ? null : (
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => {
+                    useAppStore.getState().setView("viewer");
+                    useAppStore.getState().setPresentationMode(true);
+                  }}
+                >
+                  Modo presentacion
+                </button>
+              )}
               {/* W16: exportViewerPng busca el canvas 3D (.canvas-wrap) — en
                   la Pizarra no existe y el boton era un no-op silencioso
                   (catalogo gate W15). El board tiene su propio export en el
