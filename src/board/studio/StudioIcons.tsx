@@ -114,7 +114,7 @@ const ICON_PATHS: Record<string, JSX.Element> = {
       <path d="M5 14v-4a3 3 0 016 0v4" fill="none" stroke="currentColor" strokeWidth={1.2} />
     </>
   ),
-  ball: (
+  ballPlace: (
     <>
       <circle cx={8} cy={8} r={5.6} fill="none" stroke="currentColor" strokeWidth={1.2} />
       <path d="M8 5l2.6 1.9-1 3H6.4l-1-3z" fill="currentColor" />

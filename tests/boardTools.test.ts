@@ -238,6 +238,66 @@ describe("boardTools — handleCanvasPress (equipment-only since W24A; zones/arr
       scene.objects.length + 1,
     );
   });
+
+  // W27 FIXUP: "note" ya modelaba un objeto valido (makeEquipmentLikeObject)
+  // pero ningun tool lo creaba — gap escalado y autorizado como extension
+  // aditiva minima de handleCanvasPress (coordinador, msg_29bc557ccca1).
+  it("note tool appends a schema-valid note object at the press point", () => {
+    const updateSceneObjects = vi.fn();
+    const scene = freshScene();
+    handleCanvasPress({
+      point: { x: 33, y: 44 },
+      tool: "note",
+      scene,
+      color: "#facc15",
+      updateSceneObjects,
+    });
+    expect(updateSceneObjects).toHaveBeenCalledTimes(1);
+    const nextObjects = updateSceneObjects.mock.calls[0][0] as BoardObject[];
+    expect(nextObjects).toHaveLength(scene.objects.length + 1);
+    const created = nextObjects.at(-1)!;
+    expect(created.type).toBe("note");
+    expect(created.position).toEqual({ x: 33, y: 44 });
+  });
+
+  // W27 FIXUP: "ballPlace" reposiciona la UNICA pelota de la escena (jamas
+  // crea una segunda — boardPlayback.findBall asume pelota-unica con razon
+  // futbolistica). Autorizado con esta semantica exacta por el coordinador.
+  it("ballPlace tool moves the scene's existing ball to the press point, never creating a second one", () => {
+    const updateSceneObjects = vi.fn();
+    const scene = freshScene();
+    const ball = scene.objects.find((object) => object.type === "ball")!;
+    handleCanvasPress({
+      point: { x: 61, y: 12 },
+      tool: "ballPlace",
+      scene,
+      color: "#fff",
+      updateSceneObjects,
+    });
+    expect(updateSceneObjects).toHaveBeenCalledTimes(1);
+    const nextObjects = updateSceneObjects.mock.calls[0][0] as BoardObject[];
+    expect(nextObjects).toHaveLength(scene.objects.length);
+    expect(nextObjects.filter((object) => object.type === "ball")).toHaveLength(1);
+    const movedBall = nextObjects.find((object) => object.id === ball.id)!;
+    expect(movedBall.position).toEqual({ x: 61, y: 12 });
+  });
+
+  it("ballPlace is a no-op (never crashes) when the scene somehow has no ball", () => {
+    const updateSceneObjects = vi.fn();
+    const scene = freshScene();
+    const sceneWithoutBall = {
+      ...scene,
+      objects: scene.objects.filter((object) => object.type !== "ball"),
+    };
+    handleCanvasPress({
+      point: { x: 61, y: 12 },
+      tool: "ballPlace",
+      scene: sceneWithoutBall,
+      color: "#fff",
+      updateSceneObjects,
+    });
+    expect(updateSceneObjects).not.toHaveBeenCalled();
+  });
 });
 
 describe("boardTools — arrow gesture state machine (W24A: drag-to-create + click-click fallback, no ghost arrow)", () => {

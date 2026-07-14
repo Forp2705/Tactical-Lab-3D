@@ -20,13 +20,12 @@ export type StudioRailButton = {
   label: string;
   // Presente cuando el boton selecciona una BoardTool real via a.setTool.
   tool?: BoardTool;
-  // Accion especial del estudio, sin BoardTool 1:1 en el motor hoy:
-  // - "erase": modo "pasar el borrador" (arma select + borra la proxima
-  //   seleccion real), reusa deleteSelection() existente — no requiere tocar
-  //   boardTools.ts.
-  // - "note-gap" / "ball-gap": gap escalado al coordinador (ver worker_done);
-  //   temporalmente alias de "move" para no romper nada mientras se resuelve.
-  special?: "erase" | "note-gap" | "ball-gap";
+  // Accion especial del estudio, sin BoardTool 1:1 en el motor: "erase" arma
+  // el modo "pasar el borrador" (select + borra la proxima seleccion real),
+  // reusa deleteSelection() existente — no requiere tocar boardTools.ts.
+  // ("note"/"ballPlace" YA son BoardTool reales desde el FIXUP W27 —
+  // handleCanvasPress en boardTools.ts las crea/mueve.)
+  special?: "erase";
 };
 
 export type StudioToolGroupId =
@@ -54,7 +53,7 @@ export const STUDIO_TOOL_GROUPS: StudioToolGroup[] = [
       toolButton("select", "Seleccionar"),
       toolButton("move", "Mover"),
       { id: "erase", label: "Borrar", special: "erase" },
-      { id: "note", label: "Nota", special: "note-gap" },
+      toolButton("note", "Nota"),
     ],
   },
   {
@@ -98,7 +97,7 @@ export const STUDIO_TOOL_GROUPS: StudioToolGroup[] = [
       toolButton("cone", "Cono"),
       toolButton("goal", "Portería"),
       toolButton("mannequin", "Maniquí"),
-      { id: "ball", label: "Pelota", special: "ball-gap" },
+      toolButton("ballPlace", "Pelota"),
     ],
   },
 ];

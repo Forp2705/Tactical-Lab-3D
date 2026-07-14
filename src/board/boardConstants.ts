@@ -15,7 +15,9 @@ export type BoardSpecialTool =
   | "block"
   | "cone"
   | "goal"
-  | "mannequin";
+  | "mannequin"
+  | "note"
+  | "ballPlace";
 export type BoardTool = BoardSpecialTool | BoardArrowSemantic;
 
 export type DraftPlayer = Omit<PlanningBoardPlayer, "id" | "team"> & {
@@ -72,6 +74,10 @@ export const TOOL_DEFS: Array<{ id: BoardTool; label: string }> = [
   { id: "cone", label: "Cono" },
   { id: "goal", label: "Porteria" },
   { id: "mannequin", label: "Maniqui" },
+  // W27 FIXUP: nota y reposicionar-pelota (branch aditivo autorizado,
+  // ver boardTools.ts handleCanvasPress)
+  { id: "note", label: "Nota" },
+  { id: "ballPlace", label: "Pelota" },
 ];
 
 // El rail principal se arma por grupos de accion. El equipamiento vive aparte

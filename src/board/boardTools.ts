@@ -158,6 +158,30 @@ export function handleCanvasPress({
         color,
       ),
     ]);
+    return;
+  }
+  // W27 FIXUP (coordinador, msg_29bc557ccca1): "note" ya modelaba un objeto
+  // valido (makeEquipmentLikeObject) sin ningun tool que lo creara. Branch
+  // aditivo puro — mismo patron que cone/mannequin/goal arriba.
+  if (tool === "note") {
+    updateSceneObjects([
+      ...scene.objects,
+      makeEquipmentLikeObject("note", labelForTool(tool), point, color),
+    ]);
+    return;
+  }
+  // W27 FIXUP: "ballPlace" reposiciona la pelota UNICA de la escena — jamas
+  // crea una segunda (boardPlayback.findBall asume pelota-unica con razon
+  // futbolistica real). No-op silencioso si por algun motivo no hay pelota
+  // (nunca crashea).
+  if (tool === "ballPlace") {
+    const ball = scene.objects.find((object) => object.type === "ball");
+    if (!ball) return;
+    updateSceneObjects(
+      scene.objects.map((object) =>
+        object.id === ball.id ? { ...object, position: point } : object,
+      ),
+    );
   }
 }
 

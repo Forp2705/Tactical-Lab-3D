@@ -260,13 +260,6 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
       dockErase();
       return;
     }
-    if (button.special === "note-gap" || button.special === "ball-gap") {
-      // Gap escalado (worker_done): el motor no tiene creacion de nota via
-      // gesto ni un segundo objeto pelota — alias temporal a Mover, nunca
-      // rompe/crashea mientras se resuelve.
-      a.setTool("move");
-      return;
-    }
     if (button.tool) a.setTool(button.tool);
   };
 
