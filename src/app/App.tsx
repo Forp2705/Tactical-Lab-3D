@@ -35,9 +35,12 @@ const AiView = lazy(() =>
 const PlayerView = lazy(() =>
   import("@/export/PlayerView").then((m) => ({ default: m.PlayerView })),
 );
+// W27: el Estudio Tactico (validado por el dueno en MOCKUP-NORTE.html)
+// reemplaza la vista Pizarra en la ruta "board". TacticalBoardView.tsx y sus
+// subcomponentes quedan intactos en el repo, solo dejan de enrutarse aca.
 const TacticalBoardView = lazy(() =>
-  import("@/board/TacticalBoardView").then((m) => ({
-    default: m.TacticalBoardView,
+  import("@/board/studio/StudioTacticalBoardView").then((m) => ({
+    default: m.StudioTacticalBoardView,
   })),
 );
 
