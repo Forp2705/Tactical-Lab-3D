@@ -262,7 +262,11 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
     isArrowToolActive: Boolean(a.isArrowToolActive),
     armed: Boolean(a.arrowGesturePreview?.armed),
   });
-  const showHint = Boolean(a.isArrowToolActive || a.grammarBlockNotice);
+  // W27D FIXUP (fidelidad): durante el clip la UNICA voz sobre la cancha es
+  // la frase del ayudante en el remate — el hint de dibujo ("Arrastra de
+  // origen a destino...") queda mudo mientras isPlaying, nunca compite con
+  // el playback.
+  const showHint = Boolean((a.isArrowToolActive || a.grammarBlockNotice) && !a.isPlaying);
 
   const pitchStatic = (
     <>
@@ -1011,7 +1015,12 @@ const STUDIO_STYLES = `
   padding: 6px 4px 2px;
 }
 .stu-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.stu-tool {
+/* W27D FIXUP (fidelidad): el reset global "button:not(.secondary)" de
+   theme.css (specificidad 0,2,0, pinta TODOS los <button> como pildora
+   dorada) le ganaba a ".stu-tool" (0,1,0) por especificidad, sin importar
+   el orden — mismo patron ya documentado para .rombo-playback-toggle.
+   Fix: escalar la especificidad con el contenedor, no tocar theme.css. */
+.stu-studio .stu-rail .stu-tool {
   display: flex; align-items: center; gap: 6px;
   background: transparent;
   border: 1px solid transparent;
@@ -1023,10 +1032,12 @@ const STUDIO_STYLES = `
   cursor: pointer;
   text-align: left;
   min-height: 34px;
+  box-shadow: none;
+  transform: none;
 }
-.stu-tool:hover { background: rgba(232,228,213,0.06); }
-.stu-tool:active { transform: scale(0.97); }
-.stu-tool.active {
+.stu-studio .stu-rail .stu-tool:hover { background: rgba(232,228,213,0.06); transform: none; }
+.stu-studio .stu-rail .stu-tool:active { transform: scale(0.97); }
+.stu-studio .stu-rail .stu-tool.active {
   background: rgba(242,194,48,0.14);
   border-color: rgba(242,194,48,0.55);
 }
@@ -1173,14 +1184,18 @@ const STUDIO_STYLES = `
   padding: 0 16px;
   min-width: 0;
 }
-.stu-play-btn {
+/* W27D FIXUP (fidelidad): mismo problema de especificidad que .stu-tool —
+   escalado via el contenedor para ganarle al reset global de theme.css. */
+.stu-studio .stu-deck .stu-play-btn {
   flex: none; width: 52px; height: 52px; border-radius: 50%;
   border: none; cursor: pointer;
   background: var(--stu-token-own);
   display: grid; place-items: center;
   box-shadow: 0 4px 18px rgba(242,194,48,0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
-.stu-play-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.stu-studio .stu-deck .stu-play-btn:hover { transform: scale(1.06); }
+.stu-studio .stu-deck .stu-play-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 .stu-play-btn svg { width: 20px; height: 20px; display: block; }
 .stu-timeline { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .stu-scenes { display: flex; gap: 6px; overflow-x: auto; }
