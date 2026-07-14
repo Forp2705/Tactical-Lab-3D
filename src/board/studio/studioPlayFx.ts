@@ -135,6 +135,36 @@ export function fxPathD(segment: FxSegment, scaleY: (y: number) => number): stri
     : `M${segment.from.x} ${scaleY(segment.from.y)} L${segment.to.x} ${scaleY(segment.to.y)}`;
 }
 
+// Efecto #1 (trazo que se dibuja solo): construye el "d" de SOLO la porcion
+// ya recorrida, muestreando la MISMA curva/recta punto a punto en vez de
+// revelar un path completo con stroke-dasharray/-dashoffset. Fidelidad W27:
+// dasharray+dashoffset animado sobre un stroke ancho con round caps en una
+// curva produce un artefacto de "cuentas" en Chrome (beads a lo largo del
+// trazo) — un path parcial real no tiene ese problema porque no hay dash
+// que tiling-ear, es geometria genuina.
+export function partialFxPathD(
+  segment: FxSegment,
+  scaleY: (y: number) => number,
+  easedProgress: number,
+  steps = 24,
+): string {
+  const clamped = clamp01(easedProgress);
+  if (clamped <= 0) return "";
+  const point = (t: number) =>
+    segment.curved
+      ? quadraticBezierPoint(segment.from, segment.control, segment.to, t)
+      : lerpPoint(segment.from, segment.to, t);
+  const start = point(0);
+  let d = `M${start.x} ${scaleY(start.y)}`;
+  const count = Math.max(1, Math.round(steps * clamped));
+  for (let i = 1; i <= count; i += 1) {
+    const t = (i / count) * clamped;
+    const p = point(t);
+    d += ` L${p.x} ${scaleY(p.y)}`;
+  }
+  return d;
+}
+
 export function activeSegmentsAt(segments: FxSegment[], tSeconds: number): FxSegment[] {
   return segments.filter((segment) => tSeconds >= segment.start && tSeconds <= segment.end);
 }

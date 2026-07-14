@@ -32,10 +32,12 @@ import { StudioToolIcon } from "./StudioIcons";
 import {
   buildFxTimeline,
   cameraZoomEnvelope,
+  easeInOutQuad,
   focusObjectIds,
   focusPoint,
   fxPathD,
   fxPositionAt,
+  partialFxPathD,
   prefersReducedMotion,
   sampleTrail,
   type FxSegment,
@@ -123,17 +125,6 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
     () => new Map(fxTimeline.segments.map((segment) => [segment.arrowId, segment])),
     [fxTimeline],
   );
-  const arrowPathState = useRef<Record<string, { d: string; length: number }>>({});
-  const setArrowPathRef = (arrowId: string, d: string) => (el: SVGPathElement | null) => {
-    if (!el) return;
-    const cached = arrowPathState.current[arrowId];
-    if (cached && cached.d === d) return;
-    arrowPathState.current[arrowId] = { d, length: el.getTotalLength() };
-  };
-  const getArrowLength = (arrowId: string, d: string): number => {
-    const cached = arrowPathState.current[arrowId];
-    return cached && cached.d === d ? cached.length : 0;
-  };
 
   // Remate (deck): frase de ayudante de campo al terminar la jugada SOLA
   // (nunca al pausar/scrubear a mano).
@@ -273,7 +264,7 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
   });
   const showHint = Boolean(a.isArrowToolActive || a.grammarBlockNotice);
 
-  const pitchContent = (
+  const pitchStatic = (
     <>
       <rect width={PITCH_W} height={PITCH_H} rx="1.2" className="stu-pitch-bg" />
       <path
@@ -342,6 +333,11 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
         />
       ) : null}
 
+    </>
+  );
+
+  const arrowsLayer = (
+    <>
       {scene.arrows.map((arrow) => {
         const style = arrowStyle(arrow.semantic);
         const stroke = arrow.style?.color ?? style.color;
@@ -380,25 +376,32 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
         }
 
         if (rawProgress === undefined || rawProgress <= 0) return null;
-        const d = fxPathD(fxSeg, scaleY);
         const drawing = rawProgress < 1;
-        const length = getArrowLength(arrow.id, d);
+        // Efecto #1 (trazo que se dibuja solo): un path PARCIAL real
+        // (muestreado punto a punto) en vez de revelar un path completo con
+        // stroke-dasharray/-dashoffset — esa tecnica combinada con un stroke
+        // ancho de round-caps sobre una curva produce "cuentas" visibles en
+        // Chrome (defecto de fidelidad reportado y verificado en vivo).
+        const d = drawing
+          ? partialFxPathD(fxSeg, scaleY, easeInOutQuad(rawProgress))
+          : fxPathD(fxSeg, scaleY);
+        if (!d) return null;
         return (
           <g key={arrow.id} data-board-target className={drawing ? undefined : "stu-arrow-settle"}>
+            {/* Glow: capa ancha/traslucida detras de la crisp — un plano
+                simple, sin CSS filter (evita el mismo tipo de artefacto). */}
+            {drawing ? (
+              <path d={d} fill="none" stroke={stroke} strokeWidth={3.2} strokeLinecap="round" opacity={0.32} />
+            ) : null}
             <path
-              ref={setArrowPathRef(arrow.id, d)}
               d={d}
               fill="none"
               stroke={stroke}
               strokeWidth={drawing ? 1.3 : 0.9}
               strokeLinecap="round"
-              strokeDasharray={
-                drawing && length > 0 ? `${length} ${length}` : style.dashed ? "1.6 1.2" : undefined
-              }
-              strokeDashoffset={drawing && length > 0 ? length * (1 - rawProgress) : undefined}
+              strokeDasharray={!drawing && style.dashed ? "1.6 1.2" : undefined}
               opacity={drawing ? 1 : 0.95}
               markerEnd={!drawing || rawProgress > 0.92 ? "url(#stu-arrowhead)" : undefined}
-              style={drawing ? { filter: `drop-shadow(0 0 2.5px ${stroke})` } : undefined}
             />
           </g>
         );
@@ -427,7 +430,11 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
           })()}
         </g>
       ) : null}
+    </>
+  );
 
+  const tokensLayer = (
+    <>
       {displayObjects.map((object) => {
         const x = object.position.x;
         const y = scaleY(object.position.y);
@@ -565,6 +572,26 @@ function StudioWorkspace({ board, scene }: { board: TacticalBoard; scene: BoardS
           </g>
         );
       })}
+    </>
+  );
+
+  // W27 FIXUP (fidelidad): durante playback las fichas atenuadas igual se
+  // pintaban ENCIMA del trazo vivo (mismo orden que en edicion), rompiendo
+  // la continuidad visual de la linea contra formaciones en columna — se
+  // veia como "cuentas"/mancha en vez de un trazo limpio. Fix: solo durante
+  // playback, la capa de flechas se pinta DESPUES de las fichas; en
+  // edicion el orden queda igual que siempre (flechas debajo de fichas).
+  const pitchContent = inPlayback ? (
+    <>
+      {pitchStatic}
+      {tokensLayer}
+      {arrowsLayer}
+    </>
+  ) : (
+    <>
+      {pitchStatic}
+      {arrowsLayer}
+      {tokensLayer}
     </>
   );
 

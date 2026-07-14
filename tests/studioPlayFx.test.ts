@@ -13,10 +13,12 @@ import {
   activeSegmentsAt,
   buildFxTimeline,
   cameraZoomEnvelope,
+  easeInOutQuad,
   focusObjectIds,
   focusPoint,
   fxPathD,
   fxPositionAt,
+  partialFxPathD,
   sampleTrail,
   segmentRawProgress,
 } from "../src/board/studio/studioPlayFx";
@@ -204,6 +206,92 @@ describe("studioPlayFx — fxPathD", () => {
     const d = fxPathD(segment, (y) => y * 0.64);
     expect(d).not.toContain("Q");
     expect(d).toContain("L");
+  });
+});
+
+// W27 FIXUP (fidelidad, reportado en vivo): stroke-dasharray/-dashoffset
+// animado sobre un stroke ancho de round-caps en una curva producia
+// "cuentas" visibles en Chrome durante el trazo-que-se-dibuja-solo. Fix:
+// un path PARCIAL real (geometria genuina, sin dash que tiling-ear).
+describe("studioPlayFx — partialFxPathD (fix del trazo-que-se-dibuja-solo)", () => {
+  function curvedSegment() {
+    const runner = token("t-runner", 20, 20);
+    const arrow = createSemanticArrow(
+      "run",
+      { kind: "object", objectId: "t-runner" },
+      { kind: "point", point: { x: 80, y: 20 } },
+    );
+    const scene = makeScene([createBall(), runner], [arrow]);
+    return buildFxTimeline(scene).segments[0];
+  }
+
+  it("is empty at progress 0 (nothing drawn yet)", () => {
+    const segment = curvedSegment();
+    expect(partialFxPathD(segment, (y) => y * 0.64, 0)).toBe("");
+  });
+
+  it("starts exactly at the segment's `from` point regardless of progress", () => {
+    const segment = curvedSegment();
+    const d = partialFxPathD(segment, (y) => y * 0.64, 0.5);
+    expect(d.startsWith(`M${segment.from.x} ${segment.from.y * 0.64}`)).toBe(true);
+  });
+
+  it("never contains Q/dasharray-style commands — only M/L (genuine partial geometry)", () => {
+    const segment = curvedSegment();
+    const d = partialFxPathD(segment, (y) => y * 0.64, 0.7);
+    expect(d).not.toContain("Q");
+    expect(d.split(" ").some((token) => token.startsWith("L"))).toBe(true);
+  });
+
+  it("at progress 1, the last sampled point equals the segment's `to` endpoint (visual continuity with the settled arrow)", () => {
+    const segment = curvedSegment();
+    const d = partialFxPathD(segment, (y) => y * 0.64, 1);
+    // Tokens alternate "Lx" then "y" (space-separated, no commas) — the
+    // last two tokens are the final sampled point's x and y.
+    const tokens = d.trim().split(" ");
+    const lastX = Number(tokens.at(-2)!.replace(/^L/, ""));
+    const lastY = Number(tokens.at(-1));
+    expect(lastX).toBeCloseTo(segment.to.x, 5);
+    expect(lastY).toBeCloseTo(segment.to.y * 0.64, 5);
+  });
+
+  it("grows monotonically longer as progress increases (more of the curve revealed)", () => {
+    const segment = curvedSegment();
+    const short = partialFxPathD(segment, (y) => y * 0.64, 0.2);
+    const long = partialFxPathD(segment, (y) => y * 0.64, 0.8);
+    expect(long.length).toBeGreaterThan(short.length);
+  });
+
+  it("is deterministic — same segment and progress always produce the same path string", () => {
+    const segment = curvedSegment();
+    const a = partialFxPathD(segment, (y) => y * 0.64, 0.42);
+    const b = partialFxPathD(segment, (y) => y * 0.64, 0.42);
+    expect(a).toBe(b);
+  });
+
+  it("a straight (non-curved) segment's partial path only ever contains M/L, same as the curved case", () => {
+    const passer = token("t-passer", 10, 50);
+    const arrow = createSemanticArrow(
+      "pass",
+      { kind: "object", objectId: "t-passer" },
+      { kind: "point", point: { x: 90, y: 50 } },
+    );
+    const scene = makeScene([createBall({ x: 10, y: 50 }), passer], [arrow]);
+    const segment = buildFxTimeline(scene).segments[0];
+    const d = partialFxPathD(segment, (y) => y * 0.64, 0.5);
+    expect(d).not.toContain("Q");
+    expect(d.startsWith("M")).toBe(true);
+  });
+
+  it("matches fxPositionAt's eased-progress endpoint for a partial (in-flight) reveal", () => {
+    const segment = curvedSegment();
+    const eased = easeInOutQuad(0.5);
+    const midT = segment.start + (segment.end - segment.start) * 0.5;
+    const expectedPoint = fxPositionAt(segment, midT);
+    const d = partialFxPathD(segment, (y) => y * 0.64, eased);
+    const tokens = d.trim().split(" ");
+    const lastX = Number(tokens.at(-2)!.replace(/^L/, ""));
+    expect(lastX).toBeCloseTo(expectedPoint.x, 5);
   });
 });
 
