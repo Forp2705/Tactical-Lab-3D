@@ -1131,7 +1131,17 @@ const STUDIO_STYLES = `
 }
 
 .stu-pitch-wrap { width: 100%; height: 100%; display: grid; place-items: center; padding: 34px 26px 12px; }
-.stu-pitch { width: 100%; height: 100%; aspect-ratio: ${PITCH_W} / ${PITCH_H}; touch-action: none; }
+/* W27E FIXUP (gate REVIEW-W27.md): W25 ya habia resuelto esto para
+   .rombo-pitch-svg (base 28ca4fb) - el reemplazo por el Estudio Tactico lo
+   dejo afuera. Sin esto, un drag desde el glifo/nombre de un token
+   selecciona texto en silencio, y el SIGUIENTE drag desde ese glifo ya
+   seleccionado muere en dragstart+pointercancel nativos (cero flecha, cero
+   feedback). Scopeado a la cancha, NUNCA global — el input de notas del
+   drawer tiene que seguir seleccionable. */
+.stu-pitch {
+  width: 100%; height: 100%; aspect-ratio: ${PITCH_W} / ${PITCH_H}; touch-action: none;
+  user-select: none; -webkit-user-select: none;
+}
 .stu-pitch-bg { fill: var(--stu-felt-pitch); stroke: var(--stu-felt-line); stroke-width: 1.2; }
 .stu-pitch-lines { fill: none; stroke: var(--stu-felt-line); stroke-width: 0.35; }
 .stu-pitch-circle { fill: none; stroke: var(--stu-felt-line); stroke-width: 0.3; }
