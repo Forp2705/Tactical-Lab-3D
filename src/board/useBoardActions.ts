@@ -467,6 +467,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
   // consumidor lo editaba — solo se leia (export de brief). El drawer NOTAS
   // del Estudio Tactico es el primer editor real; no crea campo nuevo.
   const updateSceneNotes = (notes: string) => commitScene({ notes }, false);
+  // W27: nombre de la jugada en letra de marcador (mockup item 2, editable) es
+  // scene.title — existia para el <select> de escenas del footer viejo mas
+  // export de imagen/brief, nunca para renombrar in-place.
+  const updateSceneTitle = (title: string) => commitScene({ title }, false);
 
   const createPayload = async () => {
     const nextPayload = buildBoardPayload(board, scene, {
@@ -1137,8 +1141,9 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     createSessionBlock,
     zoomOut,
     zoomIn,
-    // W27: primer editor real de scene.notes (ver comentario junto a la fn)
+    // W27: primer editor real de scene.notes/scene.title (ver comentarios junto a las fns)
     updateSceneNotes,
+    updateSceneTitle,
     // scenario sandbox
     consequenceOverlay,
     runScenario,
