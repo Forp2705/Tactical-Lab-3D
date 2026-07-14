@@ -463,6 +463,10 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     commitScene({ objects }, record);
   const updateSceneArrows = (arrows: BoardArrow[], record = true) =>
     commitScene({ arrows }, record);
+  // W27: scene.notes ya existia en el modelo (BoardSceneSchema) pero ningun
+  // consumidor lo editaba — solo se leia (export de brief). El drawer NOTAS
+  // del Estudio Tactico es el primer editor real; no crea campo nuevo.
+  const updateSceneNotes = (notes: string) => commitScene({ notes }, false);
 
   const createPayload = async () => {
     const nextPayload = buildBoardPayload(board, scene, {
@@ -1133,6 +1137,8 @@ export function useBoardActions(board: TacticalBoard, scene: BoardScene) {
     createSessionBlock,
     zoomOut,
     zoomIn,
+    // W27: primer editor real de scene.notes (ver comentario junto a la fn)
+    updateSceneNotes,
     // scenario sandbox
     consequenceOverlay,
     runScenario,
